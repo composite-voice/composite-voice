@@ -30,7 +30,10 @@ export class EventEmitter {
       this.listeners.set(event, new Set());
     }
 
-    const eventListeners = this.listeners.get(event)!;
+    const eventListeners = this.listeners.get(event);
+    if (!eventListeners) {
+      throw new Error(`Failed to get event listeners for ${event}`);
+    }
 
     if (eventListeners.size >= this.maxListeners) {
       console.warn(

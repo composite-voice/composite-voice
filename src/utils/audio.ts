@@ -10,8 +10,11 @@ import type { AudioFormat } from '../core/types/audio';
 export function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
   const int16Array = new Int16Array(float32Array.length);
   for (let i = 0; i < float32Array.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32Array[i]!));
-    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    const val = float32Array[i];
+    if (val !== undefined) {
+      const s = Math.max(-1, Math.min(1, val));
+      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
   }
   return int16Array;
 }
@@ -22,8 +25,10 @@ export function floatTo16BitPCM(float32Array: Float32Array): Int16Array {
 export function int16ToFloat(int16Array: Int16Array): Float32Array {
   const float32Array = new Float32Array(int16Array.length);
   for (let i = 0; i < int16Array.length; i++) {
-    const int = int16Array[i]!;
-    float32Array[i] = int >= 0 ? int / 0x7fff : int / 0x8000;
+    const int = int16Array[i];
+    if (int !== undefined) {
+      float32Array[i] = int >= 0 ? int / 0x7fff : int / 0x8000;
+    }
   }
   return float32Array;
 }
@@ -69,8 +74,11 @@ export function downsampleAudio(
     let count = 0;
 
     for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
-      accum += buffer[i]!;
-      count++;
+      const sample = buffer[i];
+      if (sample !== undefined) {
+        accum += sample;
+        count++;
+      }
     }
 
     result[offsetResult] = accum / count;
@@ -169,7 +177,10 @@ export function createAudioBlob(pcmData: Int16Array, sampleRate: number, numChan
 export function calculateRMS(samples: Float32Array): number {
   let sum = 0;
   for (let i = 0; i < samples.length; i++) {
-    sum += samples[i]! * samples[i]!;
+    const sample = samples[i];
+    if (sample !== undefined) {
+      sum += sample * sample;
+    }
   }
   return Math.sqrt(sum / samples.length);
 }
@@ -195,14 +206,20 @@ export function applyFade(
   // Fade in
   for (let i = 0; i < Math.min(fadeInSamples, samples.length); i++) {
     const gain = i / fadeInSamples;
-    result[i] = samples[i]! * gain;
+    const sample = samples[i];
+    if (sample !== undefined) {
+      result[i] = sample * gain;
+    }
   }
 
   // Fade out
   const startFadeOut = samples.length - fadeOutSamples;
   for (let i = startFadeOut; i < samples.length; i++) {
     const gain = (samples.length - i) / fadeOutSamples;
-    result[i] = samples[i]! * gain;
+    const sample = samples[i];
+    if (sample !== undefined) {
+      result[i] = sample * gain;
+    }
   }
 
   return result;

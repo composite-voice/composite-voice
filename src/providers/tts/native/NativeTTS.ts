@@ -106,10 +106,9 @@ export class NativeTTS extends BaseTTSProvider {
 
     // Try to find voice by name
     if (this.config.voice) {
+      const voiceToFind = this.config.voice;
       const voiceByName = this.availableVoices.find(
-        (v) =>
-          v.name === this.config.voice ||
-          v.name.toLowerCase().includes(this.config.voice!.toLowerCase())
+        (v) => v.name === voiceToFind || v.name.toLowerCase().includes(voiceToFind.toLowerCase())
       );
       if (voiceByName) {
         this.selectedVoice = voiceByName;
@@ -120,9 +119,8 @@ export class NativeTTS extends BaseTTSProvider {
 
     // Try to find voice by language
     if (this.config.voiceLang) {
-      const voiceByLang = this.availableVoices.find((v) =>
-        v.lang.startsWith(this.config.voiceLang!)
-      );
+      const langToFind = this.config.voiceLang;
+      const voiceByLang = this.availableVoices.find((v) => v.lang.startsWith(langToFind));
       if (voiceByLang) {
         this.selectedVoice = voiceByLang;
         this.logger.info(`Selected voice by language: ${voiceByLang.name}`);

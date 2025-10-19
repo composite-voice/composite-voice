@@ -213,10 +213,10 @@ export class WebSocketManager {
    * Send data through the WebSocket
    */
   send(data: string | ArrayBuffer | Blob): void {
-    if (!this.isConnected()) {
+    if (!this.isConnected() || !this.ws) {
       throw new WebSocketError('Cannot send data: not connected');
     }
-    this.ws!.send(data);
+    this.ws.send(data);
   }
 
   /**

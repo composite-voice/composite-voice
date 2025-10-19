@@ -232,22 +232,29 @@ export class AgentStateMachine {
       {};
 
     for (let i = 0; i < this.stateHistory.length - 1; i++) {
-      const current = this.stateHistory[i]!;
-      const next = this.stateHistory[i + 1]!;
+      const current = this.stateHistory[i];
+      const next = this.stateHistory[i + 1];
+      if (!current || !next) continue;
+
       const duration = next.timestamp - current.timestamp;
 
       if (!stats[current.state]) {
         stats[current.state] = { count: 0, totalDuration: 0, averageDuration: 0 };
       }
 
-      stats[current.state]!.count++;
-      stats[current.state]!.totalDuration += duration;
+      const currentStats = stats[current.state];
+      if (currentStats) {
+        currentStats.count++;
+        currentStats.totalDuration += duration;
+      }
     }
 
     // Calculate averages
     for (const state in stats) {
-      const statEntry = stats[state]!;
-      statEntry.averageDuration = statEntry.totalDuration / statEntry.count;
+      const statEntry = stats[state];
+      if (statEntry) {
+        statEntry.averageDuration = statEntry.totalDuration / statEntry.count;
+      }
     }
 
     return stats as Record<

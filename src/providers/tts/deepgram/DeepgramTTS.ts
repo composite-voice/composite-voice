@@ -10,7 +10,8 @@ import { ProviderInitializationError, ProviderConnectionError } from '../../../u
 
 // Type-safe imports for optional peer dependency
 type DeepgramClient = typeof import('@deepgram/sdk').createClient;
-// Note: Using 'any' for LiveTTSClient as the type may not be exported in all SDK versions
+// Note: Using unknown for LiveTTSClient as the type may not be exported in all SDK versions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LiveTTSClient = any;
 
 /**

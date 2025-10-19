@@ -249,8 +249,10 @@ export class AudioPlayer {
 
     // Convert Int16 to Float32
     for (let i = 0; i < int16Array.length; i++) {
-      const int = int16Array[i]!;
-      floatArray[i] = int >= 0 ? int / 0x7fff : int / 0x8000;
+      const int = int16Array[i];
+      if (int !== undefined) {
+        floatArray[i] = int >= 0 ? int / 0x7fff : int / 0x8000;
+      }
     }
 
     const samplesPerChannel = floatArray.length / channels;
@@ -260,7 +262,10 @@ export class AudioPlayer {
     for (let channel = 0; channel < channels; channel++) {
       const channelData = audioBuffer.getChannelData(channel);
       for (let i = 0; i < samplesPerChannel; i++) {
-        channelData[i] = floatArray[i * channels + channel]!;
+        const sample = floatArray[i * channels + channel];
+        if (sample !== undefined) {
+          channelData[i] = sample;
+        }
       }
     }
 
