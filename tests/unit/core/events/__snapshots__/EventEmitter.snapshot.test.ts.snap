@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`EventEmitter Snapshots should match emitter state snapshot 1`] = `
+{
+  "eventNames": [
+    "agent.ready",
+    "transcription.final",
+    "*",
+  ],
+  "listenerCounts": {
+    "*": 1,
+    "agent.ready": 1,
+    "transcription.final": 1,
+  },
+  "maxListeners": 5,
+}
+`;
+
+exports[`EventEmitter Snapshots should match event structure snapshot 1`] = `
+{
+  "timestamp": 1234567890,
+  "type": "agent.ready",
+}
+`;
+
+exports[`EventEmitter Snapshots should match transcription event snapshot 1`] = `
+{
+  "confidence": 0.95,
+  "metadata": {
+    "language": "en-US",
+    "model": "nova-2",
+  },
+  "text": "Hello world",
+  "timestamp": 1234567890,
+  "type": "transcription.final",
+}
+`;
