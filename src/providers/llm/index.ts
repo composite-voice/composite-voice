@@ -7,4 +7,6 @@
 // import { OpenAILLM } from '@lukeocodes/composite-voice/providers/llm/openai';
 // import { AnthropicLLM } from '@lukeocodes/composite-voice/providers/llm/anthropic';
 
-export {};
+// Re-export OpenAI provider
+export { OpenAILLM } from './openai';
+export type { OpenAILLMConfig } from './openai';
