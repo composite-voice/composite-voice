@@ -1,0 +1,93 @@
+name: Release Please
+
+on:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    lint-and-test:
+        name: Lint and test
+        runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                node-version: [18.x, 20.x, 22.x]
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+
+            - name: Setup Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Check formatting
+              run: pnpm run format:check
+
+            - name: Run linter
+              run: pnpm run lint
+
+            - name: Type check
+              run: pnpm run type-check
+
+            - name: Run tests
+              run: pnpm run test:coverage
+
+    release-please:
+        name: Release please
+        runs-on: ubuntu-latest
+        needs: lint-and-test
+        steps:
+            - uses: googleapis/release-please-action@v4
+              id: release
+              with:
+                  config-file: .github/release-please-config.json
+                  manifest-file: .github/.release-please-manifest.json
+                  target-branch: ${{ github.ref_name }}
+
+    publish:
+        name: Publish to npm
+        runs-on: ubuntu-latest
+        needs: release-please
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20.x"
+                  cache: "pnpm"
+                  registry-url: "https://registry.npmjs.org"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build package
+              run: pnpm run build
+
+            - name: Publish to npm
+              run: pnpm publish --no-git-checks --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
