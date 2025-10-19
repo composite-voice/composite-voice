@@ -114,6 +114,59 @@ Documents:
 
 ---
 
+### 🤖 [OpenAI LLM Provider](./OpenAI%20LLM%20Provider.md)
+
+**Complete guide to using OpenAI's GPT models with CompositeVoice.**
+
+Covers:
+
+- Installation and setup
+- Configuration options
+- Basic and advanced usage
+- Available models (GPT-4, GPT-3.5)
+- Integration patterns
+- Best practices and troubleshooting
+
+**Best for:** Developers integrating OpenAI's language models into their voice agents
+
+---
+
+### 🎤 [Deepgram STT Provider](./Deepgram%20STT%20Provider.md)
+
+**Complete guide to using Deepgram's speech-to-text API with CompositeVoice.**
+
+Covers:
+
+- Installation and setup
+- Real-time WebSocket streaming
+- Configuration options
+- Advanced features (diarization, VAD, endpointing)
+- Supported languages and models
+- Audio format requirements
+- Best practices and troubleshooting
+
+**Best for:** Developers implementing real-time speech recognition with industry-leading accuracy and low latency
+
+---
+
+### 🔊 [Deepgram TTS Provider](./Deepgram%20TTS%20Provider.md)
+
+**Complete guide to using Deepgram's text-to-speech API with CompositeVoice.**
+
+Covers:
+
+- Installation and setup
+- Real-time WebSocket streaming synthesis
+- Configuration options
+- Available voice models (12+ voices)
+- Audio quality and latency optimization
+- Integration patterns
+- Best practices and troubleshooting
+
+**Best for:** Developers implementing real-time text-to-speech with natural-sounding voices and low latency
+
+---
+
 ## Quick Links
 
 ### Common Tasks
