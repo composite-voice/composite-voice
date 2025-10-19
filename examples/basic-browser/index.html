@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CompositeVoice - Basic Browser Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+                Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .status {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status.idle .status-indicator {
+            background: #9ca3af;
+        }
+
+        .status.ready .status-indicator {
+            background: #3b82f6;
+        }
+
+        .status.listening .status-indicator {
+            background: #f59e0b;
+        }
+
+        .status.thinking .status-indicator {
+            background: #8b5cf6;
+        }
+
+        .status.speaking .status-indicator {
+            background: #10b981;
+        }
+
+        .status.error .status-indicator {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        #status-text {
+            font-weight: 600;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h3 {
+            color: #374151;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+        }
+
+        .content {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .content p {
+            margin: 6px 0;
+            line-height: 1.5;
+            color: #1f2937;
+        }
+
+        .placeholder {
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .interim {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .final {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .streaming {
+            color: #8b5cf6;
+        }
+
+        .alert {
+            background: rgba(251, 191, 36, 0.2);
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .alert-title {
+            color: #f59e0b;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .alert-content {
+            color: #78350f;
+            line-height: 1.6;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎙️ CompositeVoice</h1>
+        <p class="subtitle">Basic Browser Example</p>
+
+        <div class="alert">
+            <div class="alert-title">⚠️ Setup Required</div>
+            <div class="alert-content">
+                Before using this example, make sure you've built the main package:<br />
+                <code>cd ../.. && pnpm install && pnpm run build</code>
+            </div>
+        </div>
+
+        <div class="status idle" id="status">
+            <span class="status-indicator"></span>
+            <span id="status-text">Idle</span>
+        </div>
+
+        <div class="controls">
+            <button id="init-btn">Initialize</button>
+            <button id="start-btn" disabled>Start Listening</button>
+            <button id="stop-btn" disabled>Stop Listening</button>
+            <button id="dispose-btn" class="danger" disabled>Dispose</button>
+        </div>
+
+        <div class="panel">
+            <h3>📝 Transcript</h3>
+            <div id="transcript" class="content">
+                <p class="placeholder">Your speech will appear here...</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>🤖 AI Response</h3>
+            <div id="response" class="content">
+                <p class="placeholder">AI responses will appear here...</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import from the built dist
+        import { CompositeVoice, NativeSTT, NativeTTS } from '../../dist/index.mjs';
+
+        let agent = null;
+
+        const statusEl = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const initBtn = document.getElementById('init-btn');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const disposeBtn = document.getElementById('dispose-btn');
+        const transcriptEl = document.getElementById('transcript');
+        const responseEl = document.getElementById('response');
+
+        function updateStatus(state) {
+            statusEl.className = `status ${state}`;
+            statusText.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+        }
+
+        function addTranscript(text, isFinal = false) {
+            if (transcriptEl.querySelector('.placeholder')) {
+                transcriptEl.innerHTML = '';
+            }
+            const p = document.createElement('p');
+            p.textContent = text;
+            p.className = isFinal ? 'final' : 'interim';
+            transcriptEl.appendChild(p);
+            transcriptEl.scrollTop = transcriptEl.scrollHeight;
+
+            // Limit history
+            if (transcriptEl.children.length > 20) {
+                transcriptEl.removeChild(transcriptEl.firstChild);
+            }
+        }
+
+        function addResponse(text, isStreaming = false) {
+            if (responseEl.querySelector('.placeholder')) {
+                responseEl.innerHTML = '';
+            }
+
+            if (isStreaming) {
+                const lastP = responseEl.querySelector('p:last-child');
+                if (lastP && lastP.classList.contains('streaming')) {
+                    lastP.textContent += text;
+                } else {
+                    const p = document.createElement('p');
+                    p.className = 'streaming';
+                    p.textContent = text;
+                    responseEl.appendChild(p);
+                }
+            } else {
+                const p = document.createElement('p');
+                p.textContent = text;
+                responseEl.appendChild(p);
+            }
+
+            responseEl.scrollTop = responseEl.scrollHeight;
+
+            // Limit history
+            if (responseEl.children.length > 20) {
+                responseEl.removeChild(responseEl.firstChild);
+            }
+        }
+
+        initBtn.addEventListener('click', async () => {
+            try {
+                initBtn.disabled = true;
+
+                // Create mock LLM
+                const mockLLM = {
+                    type: 'rest',
+                    config: { model: 'mock' },
+                    async initialize() { },
+                    async dispose() { },
+                    isReady() {
+                        return true;
+                    },
+                    async generate(prompt) {
+                        const response = `You said: "${prompt}". This is a mock LLM response.`;
+                        return {
+                            async *[Symbol.asyncIterator]() {
+                                for (const word of response.split(' ')) {
+                                    yield word + ' ';
+                                    await new Promise((r) => setTimeout(r, 80));
+                                }
+                            },
+                        };
+                    },
+                    async generateFromMessages() {
+                        return this.generate('');
+                    },
+                };
+
+                agent = new CompositeVoice({
+                    mode: 'composite',
+                    stt: new NativeSTT({ language: 'en-US', interimResults: true }),
+                    llm: mockLLM,
+                    tts: new NativeTTS({ rate: 1.0 }),
+                    logging: { enabled: true, level: 'debug' },
+                });
+
+                agent.on('agent.stateChange', (event) => {
+                    updateStatus(event.state);
+                });
+
+                agent.on('transcription.interim', (event) => {
+                    addTranscript(event.text, false);
+                });
+
+                agent.on('transcription.final', (event) => {
+                    addTranscript(event.text, true);
+                });
+
+                agent.on('llm.chunk', (event) => {
+                    addResponse(event.chunk, true);
+                });
+
+                agent.on('llm.complete', () => {
+                    // Mark streaming as complete
+                    const lastP = responseEl.querySelector('p:last-child');
+                    if (lastP) {
+                        lastP.classList.remove('streaming');
+                    }
+                });
+
+                agent.on('agent.error', (event) => {
+                    console.error('Agent error:', event.error);
+                    addResponse(`❌ Error: ${event.error.message}`);
+                });
+
+                await agent.initialize();
+
+                startBtn.disabled = false;
+                disposeBtn.disabled = false;
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                alert('Failed to initialize: ' + error.message);
+                initBtn.disabled = false;
+            }
+        });
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                startBtn.disabled = true;
+                await agent.startListening();
+                stopBtn.disabled = false;
+            } catch (error) {
+                console.error('Failed to start listening:', error);
+                alert('Failed to start listening: ' + error.message);
+                startBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            try {
+                stopBtn.disabled = true;
+                await agent.stopListening();
+                startBtn.disabled = false;
+            } catch (error) {
+                console.error('Failed to stop listening:', error);
+                alert('Failed to stop listening: ' + error.message);
+                stopBtn.disabled = false;
+            }
+        });
+
+        disposeBtn.addEventListener('click', async () => {
+            try {
+                await agent.dispose();
+                agent = null;
+                initBtn.disabled = false;
+                startBtn.disabled = true;
+                stopBtn.disabled = true;
+                disposeBtn.disabled = true;
+                updateStatus('idle');
+            } catch (error) {
+                console.error('Failed to dispose:', error);
+                alert('Failed to dispose: ' + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>
