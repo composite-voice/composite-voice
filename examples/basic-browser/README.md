@@ -1,12 +1,12 @@
 # Basic Browser Example
 
-A simple HTML/JavaScript example demonstrating CompositeVoice with native browser APIs and a mock LLM.
+A simple HTML/JavaScript example demonstrating CompositeVoice with native browser APIs and OpenAI.
 
 ## Features
 
 - 🎤 Native browser Speech Recognition (STT)
 - 🔊 Native browser Speech Synthesis (TTS)
-- 🤖 Mock LLM (no API key required)
+- 🤖 OpenAI LLM (GPT-4o-mini)
 - 📱 Responsive UI
 - 🎨 Visual state indicators
 - 📝 Real-time transcription display
@@ -15,6 +15,7 @@ A simple HTML/JavaScript example demonstrating CompositeVoice with native browse
 
 - Modern browser (Chrome, Edge, or Safari recommended)
 - Built CompositeVoice package (see below)
+- OpenAI API key (get one at https://platform.openai.com/api-keys)
 
 ## Setup
 
@@ -59,12 +60,13 @@ http://localhost:8000/examples/basic-browser/index.html
 ## Usage
 
 1. Click **"Initialize"** to set up the voice agent
-2. Click **"Start Listening"** to begin capturing audio
-3. Speak into your microphone
-4. Watch the transcription appear in real-time
-5. The mock LLM will respond, and you'll hear the TTS output
-6. Click **"Stop Listening"** when done
-7. Click **"Dispose"** to clean up resources
+2. When prompted, enter your OpenAI API key
+3. Click **"Start Listening"** to begin capturing audio
+4. Speak into your microphone
+5. Watch the transcription appear in real-time
+6. OpenAI will generate a response, and you'll hear the TTS output
+7. Click **"Stop Listening"** when done
+8. Click **"Dispose"** to clean up resources
 
 ## Browser Support
 
@@ -78,30 +80,32 @@ http://localhost:8000/examples/basic-browser/index.html
 
 ## Architecture
 
-This example demonstrates the **composite mode** with:
+This example demonstrates the **composite mode** with clear responsibility boundaries:
 
 ```
-User Speech → Native STT → Mock LLM → Native TTS → Audio Output
+Providers own I/O:
+  microphone → Native STT        Native TTS → speakers
+
+SDK coordinates data flow:
+               STT → OpenAI LLM → TTS
 ```
 
-### Mock LLM
+### Responsibilities
 
-The example includes a mock LLM that:
+- **Native STT Provider**: Manages microphone access via browser's `SpeechRecognition` API
+- **OpenAI LLM Provider**: Processes text and generates responses
+- **Native TTS Provider**: Manages speaker output via browser's `SpeechSynthesis` API
+- **CompositeVoice SDK**: Connects the providers, manages state, and coordinates data flow
 
-- Echoes back what you said
-- Simulates streaming by sending words one at a time
-- Demonstrates the text chunking pattern
+### OpenAI LLM
 
-For a real implementation, replace the mock LLM with:
+The example uses OpenAI's GPT-4o-mini model with:
 
-```javascript
-import { OpenAILLM } from '@lukeocodes/composite-voice/providers/llm/openai';
+- Brief, conversational responses
+- Streaming text generation
+- 150 token limit for quick responses
 
-llm: new OpenAILLM({
-  apiKey: 'your-api-key',
-  model: 'gpt-4',
-});
-```
+The OpenAI SDK is loaded from a CDN (jsDelivr) using an import map, avoiding the need for a build step in this simple browser example.
 
 ## Customization
 
@@ -137,6 +141,14 @@ stt: new NativeSTT({
 });
 ```
 
+## Security Note
+
+⚠️ **Important**: This example prompts for your OpenAI API key in the browser. This is fine for local development and testing, but **never expose your API key in production**. For production applications:
+
+- Use a backend server to proxy API requests
+- Implement proper authentication and rate limiting
+- Never commit API keys to source control
+
 ## Troubleshooting
 
 ### "Web Speech API is not supported in this browser"
@@ -166,6 +178,13 @@ Make sure you've built the main package:
 cd ../..
 pnpm run build
 ```
+
+### OpenAI API errors
+
+- **Invalid API key**: Double-check your API key at https://platform.openai.com/api-keys
+- **Rate limit errors**: You may need to add credits to your OpenAI account
+- **CORS errors**: Make sure you're serving the file from a local server (not file://)
+- **Model not found**: Ensure you have access to the gpt-4o-mini model (or change to gpt-3.5-turbo)
 
 ## Next Steps
 

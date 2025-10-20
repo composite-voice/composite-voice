@@ -5,6 +5,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CompositeVoice - Basic Browser Example</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "openai": "https://cdn.jsdelivr.net/npm/openai@4/+esm"
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -219,14 +226,6 @@
         <h1>🎙️ CompositeVoice</h1>
         <p class="subtitle">Basic Browser Example</p>
 
-        <div class="alert">
-            <div class="alert-title">⚠️ Setup Required</div>
-            <div class="alert-content">
-                Before using this example, make sure you've built the main package:<br />
-                <code>cd ../.. && pnpm install && pnpm run build</code>
-            </div>
-        </div>
-
         <div class="status idle" id="status">
             <span class="status-indicator"></span>
             <span id="status-text">Idle</span>
@@ -255,8 +254,25 @@
     </div>
 
     <script type="module">
+        // Check browser compatibility
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('❌ Your browser does not support the Media Devices API.\n\nPlease use:\n- Chrome 53+\n- Edge 79+\n- Safari 11+\n\nNote: Firefox has limited support for Speech Recognition.');
+            throw new Error('Media Devices API not supported');
+        }
+
+        if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+            alert('❌ Your browser does not support the Speech Recognition API.\n\nPlease use:\n- Chrome\n- Edge\n\nNote: Safari and Firefox have limited or no support.');
+        }
+
+        if (!window.speechSynthesis) {
+            alert('❌ Your browser does not support the Speech Synthesis API.\n\nPlease use a modern browser.');
+        }
+
         // Import from the built dist
-        import { CompositeVoice, NativeSTT, NativeTTS } from '../../dist/index.mjs';
+        import { CompositeVoice, NativeSTT, NativeTTS, OpenAILLM } from '../../dist/index.mjs';
+
+        // OpenAI API key - the user will be prompted on initialization
+        let OPENAI_API_KEY = null;
 
         let agent = null;
 
@@ -323,35 +339,29 @@
             try {
                 initBtn.disabled = true;
 
-                // Create mock LLM
-                const mockLLM = {
-                    type: 'rest',
-                    config: { model: 'mock' },
-                    async initialize() { },
-                    async dispose() { },
-                    isReady() {
-                        return true;
-                    },
-                    async generate(prompt) {
-                        const response = `You said: "${prompt}". This is a mock LLM response.`;
-                        return {
-                            async *[Symbol.asyncIterator]() {
-                                for (const word of response.split(' ')) {
-                                    yield word + ' ';
-                                    await new Promise((r) => setTimeout(r, 80));
-                                }
-                            },
-                        };
-                    },
-                    async generateFromMessages() {
-                        return this.generate('');
-                    },
-                };
+                // Prompt for API key if not already set
+                if (!OPENAI_API_KEY) {
+                    OPENAI_API_KEY = prompt('Enter your OpenAI API key:');
+                    if (!OPENAI_API_KEY) {
+                        alert('OpenAI API key is required to use this example.');
+                        initBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                // Create OpenAI LLM
+                const llm = new OpenAILLM({
+                    apiKey: OPENAI_API_KEY,
+                    model: 'gpt-4o-mini',
+                    systemPrompt: 'You are a helpful voice assistant. Keep your responses brief and conversational.',
+                    temperature: 0.7,
+                    maxTokens: 150,
+                });
 
                 agent = new CompositeVoice({
                     mode: 'composite',
                     stt: new NativeSTT({ language: 'en-US', interimResults: true }),
-                    llm: mockLLM,
+                    llm: llm,
                     tts: new NativeTTS({ rate: 1.0 }),
                     logging: { enabled: true, level: 'debug' },
                 });
