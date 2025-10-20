@@ -10,16 +10,13 @@ import type {
   AgentState,
 } from './core/events/types';
 import type { CompositeVoiceConfig } from './core/types/config';
-import { AudioCapture } from './core/audio/AudioCapture';
-import { AudioPlayer } from './core/audio/AudioPlayer';
-import { AgentStateMachine } from './core/state/AgentState';
+import { AgentStateMachine } from './core/state/AgentStateMachine';
+import { SimpleAudioCaptureStateMachine as AudioCaptureStateMachine } from './core/state/SimpleAudioCaptureStateMachine';
+import { SimpleAudioPlaybackStateMachine as AudioPlaybackStateMachine } from './core/state/SimpleAudioPlaybackStateMachine';
+import { SimpleProcessingStateMachine as ProcessingStateMachine } from './core/state/SimpleProcessingStateMachine';
 import { Logger, createLogger } from './utils/logger';
 import { ConfigurationError, InvalidStateError } from './utils/errors';
-import {
-  DEFAULT_AUDIO_INPUT_CONFIG,
-  DEFAULT_AUDIO_OUTPUT_CONFIG,
-  DEFAULT_LOGGING_CONFIG,
-} from './core/types/config';
+import { DEFAULT_LOGGING_CONFIG } from './core/types/config';
 
 /**
  * Main CompositeVoice SDK class
@@ -28,9 +25,13 @@ export class CompositeVoice {
   private config: CompositeVoiceConfig;
   private events: EventEmitter;
   private logger: Logger;
-  private stateMachine: AgentStateMachine;
-  private audioCapture: AudioCapture;
-  private audioPlayer: AudioPlayer;
+
+  // State machines
+  private captureStateMachine: AudioCaptureStateMachine;
+  private playbackStateMachine: AudioPlaybackStateMachine;
+  private processingStateMachine: ProcessingStateMachine;
+  private agentStateMachine: AgentStateMachine;
+
   private initialized = false;
 
   constructor(config: CompositeVoiceConfig) {
@@ -44,11 +45,16 @@ export class CompositeVoice {
     // Initialize event emitter
     this.events = new EventEmitter();
 
-    // Initialize state machine
-    this.stateMachine = new AgentStateMachine(this.logger);
+    // Initialize the 3 state machines
+    this.captureStateMachine = new AudioCaptureStateMachine(this.logger);
+    this.playbackStateMachine = new AudioPlaybackStateMachine(this.logger);
+    this.processingStateMachine = new ProcessingStateMachine(this.logger);
+
+    // Initialize orchestrator
+    this.agentStateMachine = new AgentStateMachine(this.logger);
 
     // Setup state change event emission
-    this.stateMachine.onTransition((newState, oldState) => {
+    this.agentStateMachine.onStateChange((newState, oldState) => {
       this.emitEvent({
         type: 'agent.stateChange',
         state: newState,
@@ -57,19 +63,8 @@ export class CompositeVoice {
       });
     });
 
-    // Initialize audio components
-    const audioInputConfig = { ...DEFAULT_AUDIO_INPUT_CONFIG, ...config.audio?.input };
-    const audioOutputConfig = { ...DEFAULT_AUDIO_OUTPUT_CONFIG, ...config.audio?.output };
-
-    this.audioCapture = new AudioCapture(audioInputConfig, this.logger);
-    this.audioPlayer = new AudioPlayer(audioOutputConfig, this.logger);
-
-    // Setup audio player callbacks
-    this.audioPlayer.setCallbacks({
-      onStart: () => this.handlePlaybackStart(),
-      onEnd: () => this.handlePlaybackEnd(),
-      onError: (error) => this.handlePlaybackError(error),
-    });
+    // Note: agentStateMachine.initialize() is called in initialize()
+    // so that state transitions happen after event listeners are attached
   }
 
   /**
@@ -101,6 +96,14 @@ export class CompositeVoice {
     this.logger.info('Initializing CompositeVoice SDK');
 
     try {
+      // Connect agent state machine to sub-machines
+      // This will trigger idle→ready transition
+      this.agentStateMachine.initialize(
+        this.captureStateMachine,
+        this.playbackStateMachine,
+        this.processingStateMachine
+      );
+
       // Initialize providers
       if (this.config.mode === 'composite') {
         await Promise.all([
@@ -115,7 +118,6 @@ export class CompositeVoice {
       }
 
       this.initialized = true;
-      this.stateMachine.setReady();
 
       this.emitEvent({
         type: 'agent.ready',
@@ -125,7 +127,7 @@ export class CompositeVoice {
       this.logger.info('CompositeVoice SDK initialized');
     } catch (error) {
       this.logger.error('Failed to initialize', error);
-      this.stateMachine.setError();
+      this.agentStateMachine.setError();
       throw error;
     }
   }
@@ -158,6 +160,7 @@ export class CompositeVoice {
     });
 
     // Setup TTS provider callbacks (if WebSocket)
+    // Note: Provider handles audio playback internally
     if (tts.onAudio) {
       tts.onAudio((chunk) => {
         this.emitEvent({
@@ -165,7 +168,7 @@ export class CompositeVoice {
           chunk,
           timestamp: Date.now(),
         });
-        void this.audioPlayer.addChunk(chunk);
+        // Provider manages audio playback internally
       });
     }
 
@@ -176,7 +179,7 @@ export class CompositeVoice {
           metadata,
           timestamp: Date.now(),
         });
-        this.audioPlayer.setMetadata(metadata);
+        // Provider manages audio metadata internally
       });
     }
   }
@@ -214,13 +217,14 @@ export class CompositeVoice {
     });
 
     // Setup audio callback
+    // Note: All-in-one provider handles audio playback internally
     provider.onAudio?.((chunk) => {
       this.emitEvent({
         type: 'tts.audio',
         chunk,
         timestamp: Date.now(),
       });
-      void this.audioPlayer.addChunk(chunk);
+      // Provider manages audio playback internally
     });
 
     // Setup metadata callback
@@ -230,7 +234,7 @@ export class CompositeVoice {
         metadata,
         timestamp: Date.now(),
       });
-      this.audioPlayer.setMetadata(metadata);
+      // Provider manages audio metadata internally
     });
   }
 
@@ -240,7 +244,15 @@ export class CompositeVoice {
   private async processLLM(text: string): Promise<void> {
     if (this.config.mode !== 'composite') return;
 
-    this.stateMachine.setThinking();
+    // Only process if we're in a valid state (listening or error)
+    // Ignore transcriptions that come in after stopping
+    if (!this.agentStateMachine.isIn('listening', 'error')) {
+      this.logger.debug('Ignoring transcription - not in listening state');
+      return;
+    }
+
+    // Update processing state machine → AgentStateMachine will derive 'thinking'
+    this.processingStateMachine.setProcessing();
 
     this.emitEvent({
       type: 'llm.start',
@@ -254,6 +266,8 @@ export class CompositeVoice {
       let fullResponse = '';
 
       // Stream LLM response
+      this.processingStateMachine.setStreaming();
+
       for await (const chunk of responseIterable) {
         fullResponse += chunk;
         this.emitEvent({
@@ -269,6 +283,8 @@ export class CompositeVoice {
         }
       }
 
+      this.processingStateMachine.setComplete();
+
       this.emitEvent({
         type: 'llm.complete',
         text: fullResponse,
@@ -282,6 +298,9 @@ export class CompositeVoice {
         // Finalize streaming TTS
         await tts.finalize();
       }
+
+      // Processing complete, reset to idle
+      this.processingStateMachine.setIdle();
     } catch (error) {
       this.logger.error('LLM processing error', error);
       this.emitEvent({
@@ -290,7 +309,8 @@ export class CompositeVoice {
         recoverable: true,
         timestamp: Date.now(),
       });
-      this.stateMachine.setError();
+      this.processingStateMachine.setError();
+      this.agentStateMachine.setError();
     }
   }
 
@@ -307,12 +327,50 @@ export class CompositeVoice {
     });
 
     try {
-      const { tts } = this.config;
+      const { stt, tts } = this.config;
 
-      if (tts.synthesize) {
-        const audioBlob = await tts.synthesize(text);
-        await this.audioPlayer.play(audioBlob);
+      // Pause capture while speaking to prevent echo
+      const captureState = this.captureStateMachine.getState();
+      if (captureState === 'active') {
+        this.captureStateMachine.setPaused();
+        if (stt?.disconnect) {
+          await stt.disconnect();
+        }
+      } else if (captureState === 'error') {
+        // Can't pause from error, skip disconnect
+        this.logger.warn('Capture in error state, skipping pause');
       }
+
+      // Start playback (will derive 'speaking' state)
+      this.playbackStateMachine.setBuffering();
+
+      // Provider handles playback internally (TTS/Synth → speakers)
+      if (tts?.synthesize) {
+        await tts.synthesize(text);
+      }
+
+      // Playback complete: buffering -> stopped -> idle
+      this.playbackStateMachine.setStopped();
+      this.playbackStateMachine.setIdle();
+
+      // Resume capture based on current state
+      const resumeCaptureState = this.captureStateMachine.getState();
+      if (resumeCaptureState === 'paused') {
+        // paused → active (resume)
+        if (stt?.connect) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      } else if (resumeCaptureState === 'error') {
+        // error → idle → starting → active
+        this.captureStateMachine.setIdle();
+        this.captureStateMachine.setStarting();
+        if (stt?.connect) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      }
+      // else: already in a valid state, don't change
 
       this.emitEvent({
         type: 'tts.complete',
@@ -320,48 +378,51 @@ export class CompositeVoice {
       });
     } catch (error) {
       this.logger.error('TTS processing error', error);
+
+      // Set playback to error state (will derive agent 'error' state)
+      // From any playback state -> error is valid
+      if (this.playbackStateMachine.getState() !== 'error') {
+        this.playbackStateMachine.setError();
+      }
+
+      // Try to recover - resume STT
+      try {
+        const { stt } = this.config;
+
+        // Recover capture state machine
+        const captureState = this.captureStateMachine.getState();
+        if (captureState === 'error') {
+          // error → idle → starting → active
+          this.captureStateMachine.setIdle();
+          this.captureStateMachine.setStarting();
+        } else if (captureState === 'paused') {
+          // paused → active (already handled above, but for safety)
+          // No state change needed, just reconnect
+        }
+
+        if (stt?.connect) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      } catch (recoveryError) {
+        this.logger.error('Failed to recover from TTS error', recoveryError);
+        if (this.captureStateMachine.getState() !== 'error') {
+          this.captureStateMachine.setError();
+        }
+      }
+
       this.emitEvent({
         type: 'tts.error',
         error: error as Error,
         recoverable: true,
         timestamp: Date.now(),
       });
-      this.stateMachine.setError();
+
+      this.agentStateMachine.setError();
     }
   }
 
-  /**
-   * Handle playback start
-   */
-  private handlePlaybackStart(): void {
-    this.stateMachine.setSpeaking();
-    this.emitEvent({
-      type: 'audio.playback.start',
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Handle playback end
-   */
-  private handlePlaybackEnd(): void {
-    this.stateMachine.setReady();
-    this.emitEvent({
-      type: 'audio.playback.end',
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Handle playback error
-   */
-  private handlePlaybackError(error: Error): void {
-    this.emitEvent({
-      type: 'audio.playback.error',
-      error,
-      timestamp: Date.now(),
-    });
-  }
+  // Playback handling removed - providers manage their own I/O
 
   /**
    * Start listening for user input
@@ -369,39 +430,22 @@ export class CompositeVoice {
   async startListening(): Promise<void> {
     this.assertInitialized();
 
-    if (!this.stateMachine.is('ready')) {
-      throw new InvalidStateError(this.stateMachine.getState(), 'start listening');
+    if (!this.agentStateMachine.is('ready') && !this.agentStateMachine.is('idle')) {
+      throw new InvalidStateError(this.agentStateMachine.getState(), 'start listening');
     }
 
     this.logger.info('Starting to listen');
-    this.stateMachine.setListening();
+    this.captureStateMachine.setStarting();
 
     try {
-      if (this.config.mode === 'composite') {
-        const { stt } = this.config;
-
-        if (stt.connect) {
-          // WebSocket STT: connect and start streaming
-          await stt.connect();
-          await this.audioCapture.start((audioData) => {
-            stt.sendAudio?.(audioData);
-          });
-        } else {
-          // REST STT: record audio for later submission
-          // This would need additional implementation
-          this.logger.warn('REST STT not yet implemented for streaming');
-        }
-      } else {
-        // All-in-one provider
-        if (this.config.mode === 'all-in-one') {
-          await this.config.provider.connect();
-          await this.audioCapture.start((audioData) => {
-            if (this.config.mode === 'all-in-one') {
-              this.config.provider.sendAudio(audioData);
-            }
-          });
-        }
+      // Provider manages its own audio capture (microphone → STT)
+      if (this.config.mode === 'composite' && this.config.stt?.connect) {
+        await this.config.stt.connect();
+      } else if (this.config.mode === 'all-in-one' && this.config.provider?.connect) {
+        await this.config.provider.connect();
       }
+
+      this.captureStateMachine.setActive();
 
       this.emitEvent({
         type: 'audio.capture.start',
@@ -409,7 +453,8 @@ export class CompositeVoice {
       });
     } catch (error) {
       this.logger.error('Failed to start listening', error);
-      this.stateMachine.setError();
+      this.captureStateMachine.setError();
+      this.agentStateMachine.setError();
       throw error;
     }
   }
@@ -420,7 +465,7 @@ export class CompositeVoice {
   async stopListening(): Promise<void> {
     this.assertInitialized();
 
-    if (!this.stateMachine.is('listening')) {
+    if (!this.agentStateMachine.is('listening')) {
       this.logger.warn('Not currently listening');
       return;
     }
@@ -428,23 +473,19 @@ export class CompositeVoice {
     this.logger.info('Stopping listening');
 
     try {
-      await this.audioCapture.stop();
-
-      if (this.config.mode === 'composite') {
-        const { stt } = this.config;
-        if (stt.disconnect) {
-          await stt.disconnect();
-        }
-      } else if (this.config.mode === 'all-in-one') {
+      // Provider manages its own audio capture (stops microphone)
+      if (this.config.mode === 'composite' && this.config.stt?.disconnect) {
+        await this.config.stt.disconnect();
+      } else if (this.config.mode === 'all-in-one' && this.config.provider?.disconnect) {
         await this.config.provider.disconnect();
       }
+
+      this.captureStateMachine.setStopped();
 
       this.emitEvent({
         type: 'audio.capture.stop',
         timestamp: Date.now(),
       });
-
-      this.stateMachine.setReady();
     } catch (error) {
       this.logger.error('Failed to stop listening', error);
       throw error;
@@ -452,11 +493,13 @@ export class CompositeVoice {
   }
 
   /**
-   * Stop audio playback
+   * Stop speaking (cancel TTS)
+   * Note: This is provider-specific - not all providers support cancellation
    */
   async stopSpeaking(): Promise<void> {
     this.assertInitialized();
-    await this.audioPlayer.stop();
+    // Providers handle their own playback - SDK can't stop it directly
+    this.logger.warn('stopSpeaking() - providers manage their own audio, cannot cancel from SDK');
   }
 
   /**
@@ -497,7 +540,7 @@ export class CompositeVoice {
    * Get current agent state
    */
   getState(): AgentState {
-    return this.stateMachine.getState();
+    return this.agentStateMachine.getState();
   }
 
   /**
@@ -517,18 +560,9 @@ export class CompositeVoice {
   }
 
   /**
-   * Get audio capture instance
+   * Audio I/O is managed by providers, not the SDK
+   * These methods have been removed - providers own their audio capture/playback
    */
-  getAudioCapture(): AudioCapture {
-    return this.audioCapture;
-  }
-
-  /**
-   * Get audio player instance
-   */
-  getAudioPlayer(): AudioPlayer {
-    return this.audioPlayer;
-  }
 
   /**
    * Clean up and dispose of all resources
@@ -543,14 +577,14 @@ export class CompositeVoice {
 
     try {
       // Stop any active operations
-      if (this.stateMachine.is('listening')) {
+      if (this.agentStateMachine.is('listening')) {
         await this.stopListening();
       }
-      if (this.stateMachine.is('speaking')) {
+      if (this.agentStateMachine.is('speaking')) {
         await this.stopSpeaking();
       }
 
-      // Dispose providers
+      // Dispose providers (they handle their own audio cleanup)
       if (this.config.mode === 'composite') {
         await Promise.all([
           this.config.stt.dispose(),
@@ -561,15 +595,16 @@ export class CompositeVoice {
         await this.config.provider.dispose();
       }
 
-      // Dispose audio components
-      await this.audioCapture.stop();
-      await this.audioPlayer.dispose();
-
       // Clear event listeners
       this.events.removeAllListeners();
 
-      // Reset state
-      this.stateMachine.reset();
+      // Reset and dispose state machines
+      this.agentStateMachine.reset();
+      this.captureStateMachine.dispose();
+      this.playbackStateMachine.dispose();
+      this.processingStateMachine.dispose();
+      this.agentStateMachine.dispose();
+
       this.initialized = false;
 
       this.logger.info('CompositeVoice SDK disposed');

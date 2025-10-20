@@ -85,6 +85,14 @@ export class AudioCapture {
       return;
     }
 
+    // Check if Media Devices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new AudioCaptureError(
+        'Media Devices API is not supported in this browser. Please use Chrome, Edge, or a modern browser.',
+        new Error('navigator.mediaDevices.getUserMedia is not available')
+      );
+    }
+
     this.state = 'starting';
     this.callback = callback;
     this.logger?.info('Starting audio capture');

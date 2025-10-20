@@ -77,6 +77,8 @@ export {
 // Built-in providers
 export { NativeSTT } from './providers/stt/native/index';
 export { NativeTTS } from './providers/tts/native/index';
+export { OpenAILLM } from './providers/llm/openai/index';
+export type { OpenAILLMConfig } from './providers/llm/openai/index';
 
 // Utilities
 export {

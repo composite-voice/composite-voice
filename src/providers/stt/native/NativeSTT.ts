@@ -72,7 +72,8 @@ export interface NativeSTTConfig extends STTProviderConfig {
 export class NativeSTT extends BaseSTTProvider {
   declare public config: NativeSTTConfig;
   private recognition: SpeechRecognition | null = null;
-  private isRecognizing = false;
+  // State is now managed externally by AudioCaptureStateMachine!
+  // No more isRecognizing or isPaused flags
 
   constructor(config: Partial<NativeSTTConfig> = {}, logger?: Logger) {
     const finalConfig = {
@@ -111,7 +112,7 @@ export class NativeSTT extends BaseSTTProvider {
   }
 
   protected async onDispose(): Promise<void> {
-    if (this.recognition && this.isRecognizing) {
+    if (this.recognition) {
       await this.disconnect();
     }
     this.recognition = null;
@@ -159,30 +160,12 @@ export class NativeSTT extends BaseSTTProvider {
 
       this.emitTranscription(errorResult);
 
-      if (event.error === 'no-speech' || event.error === 'audio-capture') {
-        // These are recoverable, recognition will restart
-        return;
-      }
-
-      // For other errors, stop recognition
-      this.isRecognizing = false;
+      // Note: State machine will handle error recovery
     };
 
     this.recognition.onend = () => {
-      this.logger.debug('Recognition ended');
-
-      // Auto-restart if continuous mode is enabled
-      if (this.config.continuous && this.isRecognizing) {
-        this.logger.debug('Restarting continuous recognition');
-        try {
-          this.recognition?.start();
-        } catch (error) {
-          this.logger.error('Failed to restart recognition', error);
-          this.isRecognizing = false;
-        }
-      } else {
-        this.isRecognizing = false;
-      }
+      this.logger.debug('Recognition ended - state machine will handle restart if needed');
+      // Note: No auto-restart logic! AudioCaptureStateMachine manages lifecycle
     };
 
     this.recognition.onstart = () => {
@@ -196,45 +179,48 @@ export class NativeSTT extends BaseSTTProvider {
   override connect(): Promise<void> {
     this.assertReady();
 
-    if (this.isRecognizing) {
-      this.logger.warn('Already recognizing');
-      return Promise.resolve();
-    }
-
     if (!this.recognition) {
       throw new ProviderConnectionError('NativeSTT', new Error('Recognition not initialized'));
     }
 
     try {
       this.recognition.start();
-      this.isRecognizing = true;
-      this.logger.info('Started recognition');
+      this.logger.info('✅ Started recognition');
       return Promise.resolve();
     } catch (error) {
+      // If already started, that's okay - state machine manages lifecycle
+      if (error instanceof Error && error.message.includes('already started')) {
+        this.logger.debug('Recognition already started (state machine handles this)');
+        return Promise.resolve();
+      }
       throw new ProviderConnectionError('NativeSTT', error as Error);
     }
   }
 
   /**
-   * Disconnect and stop recognition
+   * Disconnect and stop recognition (stateless)
    */
   override disconnect(): Promise<void> {
-    if (!this.isRecognizing || !this.recognition) {
-      this.logger.warn('Not recognizing');
+    if (!this.recognition) {
+      this.logger.debug('No recognition object to disconnect');
       return Promise.resolve();
     }
 
-    this.isRecognizing = false;
-    this.recognition.stop();
-    this.logger.info('Stopped recognition');
+    try {
+      this.recognition.stop();
+      this.logger.info('✅ Stopped recognition');
+    } catch (error) {
+      this.logger.debug('Error stopping recognition (may already be stopped):', error);
+    }
+
     return Promise.resolve();
   }
 
   /**
-   * Check if currently recognizing
+   * Check if recognition object exists and is ready
    */
   isConnected(): boolean {
-    return this.isRecognizing;
+    return this.recognition !== null;
   }
 
   /**
