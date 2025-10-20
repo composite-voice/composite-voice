@@ -71,6 +71,41 @@ export interface LoggingConfig {
 }
 
 /**
+ * Turn-taking behavior configuration
+ */
+export interface TurnTakingConfig {
+  /**
+   * Whether to pause audio capture during TTS playback
+   *
+   * Set to 'auto' to let the SDK decide based on providers
+   * Set to true to always pause (prevents echo, safe default)
+   * Set to false to never pause (full-duplex, requires good echo cancellation)
+   *
+   * @default 'auto'
+   */
+  pauseCaptureOnPlayback: 'auto' | boolean;
+
+  /**
+   * Strategy to use when pauseCaptureOnPlayback is 'auto'
+   *
+   * 'conservative': Pause for most providers (safer, prevents echo)
+   * 'aggressive': Only pause for known problematic combinations
+   * 'detect': Attempt to detect echo cancellation support at runtime
+   *
+   * @default 'conservative'
+   */
+  autoStrategy?: 'conservative' | 'aggressive' | 'detect';
+
+  /**
+   * Provider combinations that should always pause
+   * Used when autoStrategy is 'aggressive'
+   *
+   * @default [{ stt: 'NativeSTT', tts: 'NativeTTS' }]
+   */
+  alwaysPauseCombinations?: Array<{ stt: string; tts: string }>;
+}
+
+/**
  * Main SDK configuration
  */
 export type CompositeVoiceConfig = (CompositeConfig | AllInOneConfig) & {
@@ -80,6 +115,8 @@ export type CompositeVoiceConfig = (CompositeConfig | AllInOneConfig) & {
   reconnection?: ReconnectionConfig;
   /** Logging configuration */
   logging?: LoggingConfig;
+  /** Turn-taking behavior configuration */
+  turnTaking?: TurnTakingConfig;
   /** Enable automatic error recovery */
   autoRecover?: boolean;
   /** Additional custom configuration */
@@ -125,4 +162,16 @@ export const DEFAULT_RECONNECTION_CONFIG: ReconnectionConfig = {
 export const DEFAULT_LOGGING_CONFIG: LoggingConfig = {
   enabled: false,
   level: 'info',
+};
+
+/**
+ * Default turn-taking configuration
+ */
+export const DEFAULT_TURN_TAKING_CONFIG: TurnTakingConfig = {
+  pauseCaptureOnPlayback: 'auto',
+  autoStrategy: 'conservative',
+  alwaysPauseCombinations: [
+    { stt: 'NativeSTT', tts: 'NativeTTS' },
+    { stt: 'NativeSTT', tts: 'any' }, // NativeSTT always needs pause
+  ],
 };
