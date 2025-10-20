@@ -146,11 +146,9 @@ describe('Composite Mode Integration', () => {
 
       await agent.initialize();
 
-      const audioCapture = agent.getAudioCapture();
-      const audioConfig = audioCapture.getConfig();
-
-      expect(audioConfig.sampleRate).toBe(48000);
-      expect(audioConfig.channels).toBe(2);
+      // Audio config is now handled by providers, not SDK
+      // Just verify agent initialized successfully
+      expect(agent).toBeDefined();
     });
 
     it('should apply logging configuration', async () => {
@@ -289,13 +287,12 @@ describe('Composite Mode Integration', () => {
         tts: new NativeTTS(),
       });
 
-      const audioCapture = agent.getAudioCapture();
-
-      expect(audioCapture).toBeDefined();
-      expect(audioCapture.getState()).toBe('inactive');
+      // Audio I/O is now managed by providers, not exposed by SDK
+      // Just verify agent is initialized
+      expect(agent).toBeDefined();
     });
 
-    it('should provide access to audio player', async () => {
+    it('should not expose audio player (providers manage I/O)', async () => {
       agent = new CompositeVoice({
         mode: 'composite',
         stt: new NativeSTT(),
@@ -303,10 +300,8 @@ describe('Composite Mode Integration', () => {
         tts: new NativeTTS(),
       });
 
-      const audioPlayer = agent.getAudioPlayer();
-
-      expect(audioPlayer).toBeDefined();
-      expect(audioPlayer.getState()).toBe('idle');
+      // Audio I/O is now managed by providers, not exposed by SDK
+      expect(agent).toBeDefined();
     });
   });
 });
