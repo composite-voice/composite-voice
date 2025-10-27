@@ -3,33 +3,18 @@
  */
 
 import type { AudioInputConfig, AudioOutputConfig } from './audio';
-import type { STTProvider, LLMProvider, TTSProvider, AllInOneProvider } from './providers';
+import type { STTProvider, LLMProvider, TTSProvider } from './providers';
 
 /**
- * Agent mode
+ * Configuration for CompositeVoice (STT, LLM, TTS providers)
  */
-export type AgentMode = 'composite' | 'all-in-one';
-
-/**
- * Configuration for composite mode (separate STT, LLM, TTS providers)
- */
-export interface CompositeConfig {
-  mode: 'composite';
+export interface ProviderConfig {
   /** Speech-to-text provider */
   stt: STTProvider;
   /** Large language model provider */
   llm: LLMProvider;
   /** Text-to-speech provider */
   tts: TTSProvider;
-}
-
-/**
- * Configuration for all-in-one mode (single integrated provider)
- */
-export interface AllInOneConfig {
-  mode: 'all-in-one';
-  /** All-in-one provider that handles STT → LLM → TTS */
-  provider: AllInOneProvider;
 }
 
 /**
@@ -108,7 +93,7 @@ export interface TurnTakingConfig {
 /**
  * Main SDK configuration
  */
-export type CompositeVoiceConfig = (CompositeConfig | AllInOneConfig) & {
+export type CompositeVoiceConfig = ProviderConfig & {
   /** Audio configuration */
   audio?: AudioConfig;
   /** WebSocket reconnection configuration */

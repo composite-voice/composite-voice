@@ -2,7 +2,7 @@
  * Native browser STT provider using Web Speech API
  */
 
-import { BaseSTTProvider } from '../../base/BaseSTTProvider';
+import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
 import { ProviderConnectionError } from '../../../utils/errors';
 import { Logger } from '../../../utils/logger';
@@ -68,8 +68,9 @@ export interface NativeSTTConfig extends STTProviderConfig {
 /**
  * Native browser STT provider
  * Uses the Web Speech API (SpeechRecognition)
+ * Browser manages microphone directly - CompositeVoice does NOT send audio
  */
-export class NativeSTT extends BaseSTTProvider {
+export class NativeSTT extends LiveSTTProvider {
   declare public config: NativeSTTConfig;
   private recognition: SpeechRecognition | null = null;
   // State is now managed externally by AudioCaptureStateMachine!
@@ -84,8 +85,6 @@ export class NativeSTT extends BaseSTTProvider {
       ...config,
     };
     super(finalConfig, logger);
-    // Override type after construction - Native API behaves like websocket (streaming)
-    (this as { type: 'rest' | 'websocket' }).type = 'websocket';
   }
 
   protected onInitialize(): Promise<void> {
@@ -176,7 +175,7 @@ export class NativeSTT extends BaseSTTProvider {
   /**
    * Connect and start recognition
    */
-  override connect(): Promise<void> {
+  connect(): Promise<void> {
     this.assertReady();
 
     if (!this.recognition) {
@@ -200,7 +199,7 @@ export class NativeSTT extends BaseSTTProvider {
   /**
    * Disconnect and stop recognition (stateless)
    */
-  override disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
     if (!this.recognition) {
       this.logger.debug('No recognition object to disconnect');
       return Promise.resolve();
@@ -224,9 +223,14 @@ export class NativeSTT extends BaseSTTProvider {
   }
 
   /**
-   * Native provider doesn't use sendAudio (it directly accesses microphone)
+   * Native provider doesn't use sendAudio (it directly accesses microphone via SpeechRecognition API)
+   * This method is a no-op and should not be called. CompositeVoice should NOT call this method.
+   * 
+   * @param _chunk Audio chunk (unused)
    */
-  override sendAudio(_chunk: ArrayBuffer): void {
-    this.logger.warn('sendAudio() is not supported for native STT provider');
+  sendAudio(_chunk: ArrayBuffer): void {
+    // No-op: Native STT uses SpeechRecognition API which directly accesses the microphone
+    // Audio flow: Microphone → SpeechRecognition API → onTranscription callback
+    this.logger.debug('sendAudio() called on native STT (no-op - browser manages audio capture)');
   }
 }

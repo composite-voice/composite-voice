@@ -71,41 +71,65 @@ export interface STTProviderConfig extends BaseProviderConfig {
 }
 
 /**
- * STT Provider interface
+ * REST STT Provider interface
+ * Transcribes complete audio files
  */
-export interface STTProvider extends BaseProvider {
+export interface RestSTTProvider extends BaseProvider {
   /** Configuration for this provider */
   config: STTProviderConfig;
 
   /**
-   * Transcribe complete audio (REST providers)
+   * Transcribe complete audio file
+   * Results are sent via onTranscription callback (same as Live providers)
    * @param audio Audio blob to transcribe
-   * @returns Transcribed text
    */
-  transcribe?(audio: Blob): Promise<string>;
+  transcribe(audio: Blob): Promise<void>;
 
   /**
-   * Connect to streaming service (WebSocket providers)
-   */
-  connect?(): Promise<void>;
-
-  /**
-   * Send audio chunk for transcription (WebSocket providers)
-   * @param chunk Audio data chunk
-   */
-  sendAudio?(chunk: ArrayBuffer): void;
-
-  /**
-   * Disconnect from streaming service (WebSocket providers)
-   */
-  disconnect?(): Promise<void>;
-
-  /**
-   * Register callback for transcription results (WebSocket providers)
+   * Register callback for transcription results
+   * Provider sends text TO CompositeVoice via this callback
    * @param callback Function to call with transcription results
    */
-  onTranscription?(callback: (result: TranscriptionResult) => void): void;
+  onTranscription(callback: (result: TranscriptionResult) => void): void;
 }
+
+/**
+ * Live STT Provider interface
+ * Transcribes streaming audio in real-time
+ */
+export interface LiveSTTProvider extends BaseProvider {
+  /** Configuration for this provider */
+  config: STTProviderConfig;
+
+  /**
+   * Connect to streaming service
+   */
+  connect(): Promise<void>;
+
+  /**
+   * Send audio chunk for transcription
+   * CompositeVoice sends audio TO provider
+   * @param chunk Audio data chunk
+   */
+  sendAudio(chunk: ArrayBuffer): void;
+
+  /**
+   * Disconnect from streaming service
+   */
+  disconnect(): Promise<void>;
+
+  /**
+   * Register callback for transcription results
+   * Provider sends text TO CompositeVoice
+   * @param callback Function to call with transcription results
+   */
+  onTranscription(callback: (result: TranscriptionResult) => void): void;
+}
+
+/**
+ * STT Provider (union type for backward compatibility)
+ */
+export type STTProvider = RestSTTProvider | LiveSTTProvider;
 
 /**
  * LLM Provider configuration
@@ -195,120 +219,69 @@ export interface TTSProviderConfig extends BaseProviderConfig {
 }
 
 /**
- * TTS Provider interface
+ * REST TTS Provider interface
+ * Synthesizes complete text to audio
  */
-export interface TTSProvider extends BaseProvider {
+export interface RestTTSProvider extends BaseProvider {
   /** Configuration for this provider */
   config: TTSProviderConfig;
 
   /**
-   * Synthesize complete text to audio (REST providers)
+   * Synthesize complete text to audio
    * @param text Text to synthesize
    * @returns Audio blob
    */
-  synthesize?(text: string): Promise<Blob>;
-
-  /**
-   * Connect to streaming service (WebSocket providers)
-   */
-  connect?(): Promise<void>;
-
-  /**
-   * Send text chunk for synthesis (WebSocket providers)
-   * @param chunk Text to synthesize
-   */
-  sendText?(chunk: string): void;
-
-  /**
-   * Finalize synthesis and process remaining text (WebSocket providers)
-   */
-  finalize?(): Promise<void>;
-
-  /**
-   * Disconnect from streaming service (WebSocket providers)
-   */
-  disconnect?(): Promise<void>;
-
-  /**
-   * Register callback for audio chunks (WebSocket providers)
-   * @param callback Function to call with audio chunks
-   */
-  onAudio?(callback: (chunk: AudioChunk) => void): void;
-
-  /**
-   * Register callback for audio metadata (WebSocket providers)
-   * @param callback Function to call with audio metadata
-   */
-  onMetadata?(callback: (metadata: AudioMetadata) => void): void;
+  synthesize(text: string): Promise<Blob>;
 }
 
 /**
- * All-in-one Provider configuration
+ * Live TTS Provider interface
+ * Synthesizes streaming text to audio in real-time
  */
-export interface AllInOneProviderConfig extends BaseProviderConfig {
-  /** Language for transcription */
-  language?: string;
-  /** Voice for synthesis */
-  voice?: string;
-  /** LLM model configuration */
-  model?: string;
-  /** System prompt for LLM */
-  systemPrompt?: string;
-  /** Additional provider-specific settings */
-  settings?: Record<string, unknown>;
-}
-
-/**
- * All-in-one Provider interface
- * Handles STT → LLM → TTS in a single integration
- */
-export interface AllInOneProvider extends BaseProvider {
+export interface LiveTTSProvider extends BaseProvider {
   /** Configuration for this provider */
-  config: AllInOneProviderConfig;
+  config: TTSProviderConfig;
 
   /**
-   * Connect to the all-in-one service
+   * Connect to streaming service
    */
   connect(): Promise<void>;
 
   /**
-   * Send audio for processing
-   * @param chunk Audio data chunk
+   * Send text chunk for synthesis
+   * CompositeVoice sends text TO provider
+   * @param chunk Text to synthesize
    */
-  sendAudio(chunk: ArrayBuffer): void;
+  sendText(chunk: string): void;
 
   /**
-   * Send text for processing (optional, for text-based interactions)
-   * @param text Text to process
+   * Finalize synthesis and process remaining text
    */
-  sendText?(text: string): void;
+  finalize(): Promise<void>;
 
   /**
-   * Disconnect from the service
+   * Disconnect from streaming service
    */
   disconnect(): Promise<void>;
 
   /**
-   * Register callback for transcription results
-   * @param callback Function to call with transcription results
-   */
-  onTranscription?(callback: (result: TranscriptionResult) => void): void;
-
-  /**
-   * Register callback for LLM text chunks
-   * @param callback Function to call with text chunks
-   */
-  onLLMChunk?(callback: (text: string) => void): void;
-
-  /**
-   * Register callback for audio responses
+   * Register callback for audio chunks
+   * Provider sends audio TO CompositeVoice
    * @param callback Function to call with audio chunks
    */
-  onAudio?(callback: (chunk: AudioChunk) => void): void;
+  onAudio(callback: (chunk: AudioChunk) => void): void;
 
   /**
-   * Register callback for audio metadata
+   * Register callback for audio metadata (optional)
+   * Metadata helps AudioPlayer configure playback (sample rate, channels, etc.)
+   * Providers may emit this once at the start or not at all
+   * This method is always available, but providers are not required to emit metadata
    * @param callback Function to call with audio metadata
    */
-  onMetadata?(callback: (metadata: AudioMetadata) => void): void;
+  onMetadata(callback: (metadata: AudioMetadata) => void): void;
 }
+
+/**
+ * TTS Provider (union type for backward compatibility)
+ */
+export type TTSProvider = RestTTSProvider | LiveTTSProvider;

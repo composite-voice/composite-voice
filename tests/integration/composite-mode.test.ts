@@ -44,7 +44,6 @@ describe('Composite Mode Integration', () => {
   describe('initialization', () => {
     it('should initialize with all providers', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -58,7 +57,6 @@ describe('Composite Mode Integration', () => {
 
     it('should emit ready event', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -77,7 +75,6 @@ describe('Composite Mode Integration', () => {
     it('should throw error if missing providers', () => {
       expect(() => {
         new CompositeVoice({
-          mode: 'composite',
           stt: new NativeSTT(),
           // Missing LLM and TTS
         } as any);
@@ -88,7 +85,6 @@ describe('Composite Mode Integration', () => {
   describe('event flow', () => {
     it('should emit state change events', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -107,7 +103,6 @@ describe('Composite Mode Integration', () => {
 
     it('should track all event types', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -129,7 +124,6 @@ describe('Composite Mode Integration', () => {
   describe('configuration', () => {
     it('should apply audio configuration', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -155,7 +149,6 @@ describe('Composite Mode Integration', () => {
       const customLogger = jest.fn();
 
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -176,7 +169,6 @@ describe('Composite Mode Integration', () => {
   describe('disposal', () => {
     it('should dispose all providers', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -191,7 +183,6 @@ describe('Composite Mode Integration', () => {
 
     it('should handle disposal without initialization', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -202,7 +193,6 @@ describe('Composite Mode Integration', () => {
 
     it('should remove all event listeners on disposal', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -249,7 +239,6 @@ describe('Composite Mode Integration', () => {
       }
 
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new FailingProvider(),
         tts: new NativeTTS(),
@@ -261,7 +250,6 @@ describe('Composite Mode Integration', () => {
 
     it('should emit error events', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -281,7 +269,6 @@ describe('Composite Mode Integration', () => {
   describe('component access', () => {
     it('should provide access to audio capture', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),
@@ -294,7 +281,6 @@ describe('Composite Mode Integration', () => {
 
     it('should not expose audio player (providers manage I/O)', async () => {
       agent = new CompositeVoice({
-        mode: 'composite',
         stt: new NativeSTT(),
         llm: new MockLLMProvider(),
         tts: new NativeTTS(),

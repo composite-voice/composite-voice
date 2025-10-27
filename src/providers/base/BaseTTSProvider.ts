@@ -1,59 +1,39 @@
 /**
- * Base TTS provider class
+ * Abstract base TTS provider class
+ * Contains common functionality for all TTS providers
  */
 
-import type { TTSProvider, TTSProviderConfig } from '../../core/types/providers';
+import type { TTSProviderConfig } from '../../core/types/providers';
 import type { AudioChunk, AudioMetadata } from '../../core/types/audio';
 import { BaseProvider } from './BaseProvider';
 import { Logger } from '../../utils/logger';
 
 /**
  * Abstract base TTS provider
+ * All TTS providers (Rest/Live) extend this
  */
-export abstract class BaseTTSProvider extends BaseProvider implements TTSProvider {
+export abstract class BaseTTSProvider extends BaseProvider {
   public override config: TTSProviderConfig;
   protected audioCallback?: (chunk: AudioChunk) => void;
   protected metadataCallback?: (metadata: AudioMetadata) => void;
 
-  constructor(config: TTSProviderConfig, logger?: Logger) {
-    super('rest', config, logger);
+  constructor(type: 'rest' | 'websocket', config: TTSProviderConfig, logger?: Logger) {
+    super(type, config, logger);
     this.config = config;
   }
 
   /**
-   * Synthesize complete text to audio (REST providers)
-   */
-  async synthesize?(text: string): Promise<Blob>;
-
-  /**
-   * Connect to streaming service (WebSocket providers)
-   */
-  async connect?(): Promise<void>;
-
-  /**
-   * Send text chunk for synthesis (WebSocket providers)
-   */
-  sendText?(chunk: string): void;
-
-  /**
-   * Finalize synthesis and process remaining text (WebSocket providers)
-   */
-  async finalize?(): Promise<void>;
-
-  /**
-   * Disconnect from streaming service (WebSocket providers)
-   */
-  async disconnect?(): Promise<void>;
-
-  /**
-   * Register callback for audio chunks (WebSocket providers)
+   * Register callback for audio chunks
+   * All TTS providers send audio via this callback
    */
   onAudio(callback: (chunk: AudioChunk) => void): void {
     this.audioCallback = callback;
   }
 
   /**
-   * Register callback for audio metadata (WebSocket providers)
+   * Register callback for audio metadata (optional)
+   * Providers should emit metadata at the start if available
+   * Providers are not required to call emitMetadata
    */
   onMetadata(callback: (metadata: AudioMetadata) => void): void {
     this.metadataCallback = callback;

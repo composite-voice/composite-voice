@@ -1,0 +1,10 @@
+{
+  "projects": {
+    "main": {
+      "root": ".",
+      "sourceRoot": "src",
+      "projectType": "library"
+    },
+    ... examples ...
+  }
+}

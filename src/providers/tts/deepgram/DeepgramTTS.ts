@@ -3,7 +3,7 @@
  * WebSocket-only provider for real-time streaming text-to-speech
  */
 
-import { BaseTTSProvider } from '../../base/BaseTTSProvider';
+import { LiveTTSProvider } from '../../base/LiveTTSProvider';
 import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
@@ -43,8 +43,9 @@ export interface DeepgramTTSConfig extends TTSProviderConfig {
 /**
  * Deepgram TTS provider
  * Real-time streaming text-to-speech via WebSocket
+ * CompositeVoice sends text chunks to this provider and receives audio chunks
  */
-export class DeepgramTTS extends BaseTTSProvider {
+export class DeepgramTTS extends LiveTTSProvider {
   declare public config: DeepgramTTSConfig;
   private deepgram: Awaited<ReturnType<DeepgramClient>> | null = null;
   private liveClient: LiveTTSClient | null = null;
@@ -58,9 +59,6 @@ export class DeepgramTTS extends BaseTTSProvider {
       ...config,
     };
     super(finalConfig, logger);
-
-    // Deepgram provider is always WebSocket mode
-    (this as { type: 'rest' | 'websocket' }).type = 'websocket';
   }
 
   protected async onInitialize(): Promise<void> {
@@ -103,7 +101,7 @@ export class DeepgramTTS extends BaseTTSProvider {
   /**
    * Connect to Deepgram WebSocket for real-time TTS
    */
-  override async connect(): Promise<void> {
+  async connect(): Promise<void> {
     this.assertReady();
 
     if (this.isConnected) {
@@ -269,9 +267,10 @@ export class DeepgramTTS extends BaseTTSProvider {
 
   /**
    * Send text chunk for real-time synthesis
+   * CompositeVoice sends text TO this provider
    * @param text Text to synthesize
    */
-  override sendText(text: string): void {
+  sendText(text: string): void {
     if (!this.isConnected || !this.liveClient) {
       this.logger.warn('Cannot send text: not connected');
       return;
@@ -288,7 +287,7 @@ export class DeepgramTTS extends BaseTTSProvider {
   /**
    * Finalize synthesis and process remaining text
    */
-  override async finalize(): Promise<void> {
+  async finalize(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
       this.logger.warn('Cannot finalize: not connected');
       return;
@@ -320,7 +319,7 @@ export class DeepgramTTS extends BaseTTSProvider {
   /**
    * Disconnect from Deepgram WebSocket
    */
-  override async disconnect(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
       this.logger.warn('Not connected to Deepgram TTS');
       return;

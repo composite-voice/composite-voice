@@ -3,7 +3,7 @@
  * WebSocket-only provider for real-time streaming transcription
  */
 
-import { BaseSTTProvider } from '../../base/BaseSTTProvider';
+import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
@@ -63,8 +63,9 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
 /**
  * Deepgram STT provider
  * Real-time streaming transcription via WebSocket
+ * CompositeVoice manages audio capture and sends chunks to this provider
  */
-export class DeepgramSTT extends BaseSTTProvider {
+export class DeepgramSTT extends LiveSTTProvider {
   declare public config: DeepgramSTTConfig;
   private deepgram: Awaited<ReturnType<DeepgramClient>> | null = null;
   private liveClient: LiveClient | null = null;
@@ -77,9 +78,6 @@ export class DeepgramSTT extends BaseSTTProvider {
       ...config,
     };
     super(finalConfig, logger);
-
-    // Deepgram provider is always WebSocket mode
-    (this as { type: 'rest' | 'websocket' }).type = 'websocket';
   }
 
   protected async onInitialize(): Promise<void> {
@@ -121,7 +119,7 @@ export class DeepgramSTT extends BaseSTTProvider {
   /**
    * Connect to Deepgram WebSocket for real-time transcription
    */
-  override async connect(): Promise<void> {
+  async connect(): Promise<void> {
     this.assertReady();
 
     if (this.isConnected) {
@@ -327,9 +325,10 @@ export class DeepgramSTT extends BaseSTTProvider {
 
   /**
    * Send audio chunk for real-time transcription
+   * CompositeVoice sends audio chunks TO this provider
    * @param chunk Audio data chunk (ArrayBuffer)
    */
-  override sendAudio(chunk: ArrayBuffer): void {
+  sendAudio(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.liveClient) {
       this.logger.warn('Cannot send audio: not connected');
       return;
@@ -347,7 +346,7 @@ export class DeepgramSTT extends BaseSTTProvider {
   /**
    * Disconnect from Deepgram WebSocket
    */
-  override async disconnect(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
       this.logger.warn('Not connected to Deepgram');
       return;

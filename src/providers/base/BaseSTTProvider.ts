@@ -1,9 +1,9 @@
 /**
- * Base STT provider class
+ * Abstract base STT provider class
+ * Contains common functionality for all STT providers
  */
 
 import type {
-  STTProvider,
   STTProviderConfig,
   TranscriptionResult,
 } from '../../core/types/providers';
@@ -12,38 +12,20 @@ import { Logger } from '../../utils/logger';
 
 /**
  * Abstract base STT provider
+ * All STT providers (Rest/Live) extend this
  */
-export abstract class BaseSTTProvider extends BaseProvider implements STTProvider {
+export abstract class BaseSTTProvider extends BaseProvider {
   public override config: STTProviderConfig;
   protected transcriptionCallback?: (result: TranscriptionResult) => void;
 
-  constructor(config: STTProviderConfig, logger?: Logger) {
-    super('rest', config, logger);
+  constructor(type: 'rest' | 'websocket', config: STTProviderConfig, logger?: Logger) {
+    super(type, config, logger);
     this.config = config;
   }
 
   /**
-   * Transcribe complete audio (REST providers)
-   */
-  async transcribe?(audio: Blob): Promise<string>;
-
-  /**
-   * Connect to streaming service (WebSocket providers)
-   */
-  async connect?(): Promise<void>;
-
-  /**
-   * Send audio chunk for transcription (WebSocket providers)
-   */
-  sendAudio?(chunk: ArrayBuffer): void;
-
-  /**
-   * Disconnect from streaming service (WebSocket providers)
-   */
-  async disconnect?(): Promise<void>;
-
-  /**
-   * Register callback for transcription results (WebSocket providers)
+   * Register callback for transcription results
+   * All STT providers send text via this callback
    */
   onTranscription(callback: (result: TranscriptionResult) => void): void {
     this.transcriptionCallback = callback;

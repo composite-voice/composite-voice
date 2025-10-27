@@ -24,11 +24,25 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
 
   /**
    * Generate a response from a prompt
+   *
+   * **Interface: Receive Text → Send Text**
+   * This is how LLM providers receive text input and send text output.
+   *
+   * @param prompt User prompt text (input text)
+   * @param options Generation options
+   * @returns AsyncIterable that yields text chunks (output text)
    */
   abstract generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>>;
 
   /**
    * Generate a response from a conversation
+   *
+   * **Interface: Receive Text → Send Text**
+   * Alternative method that accepts conversation history.
+   *
+   * @param messages Array of conversation messages (input text)
+   * @param options Generation options
+   * @returns AsyncIterable that yields text chunks (output text)
    */
   abstract generateFromMessages(
     messages: LLMMessage[],

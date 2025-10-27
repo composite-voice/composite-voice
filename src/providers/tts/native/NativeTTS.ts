@@ -2,7 +2,7 @@
  * Native browser TTS provider using Web Speech API
  */
 
-import { BaseTTSProvider } from '../../base/BaseTTSProvider';
+import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 
@@ -21,8 +21,9 @@ export interface NativeTTSConfig extends TTSProviderConfig {
 /**
  * Native browser TTS provider
  * Uses the Web Speech API (SpeechSynthesis)
+ * Browser plays audio directly - CompositeVoice does NOT receive audio
  */
-export class NativeTTS extends BaseTTSProvider {
+export class NativeTTS extends RestTTSProvider {
   declare public config: NativeTTSConfig;
   private synthesis: SpeechSynthesis;
   private availableVoices: SpeechSynthesisVoice[] = [];
@@ -145,8 +146,15 @@ export class NativeTTS extends BaseTTSProvider {
 
   /**
    * Synthesize text to speech (REST-style, but plays immediately)
+   * 
+   * Note: Native TTS uses SpeechSynthesis API which directly plays to speakers.
+   * Audio flow: Text → SpeechSynthesis.speak() → Speakers
+   * This provider does NOT emit audio via onAudio() callbacks.
+   * 
+   * @param text Text to synthesize
+   * @returns Empty Blob (audio is played directly by browser, cannot be captured)
    */
-  override async synthesize(text: string): Promise<Blob> {
+  async synthesize(text: string): Promise<Blob> {
     this.assertReady();
 
     return new Promise((resolve, reject) => {

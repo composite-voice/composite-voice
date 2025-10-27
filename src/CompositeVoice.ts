@@ -10,13 +10,43 @@ import type {
   AgentState,
 } from './core/events/types';
 import type { CompositeVoiceConfig } from './core/types/config';
+import type {
+  STTProvider,
+  TTSProvider,
+  LiveSTTProvider,
+  LiveTTSProvider,
+  RestTTSProvider,
+} from './core/types/providers';
 import { AgentStateMachine } from './core/state/AgentStateMachine';
 import { SimpleAudioCaptureStateMachine as AudioCaptureStateMachine } from './core/state/SimpleAudioCaptureStateMachine';
 import { SimpleAudioPlaybackStateMachine as AudioPlaybackStateMachine } from './core/state/SimpleAudioPlaybackStateMachine';
 import { SimpleProcessingStateMachine as ProcessingStateMachine } from './core/state/SimpleProcessingStateMachine';
+import { AudioCapture } from './core/audio/AudioCapture';
+import { AudioPlayer } from './core/audio/AudioPlayer';
 import { Logger, createLogger } from './utils/logger';
 import { ConfigurationError, InvalidStateError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG } from './core/types/config';
+
+/**
+ * Type guard to check if STT provider is Live (WebSocket)
+ */
+function isLiveSTT(provider: STTProvider): provider is LiveSTTProvider {
+  return provider.type === 'websocket';
+}
+
+/**
+ * Type guard to check if TTS provider is Live (WebSocket)
+ */
+function isLiveTTS(provider: TTSProvider): provider is LiveTTSProvider {
+  return provider.type === 'websocket';
+}
+
+/**
+ * Type guard to check if TTS provider is REST
+ */
+function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
+  return provider.type === 'rest';
+}
 
 /**
  * Main CompositeVoice SDK class
@@ -31,6 +61,10 @@ export class CompositeVoice {
   private playbackStateMachine: AudioPlaybackStateMachine;
   private processingStateMachine: ProcessingStateMachine;
   private agentStateMachine: AgentStateMachine;
+
+  // Audio I/O (only for non-native providers)
+  private audioCapture?: AudioCapture;
+  private audioPlayer?: AudioPlayer;
 
   private initialized = false;
 
@@ -71,16 +105,8 @@ export class CompositeVoice {
    * Validate configuration
    */
   private validateConfig(config: CompositeVoiceConfig): void {
-    if (config.mode === 'composite') {
-      if (!config.stt || !config.llm || !config.tts) {
-        throw new ConfigurationError('Composite mode requires stt, llm, and tts providers');
-      }
-    } else if (config.mode === 'all-in-one') {
-      if (!config.provider) {
-        throw new ConfigurationError('All-in-one mode requires a provider');
-      }
-    } else {
-      throw new ConfigurationError(`Invalid mode: ${(config as { mode: string }).mode}`);
+    if (!config.stt || !config.llm || !config.tts) {
+      throw new ConfigurationError('CompositeVoice requires stt, llm, and tts providers');
     }
   }
 
@@ -105,17 +131,12 @@ export class CompositeVoice {
       );
 
       // Initialize providers
-      if (this.config.mode === 'composite') {
-        await Promise.all([
-          this.config.stt.initialize(),
-          this.config.llm.initialize(),
-          this.config.tts.initialize(),
-        ]);
-        this.setupCompositeProviders();
-      } else if (this.config.mode === 'all-in-one') {
-        await this.config.provider.initialize();
-        this.setupAllInOneProvider();
-      }
+      await Promise.all([
+        this.config.stt.initialize(),
+        this.config.llm.initialize(),
+        this.config.tts.initialize(),
+      ]);
+      this.setupProviders();
 
       this.initialized = true;
 
@@ -133,15 +154,13 @@ export class CompositeVoice {
   }
 
   /**
-   * Setup composite provider event handlers
+   * Setup provider event handlers
    */
-  private setupCompositeProviders(): void {
-    if (this.config.mode !== 'composite') return;
-
+  private setupProviders(): void {
     const { stt, tts } = this.config;
 
-    // Setup STT provider callbacks
-    stt.onTranscription?.((result) => {
+    // Setup STT provider callbacks (all STT providers have onTranscription)
+    stt.onTranscription((result) => {
       const event = {
         type: result.isFinal
           ? ('transcription.final' as const)
@@ -159,91 +178,46 @@ export class CompositeVoice {
       }
     });
 
-    // Setup TTS provider callbacks (if WebSocket)
-    // Note: Provider handles audio playback internally
-    if (tts.onAudio) {
+    // Setup TTS provider callbacks (only Live TTS has onAudio)
+    if (isLiveTTS(tts)) {
+      // Initialize AudioPlayer for Live TTS (unless native TTS which plays directly)
+      if (tts.constructor.name !== 'NativeTTS') {
+        this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
+      }
+
       tts.onAudio((chunk) => {
         this.emitEvent({
           type: 'tts.audio',
           chunk,
           timestamp: Date.now(),
         });
-        // Provider manages audio playback internally
-      });
-    }
 
-    if (tts.onMetadata) {
+        // Play audio via AudioPlayer (unless native TTS)
+        if (this.audioPlayer) {
+          void this.audioPlayer.addChunk(chunk);
+        }
+      });
+
+      // Register metadata callback (provider may or may not emit metadata)
       tts.onMetadata((metadata) => {
         this.emitEvent({
           type: 'tts.metadata',
           metadata,
           timestamp: Date.now(),
         });
-        // Provider manages audio metadata internally
+
+        // Configure AudioPlayer with metadata
+        if (this.audioPlayer) {
+          this.audioPlayer.setMetadata(metadata);
+        }
       });
     }
-  }
-
-  /**
-   * Setup all-in-one provider event handlers
-   */
-  private setupAllInOneProvider(): void {
-    if (this.config.mode !== 'all-in-one') return;
-
-    const { provider } = this.config;
-
-    // Setup transcription callback
-    provider.onTranscription?.((result) => {
-      const event = {
-        type: result.isFinal
-          ? ('transcription.final' as const)
-          : ('transcription.interim' as const),
-        text: result.text,
-        confidence: result.confidence,
-        timestamp: Date.now(),
-        metadata: result.metadata,
-      };
-      this.emitEvent(event as CompositeVoiceEvent);
-    });
-
-    // Setup LLM chunk callback
-    provider.onLLMChunk?.((text) => {
-      this.emitEvent({
-        type: 'llm.chunk',
-        chunk: text,
-        accumulated: '', // Provider should track this
-        timestamp: Date.now(),
-      });
-    });
-
-    // Setup audio callback
-    // Note: All-in-one provider handles audio playback internally
-    provider.onAudio?.((chunk) => {
-      this.emitEvent({
-        type: 'tts.audio',
-        chunk,
-        timestamp: Date.now(),
-      });
-      // Provider manages audio playback internally
-    });
-
-    // Setup metadata callback
-    provider.onMetadata?.((metadata) => {
-      this.emitEvent({
-        type: 'tts.metadata',
-        metadata,
-        timestamp: Date.now(),
-      });
-      // Provider manages audio metadata internally
-    });
   }
 
   /**
    * Process text through LLM
    */
   private async processLLM(text: string): Promise<void> {
-    if (this.config.mode !== 'composite') return;
-
     // Only process if we're in a valid state (listening or error)
     // Ignore transcriptions that come in after stopping
     if (!this.agentStateMachine.isIn('listening', 'error')) {
@@ -277,8 +251,8 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
-        // If TTS supports streaming, send chunks
-        if (tts.sendText && tts.type === 'websocket') {
+        // If TTS is Live (WebSocket), send chunks
+        if (isLiveTTS(tts)) {
           tts.sendText(chunk);
         }
       }
@@ -291,10 +265,10 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
 
-      // If TTS doesn't support streaming, send full response
-      if (tts.synthesize) {
+      // REST TTS - send full response
+      if (isRestTTS(tts)) {
         await this.processTTS(fullResponse);
-      } else if (tts.finalize) {
+      } else if (isLiveTTS(tts)) {
         // Finalize streaming TTS
         await tts.finalize();
       }
@@ -318,8 +292,6 @@ export class CompositeVoice {
    * Process text through TTS
    */
   private async processTTS(text: string): Promise<void> {
-    if (this.config.mode !== 'composite') return;
-
     this.emitEvent({
       type: 'tts.start',
       text,
@@ -333,7 +305,7 @@ export class CompositeVoice {
       const captureState = this.captureStateMachine.getState();
       if (captureState === 'active') {
         this.captureStateMachine.setPaused();
-        if (stt?.disconnect) {
+        if (isLiveSTT(stt)) {
           await stt.disconnect();
         }
       } else if (captureState === 'error') {
@@ -344,9 +316,19 @@ export class CompositeVoice {
       // Start playback (will derive 'speaking' state)
       this.playbackStateMachine.setBuffering();
 
-      // Provider handles playback internally (TTS/Synth → speakers)
-      if (tts?.synthesize) {
-        await tts.synthesize(text);
+      // REST TTS: synthesize and play
+      if (isRestTTS(tts)) {
+        // Native TTS plays directly via browser
+        if (tts.constructor.name === 'NativeTTS') {
+          await tts.synthesize(text);
+        } else {
+          // Non-native REST TTS: get audio blob and play via AudioPlayer
+          if (!this.audioPlayer) {
+            this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
+          }
+          const audioBlob = await tts.synthesize(text);
+          await this.audioPlayer.play(audioBlob);
+        }
       }
 
       // Playback complete: buffering -> stopped -> idle
@@ -357,7 +339,7 @@ export class CompositeVoice {
       const resumeCaptureState = this.captureStateMachine.getState();
       if (resumeCaptureState === 'paused') {
         // paused → active (resume)
-        if (stt?.connect) {
+        if (isLiveSTT(stt)) {
           await stt.connect();
         }
         this.captureStateMachine.setActive();
@@ -365,7 +347,7 @@ export class CompositeVoice {
         // error → idle → starting → active
         this.captureStateMachine.setIdle();
         this.captureStateMachine.setStarting();
-        if (stt?.connect) {
+        if (isLiveSTT(stt)) {
           await stt.connect();
         }
         this.captureStateMachine.setActive();
@@ -400,7 +382,7 @@ export class CompositeVoice {
           // No state change needed, just reconnect
         }
 
-        if (stt?.connect) {
+        if (isLiveSTT(stt)) {
           await stt.connect();
         }
         this.captureStateMachine.setActive();
@@ -438,11 +420,29 @@ export class CompositeVoice {
     this.captureStateMachine.setStarting();
 
     try {
-      // Provider manages its own audio capture (microphone → STT)
-      if (this.config.mode === 'composite' && this.config.stt?.connect) {
-        await this.config.stt.connect();
-      } else if (this.config.mode === 'all-in-one' && this.config.provider?.connect) {
-        await this.config.provider.connect();
+      const { stt } = this.config;
+
+      // Native STT manages its own audio capture
+      if (stt.constructor.name === 'NativeSTT') {
+        if (isLiveSTT(stt)) {
+          await stt.connect();
+        }
+      } else {
+        // Non-native STT: CompositeVoice captures audio and sends to provider
+        if (isLiveSTT(stt)) {
+          // Initialize AudioCapture if needed
+          if (!this.audioCapture) {
+            this.audioCapture = new AudioCapture(this.config.audio?.input, this.logger);
+          }
+
+          // Connect STT provider first
+          await stt.connect();
+
+          // Start capturing audio and send to STT
+          await this.audioCapture.start((audioData) => {
+            stt.sendAudio(audioData);
+          });
+        }
       }
 
       this.captureStateMachine.setActive();
@@ -473,11 +473,16 @@ export class CompositeVoice {
     this.logger.info('Stopping listening');
 
     try {
-      // Provider manages its own audio capture (stops microphone)
-      if (this.config.mode === 'composite' && this.config.stt?.disconnect) {
-        await this.config.stt.disconnect();
-      } else if (this.config.mode === 'all-in-one' && this.config.provider?.disconnect) {
-        await this.config.provider.disconnect();
+      const { stt } = this.config;
+
+      // Stop audio capture
+      if (this.audioCapture) {
+        await this.audioCapture.stop();
+      }
+
+      // Disconnect STT provider
+      if (isLiveSTT(stt)) {
+        await stt.disconnect();
       }
 
       this.captureStateMachine.setStopped();
@@ -585,15 +590,11 @@ export class CompositeVoice {
       }
 
       // Dispose providers (they handle their own audio cleanup)
-      if (this.config.mode === 'composite') {
-        await Promise.all([
-          this.config.stt.dispose(),
-          this.config.llm.dispose(),
-          this.config.tts.dispose(),
-        ]);
-      } else if (this.config.mode === 'all-in-one') {
-        await this.config.provider.dispose();
-      }
+      await Promise.all([
+        this.config.stt.dispose(),
+        this.config.llm.dispose(),
+        this.config.tts.dispose(),
+      ]);
 
       // Clear event listeners
       this.events.removeAllListeners();

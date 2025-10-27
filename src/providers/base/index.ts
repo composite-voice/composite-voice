@@ -6,4 +6,7 @@ export * from './BaseProvider';
 export * from './BaseSTTProvider';
 export * from './BaseLLMProvider';
 export * from './BaseTTSProvider';
-export * from './BaseAllInOneProvider';
+export * from './RestSTTProvider';
+export * from './LiveSTTProvider';
+export * from './RestTTSProvider';
+export * from './LiveTTSProvider';
