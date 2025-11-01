@@ -5,13 +5,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CompositeVoice - Basic Browser Example</title>
-    <script type="importmap">
-        {
-            "imports": {
-                "openai": "https://cdn.jsdelivr.net/npm/openai@4/+esm"
-            }
-        }
-    </script>
     <style>
         * {
             margin: 0;
@@ -268,11 +261,11 @@
             alert('❌ Your browser does not support the Speech Synthesis API.\n\nPlease use a modern browser.');
         }
 
-        // Import from the built dist
-        import { CompositeVoice, NativeSTT, NativeTTS, OpenAILLM } from '../../dist/index.mjs';
+        // Import from the SDK package
+        import { CompositeVoice, NativeSTT, NativeTTS, OpenAILLM } from '@lukeocodes/composite-voice';
 
-        // OpenAI API key - the user will be prompted on initialization
-        let OPENAI_API_KEY = null;
+        // OpenAI API key from environment variable
+        const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
         let agent = null;
 
@@ -339,14 +332,11 @@
             try {
                 initBtn.disabled = true;
 
-                // Prompt for API key if not already set
+                // Check if API key is configured
                 if (!OPENAI_API_KEY) {
-                    OPENAI_API_KEY = prompt('Enter your OpenAI API key:');
-                    if (!OPENAI_API_KEY) {
-                        alert('OpenAI API key is required to use this example.');
-                        initBtn.disabled = false;
-                        return;
-                    }
+                    alert('OpenAI API key is not configured.\n\nPlease add VITE_OPENAI_API_KEY to your .env file in the examples/basic-browser directory.');
+                    initBtn.disabled = false;
+                    return;
                 }
 
                 // Create OpenAI LLM
@@ -360,9 +350,9 @@
 
                 agent = new CompositeVoice({
                     mode: 'composite',
-                    stt: new NativeSTT({ language: 'en-US', interimResults: true }),
+                    stt: new NativeSTT({ language: 'en-US', interimResults: true, debug: true }),
                     llm: llm,
-                    tts: new NativeTTS({ rate: 1.0 }),
+                    tts: new NativeTTS({ rate: 1.0, debug: true }),
                     logging: { enabled: true, level: 'debug' },
                 });
 

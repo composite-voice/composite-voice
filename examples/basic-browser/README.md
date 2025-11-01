@@ -1,193 +1,252 @@
 # Basic Browser Example
 
-A simple HTML/JavaScript example demonstrating CompositeVoice with native browser APIs and OpenAI.
+A simple browser-based example demonstrating CompositeVoice SDK with native browser APIs and OpenAI.
 
 ## Features
 
-- 🎤 Native browser Speech Recognition (STT)
-- 🔊 Native browser Speech Synthesis (TTS)
-- 🤖 OpenAI LLM (GPT-4o-mini)
-- 📱 Responsive UI
-- 🎨 Visual state indicators
-- 📝 Real-time transcription display
+- **Native Speech Recognition**: Uses the Web Speech API for speech-to-text
+- **OpenAI GPT**: Natural language processing with GPT-4o-mini
+- **Native Speech Synthesis**: Uses the Web Speech Synthesis API for text-to-speech
+- **Visual State Management**: See the agent's state transitions in real-time
+- **Modern UI**: Beautiful gradient design with responsive controls
 
-## Prerequisites
+## Quick Start
 
-- Modern browser (Chrome, Edge, or Safari recommended)
-- Built CompositeVoice package (see below)
-- OpenAI API key (get one at https://platform.openai.com/api-keys)
+### Prerequisites
 
-## Setup
+- Node.js >= 18.0.0
+- pnpm (or npm/yarn)
+- OpenAI API key
+- Modern browser with Web Speech API support (Chrome, Edge, Safari)
 
-### 1. Build the Main Package
+### Setup
 
-From the project root:
+1. **Create a `.env` file** in the `examples/basic-browser` directory:
 
 ```bash
+cd examples/basic-browser
+cp .env.example .env  # Or create manually
+```
+
+2. **Add your OpenAI API key** to the `.env` file:
+
+```env
+VITE_OPENAI_API_KEY=sk-your-api-key-here
+```
+
+> **Note**: The `VITE_` prefix is required for Vite to expose the variable to the client.
+
+### Running the Example
+
+From the **workspace root**:
+
+```bash
+# Install dependencies (first time only)
 pnpm install
-pnpm run build
+
+# Start the development server
+pnpm example:basic-browser:dev
 ```
 
-### 2. Serve the Example
-
-You can use any static file server. Here are a few options:
-
-**Option A: Using Python**
+Or using Nx directly:
 
 ```bash
-python -m http.server 8000
+nx run example-basic-browser:dev
 ```
 
-**Option B: Using Node's http-server**
+The example will automatically:
+1. Build the SDK if needed
+2. Start a Vite dev server
+3. Open the example in your browser
+
+### Building for Production
 
 ```bash
-npx http-server -p 8000
+# From workspace root
+pnpm example:basic-browser:build
+
+# Preview the production build
+pnpm example:basic-browser:preview
 ```
 
-**Option C: Using VS Code Live Server**
+## How It Works
 
-- Install the Live Server extension
-- Right-click on `index.html` and select "Open with Live Server"
+### Nx Integration
 
-### 3. Open in Browser
+This example is an **Nx application** within the monorepo:
 
-Navigate to:
+- **Automatic dependency resolution**: The SDK is built before the example starts
+- **Fast rebuilds**: Nx caches build outputs for faster development
+- **Workspace dependency**: Uses `workspace:*` to link to the local SDK
+
+### Architecture
 
 ```
-http://localhost:8000/examples/basic-browser/index.html
+User speaks → Native STT → OpenAI GPT → Native TTS → User hears
 ```
+
+The example demonstrates:
+1. **Initialization**: Setting up the CompositeVoice agent with providers
+2. **Event handling**: Listening to agent state changes and transcriptions
+3. **User interaction**: Starting/stopping listening sessions
+4. **State visualization**: Real-time display of agent states
 
 ## Usage
 
-1. Click **"Initialize"** to set up the voice agent
-2. When prompted, enter your OpenAI API key
-3. Click **"Start Listening"** to begin capturing audio
-4. Speak into your microphone
-5. Watch the transcription appear in real-time
-6. OpenAI will generate a response, and you'll hear the TTS output
-7. Click **"Stop Listening"** when done
-8. Click **"Dispose"** to clean up resources
+1. **Click "Initialize"**: Set up the CompositeVoice agent
+2. **Click "Start Listening"**: Begin speaking
+3. **Speak naturally**: The agent will transcribe your speech
+4. **Watch the response**: AI generates a response and speaks it back
+5. **Click "Stop Listening"**: End the session
+6. **Click "Dispose"**: Clean up resources
 
-## Browser Support
+## Browser Compatibility
 
-| Feature            | Chrome | Firefox    | Safari     | Edge |
-| ------------------ | ------ | ---------- | ---------- | ---- |
-| Speech Recognition | ✅     | ⚠️ Limited | ⚠️ Limited | ✅   |
-| Speech Synthesis   | ✅     | ✅         | ✅         | ✅   |
-| Web Audio API      | ✅     | ✅         | ✅         | ✅   |
+| Feature | Chrome | Edge | Safari | Firefox |
+|---------|--------|------|--------|---------|
+| Speech Recognition | ✅ | ✅ | ✅* | ⚠️ |
+| Speech Synthesis | ✅ | ✅ | ✅ | ✅ |
+| MediaDevices API | ✅ | ✅ | ✅ | ✅ |
 
-⚠️ **Note**: Speech Recognition API has limited support in Firefox and Safari. Chrome/Edge recommended for best experience.
+*Safari support may vary by version  
+⚠️ Firefox has limited Speech Recognition support
 
-## Architecture
+### Required Browser Features
 
-This example demonstrates the **composite mode** with clear responsibility boundaries:
+- Web Speech API (Speech Recognition)
+- Web Speech API (Speech Synthesis)
+- Media Devices API (getUserMedia)
+- ES Modules support
+- Promise support
 
-```
-Providers own I/O:
-  microphone → Native STT        Native TTS → speakers
+## Configuration
 
-SDK coordinates data flow:
-               STT → OpenAI LLM → TTS
-```
-
-### Responsibilities
-
-- **Native STT Provider**: Manages microphone access via browser's `SpeechRecognition` API
-- **OpenAI LLM Provider**: Processes text and generates responses
-- **Native TTS Provider**: Manages speaker output via browser's `SpeechSynthesis` API
-- **CompositeVoice SDK**: Connects the providers, manages state, and coordinates data flow
-
-### OpenAI LLM
-
-The example uses OpenAI's GPT-4o-mini model with:
-
-- Brief, conversational responses
-- Streaming text generation
-- 150 token limit for quick responses
-
-The OpenAI SDK is loaded from a CDN (jsDelivr) using an import map, avoiding the need for a build step in this simple browser example.
-
-## Customization
-
-### Change Voice
-
-Modify the TTS configuration:
+The example uses these default settings:
 
 ```javascript
-tts: new NativeTTS({
-  voice: 'Google UK English Female', // Change to any available voice
-  rate: 1.2, // Speed (0.1 to 10)
-  pitch: 0, // Pitch adjustment
-});
+// STT Configuration
+language: 'en-US'
+interimResults: true
+
+// LLM Configuration
+model: 'gpt-4o-mini'
+temperature: 0.7
+maxTokens: 150
+
+// TTS Configuration
+rate: 1.0
 ```
 
-List available voices in the browser console:
+You can modify these in `index.html` to experiment with different settings.
 
-```javascript
-speechSynthesis.getVoices().forEach((voice) => {
-  console.log(voice.name, voice.lang);
-});
-```
+## API Key Security
 
-### Change Language
+⚠️ **Important**: This example uses environment variables for the API key. For production applications:
 
-Modify the STT configuration:
-
-```javascript
-stt: new NativeSTT({
-  language: 'es-ES', // Spanish
-  interimResults: true,
-  continuous: true,
-});
-```
-
-## Security Note
-
-⚠️ **Important**: This example prompts for your OpenAI API key in the browser. This is fine for local development and testing, but **never expose your API key in production**. For production applications:
-
-- Use a backend server to proxy API requests
+- Never expose API keys in client-side code
+- Use a backend proxy to handle API requests
 - Implement proper authentication and rate limiting
-- Never commit API keys to source control
+- Store API keys in environment variables on the server
+- The `.env` file is already in `.gitignore` to prevent accidental commits
+
+## Development
+
+### Project Structure
+
+```
+examples/basic-browser/
+├── .env               # Environment variables (create from .env.example)
+├── .env.example       # Example environment configuration
+├── .gitignore         # Ignore .env and node_modules
+├── index.html         # Main application
+├── package.json       # npm dependencies and metadata
+├── project.json       # Nx project configuration
+├── vite.config.js     # Vite configuration
+└── README.md          # This file
+```
+
+### Local Development
+
+The example uses **Vite** for development:
+
+- **Hot Module Replacement**: Changes reflect instantly
+- **Fast builds**: Optimized for quick iteration
+- **ES Modules**: Native browser module support
+
+### Making Changes
+
+When you modify the SDK:
+
+```bash
+# Nx automatically rebuilds the SDK when you run the example
+pnpm example:basic-browser:dev
+```
+
+Or manually rebuild the SDK:
+
+```bash
+pnpm build
+```
 
 ## Troubleshooting
 
-### "Web Speech API is not supported in this browser"
+### "Cannot access microphone"
 
-- Use Chrome or Edge for best compatibility
-- Ensure you're using a recent browser version
-- Try enabling experimental features in `chrome://flags`
+- Grant microphone permissions in your browser
+- Use HTTPS in production (required for microphone access)
+- Check browser compatibility
 
-### No microphone access
+### "OpenAI API key is not configured"
 
-- Grant microphone permissions when prompted
-- Check browser settings: `chrome://settings/content/microphone`
-- HTTPS is required in production (file:// and localhost work for development)
+- Ensure you have a `.env` file in `examples/basic-browser/`
+- Add `VITE_OPENAI_API_KEY=sk-your-key` to the `.env` file
+- Restart the dev server after adding the key
+- Verify the key has access to the GPT-4o-mini model
+- Check your OpenAI account has available credits
 
-### Voice not working
+### "Speech Recognition not supported"
 
-- Check system volume
-- Ensure speakers/headphones are connected
-- Try a different voice (see customization above)
-- Some voices may not be available on all systems
+- Use a compatible browser (Chrome or Edge recommended)
+- Update your browser to the latest version
+- Try a different browser
 
-### Module not found errors
-
-Make sure you've built the main package:
+### SDK not found errors
 
 ```bash
-cd ../..
-pnpm run build
+# Rebuild the SDK
+pnpm build
+
+# Or let Nx handle it
+nx run example-basic-browser:dev
 ```
 
-### OpenAI API errors
+### Vite errors
 
-- **Invalid API key**: Double-check your API key at https://platform.openai.com/api-keys
-- **Rate limit errors**: You may need to add credits to your OpenAI account
-- **CORS errors**: Make sure you're serving the file from a local server (not file://)
-- **Model not found**: Ensure you have access to the gpt-4o-mini model (or change to gpt-3.5-turbo)
+```bash
+# Clear Nx cache
+nx reset
+
+# Reinstall dependencies
+pnpm install
+```
+
+## Learning Resources
+
+- [CompositeVoice Documentation](../../docs/)
+- [Nx Monorepo Setup](../../docs/Nx%20Monorepo%20Setup.md)
+- [Web Speech API (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [Vite Documentation](https://vitejs.dev)
 
 ## Next Steps
 
-- Check out the [Vite TypeScript example](../vite-typescript/) for a production-ready setup
-- See the [custom provider example](../custom-provider/) to create your own providers
-- Try the [all-in-one example](../all-in-one/) for lower latency with Deepgram Aura
+After trying this example:
+
+1. Explore other examples in the `examples/` directory
+2. Try different LLM providers (see SDK documentation)
+3. Implement custom providers
+4. Build your own voice application
+
+## License
+
+This example is part of the CompositeVoice project and uses the same MIT license.
