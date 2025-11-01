@@ -30,13 +30,9 @@ export type {
   LLMGenerationOptions,
   TTSProvider,
   TTSProviderConfig,
-  AllInOneProvider,
-  AllInOneProviderConfig,
 
   // Config types
   CompositeVoiceConfig,
-  CompositeConfig,
-  AllInOneConfig,
   AudioConfig,
   ReconnectionConfig,
   LoggingConfig,
@@ -71,7 +67,6 @@ export {
   BaseSTTProvider,
   BaseLLMProvider,
   BaseTTSProvider,
-  BaseAllInOneProvider,
 } from './providers/base/index';
 
 // Built-in providers

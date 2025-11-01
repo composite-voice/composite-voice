@@ -2,101 +2,132 @@
 
 This directory contains example applications demonstrating how to use the CompositeVoice SDK.
 
-## Examples
+Each example is a separate **Nx application** within the monorepo workspace, configured to use the SDK as a workspace dependency.
+
+## Available Examples
 
 ### 1. Basic Browser Example (`basic-browser/`)
 
-A simple HTML/JavaScript example using native browser APIs (Web Speech API) with a mock LLM. Perfect for getting started quickly without any API keys.
+A Vite-based browser application demonstrating CompositeVoice with:
 
-**Features:**
+- **Native browser STT** (Web Speech Recognition API)
+- **OpenAI GPT** for natural language processing
+- **Native browser TTS** (Speech Synthesis API)
+- Modern UI with state visualization
 
-- Native browser STT (Speech Recognition API)
-- Native browser TTS (Speech Synthesis API)
-- Mock LLM for demonstration
-- No build step required
+**Running:**
+```bash
+# From workspace root
+pnpm example:basic-browser:dev
 
-### 2. Vite + TypeScript Example (`vite-typescript/`)
+# Or using nx directly
+nx run example-basic-browser:dev
+```
 
-A modern Vite-based application with TypeScript, demonstrating integration with real LLM providers.
+**Building:**
+```bash
+pnpm example:basic-browser:build
+```
 
-**Features:**
+See [basic-browser/README.md](./basic-browser/README.md) for more details.
 
-- Vite for fast development
-- TypeScript for type safety
-- OpenAI integration
-- Hot module replacement
+## Workspace Structure
 
-### 3. Custom Provider Example (`custom-provider/`)
+All examples are part of the **Nx monorepo** and automatically depend on the root SDK package (`@lukeocodes/composite-voice`).
 
-Shows how to create and integrate custom STT, LLM, and TTS providers.
+### How It Works
 
-**Features:**
+When you run an example:
 
-- Custom provider implementation
-- Provider registration
-- Testing custom providers
+1. **Nx checks dependencies**: Determines if the SDK needs to be rebuilt
+2. **Builds SDK if needed**: Ensures the latest SDK changes are available
+3. **Runs the example**: Starts the example application with the built SDK
 
-### 4. All-in-One Example (`all-in-one/`)
+This ensures examples **always use the latest local SDK changes** without manual rebuilding.
 
-Demonstrates using an all-in-one provider (Deepgram Aura) for the complete voice pipeline.
+### Workspace Dependencies
 
-**Features:**
+Examples use the `workspace:*` protocol in their `package.json`:
 
-- Single provider setup
-- Lower latency
-- Real-time conversation
+```json
+{
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  }
+}
+```
 
-## Running Examples
+This tells pnpm to link to the local SDK package in the workspace.
 
-Each example is a standalone application. Navigate to the example directory and follow its README.
+## Adding New Examples
 
-### General Steps:
+To add a new example application, follow the guide in [Nx Monorepo Setup](../docs/Nx%20Monorepo%20Setup.md#adding-new-examples).
 
-1. **Build the main package** (from project root):
+### Quick Steps:
 
-   ```bash
-   pnpm install
-   pnpm run build
-   ```
+1. Create directory: `mkdir -p examples/my-example`
+2. Add `package.json` with workspace dependency
+3. Add `project.json` with Nx configuration
+4. Add scripts to root `package.json`
+5. Run `pnpm install`
 
-2. **Navigate to an example**:
+## Common Tasks
 
-   ```bash
-   cd examples/basic-browser
-   ```
+### Running All Example Tests
+```bash
+nx run-many --target=test --projects=tag:type:example
+```
 
-3. **Follow the example's README** for specific setup instructions
+### Building All Examples
+```bash
+nx run-many --target=build --projects=tag:type:example
+```
+
+### Viewing Dependency Graph
+```bash
+nx graph
+```
+
+This shows how examples depend on the SDK and each other.
 
 ## Requirements
 
 - Node.js >= 18.0.0
-- pnpm (or npm/yarn)
+- pnpm >= 8.0.0
 - Modern browser with Web Audio API support
+- Nx (installed as dev dependency)
 
-## Notes
+## Benefits of Nx Structure
 
-- Examples use the **built** version of CompositeVoice from `../../dist`
-- You must build the main package before running examples
-- Some examples require API keys (see individual READMEs)
-- For local development, rebuild the main package when making changes
+1. **Automatic dependency management**: SDK is built before examples
+2. **Fast rebuilds**: Nx caches build outputs
+3. **Affected commands**: Only rebuild what changed
+4. **Single install**: `pnpm install` at root installs everything
+5. **Consistent tooling**: Same commands across all examples
 
 ## Troubleshooting
 
 ### "Cannot find module '@lukeocodes/composite-voice'"
 
-Make sure you've built the main package:
+The SDK hasn't been built yet:
 
 ```bash
-cd ../..  # Go to project root
-pnpm run build
+# From workspace root
+pnpm build
+```
+
+Or just run the example - Nx will build the SDK automatically:
+
+```bash
+pnpm example:basic-browser:dev
 ```
 
 ### "Module not found" errors in examples
 
-Each example needs its dependencies installed:
+Install workspace dependencies:
 
 ```bash
-cd examples/[example-name]
+# From workspace root
 pnpm install
 ```
 
@@ -105,3 +136,18 @@ pnpm install
 - Check that your browser supports the required APIs
 - For Chrome, you may need to enable experimental features
 - HTTPS is required for microphone access in production
+- Make sure you've granted microphone permissions
+
+### Nx cache issues
+
+Clear the Nx cache:
+
+```bash
+nx reset
+```
+
+## Resources
+
+- [Nx Monorepo Setup Documentation](../docs/Nx%20Monorepo%20Setup.md)
+- [CompositeVoice Main README](../README.md)
+- [Nx Documentation](https://nx.dev)
