@@ -28,6 +28,7 @@ export abstract class BaseSTTProvider extends BaseProvider {
    * All STT providers send text via this callback
    */
   onTranscription(callback: (result: TranscriptionResult) => void): void {
+    this.logger.debug('Transcription callback registered');
     this.transcriptionCallback = callback;
   }
 
@@ -35,8 +36,16 @@ export abstract class BaseSTTProvider extends BaseProvider {
    * Emit transcription result to callback
    */
   protected emitTranscription(result: TranscriptionResult): void {
+    this.logger.debug('Emitting transcription', {
+      hasCallback: !!this.transcriptionCallback,
+      text: result.text,
+      isFinal: result.isFinal,
+    });
+
     if (this.transcriptionCallback) {
       this.transcriptionCallback(result);
+    } else {
+      this.logger.warn('No transcription callback registered - transcription dropped');
     }
   }
 
