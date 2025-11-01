@@ -1,0 +1,30 @@
+# Nx ignore patterns
+# Files and directories that Nx should not process
+
+# Build outputs
+dist/
+node_modules/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.cache/
+
+# Editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# Documentation that doesn't need processing
+prompt-log/
+
