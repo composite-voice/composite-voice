@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CompositeVoice - Eager Pipeline</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container { max-width: 920px; margin: 0 auto; }
+
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 0.3rem;
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .description {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+        .stack-badges {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .badge.stt   { background: rgba(6, 182, 212, 0.3); color: #67e8f9; }
+        .badge.llm   { background: rgba(139, 92, 246, 0.3); color: #c4b5fd; }
+        .badge.tts   { background: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+        .badge.eager { background: rgba(251, 191, 36, 0.3); color: #fcd34d; }
+
+        .status {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status.idle      .status-indicator { background: #475569; }
+        .status.ready     .status-indicator { background: #3b82f6; }
+        .status.listening .status-indicator { background: #f59e0b; }
+        .status.thinking  .status-indicator { background: #8b5cf6; }
+        .status.speaking  .status-indicator { background: #10b981; }
+        .status.error     .status-indicator { background: #ef4444; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        #status-text   { font-weight: 600; color: #e2e8f0; }
+        #status-detail { color: #94a3b8; font-size: 0.85rem; margin-left: auto; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 9px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        button:hover:not(:disabled) { background: #475569; transform: translateY(-1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button.danger  { background: #dc2626; color: white; }
+        button.primary { background: #0284c7; color: white; }
+
+        .pipeline {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .pipeline { grid-template-columns: 1fr; }
+        }
+
+        .stage {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 140px;
+        }
+
+        .stage h4 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stage.stt-stage  h4 { color: #67e8f9; }
+        .stage.llm-stage  h4 { color: #c4b5fd; }
+        .stage.tts-stage  h4 { color: #6ee7b7; }
+
+        .stage-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .stage-content {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #94a3b8;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .stage-content .interim  { color: #64748b; font-style: italic; }
+        .stage-content .final    { color: #e2e8f0; }
+        .stage-content .preflight { color: #fcd34d; font-style: italic; }
+        .stage-content .speech-final { color: #67e8f9; font-weight: 600; }
+        .stage-content .chunk    { color: #c4b5fd; }
+        .stage-content .complete { color: #a78bfa; }
+        .stage-content .tts-text { color: #6ee7b7; }
+
+        .timing-panel {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 14px;
+        }
+
+        .timing-panel h4 {
+            color: #fcd34d;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+        }
+
+        .timing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        @media (max-width: 500px) {
+            .timing-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .timing-stat { text-align: center; }
+        .timing-stat .value { font-size: 1.4rem; font-weight: 700; color: #fcd34d; }
+        .timing-stat .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
+
+        .error-banner {
+            background: #450a0a;
+            border: 1px solid #dc2626;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .error-banner.visible { display: block; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>CompositeVoice</h1>
+        <p class="subtitle">Example 03 — Eager Pipeline</p>
+        <p class="description">
+            Deepgram v2 models (e.g. <code>flux-general-en</code>) emit <strong>preflight</strong> signals
+            before speech ends, letting the LLM start generating eagerly — reducing perceived response latency.
+            This example visualises all three pipeline stages in real time.
+        </p>
+
+        <div class="stack-badges">
+            <span class="badge stt">STT: Deepgram nova-3</span>
+            <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge tts">TTS: Deepgram aura-2</span>
+            <span class="badge eager">Eager: eagerLLM enabled</span>
+        </div>
+
+        <div class="status idle" id="status">
+            <span class="status-indicator"></span>
+            <span id="status-text">Idle</span>
+            <span id="status-detail"></span>
+        </div>
+
+        <div id="error-banner" class="error-banner"></div>
+
+        <div class="controls">
+            <button id="init-btn" class="primary">Initialize</button>
+            <button id="start-btn" disabled>Start Listening</button>
+            <button id="stop-btn" disabled>Stop Listening</button>
+            <button id="dispose-btn" class="danger" disabled>Dispose</button>
+        </div>
+
+        <div class="pipeline">
+            <div class="stage stt-stage">
+                <h4><span class="stage-dot"></span> STT — Deepgram nova-3</h4>
+                <div class="stage-content" id="stt-log">
+                    <span style="font-style:italic;color:#475569">Waiting for speech...</span>
+                </div>
+            </div>
+            <div class="stage llm-stage">
+                <h4><span class="stage-dot"></span> LLM — claude-haiku-4-6</h4>
+                <div class="stage-content" id="llm-log">
+                    <span style="font-style:italic;color:#475569">Waiting for transcript...</span>
+                </div>
+            </div>
+            <div class="stage tts-stage">
+                <h4><span class="stage-dot"></span> TTS — Deepgram aura-2</h4>
+                <div class="stage-content" id="tts-log">
+                    <span style="font-style:italic;color:#475569">Waiting for response...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="timing-panel">
+            <h4>Pipeline timing (ms from utterance end)</h4>
+            <div class="timing-grid">
+                <div class="timing-stat">
+                    <div class="value" id="t-preflight">—</div>
+                    <div class="label">Preflight</div>
+                </div>
+                <div class="timing-stat">
+                    <div class="value" id="t-speech-final">—</div>
+                    <div class="label">Speech Final</div>
+                </div>
+                <div class="timing-stat">
+                    <div class="value" id="t-llm-first-token">—</div>
+                    <div class="label">LLM 1st Token</div>
+                </div>
+                <div class="timing-stat">
+                    <div class="value" id="t-tts-start">—</div>
+                    <div class="label">TTS Start</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            CompositeVoice,
+            DeepgramSTT,
+            DeepgramTTS,
+            AnthropicLLM,
+        } from '@lukeocodes/composite-voice';
+
+        const DEEPGRAM_API_KEY  = import.meta.env.VITE_DEEPGRAM_API_KEY;
+        const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+
+        let agent = null;
+        let t0 = null; // time of last preflight or speech_final (whichever comes first)
+
+        const statusEl    = document.getElementById('status');
+        const statusText  = document.getElementById('status-text');
+        const statusDetail= document.getElementById('status-detail');
+        const errorBanner = document.getElementById('error-banner');
+        const initBtn     = document.getElementById('init-btn');
+        const startBtn    = document.getElementById('start-btn');
+        const stopBtn     = document.getElementById('stop-btn');
+        const disposeBtn  = document.getElementById('dispose-btn');
+
+        const sttLog  = document.getElementById('stt-log');
+        const llmLog  = document.getElementById('llm-log');
+        const ttsLog  = document.getElementById('tts-log');
+
+        const tPreflight  = document.getElementById('t-preflight');
+        const tSpeechFinal= document.getElementById('t-speech-final');
+        const tFirstToken = document.getElementById('t-llm-first-token');
+        const tTtsStart   = document.getElementById('t-tts-start');
+
+        const STATE_LABELS = {
+            idle:'Idle', ready:'Ready', listening:'Listening...', thinking:'Thinking...', speaking:'Speaking...', error:'Error',
+        };
+
+        function updateStatus(state, detail='') {
+            statusEl.className = `status ${state}`;
+            statusText.textContent = STATE_LABELS[state] ?? state;
+            statusDetail.textContent = detail;
+        }
+
+        function showError(msg) {
+            errorBanner.textContent = msg;
+            errorBanner.classList.add('visible');
+        }
+
+        function clearError() { errorBanner.classList.remove('visible'); }
+
+        function logLine(container, text, cls) {
+            if (container.querySelector('[style]')) container.innerHTML = '';
+            const el = document.createElement('div');
+            if (cls) el.className = cls;
+            el.textContent = text;
+            container.appendChild(el);
+            container.scrollTop = container.scrollHeight;
+            if (container.children.length > 20) container.removeChild(container.firstChild);
+            return el;
+        }
+
+        function elapsed() {
+            return t0 ? `${Date.now() - t0}` : '—';
+        }
+
+        function resetTimers() {
+            t0 = null;
+            tPreflight.textContent  = '—';
+            tSpeechFinal.textContent = '—';
+            tFirstToken.textContent = '—';
+            tTtsStart.textContent   = '—';
+        }
+
+        initBtn.addEventListener('click', async () => {
+            clearError();
+            initBtn.disabled = true;
+
+            if (!DEEPGRAM_API_KEY || DEEPGRAM_API_KEY === 'your-deepgram-api-key-here') {
+                showError('VITE_DEEPGRAM_API_KEY is not set. Copy sample.env to .env and add your keys.');
+                initBtn.disabled = false;
+                return;
+            }
+            if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
+                showError('VITE_ANTHROPIC_API_KEY is not set. Copy sample.env to .env and add your keys.');
+                initBtn.disabled = false;
+                return;
+            }
+
+            try {
+                const stt = new DeepgramSTT({
+                    apiKey: DEEPGRAM_API_KEY,
+                    language: 'en-US',
+                    options: {
+                        // Use nova-3 with endpointing so speech_final fires reliably
+                        // Switch to 'flux-general-en' when your account has access to get preflight events
+                        model: 'nova-3',
+                        smartFormat: true,
+                        punctuation: true,
+                        interimResults: true,
+                        endpointing: 300,
+                        vadEvents: true,
+                    },
+                });
+
+                const llm = new AnthropicLLM({
+                    apiKey: ANTHROPIC_API_KEY,
+                    model: 'claude-haiku-4-6',
+                    systemPrompt: 'You are a helpful voice assistant. Keep responses to one or two sentences.',
+                    maxTokens: 150,
+                    temperature: 0.7,
+                    stream: true,
+                });
+
+                const tts = new DeepgramTTS({
+                    apiKey: DEEPGRAM_API_KEY,
+                    options: {
+                        model: 'aura-2-thalia-en',
+                        encoding: 'linear16',
+                        sampleRate: 24000,
+                    },
+                });
+
+                agent = new CompositeVoice({
+                    stt,
+                    llm,
+                    tts,
+                    // Enable eager LLM: start generating when preflight fires
+                    eagerLLM: {
+                        enabled: true,
+                        cancelOnTextChange: true,
+                    },
+                    logging: { enabled: true, level: 'debug' },
+                });
+
+                agent.on('agent.stateChange', (event) => {
+                    updateStatus(event.state);
+                });
+
+                // STT events
+                agent.on('transcription.interim', (event) => {
+                    if (event.text) logLine(sttLog, `interim: ${event.text}`, 'interim');
+                });
+
+                agent.on('transcription.preflight', (event) => {
+                    if (!t0) t0 = Date.now();
+                    tPreflight.textContent = '0 (baseline)';
+                    logLine(sttLog, `PREFLIGHT: ${event.text}`, 'preflight');
+                });
+
+                agent.on('transcription.speechFinal', (event) => {
+                    if (!t0) t0 = Date.now();
+                    tSpeechFinal.textContent = elapsed();
+                    logLine(sttLog, `SPEECH FINAL: ${event.text}`, 'speech-final');
+                });
+
+                agent.on('transcription.final', (event) => {
+                    if (event.text) logLine(sttLog, `segment: ${event.text}`, 'final');
+                });
+
+                // LLM events
+                let firstToken = true;
+                agent.on('llm.start', (event) => {
+                    firstToken = true;
+                    llmLog.innerHTML = '';
+                    logLine(llmLog, `Generating for: "${event.prompt.slice(0, 50)}..."`, 'final');
+                });
+
+                agent.on('llm.chunk', (event) => {
+                    if (firstToken) {
+                        tFirstToken.textContent = elapsed();
+                        firstToken = false;
+                    }
+                    const last = llmLog.querySelector('.chunk:last-child');
+                    if (last) {
+                        last.textContent += event.chunk;
+                    } else {
+                        logLine(llmLog, event.chunk, 'chunk');
+                    }
+                });
+
+                agent.on('llm.complete', (event) => {
+                    logLine(llmLog, `[done — ${event.text.length} chars]`, 'complete');
+                });
+
+                // TTS events
+                agent.on('tts.start', (event) => {
+                    tTtsStart.textContent = elapsed();
+                    ttsLog.innerHTML = '';
+                    logLine(ttsLog, `Synthesizing: "${event.text.slice(0, 60)}..."`, 'tts-text');
+                });
+
+                agent.on('tts.complete', () => {
+                    logLine(ttsLog, '[playback complete]', 'complete');
+                    resetTimers();
+                });
+
+                agent.on('agent.error', (event) => {
+                    showError(`Agent error: ${event.error.message}`);
+                });
+
+                await agent.initialize();
+
+                startBtn.disabled = false;
+                disposeBtn.disabled = false;
+                updateStatus('ready');
+            } catch (err) {
+                console.error('Initialization failed:', err);
+                showError(`Initialization failed: ${err.message}`);
+                initBtn.disabled = false;
+            }
+        });
+
+        startBtn.addEventListener('click', async () => {
+            clearError();
+            startBtn.disabled = true;
+            try {
+                resetTimers();
+                await agent.startListening();
+                stopBtn.disabled = false;
+            } catch (err) {
+                console.error('Failed to start listening:', err);
+                showError(`Failed to start listening: ${err.message}`);
+                startBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            try {
+                await agent.stopListening();
+                startBtn.disabled = false;
+            } catch (err) {
+                console.error('Failed to stop listening:', err);
+                showError(`Failed to stop listening: ${err.message}`);
+                stopBtn.disabled = false;
+            }
+        });
+
+        disposeBtn.addEventListener('click', async () => {
+            try {
+                await agent.dispose();
+                agent = null;
+                initBtn.disabled = false;
+                startBtn.disabled = true;
+                stopBtn.disabled = true;
+                disposeBtn.disabled = true;
+                updateStatus('idle');
+                resetTimers();
+            } catch (err) {
+                console.error('Failed to dispose:', err);
+                showError(`Failed to dispose: ${err.message}`);
+            }
+        });
+    </script>
+</body>
+
+</html>

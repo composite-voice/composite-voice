@@ -1,0 +1,35 @@
+{
+  "name": "example-02-conversation-history",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "examples/02-conversation-history",
+  "projectType": "application",
+  "tags": ["type:example", "scope:browser"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "vite",
+        "cwd": "examples/02-conversation-history"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "vite build",
+        "cwd": "examples/02-conversation-history"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "vite preview",
+        "cwd": "examples/02-conversation-history"
+      }
+    }
+  },
+  "implicitDependencies": ["@lukeocodes/composite-voice"]
+}

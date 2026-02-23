@@ -91,6 +91,30 @@ export interface TurnTakingConfig {
 }
 
 /**
+ * Eager LLM configuration for low-latency pipelines.
+ *
+ * When enabled, CompositeVoice starts the LLM speculatively the moment
+ * the STT provider emits a preflight / eager-end-of-turn signal — before
+ * speech_final is confirmed.  This shaves the speech-to-first-token latency
+ * for Deepgram v2 models (e.g. `flux-general-en`).
+ */
+export interface EagerLLMConfig {
+  /**
+   * Enable eager LLM start on STT preflight events.
+   * @default false
+   */
+  enabled: boolean;
+  /**
+   * Cancel the speculative generation and restart with the confirmed text
+   * if speech_final arrives with different text than the preflight.
+   * Set to false to always accept the preflight result (lower latency,
+   * small risk of a slightly-off response).
+   * @default true
+   */
+  cancelOnTextChange?: boolean;
+}
+
+/**
  * Conversation history configuration
  */
 export interface ConversationHistoryConfig {
@@ -126,6 +150,11 @@ export type CompositeVoiceConfig = ProviderConfig & {
    * When enabled, previous turns are sent to the LLM as context.
    */
   conversationHistory?: ConversationHistoryConfig;
+  /**
+   * Eager LLM configuration.
+   * When enabled, the LLM starts speculatively on STT preflight events.
+   */
+  eagerLLM?: EagerLLMConfig;
   /** Enable automatic error recovery */
   autoRecover?: boolean;
   /** Additional custom configuration */

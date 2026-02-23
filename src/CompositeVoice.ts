@@ -71,6 +71,10 @@ export class CompositeVoice {
   // Conversation history (when enabled via config)
   private conversationHistory: LLMMessage[] = [];
 
+  // Eager LLM pipeline state (preflight / speculative generation)
+  private eagerAbortController: AbortController | null = null;
+  private eagerText: string | null = null;
+
   private initialized = false;
 
   constructor(config: CompositeVoiceConfig) {
@@ -166,20 +170,68 @@ export class CompositeVoice {
 
     // Setup STT provider callbacks (all STT providers have onTranscription)
     stt.onTranscription((result) => {
-      const event = {
-        type: result.isFinal
-          ? ('transcription.final' as const)
-          : ('transcription.interim' as const),
-        text: result.text,
-        confidence: result.confidence,
-        timestamp: Date.now(),
-        metadata: result.metadata,
-      };
-      this.emitEvent(event as CompositeVoiceEvent);
+      if (result.isPreflight) {
+        // ── Preflight / eager end-of-turn ──────────────────────────────────
+        // Deepgram v2 models signal early completion before speech_final.
+        this.emitEvent({
+          type: 'transcription.preflight',
+          text: result.text,
+          confidence: result.confidence,
+          timestamp: Date.now(),
+          metadata: result.metadata,
+        } as CompositeVoiceEvent);
 
-      // If final transcription, send to LLM
-      if (result.isFinal && result.text.trim()) {
-        void this.processLLM(result.text);
+        if (this.config.eagerLLM?.enabled && result.text.trim()) {
+          this.startEagerLLM(result.text);
+        }
+        return;
+      }
+
+      // Determine whether this result marks a complete utterance.
+      // speechFinal is set by providers that distinguish segment-final
+      // (isFinal) from utterance-final (speechFinal).
+      // For providers that don't set speechFinal, fall back to isFinal.
+      const isUtteranceFinal = result.speechFinal ?? result.isFinal;
+
+      if (isUtteranceFinal && result.text.trim()) {
+        // ── Utterance complete ─────────────────────────────────────────────
+        this.emitEvent({
+          type: 'transcription.speechFinal',
+          text: result.text,
+          confidence: result.confidence,
+          timestamp: Date.now(),
+          metadata: result.metadata,
+        } as CompositeVoiceEvent);
+
+        // Also emit transcription.final for subscribers that only need text
+        this.emitEvent({
+          type: 'transcription.final',
+          text: result.text,
+          confidence: result.confidence,
+          timestamp: Date.now(),
+          metadata: result.metadata,
+        } as CompositeVoiceEvent);
+
+        this.handleSpeechFinal(result.text);
+      } else if (result.isFinal) {
+        // ── Mid-utterance segment finalised (Deepgram is_final, not speech_final) ──
+        // Emit for display/caption purposes but do NOT trigger LLM.
+        this.emitEvent({
+          type: 'transcription.final',
+          text: result.text,
+          confidence: result.confidence,
+          timestamp: Date.now(),
+          metadata: result.metadata,
+        } as CompositeVoiceEvent);
+      } else {
+        // ── Interim ───────────────────────────────────────────────────────
+        this.emitEvent({
+          type: 'transcription.interim',
+          text: result.text,
+          confidence: result.confidence,
+          timestamp: Date.now(),
+          metadata: result.metadata,
+        } as CompositeVoiceEvent);
       }
     });
 
@@ -224,15 +276,85 @@ export class CompositeVoice {
   }
 
   /**
-   * Process text through LLM
+   * Start a speculative ("eager") LLM generation on a preflight transcript.
+   * Stores an AbortController so it can be cancelled if speech_final arrives
+   * with different text.
    */
-  private async processLLM(text: string): Promise<void> {
+  private startEagerLLM(text: string): void {
+    // Cancel any previous speculative generation
+    if (this.eagerAbortController) {
+      this.logger.debug('Cancelling previous eager LLM generation');
+      this.eagerAbortController.abort();
+      this.eagerAbortController = null;
+      this.eagerText = null;
+    }
+
+    this.logger.debug('Starting eager LLM on preflight', { text });
+    const controller = new AbortController();
+    this.eagerAbortController = controller;
+    this.eagerText = text;
+
+    void this.processLLM(text, controller.signal).catch((err) => {
+      // AbortError is expected; surface other errors normally
+      if ((err as Error).name !== 'AbortError') {
+        this.logger.error('Eager LLM processing error', err);
+      }
+    });
+  }
+
+  /**
+   * Handle a confirmed speech_final utterance.
+   * Checks whether an eager generation is already running for this text.
+   */
+  private handleSpeechFinal(text: string): void {
+    if (!text.trim()) return;
+
+    if (this.eagerAbortController) {
+      const eagerText = this.eagerText;
+      const shouldCancel = this.config.eagerLLM?.cancelOnTextChange ?? true;
+
+      if (eagerText === text) {
+        // Exact match — eager generation is already running; let it complete.
+        this.logger.debug('speech_final matches preflight text — using eager generation');
+        this.eagerAbortController = null;
+        this.eagerText = null;
+        return;
+      }
+
+      if (shouldCancel) {
+        this.logger.debug('speech_final text differs from preflight — cancelling eager, restarting', {
+          preflight: eagerText,
+          final: text,
+        });
+        this.eagerAbortController.abort();
+        this.eagerAbortController = null;
+        this.eagerText = null;
+        void this.processLLM(text);
+      } else {
+        // Accept the preflight response even though text changed
+        this.logger.debug('speech_final text differs but cancelOnTextChange=false — accepting eager response');
+        this.eagerAbortController = null;
+        this.eagerText = null;
+      }
+    } else {
+      // No eager generation — normal path
+      void this.processLLM(text);
+    }
+  }
+
+  /**
+   * Process text through LLM
+   * @param signal Optional AbortSignal for cancellation (eager pipeline)
+   */
+  private async processLLM(text: string, signal?: AbortSignal): Promise<void> {
     // Only process if we're in a valid state (listening or error)
     // Ignore transcriptions that come in after stopping
     if (!this.agentStateMachine.isIn('listening', 'error')) {
       this.logger.debug('Ignoring transcription - not in listening state');
       return;
     }
+
+    if (signal?.aborted) return;
 
     // Update processing state machine → AgentStateMachine will derive 'thinking'
     this.processingStateMachine.setProcessing();
@@ -257,17 +379,32 @@ export class CompositeVoice {
         if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
           this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
         }
-        responseIterable = await llm.generateFromMessages(this.conversationHistory);
+        responseIterable = await llm.generateFromMessages(
+          this.conversationHistory,
+          signal ? { signal } : undefined
+        );
       } else {
-        responseIterable = await llm.generate(text);
+        responseIterable = await llm.generate(text, signal ? { signal } : undefined);
+      }
+
+      // Check if aborted before we start streaming (generate() may have taken time)
+      if (signal?.aborted) {
+        this.processingStateMachine.setIdle();
+        return;
       }
 
       let fullResponse = '';
+      let abortedMidStream = false;
 
       // Stream LLM response
       this.processingStateMachine.setStreaming();
 
       for await (const chunk of responseIterable) {
+        if (signal?.aborted) {
+          abortedMidStream = true;
+          break;
+        }
+
         fullResponse += chunk;
         this.emitEvent({
           type: 'llm.chunk',
@@ -276,10 +413,34 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
-        // If TTS is Live (WebSocket), send chunks
+        // If TTS is Live (WebSocket), send chunks in real-time
         if (isLiveTTS(tts)) {
           tts.sendText(chunk);
         }
+      }
+
+      if (abortedMidStream) {
+        // Eager generation was cancelled mid-stream.
+        // If Live TTS received partial text, we need to reset it.
+        this.logger.debug('LLM generation aborted mid-stream — resetting state');
+        if (isLiveTTS(tts) && this.playbackStateMachine.getState() !== 'idle') {
+          try {
+            await tts.disconnect();
+            await tts.connect();
+          } catch (err) {
+            this.logger.warn('Failed to reset Live TTS after abort', err);
+          }
+          const ps = this.playbackStateMachine.getState();
+          if (ps === 'buffering' || ps === 'playing') {
+            this.playbackStateMachine.setStopped();
+            this.playbackStateMachine.setIdle();
+          }
+        }
+        if (this.audioPlayer) {
+          await this.audioPlayer.stop();
+        }
+        this.processingStateMachine.setIdle();
+        return;
       }
 
       this.processingStateMachine.setComplete();
@@ -306,6 +467,13 @@ export class CompositeVoice {
       // Processing complete, reset to idle
       this.processingStateMachine.setIdle();
     } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // Expected during eager cancellation — reset quietly
+        this.logger.debug('LLM generation aborted via signal');
+        this.processingStateMachine.setIdle();
+        return;
+      }
+
       this.logger.error('LLM processing error', error);
       this.emitEvent({
         type: 'llm.error',
@@ -772,6 +940,13 @@ export class CompositeVoice {
       }
       if (this.agentStateMachine.is('speaking')) {
         await this.stopSpeaking();
+      }
+
+      // Cancel any in-flight eager generation
+      if (this.eagerAbortController) {
+        this.eagerAbortController.abort();
+        this.eagerAbortController = null;
+        this.eagerText = null;
       }
 
       // Clear conversation history

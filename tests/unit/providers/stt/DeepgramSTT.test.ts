@@ -253,20 +253,20 @@ describe('DeepgramSTT', () => {
 
       transcriptHandler!(mockResult);
 
+      // Interim result: isFinal=false, no speechFinal field, metadata has duration only
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: 'Hello world',
           isFinal: false,
           confidence: 0.95,
-          metadata: {
-            speechFinal: false,
+          metadata: expect.objectContaining({
             duration: 1.5,
-          },
+          }),
         })
       );
     });
 
-    it('should process final transcription results', async () => {
+    it('should process final transcription results with speechFinal as first-class field', async () => {
       let transcriptHandler: (data: unknown) => void;
 
       mockLiveClient.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
@@ -295,15 +295,19 @@ describe('DeepgramSTT', () => {
 
       transcriptHandler!(mockResult);
 
+      // With speech_final=true the provider emits two calls:
+      // 1. The segment itself (isFinal:true, speechFinal:false)
+      // 2. The accumulated utterance (isFinal:true, speechFinal:true)
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: 'Complete sentence.',
           isFinal: true,
+          speechFinal: true,
           confidence: 0.98,
-          metadata: {
+          metadata: expect.objectContaining({
             speechFinal: true,
             duration: 2.0,
-          },
+          }),
         })
       );
     });

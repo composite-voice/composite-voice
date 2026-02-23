@@ -135,27 +135,38 @@ export class OpenAILLM extends BaseLLMProvider {
     const client = this.client;
     const config = this.config;
     const logger = this.logger;
+    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
+        if (signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+
         try {
           logger.debug('Starting OpenAI streaming request', {
             model: config.model,
             messageCount: messages.length,
           });
 
-          const stream = await client.chat.completions.create({
+          const streamParams = {
             model: config.model,
             messages,
             temperature: options.temperature ?? null,
             max_tokens: options.maxTokens ?? null,
             top_p: config.topP ?? null,
             stop: options.stopSequences ?? null,
-            stream: true,
+            stream: true as const,
             ...options.extra,
-          });
+          };
+          const stream = signal
+            ? await client.chat.completions.create(streamParams, { signal })
+            : await client.chat.completions.create(streamParams);
 
           for await (const chunk of stream) {
+            if (signal?.aborted) break;
             const delta = chunk.choices[0]?.delta?.content;
             if (delta) {
               yield delta;
@@ -164,6 +175,11 @@ export class OpenAILLM extends BaseLLMProvider {
 
           logger.debug('OpenAI streaming request completed');
         } catch (error) {
+          if (signal?.aborted || (error as Error).name === 'AbortError') {
+            const err = new Error('AbortError');
+            err.name = 'AbortError';
+            throw err;
+          }
           logger.error('OpenAI streaming request failed', error);
           throw error;
         }
@@ -185,25 +201,35 @@ export class OpenAILLM extends BaseLLMProvider {
     const client = this.client;
     const config = this.config;
     const logger = this.logger;
+    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
+        if (signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+
         try {
           logger.debug('Starting OpenAI non-streaming request', {
             model: config.model,
             messageCount: messages.length,
           });
 
-          const response = await client.chat.completions.create({
+          const createParams = {
             model: config.model,
             messages,
             temperature: options.temperature ?? null,
             max_tokens: options.maxTokens ?? null,
             top_p: config.topP ?? null,
             stop: options.stopSequences ?? null,
-            stream: false,
+            stream: false as const,
             ...options.extra,
-          });
+          };
+          const response = signal
+            ? await client.chat.completions.create(createParams, { signal })
+            : await client.chat.completions.create(createParams);
 
           const content = response.choices[0]?.message?.content ?? '';
           yield content;
@@ -212,6 +238,11 @@ export class OpenAILLM extends BaseLLMProvider {
             tokensUsed: response.usage?.total_tokens,
           });
         } catch (error) {
+          if (signal?.aborted || (error as Error).name === 'AbortError') {
+            const err = new Error('AbortError');
+            err.name = 'AbortError';
+            throw err;
+          }
           logger.error('OpenAI non-streaming request failed', error);
           throw error;
         }

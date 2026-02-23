@@ -155,16 +155,23 @@ export class AnthropicLLM extends BaseLLMProvider {
     const client = this.client;
     const config = this.config;
     const logger = this.logger;
+    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
+        if (signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+
         try {
           logger.debug('Starting Anthropic streaming request', {
             model: config.model,
             messageCount: messages.length,
           });
 
-          const stream = client.messages.stream({
+          const streamParams = {
             model: config.model,
             max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
             messages,
@@ -173,9 +180,14 @@ export class AnthropicLLM extends BaseLLMProvider {
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(options.stopSequences ? { stop_sequences: options.stopSequences } : {}),
             ...(options.extra ?? {}),
-          });
+          };
+          // Pass AbortSignal to the Anthropic SDK so it can cancel the HTTP request
+          const stream = signal
+            ? client.messages.stream(streamParams, { signal })
+            : client.messages.stream(streamParams);
 
           for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
+            if (signal?.aborted) break;
             if (
               event.type === 'content_block_delta' &&
               event.delta.type === 'text_delta'
@@ -186,6 +198,11 @@ export class AnthropicLLM extends BaseLLMProvider {
 
           logger.debug('Anthropic streaming request completed');
         } catch (error) {
+          if (signal?.aborted || (error as Error).name === 'AbortError') {
+            const err = new Error('AbortError');
+            err.name = 'AbortError';
+            throw err;
+          }
           logger.error('Anthropic streaming request failed', error);
           throw error;
         }
@@ -208,16 +225,23 @@ export class AnthropicLLM extends BaseLLMProvider {
     const client = this.client;
     const config = this.config;
     const logger = this.logger;
+    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
+        if (signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+
         try {
           logger.debug('Starting Anthropic non-streaming request', {
             model: config.model,
             messageCount: messages.length,
           });
 
-          const response = await client.messages.create({
+          const createParams = {
             model: config.model,
             max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
             messages,
@@ -225,9 +249,12 @@ export class AnthropicLLM extends BaseLLMProvider {
             ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(options.stopSequences ? { stop_sequences: options.stopSequences } : {}),
-            stream: false,
+            stream: false as const,
             ...(options.extra ?? {}),
-          });
+          };
+          const response = signal
+            ? await client.messages.create(createParams, { signal })
+            : await client.messages.create(createParams);
 
           const content = response.content[0];
           if (content?.type === 'text') {
@@ -239,6 +266,11 @@ export class AnthropicLLM extends BaseLLMProvider {
             outputTokens: response.usage.output_tokens,
           });
         } catch (error) {
+          if (signal?.aborted || (error as Error).name === 'AbortError') {
+            const err = new Error('AbortError');
+            err.name = 'AbortError';
+            throw err;
+          }
           logger.error('Anthropic non-streaming request failed', error);
           throw error;
         }

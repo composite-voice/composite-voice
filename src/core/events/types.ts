@@ -38,6 +38,29 @@ export interface TranscriptionFinalEvent extends BaseEvent {
   confidence?: number;
 }
 
+/**
+ * Emitted when an utterance is fully complete (speech_final from Deepgram,
+ * or isFinal from providers that emit one result per utterance).
+ * This is the canonical trigger for LLM processing.
+ */
+export interface TranscriptionSpeechFinalEvent extends BaseEvent {
+  type: 'transcription.speechFinal';
+  text: string;
+  confidence?: number;
+}
+
+/**
+ * Emitted when a provider sends a preflight / eager-end-of-turn signal.
+ * Deepgram v2 models (e.g. flux-general-en) emit this before speech_final
+ * to allow downstream stages to start speculatively.
+ */
+export interface TranscriptionPreflightEvent extends BaseEvent {
+  type: 'transcription.preflight';
+  /** Provisional transcript — may change slightly when speech_final arrives */
+  text: string;
+  confidence?: number;
+}
+
 export interface TranscriptionErrorEvent extends BaseEvent {
   type: 'transcription.error';
   error: Error;
@@ -48,6 +71,8 @@ export type TranscriptionEvent =
   | TranscriptionStartEvent
   | TranscriptionInterimEvent
   | TranscriptionFinalEvent
+  | TranscriptionSpeechFinalEvent
+  | TranscriptionPreflightEvent
   | TranscriptionErrorEvent;
 
 /**
@@ -202,6 +227,8 @@ export interface EventListenerMap {
   'transcription.start': EventListener<TranscriptionStartEvent>;
   'transcription.interim': EventListener<TranscriptionInterimEvent>;
   'transcription.final': EventListener<TranscriptionFinalEvent>;
+  'transcription.speechFinal': EventListener<TranscriptionSpeechFinalEvent>;
+  'transcription.preflight': EventListener<TranscriptionPreflightEvent>;
   'transcription.error': EventListener<TranscriptionErrorEvent>;
 
   'llm.start': EventListener<LLMStartEvent>;

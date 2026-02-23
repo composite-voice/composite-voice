@@ -37,6 +37,8 @@ export type {
   ReconnectionConfig,
   LoggingConfig,
   ConversationHistoryConfig,
+  EagerLLMConfig,
+  TurnTakingConfig,
 } from './core/types/index';
 
 // Event types
@@ -47,6 +49,8 @@ export type {
   EventListener,
   EventListenerMap,
   TranscriptionEvent,
+  TranscriptionSpeechFinalEvent,
+  TranscriptionPreflightEvent,
   LLMEvent,
   TTSEvent,
   AgentEvent,

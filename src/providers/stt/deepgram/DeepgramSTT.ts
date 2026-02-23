@@ -75,6 +75,14 @@ export class DeepgramSTT extends LiveSTTProvider {
   private liveClient: LiveClient | null = null;
   private isConnected = false;
 
+  /**
+   * Accumulates `is_final` transcript segments within an utterance.
+   * Deepgram may split one utterance into multiple `is_final` chunks before
+   * emitting `speech_final`.  We buffer them so we can hand the complete
+   * utterance text to CompositeVoice as a single `speechFinal` result.
+   */
+  private utteranceBuffer: string[] = [];
+
   constructor(config: DeepgramSTTConfig, logger?: Logger) {
     const finalConfig = {
       language: config.language ?? 'en-US',
@@ -115,6 +123,7 @@ export class DeepgramSTT extends LiveSTTProvider {
     if (this.isConnected) {
       await this.disconnect();
     }
+    this.utteranceBuffer = [];
     this.liveClient = null;
     this.deepgram = null;
     this.logger.info('Deepgram STT disposed');
@@ -228,6 +237,8 @@ export class DeepgramSTT extends LiveSTTProvider {
           };
           is_final?: boolean;
           speech_final?: boolean;
+          /** Deepgram v2 eager/preflight end-of-turn signal */
+          preflight?: boolean;
           duration?: number;
         };
 
@@ -238,23 +249,109 @@ export class DeepgramSTT extends LiveSTTProvider {
         const confidence = alternative.confidence;
         const isFinal = transcriptData.is_final ?? false;
         const speechFinal = transcriptData.speech_final ?? false;
+        const isPreflight = transcriptData.preflight ?? false;
 
-        // Only emit if there's actual text or it's a final result
-        if (transcript || isFinal) {
-          const result: TranscriptionResult = {
+        // --- Preflight / eager end-of-turn (Deepgram v2 models) ---
+        // Emit early so CompositeVoice can start the LLM speculatively.
+        // We also emit a normal interim-style event so subscribers see the text.
+        if (isPreflight && transcript) {
+          this.logger.debug('Deepgram preflight (eager end-of-turn)', { transcript });
+          this.emitTranscription({
             text: transcript,
-            isFinal,
+            isFinal: false,
+            isPreflight: true,
             confidence,
-            metadata: {
-              speechFinal,
-              duration: transcriptData.duration,
-            },
-          };
+            metadata: { duration: transcriptData.duration },
+          });
+          return;
+        }
 
-          this.emitTranscription(result);
+        if (isFinal) {
+          // Accumulate this segment into the current utterance
+          if (transcript) {
+            this.utteranceBuffer.push(transcript);
+          }
+
+          if (speechFinal) {
+            // Utterance complete — emit with the fully accumulated text
+            const fullText = this.utteranceBuffer.join(' ').trim();
+            this.utteranceBuffer = [];
+
+            this.logger.debug('Deepgram speech_final — full utterance', { fullText });
+
+            // Always emit the final-segment event first so interim displays update
+            if (transcript) {
+              this.emitTranscription({
+                text: transcript,
+                isFinal: true,
+                speechFinal: false,
+                confidence,
+                metadata: { speechFinal: false, duration: transcriptData.duration },
+              });
+            }
+
+            // Emit the complete utterance as the speech-final result
+            this.emitTranscription({
+              text: fullText,
+              isFinal: true,
+              speechFinal: true,
+              confidence,
+              metadata: { speechFinal: true, duration: transcriptData.duration },
+            });
+          } else {
+            // Mid-utterance final segment — emit for display but not for LLM
+            if (transcript) {
+              this.emitTranscription({
+                text: transcript,
+                isFinal: true,
+                speechFinal: false,
+                confidence,
+                metadata: { speechFinal: false, duration: transcriptData.duration },
+              });
+            }
+          }
+        } else {
+          // Interim result — pass through as-is for real-time display
+          if (transcript) {
+            this.emitTranscription({
+              text: transcript,
+              isFinal: false,
+              confidence,
+              metadata: { duration: transcriptData.duration },
+            });
+          }
         }
       } catch (error) {
         this.logger.error('Error processing transcript', error);
+      }
+    });
+
+    // Handle Deepgram v2 EarlyEndOfTurn event (models like flux-general-en)
+    // This is a separate event type in newer SDK versions that signals the model
+    // believes the speaker has finished before speech_final is confirmed.
+    this.liveClient.on('EarlyEndOfTurn', (data: unknown) => {
+      try {
+        const earlyEnd = data as {
+          channel?: {
+            alternatives?: Array<{ transcript: string; confidence: number }>;
+          };
+        };
+        const transcript = earlyEnd?.channel?.alternatives?.[0]?.transcript ?? '';
+        const confidence = earlyEnd?.channel?.alternatives?.[0]?.confidence;
+
+        this.logger.debug('Deepgram EarlyEndOfTurn (preflight)', { transcript });
+
+        if (transcript) {
+          this.emitTranscription({
+            text: transcript,
+            isFinal: false,
+            isPreflight: true,
+            ...(confidence !== undefined && { confidence }),
+            metadata: { event: 'early_end_of_turn' },
+          });
+        }
+      } catch (error) {
+        this.logger.error('Error processing EarlyEndOfTurn event', error);
       }
     });
 
@@ -373,6 +470,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       });
 
       this.isConnected = false;
+      this.utteranceBuffer = [];
       this.liveClient = null;
 
       this.logger.info('Disconnected from Deepgram WebSocket');

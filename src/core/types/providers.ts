@@ -60,6 +60,27 @@ export interface TranscriptionResult {
   text: string;
   /** Whether this is a final transcription or interim */
   isFinal: boolean;
+  /**
+   * Whether this result marks the end of a complete utterance.
+   *
+   * For Deepgram: true when `speech_final=true` (speaker has stopped).
+   * For NativeSTT / other providers that emit one result per utterance: equals `isFinal`.
+   *
+   * CompositeVoice uses this (falling back to `isFinal`) to decide when to
+   * trigger LLM processing.  Multi-segment providers (Deepgram) may emit
+   * several `isFinal:true` chunks for a single utterance — only the last one
+   * has `speechFinal:true`.
+   */
+  speechFinal?: boolean;
+  /**
+   * Whether this is a preflight / eager-end-of-turn signal.
+   *
+   * Deepgram v2 models such as `flux-general-en` can emit this before
+   * `speech_final` to allow the next pipeline stage (LLM) to start
+   * generating speculatively.  The text may still change slightly when the
+   * confirmed `speech_final` arrives.
+   */
+  isPreflight?: boolean;
   /** Confidence score (0-1) if available */
   confidence?: number;
   /** Additional metadata from the provider */
@@ -181,6 +202,13 @@ export interface LLMGenerationOptions {
   maxTokens?: number;
   /** Override stop sequences */
   stopSequences?: string[];
+  /**
+   * AbortSignal for cancelling an in-flight generation.
+   * Providers that support cancellation (Anthropic, OpenAI) will stop
+   * yielding tokens and throw an AbortError when this signal fires.
+   * Used by CompositeVoice for the eager/preflight pipeline.
+   */
+  signal?: AbortSignal;
   /** Additional provider-specific options */
   extra?: Record<string, unknown>;
 }
