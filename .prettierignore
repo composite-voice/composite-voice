@@ -19,3 +19,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# Auto-generated
+CHANGELOG.md
+
