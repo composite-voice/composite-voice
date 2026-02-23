@@ -323,4 +323,11 @@ export class AudioCapture {
     this.config = { ...this.config, ...config };
     this.logger?.info('Audio configuration updated');
   }
+
+  /**
+   * Release all resources. Safe to call from any state.
+   */
+  async dispose(): Promise<void> {
+    await this.stop();
+  }
 }

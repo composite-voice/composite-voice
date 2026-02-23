@@ -63,6 +63,12 @@ export interface NativeSTTConfig extends STTProviderConfig {
   continuous?: boolean;
   /** Maximum number of alternatives */
   maxAlternatives?: number;
+  /**
+   * Maximum milliseconds to wait for the recognition `start` event after calling start().
+   * If the browser does not fire `onstart` within this window, connect() rejects.
+   * @default 5000
+   */
+  startTimeout?: number;
 }
 
 /**
@@ -255,20 +261,59 @@ export class NativeSTT extends LiveSTTProvider {
       );
     }
 
-    try {
-      this.logger.debug('Starting speech recognition');
-      this.recognition.start();
-      this.logger.info('✅ Started recognition');
-      return Promise.resolve();
-    } catch (error) {
-      // If already started, that's okay - state machine manages lifecycle
-      if (error instanceof Error && error.message.includes('already started')) {
-        this.logger.debug('Recognition already started (state machine handles this)');
-        return Promise.resolve();
+    const startTimeoutMs = this.config.startTimeout ?? 5000;
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.recognition) {
+        reject(new ProviderConnectionError('NativeSTT', new Error('Recognition not initialized')));
+        return;
       }
-      this.logger.error('Failed to start recognition', error);
-      throw new ProviderConnectionError('NativeSTT', error as Error);
-    }
+
+      const timeout = setTimeout(() => {
+        // Restore onstart in case it fires late
+        if (this.recognition) {
+          this.recognition.onstart = () => {
+            this.logger.info('Recognition started (late)');
+          };
+        }
+        reject(
+          new ProviderConnectionError(
+            'NativeSTT',
+            new Error(`Recognition did not start within ${startTimeoutMs}ms`)
+          )
+        );
+      }, startTimeoutMs);
+
+      const prevOnStart = this.recognition.onstart;
+      this.recognition.onstart = (event: Event) => {
+        clearTimeout(timeout);
+        // Restore original onstart handler for subsequent calls
+        if (this.recognition) {
+          this.recognition.onstart = prevOnStart;
+        }
+        prevOnStart?.call(this.recognition!, event);
+        this.logger.info('✅ Started recognition');
+        resolve();
+      };
+
+      try {
+        this.logger.debug('Starting speech recognition');
+        this.recognition.start();
+      } catch (error) {
+        clearTimeout(timeout);
+        if (this.recognition) {
+          this.recognition.onstart = prevOnStart;
+        }
+        // If already started, that's okay - state machine manages lifecycle
+        if (error instanceof Error && error.message.includes('already started')) {
+          this.logger.debug('Recognition already started (state machine handles this)');
+          resolve();
+          return;
+        }
+        this.logger.error('Failed to start recognition', error);
+        reject(new ProviderConnectionError('NativeSTT', error as Error));
+      }
+    });
   }
 
   /**
