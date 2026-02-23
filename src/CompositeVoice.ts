@@ -192,8 +192,12 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
-        // Play audio via AudioPlayer (unless native TTS)
         if (this.audioPlayer) {
+          // Transition from idle → buffering when first audio chunk arrives,
+          // signalling the AgentStateMachine that the agent is now speaking.
+          if (this.playbackStateMachine.getState() === 'idle') {
+            this.playbackStateMachine.setBuffering();
+          }
           void this.audioPlayer.addChunk(chunk);
         }
       });
@@ -269,8 +273,8 @@ export class CompositeVoice {
       if (isRestTTS(tts)) {
         await this.processTTS(fullResponse);
       } else if (isLiveTTS(tts)) {
-        // Finalize streaming TTS
-        await tts.finalize();
+        // Live TTS: finalize synthesis and wait for audio playback to complete
+        await this.finalizeLiveTTS(fullResponse);
       }
 
       // Processing complete, reset to idle
@@ -404,7 +408,113 @@ export class CompositeVoice {
     }
   }
 
-  // Playback handling removed - providers manage their own I/O
+  /**
+   * Handle Live TTS finalization: pause capture, wait for audio, update states, resume capture.
+   * This is the Live TTS analogue of processTTS() for REST TTS.
+   */
+  private async finalizeLiveTTS(fullText: string): Promise<void> {
+    this.emitEvent({
+      type: 'tts.start',
+      text: fullText,
+      timestamp: Date.now(),
+    });
+
+    try {
+      const { stt, tts } = this.config;
+
+      // Pause capture while audio plays to prevent echo
+      const captureState = this.captureStateMachine.getState();
+      if (captureState === 'active') {
+        this.captureStateMachine.setPaused();
+        if (isLiveSTT(stt)) {
+          await stt.disconnect();
+        }
+      } else if (captureState === 'error') {
+        this.logger.warn('Capture in error state during Live TTS, skipping pause');
+      }
+
+      if (isLiveTTS(tts)) {
+        // Finalize the TTS provider (flushes remaining text)
+        await tts.finalize();
+
+        // Wait for AudioPlayer to drain all queued audio
+        if (this.audioPlayer) {
+          await this.audioPlayer.waitForCompletion();
+        }
+      }
+
+      // Playback complete: buffering/playing → stopped → idle
+      const playbackState = this.playbackStateMachine.getState();
+      if (playbackState === 'buffering' || playbackState === 'playing') {
+        this.playbackStateMachine.setStopped();
+        this.playbackStateMachine.setIdle();
+      } else if (playbackState === 'idle') {
+        // No audio was received from TTS (empty response) - nothing to do
+      }
+
+      // Resume capture
+      const resumeCaptureState = this.captureStateMachine.getState();
+      if (resumeCaptureState === 'paused') {
+        if (isLiveSTT(stt)) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      } else if (resumeCaptureState === 'error') {
+        this.captureStateMachine.setIdle();
+        this.captureStateMachine.setStarting();
+        if (isLiveSTT(stt)) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      }
+
+      this.emitEvent({
+        type: 'tts.complete',
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      this.logger.error('Live TTS finalization error', error);
+
+      const playbackState = this.playbackStateMachine.getState();
+      if (playbackState !== 'error' && playbackState !== 'idle') {
+        try {
+          this.playbackStateMachine.setStopped();
+          this.playbackStateMachine.setIdle();
+        } catch {
+          // Ignore state transition errors during recovery
+        }
+      }
+
+      // Try to resume STT capture
+      try {
+        const { stt } = this.config;
+        const captureState = this.captureStateMachine.getState();
+        if (captureState === 'error') {
+          this.captureStateMachine.setIdle();
+          this.captureStateMachine.setStarting();
+        }
+        if (isLiveSTT(stt)) {
+          await stt.connect();
+        }
+        this.captureStateMachine.setActive();
+      } catch (recoveryError) {
+        this.logger.error('Failed to recover capture after Live TTS error', recoveryError);
+        if (this.captureStateMachine.getState() !== 'error') {
+          this.captureStateMachine.setError();
+        }
+      }
+
+      this.emitEvent({
+        type: 'tts.error',
+        error: error as Error,
+        recoverable: true,
+        timestamp: Date.now(),
+      });
+
+      this.agentStateMachine.setError();
+      throw error;
+    }
+  }
 
   /**
    * Start listening for user input

@@ -372,6 +372,22 @@ export class AudioPlayer {
   }
 
   /**
+   * Wait for all queued audio to finish playing.
+   * Resolves when the queue is empty and state returns to idle.
+   * @param timeoutMs Maximum wait time in milliseconds (default 30 seconds)
+   */
+  async waitForCompletion(timeoutMs = 30000): Promise<void> {
+    const start = Date.now();
+    while (this.isProcessingQueue || this.audioQueue.length > 0 || this.state !== 'idle') {
+      if (Date.now() - start > timeoutMs) {
+        this.logger?.warn('waitForCompletion timed out — audio may still be playing');
+        break;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  /**
    * Handle playback errors
    */
   private handleError(error: Error): void {
