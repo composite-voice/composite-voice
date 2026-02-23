@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# pnpm local store (when store-dir is inside the workspace)
+.pnpm-store/
+
 # Build output
 dist/
 build/
@@ -14,10 +17,11 @@ coverage/
 .env
 .env.local
 .env.*.local
+.env.op
 
-# Example environment files (but keep .env.example)
+# Example environment files (keep sample.env, ignore real .env)
 examples/**/.env
-!examples/**/.env.example
+examples/**/.env.local
 
 # IDE
 .vscode/
@@ -43,4 +47,10 @@ lerna-debug.log*
 .cache/
 dependency-graph.html
 static/
+
+# Docker (local dev files, not committed)
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
 
