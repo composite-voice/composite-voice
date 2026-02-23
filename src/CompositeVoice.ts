@@ -26,7 +26,8 @@ import { AudioCapture } from './core/audio/AudioCapture';
 import { AudioPlayer } from './core/audio/AudioPlayer';
 import { Logger, createLogger } from './utils/logger';
 import { ConfigurationError, InvalidStateError } from './utils/errors';
-import { DEFAULT_LOGGING_CONFIG } from './core/types/config';
+import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
+import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 
 /**
  * Type guard to check if STT provider is Live (WebSocket)
@@ -329,10 +330,12 @@ export class CompositeVoice {
 
     try {
       const { stt, tts } = this.config;
+      const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
+      const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
-      // Pause capture while speaking to prevent echo
+      // Optionally pause capture while speaking to prevent echo
       const captureState = this.captureStateMachine.getState();
-      if (captureState === 'active') {
+      if (shouldPause && captureState === 'active') {
         this.captureStateMachine.setPaused();
         if (isLiveSTT(stt)) {
           await stt.disconnect();
@@ -446,10 +449,12 @@ export class CompositeVoice {
 
     try {
       const { stt, tts } = this.config;
+      const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
+      const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
-      // Pause capture while audio plays to prevent echo
+      // Optionally pause capture while audio plays to prevent echo
       const captureState = this.captureStateMachine.getState();
-      if (captureState === 'active') {
+      if (shouldPause && captureState === 'active') {
         this.captureStateMachine.setPaused();
         if (isLiveSTT(stt)) {
           await stt.disconnect();
