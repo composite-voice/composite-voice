@@ -18,11 +18,26 @@ type MessageParam = import('@anthropic-ai/sdk/resources/messages').MessageParam;
 type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').MessageStreamEvent;
 
 /**
- * Anthropic LLM provider configuration
+ * Anthropic LLM provider configuration.
+ * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
+ * At least one must be set; if both are provided `proxyUrl` takes precedence.
  */
 export interface AnthropicLLMConfig extends LLMProviderConfig {
-  /** Anthropic API key */
-  apiKey: string;
+  /**
+   * Anthropic API key.
+   * Required when connecting directly to Anthropic.
+   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   */
+  apiKey?: string;
+  /**
+   * URL of the CompositeVoice proxy server's Anthropic endpoint.
+   * Example: `'http://localhost:3000/api/proxy/anthropic'`
+   *
+   * When set, the Anthropic SDK sends requests to this URL instead of
+   * `https://api.anthropic.com`, allowing browsers to reach Anthropic through a
+   * same-origin proxy that injects the real API key server-side.
+   */
+  proxyUrl?: string;
   /**
    * Model to use.
    * Fastest (default): 'claude-haiku-4-6'
@@ -32,7 +47,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
   model: string;
   /** Maximum tokens to generate (required by Anthropic API, defaults to 1024) */
   maxTokens?: number;
-  /** Base URL for API (optional, for custom endpoints) */
+  /** Base URL for API (optional, for custom endpoints — use `proxyUrl` for proxy) */
   baseURL?: string;
   /** Maximum retries for failed requests */
   maxRetries?: number;
@@ -57,15 +72,27 @@ export class AnthropicLLM extends BaseLLMProvider {
   }
 
   protected async onInitialize(): Promise<void> {
+    if (!this.config.apiKey && !this.config.proxyUrl) {
+      throw new ProviderInitializationError(
+        'AnthropicLLM',
+        new Error('AnthropicLLM requires either "apiKey" or "proxyUrl" to be configured.')
+      );
+    }
+
     try {
       // Dynamically import Anthropic SDK (peer dependency)
       const AnthropicModule = await import('@anthropic-ai/sdk');
       const Anthropic = AnthropicModule.default;
 
+      // When using a proxy, point the SDK at the proxy URL with a dummy key.
+      // The proxy server injects the real Anthropic API key.
+      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+
       // Initialize Anthropic client
       this.client = new Anthropic({
-        apiKey: this.config.apiKey,
-        baseURL: this.config.baseURL,
+        apiKey,
+        baseURL,
         maxRetries: this.config.maxRetries ?? 3,
         timeout: this.config.timeout ?? 60000,
         dangerouslyAllowBrowser: true,

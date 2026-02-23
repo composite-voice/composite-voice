@@ -18,16 +18,27 @@ type ChatCompletionMessageParam =
   import('openai/resources/chat/completions').ChatCompletionMessageParam;
 
 /**
- * OpenAI LLM provider configuration
+ * OpenAI LLM provider configuration.
+ * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
+ * At least one must be set; if both are provided `proxyUrl` takes precedence.
  */
 export interface OpenAILLMConfig extends LLMProviderConfig {
-  /** OpenAI API key */
-  apiKey: string;
+  /**
+   * OpenAI API key.
+   * Required when connecting directly to OpenAI.
+   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   */
+  apiKey?: string;
+  /**
+   * URL of the CompositeVoice proxy server's OpenAI endpoint.
+   * Example: `'http://localhost:3000/api/proxy/openai'`
+   */
+  proxyUrl?: string;
   /** Model to use (e.g., 'gpt-4', 'gpt-3.5-turbo') */
   model: string;
   /** Organization ID (optional) */
   organizationId?: string;
-  /** Base URL for API (optional, for custom endpoints) */
+  /** Base URL for API (optional, for custom endpoints — use `proxyUrl` for proxy) */
   baseURL?: string;
   /** Maximum retries for failed requests */
   maxRetries?: number;
@@ -46,19 +57,29 @@ export class OpenAILLM extends BaseLLMProvider {
   }
 
   protected async onInitialize(): Promise<void> {
+    if (!this.config.apiKey && !this.config.proxyUrl) {
+      throw new ProviderInitializationError(
+        'OpenAILLM',
+        new Error('OpenAILLM requires either "apiKey" or "proxyUrl" to be configured.')
+      );
+    }
+
     try {
       // Dynamically import OpenAI SDK (peer dependency)
       const OpenAIModule = await import('openai');
       const OpenAI = OpenAIModule.default;
 
+      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+
       // Initialize OpenAI client
       this.client = new OpenAI({
-        apiKey: this.config.apiKey,
+        apiKey,
         organization: this.config.organizationId,
-        baseURL: this.config.baseURL,
+        baseURL,
         maxRetries: this.config.maxRetries ?? 3,
         timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true, // Allow browser usage
+        dangerouslyAllowBrowser: true,
       });
 
       this.logger.info('OpenAI LLM initialized', {

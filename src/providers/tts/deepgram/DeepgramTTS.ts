@@ -36,11 +36,22 @@ export interface DeepgramTTSOptions {
 }
 
 /**
- * Deepgram TTS provider configuration
+ * Deepgram TTS provider configuration.
+ * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
+ * At least one must be set; if both are provided `proxyUrl` takes precedence.
  */
 export interface DeepgramTTSConfig extends TTSProviderConfig {
-  /** Deepgram API key */
-  apiKey: string;
+  /**
+   * Deepgram API key.
+   * Required when connecting directly to Deepgram.
+   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   */
+  apiKey?: string;
+  /**
+   * URL of the CompositeVoice proxy server's Deepgram endpoint.
+   * Example: `'http://localhost:3000/api/proxy/deepgram'`
+   */
+  proxyUrl?: string;
   /** Deepgram TTS options */
   options?: DeepgramTTSOptions;
 }
@@ -67,19 +78,30 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   protected async onInitialize(): Promise<void> {
+    if (!this.config.apiKey && !this.config.proxyUrl) {
+      throw new ProviderInitializationError(
+        'DeepgramTTS',
+        new Error('DeepgramTTS requires either "apiKey" or "proxyUrl" to be configured.')
+      );
+    }
+
     try {
       // Dynamically import Deepgram SDK (peer dependency)
       const DeepgramModule = await import('@deepgram/sdk');
       const { createClient } = DeepgramModule;
 
-      // Initialize Deepgram client
-      this.deepgram = createClient(this.config.apiKey);
-
-      this.logger.info('Deepgram TTS initialized (WebSocket mode)', {
-        model: this.config.options?.model ?? this.config.voice,
-        sampleRate: this.config.sampleRate,
-        encoding: this.config.options?.encoding ?? this.config.outputFormat,
-      });
+      if (this.config.proxyUrl) {
+        const wsUrl = this.config.proxyUrl.replace(/^http/, 'ws');
+        this.deepgram = createClient('proxy', { global: { url: wsUrl } });
+        this.logger.info('Deepgram TTS initialized (proxy mode)', { proxyUrl: wsUrl });
+      } else {
+        this.deepgram = createClient(this.config.apiKey as string);
+        this.logger.info('Deepgram TTS initialized (WebSocket mode)', {
+          model: this.config.options?.model ?? this.config.voice,
+          sampleRate: this.config.sampleRate,
+          encoding: this.config.options?.encoding ?? this.config.outputFormat,
+        });
+      }
     } catch (error) {
       if ((error as Error).message?.includes('Cannot find module')) {
         throw new ProviderInitializationError(

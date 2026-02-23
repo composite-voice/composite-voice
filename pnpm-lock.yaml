@@ -36,6 +36,9 @@ importers:
       '@types/node':
         specifier: ^20.11.30
         version: 20.19.22
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@typescript-eslint/eslint-plugin':
         specifier: ^7.3.1
         version: 7.18.0(@typescript-eslint/parser@7.18.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
@@ -77,6 +80,35 @@ importers:
         version: 5.9.3
 
   examples/01-deepgram-anthropic-deepgram:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0
+      '@deepgram/sdk':
+        specifier: '>=4.11.2'
+        version: 4.11.2
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
+  examples/02-conversation-history:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
+  examples/03-eager-pipeline:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
@@ -1552,6 +1584,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -5423,6 +5458,10 @@ snapshots:
   '@types/stack-utils@2.0.3': {}
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 20.19.22
 
   '@types/yargs-parser@21.0.3': {}
 

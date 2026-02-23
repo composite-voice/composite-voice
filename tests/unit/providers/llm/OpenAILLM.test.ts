@@ -59,17 +59,18 @@ describe('OpenAILLM', () => {
       expect(retrievedConfig.apiKey).toBe('test-api-key');
     });
 
-    it('should throw ProviderInitializationError if SDK not found', async () => {
-      // This test validates that the error handling works, but since we need openai
-      // mocked for other tests, we'll just verify the error type in a simpler way
-      // by checking that initialization errors are wrapped correctly
-
-      // Create a provider that will fail during actual SDK instantiation
-      const badConfig = { ...config, apiKey: '' };
+    it('should throw ProviderInitializationError when neither apiKey nor proxyUrl is set', async () => {
+      const badConfig: OpenAILLMConfig = { model: 'gpt-4' };
       const testProvider = new OpenAILLM(badConfig);
+      await expect(testProvider.initialize()).rejects.toMatchObject({
+        name: 'ProviderInitializationError',
+        message: expect.stringContaining('OpenAILLM'),
+      });
+    });
 
-      // The provider should initialize (since SDK is mocked)
-      // In real usage, a missing SDK would throw the appropriate error
+    it('should initialize successfully using proxyUrl instead of apiKey', async () => {
+      const proxyConfig: OpenAILLMConfig = { model: 'gpt-4', proxyUrl: 'http://localhost:3000/proxy/openai' };
+      const testProvider = new OpenAILLM(proxyConfig);
       await expect(testProvider.initialize()).resolves.not.toThrow();
       await testProvider.dispose();
     });
