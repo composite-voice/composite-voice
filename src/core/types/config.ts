@@ -91,6 +91,25 @@ export interface TurnTakingConfig {
 }
 
 /**
+ * Conversation history configuration
+ */
+export interface ConversationHistoryConfig {
+  /**
+   * Enable conversation history.
+   * When true, all turns are accumulated and sent to the LLM as context.
+   * @default false
+   */
+  enabled: boolean;
+  /**
+   * Maximum number of conversation turns to retain (user + assistant pairs).
+   * Oldest turns are dropped when the limit is reached.
+   * 0 means unlimited.
+   * @default 0
+   */
+  maxTurns?: number;
+}
+
+/**
  * Main SDK configuration
  */
 export type CompositeVoiceConfig = ProviderConfig & {
@@ -102,6 +121,11 @@ export type CompositeVoiceConfig = ProviderConfig & {
   logging?: LoggingConfig;
   /** Turn-taking behavior configuration */
   turnTaking?: TurnTakingConfig;
+  /**
+   * Conversation history configuration.
+   * When enabled, previous turns are sent to the LLM as context.
+   */
+  conversationHistory?: ConversationHistoryConfig;
   /** Enable automatic error recovery */
   autoRecover?: boolean;
   /** Additional custom configuration */

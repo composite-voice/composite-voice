@@ -16,7 +16,11 @@ type LiveClient = import('@deepgram/sdk').LiveClient;
  * Deepgram-specific transcription options
  */
 export interface DeepgramTranscriptionOptions {
-  /** Model to use (e.g., 'nova-2', 'nova', 'enhanced', 'base') */
+  /**
+   * Model to use.
+   * Latest (default): 'nova-3'
+   * Previous: 'nova-2', 'nova', 'enhanced', 'base'
+   */
   model?: string;
   /** Language code (e.g., 'en-US', 'es') */
   language?: string;

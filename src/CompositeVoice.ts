@@ -16,6 +16,7 @@ import type {
   LiveSTTProvider,
   LiveTTSProvider,
   RestTTSProvider,
+  LLMMessage,
 } from './core/types/providers';
 import { AgentStateMachine } from './core/state/AgentStateMachine';
 import { SimpleAudioCaptureStateMachine as AudioCaptureStateMachine } from './core/state/SimpleAudioCaptureStateMachine';
@@ -63,8 +64,11 @@ export class CompositeVoice {
   private agentStateMachine: AgentStateMachine;
 
   // Audio I/O (only for non-native providers)
-  private audioCapture?: AudioCapture;
-  private audioPlayer?: AudioPlayer;
+  private audioCapture: AudioCapture | undefined = undefined;
+  private audioPlayer: AudioPlayer | undefined = undefined;
+
+  // Conversation history (when enabled via config)
+  private conversationHistory: LLMMessage[] = [];
 
   private initialized = false;
 
@@ -240,7 +244,23 @@ export class CompositeVoice {
 
     try {
       const { llm, tts } = this.config;
-      const responseIterable = await llm.generate(text);
+      const historyConfig = this.config.conversationHistory;
+      const useHistory = historyConfig?.enabled === true;
+
+      // Build message list and get response iterable
+      let responseIterable: AsyncIterable<string>;
+      if (useHistory) {
+        this.conversationHistory.push({ role: 'user', content: text });
+        // Trim to maxTurns (each turn = 1 user msg + 1 assistant msg = 2 entries)
+        const maxTurns = historyConfig?.maxTurns ?? 0;
+        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
+          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
+        }
+        responseIterable = await llm.generateFromMessages(this.conversationHistory);
+      } else {
+        responseIterable = await llm.generate(text);
+      }
+
       let fullResponse = '';
 
       // Stream LLM response
@@ -268,6 +288,11 @@ export class CompositeVoice {
         text: fullResponse,
         timestamp: Date.now(),
       });
+
+      // Append assistant response to history
+      if (useHistory && fullResponse) {
+        this.conversationHistory.push({ role: 'assistant', content: fullResponse });
+      }
 
       // REST TTS - send full response
       if (isRestTTS(tts)) {
@@ -608,13 +633,42 @@ export class CompositeVoice {
   }
 
   /**
-   * Stop speaking (cancel TTS)
-   * Note: This is provider-specific - not all providers support cancellation
+   * Stop speaking (cancel TTS playback)
    */
   async stopSpeaking(): Promise<void> {
     this.assertInitialized();
-    // Providers handle their own playback - SDK can't stop it directly
-    this.logger.warn('stopSpeaking() - providers manage their own audio, cannot cancel from SDK');
+
+    if (!this.agentStateMachine.is('speaking')) {
+      this.logger.debug('stopSpeaking() called but not currently speaking');
+      return;
+    }
+
+    try {
+      const { tts } = this.config;
+
+      if (this.audioPlayer) {
+        await this.audioPlayer.stop();
+      }
+
+      if (isLiveTTS(tts)) {
+        await tts.disconnect();
+      }
+
+      const playbackState = this.playbackStateMachine.getState();
+      if (playbackState !== 'idle' && playbackState !== 'error') {
+        try {
+          this.playbackStateMachine.setStopped();
+          this.playbackStateMachine.setIdle();
+        } catch {
+          // ignore invalid transitions
+        }
+      }
+
+      this.emitEvent({ type: 'tts.complete', timestamp: Date.now() });
+    } catch (error) {
+      this.logger.error('Failed to stop speaking', error);
+      throw error;
+    }
   }
 
   /**
@@ -659,6 +713,22 @@ export class CompositeVoice {
   }
 
   /**
+   * Get a copy of the current conversation history.
+   * Returns an empty array if history is not enabled.
+   */
+  getHistory(): LLMMessage[] {
+    return [...this.conversationHistory];
+  }
+
+  /**
+   * Clear conversation history.
+   */
+  clearHistory(): void {
+    this.conversationHistory = [];
+    this.logger.debug('Conversation history cleared');
+  }
+
+  /**
    * Check if initialized
    */
   isReady(): boolean {
@@ -697,6 +767,19 @@ export class CompositeVoice {
       }
       if (this.agentStateMachine.is('speaking')) {
         await this.stopSpeaking();
+      }
+
+      // Clear conversation history
+      this.conversationHistory = [];
+
+      // Stop and dispose SDK-managed audio I/O
+      if (this.audioCapture) {
+        await this.audioCapture.stop();
+        this.audioCapture = undefined;
+      }
+      if (this.audioPlayer) {
+        await this.audioPlayer.dispose();
+        this.audioPlayer = undefined;
       }
 
       // Dispose providers (they handle their own audio cleanup)

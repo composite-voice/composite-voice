@@ -36,6 +36,7 @@ export type {
   AudioConfig,
   ReconnectionConfig,
   LoggingConfig,
+  ConversationHistoryConfig,
 } from './core/types/index';
 
 // Event types

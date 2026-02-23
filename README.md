@@ -32,96 +32,53 @@ pnpm add @deepgram/sdk
 
 ## Quick Start
 
-### Using Native Browser APIs
+### Deepgram + Anthropic (Recommended)
+
+Best-in-class real-time STT + fastest LLM + streaming TTS:
 
 ```typescript
-import { CompositeVoice, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
-
-// Create a simple voice agent using browser APIs
-const agent = new CompositeVoice({
-  mode: 'composite',
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new OpenAILLM({
-    apiKey: 'your-api-key',
-    model: 'gpt-4',
-  }),
-  tts: new NativeTTS({ voice: 'Google US English' }),
-  audio: {
-    input: { sampleRate: 16000 },
-    output: { bufferSize: 4096 },
-  },
-});
-
-// Initialize the agent
-await agent.initialize();
-
-// Listen for events
-agent.on('transcription.final', (event) => {
-  console.log('You said:', event.text);
-});
-
-agent.on('llm.complete', (event) => {
-  console.log('AI responded:', event.text);
-});
-
-agent.on('agent.stateChange', (event) => {
-  console.log('State changed:', event.previousState, '->', event.state);
-});
-
-// Start listening for user input
-await agent.startListening();
-
-// When done, stop listening
-await agent.stopListening();
-
-// Clean up
-await agent.dispose();
-```
-
-### Using Custom Providers
-
-```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
-import { DeepgramSTT } from '@lukeocodes/composite-voice/providers/stt/deepgram';
-import { OpenAILLM } from '@lukeocodes/composite-voice/providers/llm/openai';
-import { ElevenLabsTTS } from '@lukeocodes/composite-voice/providers/tts/elevenlabs';
+import {
+  CompositeVoice,
+  DeepgramSTT,
+  AnthropicLLM,
+  DeepgramTTS,
+} from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  mode: 'composite',
   stt: new DeepgramSTT({
     apiKey: process.env.DEEPGRAM_API_KEY,
-    model: 'nova-2',
-    language: 'en-US',
+    options: { model: 'nova-3', smartFormat: true, interimResults: true },
   }),
-  llm: new OpenAILLM({
-    apiKey: process.env.OPENAI_API_KEY,
-    model: 'gpt-4-turbo',
-    temperature: 0.7,
-    systemPrompt: 'You are a helpful voice assistant.',
+  llm: new AnthropicLLM({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-haiku-4-6', // fastest Claude 4.6 model
+    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    maxTokens: 200,
   }),
-  tts: new ElevenLabsTTS({
-    apiKey: process.env.ELEVENLABS_API_KEY,
-    voice: 'adam',
+  tts: new DeepgramTTS({
+    apiKey: process.env.DEEPGRAM_API_KEY,
+    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
   }),
 });
 
 await agent.initialize();
+
+agent.on('transcription.final', (e) => console.log('You said:', e.text));
+agent.on('llm.chunk', (e) => process.stdout.write(e.chunk));
+agent.on('agent.stateChange', (e) => console.log('State:', e.state));
+
 await agent.startListening();
 ```
 
-### Using All-in-One Provider
+### Using Native Browser APIs (no API keys required)
 
 ```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
-import { DeepgramAura } from '@lukeocodes/composite-voice/providers/all-in-one/deepgram';
+import { CompositeVoice, NativeSTT, NativeTTS, OpenAILLM } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  mode: 'all-in-one',
-  provider: new DeepgramAura({
-    apiKey: process.env.DEEPGRAM_API_KEY,
-    model: 'aura-asteria-en',
-    systemPrompt: 'You are a helpful assistant.',
-  }),
+  stt: new NativeSTT({ language: 'en-US' }),
+  llm: new OpenAILLM({ apiKey: 'your-openai-key', model: 'gpt-4o-mini' }),
+  tts: new NativeTTS(),
 });
 
 await agent.initialize();
@@ -130,23 +87,13 @@ await agent.startListening();
 
 ## Architecture
 
-CompositeVoice supports two modes:
-
-### Composite Mode
-
-Uses separate providers for STT, LLM, and TTS. Provides maximum flexibility and allows mixing providers from different services.
+CompositeVoice orchestrates three pluggable providers:
 
 ```
 User Speech → STT Provider → LLM Provider → TTS Provider → Audio Output
 ```
 
-### All-in-One Mode
-
-Uses a single provider that handles the entire pipeline (STT → LLM → TTS). Provides lower latency and simpler configuration.
-
-```
-User Speech → All-in-One Provider → Audio Output
-```
+Providers implement a strict, typed interface. For STT and TTS, both REST and WebSocket (live/streaming) variants are supported. Any provider that sets `managedAudio = true` (like `NativeSTT` and `NativeTTS`) bypasses the SDK's built-in audio capture/playback and manages its own audio pipeline directly.
 
 ## Event System
 
@@ -200,28 +147,50 @@ The agent transitions through these states:
 - `speaking`: Playing back audio response
 - `error`: Error state (can recover)
 
+## Conversation History
+
+Enable multi-turn conversation context so the LLM remembers previous exchanges:
+
+```typescript
+const agent = new CompositeVoice({
+  stt: new DeepgramSTT({ apiKey: process.env.DEEPGRAM_API_KEY }),
+  llm: new AnthropicLLM({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  tts: new DeepgramTTS({ apiKey: process.env.DEEPGRAM_API_KEY }),
+  conversationHistory: {
+    enabled: true,
+    maxTurns: 10, // keep last 10 user+assistant pairs (0 = unlimited)
+  },
+});
+
+// After a session, inspect or clear history
+const history = agent.getHistory(); // LLMMessage[]
+agent.clearHistory();
+```
+
+Without `conversationHistory.enabled: true`, each user utterance is processed independently (stateless).
+
 ## Built-in Providers
 
 ### STT Providers
 
-- **NativeSTT**: Browser Web Speech API (no API key required)
-- **DeepgramSTT**: Deepgram streaming STT (requires `@deepgram/sdk`)
-- **OpenAISTT**: OpenAI Whisper (requires `openai`)
+| Provider | Type | Notes |
+|----------|------|-------|
+| `NativeSTT` | WebSocket | Browser Web Speech API — no API key, `managedAudio=true` |
+| `DeepgramSTT` | WebSocket | Deepgram nova-3 real-time STT — requires `@deepgram/sdk` |
 
 ### LLM Providers
 
-- **OpenAILLM**: OpenAI GPT models (requires `openai`)
-- **AnthropicLLM**: Anthropic Claude models (requires `@anthropic-ai/sdk`)
+| Provider | Notes |
+|----------|-------|
+| `AnthropicLLM` | Claude models — requires `@anthropic-ai/sdk`. Default: `claude-haiku-4-6` |
+| `OpenAILLM` | GPT models — requires `openai`. |
 
 ### TTS Providers
 
-- **NativeTTS**: Browser Speech Synthesis API (no API key required)
-- **DeepgramTTS**: Deepgram streaming TTS (requires `@deepgram/sdk`)
-- **ElevenLabsTTS**: ElevenLabs voices (requires SDK)
-
-### All-in-One Providers
-
-- **Deepgram**: Complete voice agent pipeline (requires `@deepgram/sdk`)
+| Provider | Type | Notes |
+|----------|------|-------|
+| `NativeTTS` | REST | Browser Speech Synthesis API — no API key, `managedAudio=true` |
+| `DeepgramTTS` | WebSocket | Deepgram aura-2 streaming TTS — requires `@deepgram/sdk`. Default: `aura-2-thalia-en` at 24 kHz |
 
 ## Creating Custom Providers
 
@@ -250,10 +219,8 @@ class MyCustomSTT extends BaseSTTProvider {
 
 Check the [examples](./examples) directory for complete, standalone example applications:
 
-- **[Basic Browser](./examples/basic-browser/)** - Simple HTML/JS with native browser APIs
-- **[Vite + TypeScript](./examples/vite-typescript/)** - Modern setup with real providers
-- **Custom Provider** - Coming soon
-- **All-in-One** - Coming soon
+- **[Basic Browser](./examples/basic-browser/)** - Simple HTML/JS with native browser APIs (NativeSTT + OpenAI + NativeTTS)
+- **[Deepgram + Anthropic + Deepgram](./examples/01-deepgram-anthropic-deepgram/)** - Deepgram nova-3 STT + Anthropic claude-haiku-4-6 + Deepgram aura-2 TTS
 
 Each example has its own README with detailed setup instructions.
 
