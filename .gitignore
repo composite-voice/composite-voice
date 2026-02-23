@@ -45,11 +45,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Nx
-.nx/
 .cache/
-dependency-graph.html
-static/
 
 # Docker (local dev files, not committed)
 Dockerfile

@@ -136,7 +136,7 @@ pnpm example:04-proxy-server:dev   # http://localhost:3004
 
 ## Workspace structure
 
-Each example is an independent Vite application inside the Nx monorepo. They reference the root SDK package via the `workspace:*` protocol:
+Each example is an independent Vite application in the pnpm workspace. They reference the root SDK package via the `workspace:*` protocol:
 
 ```json
 {
@@ -174,20 +174,13 @@ pnpm install
 - HTTPS is required for microphone access in production; `localhost` is always permitted
 - For `NativeSTT` (examples 00 and 02): Chrome and Edge only — Web Speech API is not supported in Firefox or Safari
 
-**Nx cache issues**
-
-```bash
-pnpm exec nx reset
-```
-
 ---
 
 ## Adding a new example
 
 1. Create a directory: `examples/my-example/`
 2. Add `package.json` with `"@lukeocodes/composite-voice": "workspace:*"` in `dependencies`
-3. Add `project.json` with Nx targets — copy from an existing example and update the name and port
-4. Add a `vite.config.js` that resolves the SDK to `../../dist/index.mjs`
-5. Add dev/build/preview scripts to the root `package.json`
-6. Run `pnpm install` to register the new workspace package
-7. Write a `README.md` that explains what the example demonstrates, how to run it, and what someone will learn from it
+3. Add a `vite.config.js` that resolves the SDK to `../../dist/index.mjs`
+4. Add dev/build/preview scripts to the root `package.json`
+5. Run `pnpm install` to register the new workspace package
+6. Write a `README.md` that explains what the example demonstrates, how to run it, and what someone will learn from it

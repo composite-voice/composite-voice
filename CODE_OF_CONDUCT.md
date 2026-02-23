@@ -2,79 +2,73 @@
 
 ## The short version
 
-Be kind. Be respectful. Assume good intent. Help others learn. If something goes wrong, talk about it privately before escalating.
+Be kind. Be patient. Assume good intent. Critique code, not people. Help others learn.
 
 ---
 
 ## Our community
 
-CompositeVoice is built by people at different stages of their careers — from seasoned engineers to developers making their first open-source contribution. We want this to be a place where everyone feels safe asking questions, making mistakes, and learning.
+CompositeVoice is used and built by developers at every level — from someone making their first voice agent to engineers who've been building audio applications for years. We want this to be a place where beginners feel safe asking questions and experts feel respected for their time.
 
-We're committed to making participation in this project a welcoming, harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
+Participation in this project — issues, pull requests, discussions, code review — means agreeing to these standards.
 
 ---
 
 ## What we value
 
-These are the behaviours that make this community work:
-
-- **Patience and encouragement.** Everyone starts somewhere. A beginner's question deserves a thoughtful answer, not a dismissive one.
-- **Constructive feedback.** Critique the code, not the person. "This could be simplified by..." is more useful than "why did you do it like this?"
-- **Respecting different approaches.** There's often more than one right way to solve a problem. Disagreement is healthy; contempt is not.
-- **Taking responsibility.** Mistakes happen. Own them, apologise when appropriate, and move on.
-- **Focusing on the work.** The goal is building good software together.
+- **Patience.** Everyone starts somewhere. A thoughtful answer to a beginner's question has real value.
+- **Constructive feedback.** "This could be simplified by..." is useful. Dismissiveness is not.
+- **Intellectual honesty.** There's often more than one good solution. Disagreement is fine; contempt is not.
+- **Taking responsibility.** Mistakes happen. Own them and move on — no one expects perfection.
+- **Focus.** The goal is building good software together.
 
 ---
 
 ## What we won't tolerate
 
-- Harassment, intimidation, or discrimination in any form — public or private
-- Offensive, derogatory, or dismissive comments about a person's identity or characteristics
-- Personal or political attacks
-- Publishing someone's private information without their explicit permission (doxxing)
-- Deliberate trolling, inflammatory comments, or sustained disruption of discussions
-- Unwelcome sexual attention or advances
-- Any conduct that would be considered unprofessional in a collaborative workplace
+- Harassment or discrimination in any form — public or private
+- Personal attacks or derogatory comments about someone's identity
+- Publishing private information without consent (doxxing)
+- Sustained disruption of conversations or deliberate trolling
+- Unwelcome sexual attention
+- Conduct that would be unacceptable in a professional workplace
 
 ---
 
 ## Scope
 
-This code of conduct applies in all project spaces: GitHub issues, pull requests, discussions, code review comments, and any other place where the community interacts. It also applies when you're officially representing this project elsewhere (at a conference, on social media, etc.).
+This applies everywhere the community interacts: GitHub issues, pull requests, code review, discussions, and anywhere you're representing the project publicly.
 
 ---
 
 ## Reporting
 
-If you experience or witness something that violates this code of conduct, please report it. You won't be judged for reporting. Reports are handled confidentially.
+If you see something that violates this code of conduct, please report it. You will not be judged for reporting.
 
-**How to report:**
+**How:**
+1. Open a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new) — this is private and only visible to the maintainer.
+2. Or contact the maintainer through their [GitHub profile](https://github.com/lukeocodes).
 
-1. Open a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new) — this is private and visible only to the maintainer.
-2. Or contact the maintainer directly through their [GitHub profile](https://github.com/lukeocodes).
+Don't report code of conduct violations through public issues or PR comments — public reports can escalate situations unnecessarily.
 
-Please don't report code of conduct violations through public issues or PR comments. Public reports can escalate situations and make it harder for everyone involved.
-
-We will not retaliate against anyone who reports a concern in good faith.
+Reports are handled confidentially. We will not retaliate against anyone who reports in good faith.
 
 ---
 
 ## Enforcement
 
-The maintainer is responsible for clarifying and upholding these standards. When a report is received, we will:
+When a report is received:
 
-1. **Acknowledge the report** — usually within 48 hours.
-2. **Gather context** — we'll reach out privately to understand what happened before taking action.
-3. **Respond proportionally:**
+1. **Acknowledgement** — usually within 48 hours.
+2. **Context gathering** — reaching out privately before any action.
+3. **Proportional response:**
    - A private explanation of why the behaviour was inappropriate
-   - A request for a public or private apology
+   - A request for an apology (public or private, depending on the situation)
    - Temporary suspension from project spaces
-   - Permanent exclusion from the project and community
+   - Permanent removal from the project and community
 
 Decisions will be communicated clearly to all parties.
 
 ---
 
-## Attribution
-
-This code of conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1.
+*Adapted from the [Contributor Covenant](https://www.contributor-covenant.org/) v2.1.*

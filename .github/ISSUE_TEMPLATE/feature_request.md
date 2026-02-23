@@ -6,33 +6,30 @@ labels: enhancement
 
 ## Summary
 
-<!-- One or two sentences describing what you'd like to see. -->
+<!-- One or two sentences: what do you want to see? -->
 
 ## Problem or use case
 
-<!-- What are you trying to do that isn't possible today?
-     Describe the underlying problem or use case — this is more useful than jumping straight to a solution.
+<!-- What are you trying to do that isn't currently possible?
+     Describe the underlying problem — this is more useful than jumping straight to a solution.
      Example: "I can't build a voice agent that works in Firefox because NativeSTT is Chrome-only." -->
 
 ## Proposed solution
 
-<!-- If you have a specific idea for how it should work, describe it here.
-     API sketches, code examples, and diagrams are all welcome. -->
+<!-- If you have a specific idea, describe it here. API sketches and code examples are welcome. -->
 
 ```typescript
 // example of what the API might look like
 ```
 
-## Alternatives considered
+## Alternatives you've considered
 
-<!-- Have you tried any workarounds? Are there other approaches that could solve this problem?
-     Understanding what you've already tried helps avoid suggesting things you've already ruled out. -->
+<!-- Any workarounds you've tried, or other approaches that could solve this? -->
 
 ## Who would benefit
 
-<!-- Is this a niche use case, or would it be useful to most users?
-     Understanding the audience helps with prioritisation. -->
+<!-- Is this a niche use case, or would most users benefit? Helps with prioritisation. -->
 
 ## Additional context
 
-<!-- Anything else that would help evaluate this request — links, prior art, related issues. -->
+<!-- Links, prior art, related issues, or anything else that helps evaluate this request. -->
