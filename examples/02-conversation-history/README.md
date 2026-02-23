@@ -1,18 +1,27 @@
 # Example 02 — Conversation History
 
-Demonstrates multi-turn conversation memory: the LLM receives the full history of the current session so it can answer follow-up questions and remember what was said earlier.
+Demonstrates multi-turn conversation memory: the LLM receives the full history of the current session so it can answer follow-up questions and recall what was said earlier.
 
 | | Provider | Cost |
 |-|----------|------|
 | **STT** | `NativeSTT` — Web Speech API | Free |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-5 with `conversationHistory` | Pay per token |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-6 with `conversationHistory` | Pay per token |
 | **TTS** | `NativeTTS` — SpeechSynthesis API | Free |
+
+---
+
+## What you'll learn
+
+- How to enable `conversationHistory` so the agent remembers earlier exchanges
+- What `maxTurns` does and how to tune it for your use case
+- How to use `agent.getHistory()` and `agent.clearHistory()`
+- How prompt size grows with conversation history and how to manage the cost
 
 ---
 
 ## What's different from Example 00
 
-By default, `CompositeVoice` is stateless — each utterance is sent to the LLM in isolation, with no memory of previous exchanges. This example enables `conversationHistory`:
+By default, `CompositeVoice` is stateless — each utterance is sent to the LLM in isolation with no memory of previous exchanges. This example enables `conversationHistory`:
 
 ```javascript
 const agent = new CompositeVoice({
@@ -24,16 +33,16 @@ const agent = new CompositeVoice({
 });
 ```
 
-Each completed turn is appended to an internal history array, and the full history is included in every subsequent LLM call. This enables natural back-and-forth exchanges:
+Each completed turn is appended to an internal history array, and the full history is included in every subsequent LLM call. This enables natural back-and-forth conversations:
 
 ```
 You:  "My name is Sam."
 AI:   "Nice to meet you, Sam!"
 You:  "What's my name?"
-AI:   "Your name is Sam."
+AI:   "Your name is Sam."   ← the LLM remembered
 ```
 
-The UI in this example shows the full conversation as a chat thread. The **Clear History** button calls `agent.clearHistory()` to start a fresh session without reinitializing the whole agent.
+The UI in this example shows the full conversation as a chat thread. The **Clear History** button calls `agent.clearHistory()` to start fresh without reinitializing the whole agent.
 
 ---
 
@@ -41,7 +50,7 @@ The UI in this example shows the full conversation as a chat thread. The **Clear
 
 - Node.js 18+
 - pnpm
-- Chrome or Edge — required for `NativeSTT` (Web Speech API)
+- **Chrome or Edge** — required for `NativeSTT` (Web Speech API)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ---
@@ -57,7 +66,7 @@ pnpm install
 # 2. Build the SDK
 pnpm build
 
-# 3. Copy the sample env file
+# 3. Copy the sample env file and fill in your key
 cp examples/02-conversation-history/sample.env examples/02-conversation-history/.env
 ```
 
@@ -87,24 +96,28 @@ Microphone
 NativeSTT
     ↓  transcription.final
 AnthropicLLM ←── conversationHistory[]
-    ↓  llm.chunk + appends to history
+    ↓  llm.chunk  (response appended to history after completion)
 NativeTTS
     ↓
 Speakers
 ```
 
-After each exchange, `CompositeVoice` automatically appends a `{ role: 'user', content: '...' }` and `{ role: 'assistant', content: '...' }` pair to the internal history. The history is passed as the `messages` array on every subsequent LLM call.
+After each exchange, `CompositeVoice` automatically appends `{ role: 'user', content: '...' }` and `{ role: 'assistant', content: '...' }` pairs to the internal history array. The full history is passed as the `messages` array on every subsequent LLM call.
 
-`maxTurns: 10` keeps the last 10 user + assistant pairs (20 messages total). When the limit is reached, the oldest pair is dropped from the front of the array to make room. This keeps costs under control while preserving recent context.
+`maxTurns: 10` keeps the last 10 user + assistant pairs (20 messages total). When the limit is reached, the oldest pair is dropped from the front to make room for the newest. This keeps costs under control while preserving recent context.
 
-### Key API
+### History API
 
 ```typescript
 // Read the current conversation history
-const history = agent.getHistory(); // LLMMessage[]
-// Returns: [{ role: 'user', content: '...' }, { role: 'assistant', content: '...' }, ...]
+const history = agent.getHistory();
+// Returns: [
+//   { role: 'user', content: 'My name is Sam.' },
+//   { role: 'assistant', content: 'Nice to meet you, Sam!' },
+//   ...
+// ]
 
-// Reset the conversation without reinitializing
+// Reset the conversation without reinitializing the agent
 agent.clearHistory();
 ```
 
@@ -112,8 +125,8 @@ agent.clearHistory();
 
 | Setting | Effect |
 |---------|--------|
-| `maxTurns: 0` | Keep the entire session (costs grow unbounded) |
-| `maxTurns: 5` | Lightweight, remembers the last 5 exchanges |
+| `maxTurns: 0` | Keep the entire session (costs grow with every turn) |
+| `maxTurns: 5` | Lightweight — remembers the last 5 exchanges |
 | `maxTurns: 10` | Good default for most use cases |
 | `maxTurns: 20+` | Long context for complex multi-step tasks |
 
@@ -121,18 +134,18 @@ agent.clearHistory();
 
 ## Troubleshooting
 
-**The AI doesn't remember something I said earlier**
+**The AI doesn't remember something I said a few turns ago**
 
-If `maxTurns` is set too low, older messages may have been dropped from the context window. Increase it or set it to `0` to keep the entire session.
+Older messages are dropped once `maxTurns` is reached. Increase it — or set it to `0` to keep the entire session in memory.
 
-**Costs seem higher than expected**
+**Costs are higher than expected**
 
-Conversation history grows the prompt on every turn. Use `maxTurns` to cap the context size. Alternatively, try a more efficient model for long conversations:
+Conversation history grows the prompt on every turn, increasing token usage. Use `maxTurns` to cap the context size. Shorter responses also help:
 
 ```javascript
 new AnthropicLLM({
-  model: 'claude-haiku-4-5',   // fast and cost-efficient
-  maxTokens: 150,              // shorter responses = lower cost per turn
+  model: 'claude-haiku-4-6',
+  maxTokens: 150,   // shorter responses = lower cost per turn
 })
 ```
 
@@ -155,8 +168,8 @@ pnpm build
 
 | Example | What it adds |
 |---------|-------------|
-| **[03 — Eager pipeline](../03-eager-pipeline/)** | Lower latency with speculative LLM generation |
-| **[04 — Server-side proxy](../04-proxy-server/)** | Keep API keys out of the browser entirely |
+| [03 — Eager pipeline](../03-eager-pipeline/) | Lower latency with speculative LLM generation |
+| [04 — Server-side proxy](../04-proxy-server/) | Keep API keys out of the browser entirely |
 
 ---
 

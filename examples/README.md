@@ -1,6 +1,6 @@
 # CompositeVoice Examples
 
-Five standalone Vite applications, each demonstrating a different aspect of the SDK. They are designed to be explored in order — each one builds on the concepts introduced by the previous.
+Five standalone Vite applications, each demonstrating a different aspect of the SDK. They're designed to be explored in order — each one introduces a new concept and builds on the previous.
 
 ## Quick start
 
@@ -31,15 +31,16 @@ pnpm example:00-native-anthropic-native:dev    # → http://localhost:3000
 
 **[examples/00-native-anthropic-native/](./00-native-anthropic-native/)**
 
-The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. No Deepgram account needed — just one API key.
+The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. Only one API key needed.
 
 ```
 Microphone → Web Speech API → AnthropicLLM → SpeechSynthesis → Speakers
 ```
 
 - Only one API key (Anthropic)
-- Works in Chrome and Edge
-- Start here before adding paid speech providers
+- Free STT and TTS — browser built-ins only
+- Chrome and Edge only (Web Speech API limitation)
+- **Start here**
 
 ```bash
 pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
@@ -51,15 +52,16 @@ pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
 
 **[examples/01-deepgram-anthropic-deepgram/](./01-deepgram-anthropic-deepgram/)**
 
-Production-quality voice agent using Deepgram's real-time WebSocket STT and streaming TTS at 24 kHz, paired with Anthropic's fastest Claude model.
+The recommended production configuration: real-time WebSocket STT, the fastest Claude model, and streaming TTS at 24 kHz. All three providers stream simultaneously.
 
 ```
 Microphone → DeepgramSTT (nova-3, WS) → AnthropicLLM → DeepgramTTS (aura-2, WS) → Speakers
 ```
 
 - Real-time transcript streaming via WebSocket
-- 24 kHz streaming TTS for natural playback
+- 24 kHz TTS for natural-sounding speech
 - Works in Chrome, Edge, and Firefox
+- Deepgram free tier — no credit card required
 
 ```bash
 pnpm example:01-deepgram-anthropic-deepgram:dev   # http://localhost:3001
@@ -71,12 +73,13 @@ pnpm example:01-deepgram-anthropic-deepgram:dev   # http://localhost:3001
 
 **[examples/02-conversation-history/](./02-conversation-history/)**
 
-Enables multi-turn memory so the LLM remembers earlier exchanges. Shows how `conversationHistory` works and how to display a full chat thread in the UI.
+Enables multi-turn memory so the LLM remembers earlier exchanges within a session. Demonstrates the `conversationHistory` config, the `getHistory()` and `clearHistory()` APIs, and how to display a chat thread in the UI.
 
 ```
 Microphone → NativeSTT → AnthropicLLM (with history[]) → NativeTTS → Speakers
 ```
 
+- `conversationHistory.enabled = true` with `maxTurns: 10`
 - Full conversation thread displayed in the UI
 - `agent.getHistory()` and `agent.clearHistory()` demonstrated
 - Only one API key (Anthropic)
@@ -101,7 +104,7 @@ Deepgram speech_final → LLM continues (text unchanged) | cancels and restarts 
 ```
 
 - Real-time pipeline timing visualized in the UI
-- `eagerLLM.enabled` and `cancelOnTextChange` configuration
+- `eagerLLM.enabled` and `cancelOnTextChange` demonstrated
 - Requires Deepgram + Anthropic
 
 ```bash
@@ -114,7 +117,7 @@ pnpm example:03-eager-pipeline:dev   # http://localhost:3003
 
 **[examples/04-proxy-server/](./04-proxy-server/)**
 
-Keeps API keys completely out of the browser. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request. The browser bundle contains zero secrets.
+Keeps API keys completely out of the browser bundle. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request. The browser contains zero secrets.
 
 ```
 Browser ──[no keys]──▶ Express proxy ──[keys injected]──▶ Deepgram / Anthropic
@@ -123,6 +126,7 @@ Browser ──[no keys]──▶ Express proxy ──[keys injected]──▶ De
 - `proxyUrl` used instead of `apiKey` in all provider configs
 - Vite dev proxy for development; `createExpressProxy` for production
 - `server.ts` is a complete, runnable production example
+- Deepgram + Anthropic keys stay on the server
 
 ```bash
 pnpm example:04-proxy-server:dev   # http://localhost:3004
@@ -130,9 +134,9 @@ pnpm example:04-proxy-server:dev   # http://localhost:3004
 
 ---
 
-## How the workspace is structured
+## Workspace structure
 
-Each example is an independent **Vite application** inside the Nx monorepo. They depend on the root SDK package via the `workspace:*` protocol:
+Each example is an independent Vite application inside the Nx monorepo. They reference the root SDK package via the `workspace:*` protocol:
 
 ```json
 {
@@ -142,7 +146,7 @@ Each example is an independent **Vite application** inside the Nx monorepo. They
 }
 ```
 
-The Vite config resolves `@lukeocodes/composite-voice` directly to the local `dist/` folder, so you always need to run `pnpm build` first. After that, running `pnpm dev` in the root alongside an example dev server gives you live rebuilds.
+The Vite config in each example resolves `@lukeocodes/composite-voice` to the local `../../dist/index.mjs`, so you always need to run `pnpm build` before starting an example. For active development, run `pnpm dev` (SDK watch mode) in one terminal and the example dev server in another.
 
 ---
 
@@ -150,7 +154,7 @@ The Vite config resolves `@lukeocodes/composite-voice` directly to the local `di
 
 **"Cannot find module '@lukeocodes/composite-voice'"**
 
-The SDK hasn't been built yet:
+Build the SDK first:
 
 ```bash
 pnpm build
@@ -166,9 +170,9 @@ pnpm install
 
 **Microphone not working**
 
-- Grant microphone permission when your browser asks (or check the address bar lock icon)
-- HTTPS is required for microphone access in production; `localhost` is always allowed
-- For `NativeSTT`: Chrome and Edge only — Web Speech API is not supported in Firefox or Safari
+- Grant microphone permission when the browser asks, or click the lock icon in the address bar
+- HTTPS is required for microphone access in production; `localhost` is always permitted
+- For `NativeSTT` (examples 00 and 02): Chrome and Edge only — Web Speech API is not supported in Firefox or Safari
 
 **Nx cache issues**
 
@@ -181,9 +185,9 @@ pnpm exec nx reset
 ## Adding a new example
 
 1. Create a directory: `examples/my-example/`
-2. Add `package.json` with `@lukeocodes/composite-voice: "workspace:*"` in dependencies
-3. Add `project.json` with Nx targets (copy from an existing example)
+2. Add `package.json` with `"@lukeocodes/composite-voice": "workspace:*"` in `dependencies`
+3. Add `project.json` with Nx targets — copy from an existing example and update the name and port
 4. Add a `vite.config.js` that resolves the SDK to `../../dist/index.mjs`
 5. Add dev/build/preview scripts to the root `package.json`
-6. Run `pnpm install`
-7. Write a `README.md` explaining what the example demonstrates and how to run it
+6. Run `pnpm install` to register the new workspace package
+7. Write a `README.md` that explains what the example demonstrates, how to run it, and what someone will learn from it
