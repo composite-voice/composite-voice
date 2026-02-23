@@ -11,12 +11,13 @@ labels: enhancement
 ## Problem or use case
 
 <!-- What are you trying to do that isn't possible today?
-     Describing the underlying need is more useful than jumping straight to the solution. -->
+     Describe the underlying problem or use case — this is more useful than jumping straight to a solution.
+     Example: "I can't build a voice agent that works in Firefox because NativeSTT is Chrome-only." -->
 
 ## Proposed solution
 
 <!-- If you have a specific idea for how it should work, describe it here.
-     Code examples, API sketches, or diagrams are all welcome. -->
+     API sketches, code examples, and diagrams are all welcome. -->
 
 ```typescript
 // example of what the API might look like
@@ -24,13 +25,14 @@ labels: enhancement
 
 ## Alternatives considered
 
-<!-- Have you tried any workarounds? Are there other approaches that could solve this? -->
+<!-- Have you tried any workarounds? Are there other approaches that could solve this problem?
+     Understanding what you've already tried helps avoid suggesting things you've already ruled out. -->
 
 ## Who would benefit
 
 <!-- Is this a niche use case, or would it be useful to most users?
-     Understanding the audience helps prioritise. -->
+     Understanding the audience helps with prioritisation. -->
 
 ## Additional context
 
-<!-- Anything else that would help evaluate this request. -->
+<!-- Anything else that would help evaluate this request — links, prior art, related issues. -->

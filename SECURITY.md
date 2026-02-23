@@ -6,58 +6,90 @@
 |---------|-----------|
 | 0.1.x (latest) | Yes |
 
-Older versions do not receive security updates. Please update to the latest release.
+Only the latest release receives security updates. Please update to the latest version before reporting.
 
 ---
 
 ## Reporting a vulnerability
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+**Do not report security vulnerabilities through public GitHub issues.** Public disclosure before a fix is available puts all users at risk.
 
-If you discover a security vulnerability in CompositeVoice, report it privately by creating a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This keeps details private until a fix is ready and published.
+Instead, please create a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This opens a private channel visible only to maintainers and allows us to coordinate a fix before any public disclosure.
 
-Please include:
+### What to include
 
 - A clear description of the vulnerability
-- Steps to reproduce or a proof-of-concept
-- The potential impact (data exposure, key theft, code execution, etc.)
+- Steps to reproduce or a minimal proof-of-concept
+- The potential impact (key theft, data exposure, code execution, etc.)
 - Any mitigations or workarounds you're aware of
 
-You will receive an acknowledgement promptly. We aim to triage all reports and release a fix within **30 days**.
+### What to expect
+
+You will receive an acknowledgement promptly. We aim to triage all reports within **7 days** and release a fix within **30 days** of confirmed impact. We will credit reporters in the release notes unless you prefer to remain anonymous.
 
 ---
 
 ## API key security
 
-CompositeVoice is a browser SDK. API keys embedded directly in a browser bundle are visible to anyone who opens DevTools. **Never ship real API keys to the browser in production.**
+CompositeVoice is a browser SDK. Any API key embedded directly in a browser bundle is visible to anyone who opens DevTools. **Never ship real API keys to the browser in production.**
 
-Your options:
+### Recommended: server-side proxy
 
-1. **Server-side proxy** — use the built-in proxy middleware to inject keys server-side. The browser bundle contains zero secrets. See [Example 04](./examples/04-proxy-server/) and the [proxy documentation](./README.md#server-side-proxy).
+The built-in proxy middleware injects credentials server-side so the browser bundle contains zero secrets:
 
-2. **Origin restrictions** — restrict your keys to specific origins in the provider dashboards, so even if someone extracts a key it only works from your domain:
-   - Anthropic: [console.anthropic.com](https://console.anthropic.com/)
-   - Deepgram: [console.deepgram.com](https://console.deepgram.com/)
-   - OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+```typescript
+import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
 
-For local development (where keys aren't exposed to the internet), embedding them in a `.env` file is acceptable — just make sure `.env` is in your `.gitignore`.
+const proxy = createExpressProxy({
+  deepgramApiKey:  process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  pathPrefix: '/proxy',
+});
+
+app.use(proxy.middleware);
+proxy.attachWebSocket(server);
+```
+
+Providers use `proxyUrl` instead of `apiKey`:
+
+```typescript
+const stt = new DeepgramSTT({ proxyUrl: '/proxy/deepgram', options: { ... } });
+const llm = new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: '...' });
+```
+
+See [Example 04](./examples/04-proxy-server/) for a complete production setup.
+
+### Alternative: origin restrictions
+
+If deploying keys to the browser is unavoidable, restrict each key to specific origins in the provider dashboards:
+
+- **Anthropic:** [console.anthropic.com](https://console.anthropic.com/)
+- **Deepgram:** [console.deepgram.com](https://console.deepgram.com/)
+- **OpenAI:** [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+
+This limits the blast radius of an exposed key to requests originating from your domain.
+
+### Development
+
+For local development (where keys aren't exposed to the internet), placing them in a `.env` file is acceptable — provided `.env` is listed in `.gitignore`, which it is in this project by default.
 
 ---
 
-## Proxy security
+## Proxy security checklist
 
-When running `createExpressProxy` or another proxy adapter in production:
+When running the proxy middleware in production:
 
-- Load API keys from environment variables only — never hard-code them
-- Restrict allowed origins using the `cors.origins` option if your front end and proxy are on separate origins
-- Run the proxy behind HTTPS in production
-- Monitor usage on your provider dashboards; set spending limits and rate limits where available
+- Load API keys from environment variables only — never hard-code them in source files
+- Restrict allowed origins using the `cors.origins` option if the proxy and front end are on separate origins
+- Deploy the proxy behind HTTPS — never plain HTTP in production
+- Set spending limits and rate limits on your provider dashboards
 - Scope API keys to the minimum required permissions
+- Monitor API usage on provider dashboards and set up alerts for unexpected spikes
 
 ---
 
 ## Dependencies
 
-This project uses automated dependency scanning via [GitHub Dependabot](https://docs.github.com/en/code-security/dependabot). Security-relevant updates are applied promptly as they become available.
+This project uses automated dependency scanning via [GitHub Dependabot](https://docs.github.com/en/code-security/dependabot). Security-relevant updates are applied promptly.
 
-If you notice an outdated or vulnerable dependency that Dependabot has not flagged, please report it via the vulnerability process above.
+If you notice an outdated or vulnerable dependency that Dependabot has not flagged, please report it through the private advisory process above.

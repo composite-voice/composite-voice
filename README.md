@@ -4,7 +4,7 @@
 [![CI](https://github.com/lukeocodes/composite-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/lukeocodes/composite-voice/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An extensible, lightweight browser SDK for building AI voice agents. CompositeVoice wires together Speech-to-Text, a Language Model, and Text-to-Speech behind a single, unified interface — swap any provider without touching the rest of your code.
+> A lightweight, provider-agnostic browser SDK for building AI voice agents. Wire together Speech-to-Text, a Language Model, and Text-to-Speech behind one unified interface — swap any provider with a one-line change.
 
 ```
 User Speech → STT Provider → LLM Provider → TTS Provider → Audio Output
@@ -14,12 +14,15 @@ User Speech → STT Provider → LLM Provider → TTS Provider → Audio Output
 
 ## Why CompositeVoice?
 
-Building a voice agent from scratch means solving a dozen hard problems at once: microphone management, real-time audio streaming, WebSocket reconnections, turn-taking logic, state management, and stitching three different SDKs together. CompositeVoice handles all of that so you can focus on what your agent actually says.
+Building a voice agent from scratch means solving a dozen hard problems simultaneously: microphone management, real-time audio streaming, WebSocket reconnections, turn-taking logic, state management, and stitching together multiple provider SDKs. CompositeVoice handles all of that so you can focus on what your agent actually does.
 
-- **Provider-agnostic** — swap Deepgram for the browser's Web Speech API, or Claude for GPT, with a one-line change
-- **Type-safe events** — every event is typed and discoverable through TypeScript autocomplete
-- **Batteries included** — turn-taking, conversation history, eager LLM pipeline, and server-side proxy built in
-- **Zero dependencies at runtime** — provider SDKs are optional peer dependencies; install only what you use
+**Provider-agnostic by design.** Swap Deepgram for the browser's built-in Web Speech API, or Claude for GPT, with a one-line change. No provider lock-in, ever.
+
+**Type-safe throughout.** Every event, config option, and provider method is typed. TypeScript autocomplete works end-to-end.
+
+**Batteries included.** Turn-taking logic, conversation history, eager LLM pipeline, and a server-side proxy pattern ship out of the box.
+
+**Zero runtime dependencies.** Provider SDKs are optional peer dependencies. Install only what you use.
 
 ---
 
@@ -79,7 +82,7 @@ const agent = new CompositeVoice({
   stt: new NativeSTT({ language: 'en-US' }),
   llm: new AnthropicLLM({
     apiKey: 'your-anthropic-key',
-    model: 'claude-haiku-4-6',
+    model: 'claude-haiku-4-5',
     systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
     maxTokens: 200,
   }),
@@ -94,6 +97,8 @@ agent.on('agent.stateChange', (e) => console.log('State:', e.state));
 
 await agent.startListening();
 ```
+
+See [Example 00](./examples/00-native-anthropic-native/) for a full working demo.
 
 ### Best-in-class setup (Deepgram + Anthropic)
 
@@ -114,7 +119,7 @@ const agent = new CompositeVoice({
   }),
   llm: new AnthropicLLM({
     apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-haiku-4-6',
+    model: 'claude-haiku-4-5',
     systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
     maxTokens: 200,
   }),
@@ -132,6 +137,8 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+See [Example 01](./examples/01-deepgram-anthropic-deepgram/) for the full demo.
+
 ---
 
 ## Providers
@@ -147,9 +154,10 @@ await agent.startListening();
 
 ```typescript
 new NativeSTT({
-  language: 'en-US',      // BCP-47 language tag
-  continuous: true,        // keep recognising between pauses
-  interimResults: true,    // emit partial results
+  language: 'en-US',       // BCP-47 language tag
+  continuous: true,         // keep recognising between pauses
+  interimResults: true,     // emit partial results
+  startTimeout: 5000,       // ms to wait for first result before error
 })
 ```
 
@@ -157,14 +165,14 @@ new NativeSTT({
 
 ```typescript
 new DeepgramSTT({
-  apiKey: 'your-key',      // or use proxyUrl for server-side key injection
+  apiKey: 'your-key',       // or use proxyUrl for server-side key injection
   language: 'en-US',
   options: {
-    model: 'nova-3',        // or 'flux-general-en' for v2 preflight events
+    model: 'nova-3',         // or 'flux-general-en' for v2 preflight events
     smartFormat: true,
     punctuation: true,
     interimResults: true,
-    endpointing: 300,       // ms of silence before speech_final fires
+    endpointing: 300,        // ms of silence before speech_final fires
     vadEvents: true,
   },
 })
@@ -174,19 +182,19 @@ new DeepgramSTT({
 
 | Provider | Notes |
 |----------|-------|
-| `AnthropicLLM` | Claude models. Requires `@anthropic-ai/sdk`. Default: `claude-haiku-4-6`. |
+| `AnthropicLLM` | Claude models. Requires `@anthropic-ai/sdk`. Default: `claude-haiku-4-5`. |
 | `OpenAILLM` | GPT models. Requires `openai`. |
 
 **`AnthropicLLM` config:**
 
 ```typescript
 new AnthropicLLM({
-  apiKey: 'your-key',       // or use proxyUrl
-  model: 'claude-haiku-4-6',
+  apiKey: 'your-key',        // or use proxyUrl
+  model: 'claude-haiku-4-5',
   systemPrompt: 'You are a helpful voice assistant.',
   maxTokens: 200,
   temperature: 0.7,
-  stream: true,             // default: true
+  stream: true,              // default: true
 })
 ```
 
@@ -213,10 +221,10 @@ new OpenAILLM({
 
 ```typescript
 new NativeTTS({
-  rate: 1.0,           // speech rate (0.1–10)
-  pitch: 1.0,          // voice pitch (0–2)
-  volume: 1.0,         // volume (0–1)
-  preferLocal: true,   // prefer on-device voices over cloud voices
+  rate: 1.0,            // speech rate (0.1–10)
+  pitch: 1.0,           // voice pitch (0–2)
+  volume: 1.0,          // volume (0–1)
+  preferLocal: true,    // prefer on-device voices over cloud voices
 })
 ```
 
@@ -224,7 +232,7 @@ new NativeTTS({
 
 ```typescript
 new DeepgramTTS({
-  apiKey: 'your-key',  // or use proxyUrl
+  apiKey: 'your-key',   // or use proxyUrl
   options: {
     model: 'aura-2-thalia-en',
     encoding: 'linear16',
@@ -249,7 +257,7 @@ const agent = new CompositeVoice({
   // Conversation memory
   conversationHistory: {
     enabled: true,
-    maxTurns: 10,     // 0 = unlimited
+    maxTurns: 10,      // 0 = unlimited
   },
 
   // Eager/speculative LLM generation
@@ -272,7 +280,7 @@ const agent = new CompositeVoice({
   // Logging
   logging: {
     enabled: true,
-    level: 'info',    // 'debug' | 'info' | 'warn' | 'error'
+    level: 'info',     // 'debug' | 'info' | 'warn' | 'error'
   },
 
   // WebSocket reconnection
@@ -387,12 +395,23 @@ const agent = new CompositeVoice({
 });
 ```
 
-Each completed turn is appended to an internal history array and included in subsequent LLM calls.
+Each completed turn is appended to an internal history array and included in subsequent LLM calls. This enables natural back-and-forth exchanges:
+
+```
+You:  "My name is Sam."
+AI:   "Nice to meet you, Sam!"
+You:  "What's my name?"
+AI:   "Your name is Sam."
+```
+
+Access and manage the history at runtime:
 
 ```typescript
 const history = agent.getHistory();   // LLMMessage[]
 agent.clearHistory();
 ```
+
+See [Example 02](./examples/02-conversation-history/) for a full demo with a chat UI.
 
 ---
 
@@ -412,7 +431,17 @@ const agent = new CompositeVoice({
 });
 ```
 
-The `preflight` signal arrives ahead of `speech_final`, giving the LLM a head start. If `speech_final` confirms the same text, the in-progress generation continues. If the text changed, it is cancelled and restarted.
+The `preflight` signal arrives before `speech_final`, giving the LLM a head start:
+
+```
+preflight (early prediction) → LLM starts
+speech_final arrives ──────────────────────┐
+                                           ↓
+                      text unchanged? → LLM keeps streaming
+                      text changed?  → LLM cancelled, restarts
+```
+
+See [Example 03](./examples/03-eager-pipeline/) for a demo with real-time pipeline timing visualization.
 
 ---
 
@@ -440,7 +469,7 @@ const agent = new CompositeVoice({
 
 ## Server-side proxy
 
-Keep API keys out of the browser entirely. The proxy middleware forwards browser requests to providers and injects credentials server-side.
+Keep API keys out of the browser entirely. The proxy middleware forwards browser requests to providers and injects credentials server-side. **The browser bundle contains zero secrets.**
 
 ### Express
 
@@ -473,7 +502,7 @@ export const POST = proxy.handler;
 
 ### Browser side
 
-Use `proxyUrl` instead of `apiKey`:
+Use `proxyUrl` instead of `apiKey` in any provider config:
 
 ```typescript
 const stt = new DeepgramSTT({
@@ -483,9 +512,11 @@ const stt = new DeepgramSTT({
 
 const llm = new AnthropicLLM({
   proxyUrl: `${window.location.origin}/proxy/anthropic`,
-  model: 'claude-haiku-4-6',
+  model: 'claude-haiku-4-5',
 });
 ```
+
+See [Example 04](./examples/04-proxy-server/) for a complete production-ready proxy setup with Vite dev proxy and an Express server.
 
 ---
 
@@ -517,7 +548,19 @@ class MySTT extends BaseSTTProvider {
 }
 ```
 
-Use `LiveSTTProvider` / `LiveTTSProvider` for WebSocket providers, or `RestSTTProvider` / `RestTTSProvider` for request/response ones. See [CONTRIBUTING.md](./CONTRIBUTING.md#adding-a-provider) for the full checklist.
+Use `LiveSTTProvider` / `LiveTTSProvider` for WebSocket providers, or `RestSTTProvider` / `RestTTSProvider` for request/response ones.
+
+| Base class | Use for |
+|------------|---------|
+| `BaseSTTProvider` | Any speech-to-text provider |
+| `LiveSTTProvider` | WebSocket-based real-time STT |
+| `RestSTTProvider` | Request/response STT |
+| `BaseLLMProvider` | Any language model |
+| `BaseTTSProvider` | Any text-to-speech provider |
+| `LiveTTSProvider` | WebSocket-based streaming TTS |
+| `RestTTSProvider` | Request/response TTS |
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md#adding-a-provider) for the full implementation checklist.
 
 ---
 
@@ -554,24 +597,16 @@ pnpm example:04-proxy-server:dev                     # http://localhost:3004
 | Firefox | Not supported | Full | Full | Full |
 | Safari | Limited | Full | Full | Full |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. All Deepgram providers work across browsers.
 
 ---
 
 ## Contributing
 
-Contributions are welcome — bug reports, feature requests, documentation improvements, and new provider implementations all appreciated.
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
+Contributions are welcome — bug reports, feature requests, documentation improvements, and new provider implementations all appreciated. See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
 
 ---
 
 ## License
 
 MIT © [Luke Oliff](https://github.com/lukeocodes)
-
----
-
-## Notes
-
-This project started as a warts-and-all experiment in AI-assisted development. The [prompt log](./prompt-log/) documents the full history of prompts used during the initial build. The codebase has since been cleaned up, tested, and is genuinely useful — but the origin story is worth knowing.

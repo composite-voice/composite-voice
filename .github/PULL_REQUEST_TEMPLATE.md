@@ -5,7 +5,7 @@
 
 ## Related issues
 
-<!-- Link any related issues: "Fixes #123", "Closes #456", "Related to #789" -->
+<!-- Link related issues: "Fixes #123", "Closes #456", "Related to #789" -->
 
 ## Type of change
 
@@ -15,7 +15,7 @@
 - [ ] Documentation improvement
 - [ ] Refactoring (no behaviour change)
 - [ ] Performance improvement
-- [ ] Breaking change
+- [ ] Breaking change (describe in the body what breaks and how to migrate)
 
 ## Checklist
 
@@ -23,14 +23,15 @@
 - [ ] `pnpm type-check` passes
 - [ ] `pnpm lint` passes
 - [ ] `pnpm test` passes
-- [ ] If adding a provider: exported from the correct index files and documented in the README
-- [ ] If changing the public API: README and any affected example READMEs updated
+- [ ] If adding a provider: exported from the correct index files, documented in README, has a `sample.env` entry
+- [ ] If changing the public API: README and affected example READMEs updated
 
 ## How to test
 
 <!-- Tell the reviewer how to verify this change works correctly.
-     Include any setup steps, env vars, or edge cases to check. -->
+     Include setup steps, required env vars, and specific things to check.
+     Example: "Run example 01 and verify the transcript appears within 500 ms of speaking." -->
 
 ## Notes for reviewers
 
-<!-- Design decisions, trade-offs, open questions, or areas to look at carefully. -->
+<!-- Design decisions, trade-offs, open questions, or areas that deserve extra attention. -->
