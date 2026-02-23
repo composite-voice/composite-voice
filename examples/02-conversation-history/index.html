@@ -289,8 +289,6 @@
             AnthropicLLM,
         } from '@lukeocodes/composite-voice';
 
-        const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-
         let agent = null;
         let turnCount = 0;
         let currentAssistantBubble = null;
@@ -360,12 +358,6 @@
             clearError();
             initBtn.disabled = true;
 
-            if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
-                showError('VITE_ANTHROPIC_API_KEY is not set. Copy sample.env to .env and add your key.');
-                initBtn.disabled = false;
-                return;
-            }
-
             try {
                 const stt = new NativeSTT({
                     language: 'en-US',
@@ -374,7 +366,7 @@
                 });
 
                 const llm = new AnthropicLLM({
-                    apiKey: ANTHROPIC_API_KEY,
+                    proxyUrl: `${window.location.origin}/proxy/anthropic`,
                     model: 'claude-haiku-4-6',
                     systemPrompt: `You are a helpful, friendly voice assistant having a spoken conversation.
 Keep responses concise and conversational — two to three sentences at most.

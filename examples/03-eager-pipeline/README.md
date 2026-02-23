@@ -1,46 +1,44 @@
 # Example 03 — Eager Pipeline
 
-Demonstrates speculative LLM generation: the SDK starts generating a response *before* the user finishes speaking, using Deepgram's early end-of-turn "preflight" signal. The result is noticeably lower perceived latency.
+Demonstrates speculative LLM generation: the SDK starts generating a response before the user finishes speaking. The result is noticeably lower perceived latency.
 
-| | Provider | Transport |
-|-|----------|-----------|
-| **STT** | `DeepgramSTT` — nova-3 or `flux-general-en` for preflight | WebSocket, real-time |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 with eager mode | HTTP streaming |
-| **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz |
+| | Provider | Transport | Browser support |
+|-|----------|-----------|-----------------|
+| **STT** | `DeepgramSTT` — nova-3 or flux-general-en | WebSocket, real-time | All modern browsers |
+| **LLM** | `AnthropicLLM` with `eagerLLM` | HTTP streaming | All |
+| **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
 
 ---
 
 ## What you'll learn
 
-- Where latency accumulates in the standard sequential pipeline
+- Where latency accumulates in the standard sequential STT → LLM → TTS pipeline
 - What a `preflight` event is and how Deepgram v2 models emit it
 - How `eagerLLM.enabled` uses the preflight signal to start LLM generation speculatively
-- What `cancelOnTextChange` does and when to use it
-- How to measure pipeline timing in real time using the SDK's event system
+- What `cancelOnTextChange` does and when it matters
+- How to measure real pipeline timing using the SDK's event system
 
 ---
 
-## How the eager pipeline works
+## What this adds over Example 01
 
-The standard pipeline is strictly sequential:
-
-```
-user stops speaking → speech_final → LLM starts → first token → TTS begins
-```
-
-Every step waits for the previous. The gap between "user stops speaking" and "TTS begins" is where latency accumulates.
-
-With Deepgram v2 models (e.g. `flux-general-en`), the SDK can overlap the first two steps. The v2 model fires a `preflight` event slightly *before* `speech_final` — an early prediction of the final transcript. The SDK uses it to start LLM generation ahead of time:
+The standard pipeline is strictly sequential — each step waits for the previous to complete:
 
 ```
-preflight fires  →  LLM starts (speculative)
-              speech_final arrives
-                       ↓
-          text unchanged?  →  LLM continues uninterrupted
-          text changed?    →  LLM cancelled, restarts with correct text
+Standard:   user stops → speech_final → LLM starts → first token → TTS begins
 ```
 
-By the time `speech_final` confirms the transcript, the LLM may already have tokens ready. TTS starts sooner, and the user hears a response faster.
+With Deepgram v2 models (like `flux-general-en`), the SDK overlaps the first two steps. Deepgram fires a `preflight` event slightly before `speech_final` — an early prediction of what the user said. The SDK uses it to start the LLM speculatively:
+
+```
+Eager:    preflight fires → LLM starts (speculative)
+                            speech_final arrives
+                                   ↓
+                      text unchanged? → LLM continues uninterrupted
+                      text changed?   → LLM cancelled, restarts correctly
+```
+
+By the time `speech_final` confirms the transcript, the LLM may already have tokens ready — TTS starts sooner, and the user hears a response faster.
 
 Enable it with two config options:
 
@@ -49,47 +47,42 @@ const agent = new CompositeVoice({
   stt, llm, tts,
   eagerLLM: {
     enabled: true,
-    cancelOnTextChange: true,  // abort and restart if the preflight text was wrong
+    cancelOnTextChange: true, // restart if the preflight text was wrong
   },
 });
 ```
 
-The UI in this example visualizes all pipeline stages in real time — you can see exactly when each event fires and compare timing.
+The UI visualizes all pipeline stages in real time — you can see exactly when each event fires and compare timing with and without eager mode enabled.
 
-> **Note on model availability:** Preflight events require a Deepgram v2 model such as `flux-general-en`. This example defaults to `nova-3` (which does not emit preflight) so you can see the baseline timing first. To enable the eager path, change the model to `flux-general-en` in `index.html` if your Deepgram account has access.
+> **Note on model availability:** Preflight events require a Deepgram v2 model such as `flux-general-en`. The example defaults to `nova-3` (no preflight) so you can see baseline timing first. To enable the eager path, change the model to `flux-general-en` in `index.html` if your Deepgram account has access.
 
 ---
 
 ## Prerequisites
 
-- Node.js 18+
-- pnpm
-- Chrome or Edge recommended; Firefox works for Deepgram providers
-- A [Deepgram API key](https://console.deepgram.com/) — free tier, no credit card
+- **Node.js** 18 or later and **pnpm** (`npm install -g pnpm`)
+- A [Deepgram API key](https://console.deepgram.com/) — free tier, no credit card required
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ---
 
 ## Setup
 
-All commands from the **repo root**:
+Run all commands from the **repo root**:
 
 ```bash
-# 1. Install dependencies
-pnpm install
+# 1. Install dependencies and build the SDK
+pnpm install && pnpm build
 
-# 2. Build the SDK
-pnpm build
-
-# 3. Copy the env template and add your keys
+# 2. Copy the env template
 cp examples/03-eager-pipeline/sample.env examples/03-eager-pipeline/.env
 ```
 
-Edit `.env`:
+Open `.env` and fill in your keys:
 
 ```env
-VITE_DEEPGRAM_API_KEY=your-deepgram-key-here
-VITE_ANTHROPIC_API_KEY=your-anthropic-key-here
+DEEPGRAM_API_KEY=your-deepgram-key-here
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
@@ -104,35 +97,35 @@ Open [http://localhost:3003](http://localhost:3003) in Chrome or Edge.
 
 ---
 
-## Architecture
+## Pipeline diagram
 
 ```
 Microphone
     ↓
 DeepgramSTT (nova-3 or flux-general-en, WebSocket)
-    ├──[transcription.preflight]──▶ LLM starts speculatively (if eagerLLM.enabled)
-    └──[transcription.speechFinal]─▶ LLM: text same? continue | different? cancel + restart
-                                                   ↓
-                                      DeepgramTTS (aura-2, WebSocket, 24 kHz)
-                                                   ↓
-                                                Speakers
+    ├── [transcription.preflight] ──▶ LLM starts speculatively (if eagerLLM.enabled)
+    └── [transcription.speechFinal] ─▶ LLM: text same? continue | different? cancel + restart
+                                                  ↓
+                                     DeepgramTTS (aura-2, WebSocket, 24 kHz)
+                                                  ↓
+                                               Speakers
 ```
 
-### Events shown in the UI
+### Events visualized in the UI
 
 | Event | When it fires |
 |-------|---------------|
-| `transcription.interim` | Each partial transcript segment (word by word) |
+| `transcription.interim` | Each partial transcript segment, word by word |
 | `transcription.final` | Deepgram confirms a segment as final |
 | `transcription.preflight` | Early end-of-turn prediction from Deepgram v2 |
 | `transcription.speechFinal` | Deepgram confirms the full utterance has ended |
-| `llm.start` | LLM generation begins (eagerly or after `speech_final`) |
-| `llm.chunk` | Each token as it arrives |
+| `llm.start` | LLM generation begins (eagerly or after `speechFinal`) |
+| `llm.chunk` | Each token as it streams in |
 | `llm.complete` | Full response assembled |
 | `tts.start` | Deepgram TTS synthesis begins |
 | `tts.complete` | Audio playback finished |
 
-The UI timestamps each event so you can measure the actual latency difference with and without eager mode.
+The UI timestamps each event so you can measure real latency with and without eager mode.
 
 ---
 
@@ -140,41 +133,43 @@ The UI timestamps each event so you can measure the actual latency difference wi
 
 ### `cancelOnTextChange: true` (recommended)
 
-When the `preflight` text differs from the final `speech_final` text, the in-flight LLM generation is cancelled and restarted with the correct transcript. This prevents the AI from responding to a misheard utterance.
+When the `preflight` text differs from the final `speechFinal` text, the in-flight LLM generation is cancelled and restarted with the correct transcript. Prevents the AI from responding to a mishear.
 
 ### `cancelOnTextChange: false`
 
-The LLM continues even if the transcript changed. Faster (no restart overhead), but risks responding to an incorrect transcript. Only use this with highly accurate models and clean audio.
+The LLM continues even if the transcript changed — faster (no restart overhead) but risks responding to incorrect text. Only suitable with highly accurate models and clean audio environments.
 
-### `endpointing` value
+### Adjusting `endpointing`
 
 ```javascript
 new DeepgramSTT({
   options: {
-    endpointing: 300,  // ms of silence before speech_final fires
+    endpointing: 300,   // ms of silence before speech_final fires
   }
 })
 ```
 
-Lower values feel more responsive but may split long utterances into multiple turns.
+Lower values feel more responsive; higher values prevent splitting long utterances.
 
 ---
 
 ## Troubleshooting
 
-**No `preflight` events appearing in the UI**
+**No `preflight` events in the UI**
 
 Preflight requires a Deepgram v2 model. The example defaults to `nova-3`. To enable preflight:
+
 1. Open `index.html`
 2. Change `model: 'nova-3'` to `model: 'flux-general-en'`
-3. Ensure your Deepgram account has access to v2 models
+3. Verify your Deepgram account has access to v2 models at [console.deepgram.com](https://console.deepgram.com/)
 
-**LLM restarts frequently**
+**LLM restarts too frequently**
 
-With `cancelOnTextChange: true`, the LLM restarts whenever `speech_final` text differs from `preflight`. If this is frequent:
-- Speak clearly with distinct pauses
+With `cancelOnTextChange: true`, the LLM restarts whenever the final transcript differs from the preflight. If this is happening often:
+
+- Speak clearly with natural pauses
 - Use `flux-general-en` for more accurate preflight predictions
-- Set `cancelOnTextChange: false` to accept minor text differences
+- Set `cancelOnTextChange: false` if minor text differences are acceptable
 
 **WebSocket connection fails**
 
@@ -199,8 +194,8 @@ pnpm build
 
 ## Browser support
 
-| Browser | Status |
-|---------|--------|
-| Chrome / Edge | Full support — recommended |
-| Firefox | Works — Deepgram providers don't require Web Speech API |
-| Safari | Limited — WebSocket AudioWorklet support varies by Safari version |
+| Browser | Status | Notes |
+|---------|--------|-------|
+| Chrome / Edge | Recommended | WebSocket and AudioWorklet fully supported |
+| Firefox | Works | Deepgram WebSocket providers don't require Web Speech API |
+| Safari | Limited | WebSocket AudioWorklet support varies by Safari version |
