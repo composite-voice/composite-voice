@@ -1,37 +1,70 @@
 ## What does this PR do?
 
 <!-- A short description of the change and why it was made.
-     If the "why" is obvious from the linked issue, a one-liner is fine. -->
+     Focus on the "why" — the diff shows the "what."
+     If this fixes a bug, describe what the bug was. If it adds a feature, describe the use case it enables.
+     If the "why" is fully explained by a linked issue below, a single sentence is fine. -->
+
+---
 
 ## Related issues
 
-<!-- Link related issues: "Fixes #123", "Closes #456", "Related to #789" -->
+<!-- Link issues so they close automatically on merge, or stay associated for context.
+     Examples:
+       Fixes #123
+       Closes #456
+       Related to #789 (doesn't close it, but worth linking) -->
+
+---
 
 ## Type of change
 
+<!-- Check all that apply -->
+
 - [ ] Bug fix
 - [ ] New feature
-- [ ] New provider
+- [ ] New provider (STT / LLM / TTS)
 - [ ] Documentation improvement
 - [ ] Refactoring (no behaviour change)
 - [ ] Performance improvement
-- [ ] Breaking change — describe what breaks and how to migrate in the body above
+- [ ] Breaking change — if checked, describe what breaks and how users should migrate
 
-## Checklist
+---
 
-- [ ] Tests added or updated for any changed behaviour
+## Pre-merge checklist
+
+<!-- Work through this before marking the PR as ready for review.
+     It's fine to open a Draft PR before this is all green — that's what drafts are for. -->
+
 - [ ] `pnpm type-check` passes
-- [ ] `pnpm lint` passes
-- [ ] `pnpm test` passes
-- [ ] If adding a provider: exported from the correct index files, documented in README, has a `sample.env` entry
-- [ ] If changing the public API: README and affected example READMEs updated
+- [ ] `pnpm lint` passes (or `pnpm lint:fix` was run)
+- [ ] `pnpm test` passes — all existing tests still green
+- [ ] Tests added or updated to cover any new or changed behaviour
+- [ ] If adding a provider: exported from the category index and top-level `src/index.ts`
+- [ ] If adding a provider: documented in the README providers table
+- [ ] If changing the public API: README and relevant example READMEs updated
+- [ ] If adding API key requirements: `sample.env` entries added to affected examples
+
+---
 
 ## How to test
 
-<!-- Tell the reviewer how to verify this works.
-     Include setup steps, env vars needed, and what to specifically check.
-     Example: "Run example 01 and verify the transcript appears within 500 ms of speaking." -->
+<!-- Walk the reviewer through verifying that this works.
+     Include required environment setup, which example to run (if applicable),
+     and what specifically to look or listen for.
+
+     Example:
+     "Copy sample.env in examples/01-deepgram-anthropic-deepgram/ and add Deepgram + Anthropic keys.
+     Run `pnpm example:01-deepgram-anthropic-deepgram:dev`.
+     Speak a sentence and confirm the transcript appears in the UI within ~500ms.
+     Check the browser console — there should be no errors during the full
+     listen → think → speak cycle.
+     Then close the browser tab abruptly and re-open it — the agent should reconnect
+     cleanly without requiring a page reload." -->
+
+---
 
 ## Notes for reviewers
 
-<!-- Design decisions, trade-offs, open questions, or areas that deserve extra attention. -->
+<!-- Design decisions, trade-offs, known limitations, or specific areas you'd like extra attention on.
+     If there's nothing to flag, delete this section — it's optional. -->

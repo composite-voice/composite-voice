@@ -157,7 +157,7 @@ export class CompositeVoice {
       this.logger.info('CompositeVoice SDK initialized');
     } catch (error) {
       this.logger.error('Failed to initialize', error);
-      this.agentStateMachine.setError();
+      this.emitAgentError(error as Error, 'initialize', false);
       throw error;
     }
   }
@@ -361,6 +361,12 @@ export class CompositeVoice {
 
     if (signal?.aborted) return;
 
+    // If processing state machine is in error, reset to idle first so we can retry.
+    // The error → processing transition is not valid; we must go error → idle → processing.
+    if (this.processingStateMachine.getState() === 'error') {
+      this.processingStateMachine.setIdle();
+    }
+
     // Update processing state machine → AgentStateMachine will derive 'thinking'
     this.processingStateMachine.setProcessing();
 
@@ -487,7 +493,7 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
       this.processingStateMachine.setError();
-      this.agentStateMachine.setError();
+      this.emitAgentError(error as Error, 'processLLM');
     }
   }
 
@@ -605,7 +611,7 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
 
-      this.agentStateMachine.setError();
+      this.emitAgentError(error as Error, 'processTTS');
     }
   }
 
@@ -714,7 +720,7 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
 
-      this.agentStateMachine.setError();
+      this.emitAgentError(error as Error, 'finalizeLiveTTS');
       throw error;
     }
   }
@@ -767,7 +773,7 @@ export class CompositeVoice {
     } catch (error) {
       this.logger.error('Failed to start listening', error);
       this.captureStateMachine.setError();
-      this.agentStateMachine.setError();
+      this.emitAgentError(error as Error, 'startListening');
       throw error;
     }
   }
@@ -881,6 +887,21 @@ export class CompositeVoice {
    */
   private emitEvent(event: CompositeVoiceEvent): void {
     this.events.emitSync(event);
+  }
+
+  /**
+   * Emit an agent.error event and transition the agent state machine to error.
+   * Centralises the two calls so they are never accidentally separated.
+   */
+  private emitAgentError(error: Error, context: string, recoverable = true): void {
+    this.emitEvent({
+      type: 'agent.error',
+      error,
+      recoverable,
+      context,
+      timestamp: Date.now(),
+    });
+    this.agentStateMachine.setError();
   }
 
   /**

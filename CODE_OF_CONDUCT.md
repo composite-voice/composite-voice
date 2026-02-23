@@ -1,74 +1,110 @@
 # Code of Conduct
 
-## Our pledge
+## Welcome
 
-We are committed to making CompositeVoice a welcoming, inclusive, and respectful community for everyone — regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
+This is a project about giving software a voice — and the people building it deserve to be heard too.
 
-We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
+CompositeVoice is a community first, a codebase second. Whether you're here because you shipped a voice agent last week and hit a wall, because you're curious about real-time audio pipelines, or because you've never contributed to open source before and this seems like a good place to start — you belong here. The only qualification for membership in this community is that you show up with honesty and some patience for others who are doing the same.
 
----
-
-## The short version
-
-**Be kind. Be patient. Assume good intent. Critique code, not people.**
-
-Everyone here is working toward the same goal: building better software, learning, and helping each other. That's the culture we want.
+This isn't a large project with a steering committee. It's a small library, a maintainer, and the people who find it useful. That scale means we can actually be a community in the genuine sense — not a crowd of strangers transacting over a ticket queue.
 
 ---
 
-## Our community
+## The community we're building
 
-CompositeVoice is used and built by developers at every experience level — from someone shipping their first voice app to engineers who've been building real-time audio systems for years. Both are welcome here. So is everyone in between.
+CompositeVoice sits at an intersection that most developers haven't worked in before: real-time audio capture, streaming AI inference, and browser APIs that behave differently across every platform. That means the people here often arrive with gaps — someone who knows WebSockets but not audio, someone who knows AI APIs but has never used `getUserMedia`, someone who knows JavaScript but not TypeScript. Nobody here knows all of it.
 
-Participation — issues, pull requests, code review, GitHub Discussions — means agreeing to these standards.
-
----
-
-## What we value
-
-**Patience.** Everyone starts somewhere. A thoughtful answer to a beginner's question has real value. Don't make people feel bad for not already knowing something.
-
-**Constructive feedback.** "This could be simplified by..." is useful. "This is wrong" without explanation is not. When reviewing code, point toward solutions, not just problems.
-
-**Intellectual honesty.** There is often more than one good solution to a problem. Disagreement is welcome; contempt is not. "I disagree, and here's why" is healthy. Dismissiveness is not.
-
-**Taking responsibility.** Mistakes happen to everyone. Own them and move on — no one expects perfection, and pretending otherwise makes the environment worse for everyone.
-
-**Staying on topic.** The goal is to build good software together. Keep conversations focused on the work.
+This is a community where experience levels mix and learning is expected. If you've shipped five voice agents, your job when someone asks a question you find obvious is to answer it well, not to signal that you found it obvious. If you've never opened a pull request before, your job is to ask when you're stuck — not to suffer quietly and give up.
 
 ---
 
-## What we won't tolerate
+## What good participation looks like
 
-- Harassment or discrimination of any kind — in public or private
-- Personal attacks or derogatory comments about someone's identity, background, or experience level
+Good participation is specific and generous. Here are concrete examples.
+
+**Helping someone understand a concept:**
+
+> "The reason `AudioContext` has to be resumed after a user gesture is that browsers require it as an autoplay restriction — here's the MDN article: [link]. In this project, that's handled in `AudioCapture.ts` around line 42. If you're seeing the `interrupted` state, that's almost certainly why."
+
+Not:
+
+> "Did you read the docs?"
+
+**Reviewing a pull request:**
+
+> "This works for the happy path, but if the WebSocket closes between `startCapture()` and the first `onmessage`, the interim results buffer will never be flushed. Could you add a flush call in the `onclose` handler? I think something like `this._flushBuffer()` after the close event would cover it."
+
+Not:
+
+> "This is broken."
+
+**Disagreeing about a design decision:**
+
+> "I'd push back on using a class here — the state is simple enough that a plain function with a closure might be easier to test and tree-shake. But I might be underestimating the complexity; what's your reasoning for the class? Happy to be wrong."
+
+Not:
+
+> "This is the wrong pattern."
+
+**Asking for help:**
+
+> "I'm getting a `NotAllowedError` when calling `startCapture()` on iOS Safari 16.4. I'm calling it from a button click handler, so I expected the gesture requirement to be satisfied. Here's the stack trace and the relevant part of my setup..."
+
+That kind of clear, specific question — even when you don't know the answer — makes it fast for someone to help you. You don't need to have already diagnosed the problem to ask well.
+
+---
+
+## What we don't tolerate
+
+The list is short. All of the following are grounds for removal from the community:
+
+- Harassment or discrimination based on age, background, disability, ethnicity, gender identity and expression, nationality, personal appearance, race, religion, sexual identity, or any other protected characteristic
+- Personal attacks — criticising code is welcome; criticising the person writing it is not
+- Derogatory comments about someone's experience level or the quality of their questions
 - Publishing someone's private information without their consent (doxxing)
-- Sustained disruption of discussions or deliberate trolling
+- Sustained disruption of discussions — repeated off-topic replies, deliberate trolling, bad-faith arguments that waste everyone's time
 - Unwelcome sexual attention or advances
-- Conduct that would be unacceptable in a professional workplace
+- Any conduct that would be unacceptable in a professional workplace
 
-The principle is simple: treat people the way you'd want to be treated if you were new to the project and asking for help.
+The practical test: if you'd be uncomfortable saying it in a professional code review with your name attached, don't say it here.
 
 ---
 
 ## Scope
 
-This code of conduct applies in all project spaces: GitHub issues, pull requests, code review comments, GitHub Discussions, and any other venue where you're representing the project publicly.
+This code of conduct applies in all project spaces:
+
+- GitHub Issues and Pull Requests
+- Code review comments
+- GitHub Discussions
+- Commit messages (yes, commit messages)
+- Any public forum where you're representing the CompositeVoice project
+
+It also applies to private conduct that affects members of this community.
 
 ---
 
-## Reporting
+## How to report
 
-If you see something that violates this code of conduct, please report it. You will not be judged or penalised for reporting in good faith.
+If you witness or experience something that violates this code of conduct, please report it. You will not face any negative consequences for reporting in good faith. Your report will be handled with care and confidentiality.
 
-**How to report:**
+**Step 1:** Do not respond publicly. Escalating in the open usually makes situations worse before they get better.
 
-1. Open a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new) — this is private and visible only to the maintainer.
-2. Or contact the maintainer directly through their [GitHub profile](https://github.com/lukeocodes).
+**Step 2:** Report through one of these private channels:
 
-Please do not report code of conduct violations through public issues or PR comments. Public reports can escalate situations and may expose the person being reported to further harm before anything is resolved.
+- **GitHub Security Advisory (preferred):** [Open a Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This creates a private channel visible only to the maintainer and is designed for confidential communication.
+- **Direct contact:** Reach the maintainer via [GitHub](https://github.com/lukeocodes).
 
-All reports are handled confidentially. We will not retaliate against anyone who reports in good faith.
+**Step 3:** Include what you're comfortable sharing:
+
+- What happened, with specific detail if you have it
+- When and where it happened — link to the issue, comment, or discussion if applicable
+- Whether this was a one-time incident or part of a pattern
+- What outcome you're hoping for, if you have one in mind
+
+You don't need a complete picture to file a report. If you saw something and you're unsure whether it rises to the level of a violation, report it anyway. A borderline situation that goes unaddressed tends to escalate; one that gets a quiet check-in usually doesn't.
+
+All reports are confidential. Your identity will not be disclosed to the person being reported without your explicit consent.
 
 ---
 
@@ -76,16 +112,20 @@ All reports are handled confidentially. We will not retaliate against anyone who
 
 When a report is received:
 
-1. **Acknowledgement** — usually within 48 hours.
-2. **Context gathering** — reaching out privately to understand the situation before taking action.
-3. **Proportional response**, ranging from:
-   - A private message explaining why the behaviour was a problem
-   - A request for a public or private apology, depending on the situation
-   - Temporary suspension from project spaces
-   - Permanent removal from the community
+1. **Acknowledgement** — within 48 hours, the maintainer will confirm receipt and let you know the report is under review.
 
-Decisions will be communicated clearly to all parties involved.
+2. **Context** — before taking action, the maintainer will review the situation carefully. This may include reading the full thread, reaching out to witnesses, or a private conversation with the person being reported.
+
+3. **Decision** — the response is proportional to the severity and context. It may range from:
+   - A private note explaining why the behaviour was a problem
+   - A request for a public or private apology, depending on the situation
+   - A temporary suspension from participating in the project
+   - A permanent ban from the community
+
+4. **Communication** — the decision and the reasoning behind it will be communicated to all parties involved, within the bounds of confidentiality.
+
+If you'd like to appeal a decision, reply to the original reporting channel. Appeals are reviewed with the same care as the original report.
 
 ---
 
-_Based on the [Contributor Covenant](https://www.contributor-covenant.org/) v2.1._
+_Based on the [Contributor Covenant](https://www.contributor-covenant.org/) v2.1, adapted with a human voice._
