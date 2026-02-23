@@ -1,84 +1,35 @@
 # Example 04 — Server-Side Proxy
 
-Demonstrates how to keep API keys completely out of the browser bundle. A server-side proxy sits between the browser and the AI providers, injecting credentials server-side before forwarding each request. The browser bundle contains zero secrets.
+Demonstrates how to keep API keys completely out of the browser bundle. A server-side proxy sits between the browser and the AI providers, injecting credentials server-side before forwarding each request. **The browser bundle contains zero secrets.**
 
 | | Provider | Via |
 |-|----------|-----|
 | **STT** | `DeepgramSTT` — nova-3 | Proxy (`proxyUrl` instead of `apiKey`) |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-5 | Proxy |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-6 | Proxy |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | Proxy |
+
+---
+
+## What you'll learn
+
+- Why embedding API keys in browser bundles is a security risk
+- How the `proxyUrl` option works in provider configuration
+- How `createExpressProxy` intercepts requests and injects credentials server-side
+- Why env vars must **not** use the `VITE_` prefix to stay server-side only
+- The difference between development mode (Vite dev proxy) and production (Express server)
 
 ---
 
 ## Why use a proxy?
 
-Embedding API keys directly in a browser bundle is a security risk. Anyone who opens DevTools → Sources can copy your keys and use them to run up your bill. This pattern eliminates that risk entirely:
+Any API key embedded directly in a browser bundle is visible to anyone who opens DevTools → Sources. They can copy your key and use it to run up your bill.
 
-1. **API keys never leave the server.** They live in environment variables, loaded at server startup.
-2. **The browser connects to your own origin** (`/proxy/...`) — no CORS issues, no keys visible in network requests.
-3. **The proxy forwards requests** to the real providers with credentials injected just before sending.
-4. **Works in any Node.js environment** — Express, Next.js, plain `http.Server`, or any other framework.
+This pattern eliminates that risk:
 
----
-
-## How it works
-
-### Development mode
-
-In development, Vite's built-in dev proxy handles forwarding. The Vite config reads your API keys from the `.env` file and injects them as request headers before forwarding:
-
-```
-Browser → http://localhost:3004/proxy/anthropic/* → https://api.anthropic.com/*  (key injected)
-Browser → ws://localhost:3004/proxy/deepgram/*   → wss://api.deepgram.com/*     (key injected)
-```
-
-Providers use `proxyUrl` instead of `apiKey`:
-
-```javascript
-const stt = new DeepgramSTT({
-  proxyUrl: `${window.location.origin}/proxy/deepgram`,
-  options: { model: 'nova-3', ... },
-});
-
-const llm = new AnthropicLLM({
-  proxyUrl: `${window.location.origin}/proxy/anthropic`,
-  model: 'claude-haiku-4-5',
-});
-
-const tts = new DeepgramTTS({
-  proxyUrl: `${window.location.origin}/proxy/deepgram`,
-  options: { model: 'aura-2-thalia-en', ... },
-});
-```
-
-### Production mode
-
-Replace the Vite dev proxy with `createExpressProxy` from `@lukeocodes/composite-voice/proxy`. See `server.ts` in this directory — it's a complete, runnable production server:
-
-```typescript
-import express from 'express';
-import { createServer } from 'http';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
-
-const app = express();
-const server = createServer(app);
-
-const proxy = createExpressProxy({
-  deepgramApiKey:  process.env.DEEPGRAM_API_KEY,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  pathPrefix: '/proxy',
-});
-
-app.use(proxy.middleware);
-proxy.attachWebSocket(server);  // required for Deepgram WebSocket connections
-
-// Serve the built front end
-app.use(express.static('dist'));
-
-server.listen(3004);
-```
-
-Other adapters are available for **Next.js App Router** (`createNextJsProxy`) and plain Node.js `http.Server` (`createNodeProxy`). See `src/proxy/` in the SDK source for details.
+1. **API keys never leave the server** — they live in environment variables, loaded at startup
+2. **The browser connects to your own origin** (`/proxy/...`) — no CORS issues, no keys visible in network requests
+3. **The proxy injects credentials** just before forwarding to the real provider
+4. **Works anywhere Node.js runs** — Express, Next.js, plain `http.Server`, or any other framework
 
 ---
 
@@ -102,7 +53,7 @@ pnpm install
 # 2. Build the SDK
 pnpm build
 
-# 3. Copy the sample env file
+# 3. Copy the sample env file and fill in your keys
 cp examples/04-proxy-server/sample.env examples/04-proxy-server/.env
 ```
 
@@ -113,7 +64,7 @@ DEEPGRAM_API_KEY=your-deepgram-api-key-here
 ANTHROPIC_API_KEY=your-anthropic-api-key-here
 ```
 
-> **Important:** These env vars do **not** use the `VITE_` prefix. Variables prefixed with `VITE_` are automatically bundled into the browser build by Vite — that's exactly what we're trying to avoid. Without the prefix, they stay server-side only.
+> **Important:** These env vars do **not** use the `VITE_` prefix. Variables with that prefix are automatically bundled into the browser build by Vite — that's exactly what we're avoiding. Without the prefix, they stay server-side only.
 
 ---
 
@@ -125,7 +76,9 @@ pnpm example:04-proxy-server:dev
 
 Open [http://localhost:3004](http://localhost:3004) in Chrome or Edge.
 
-**Verify that no keys are in the bundle:** Open DevTools → Sources, then search (Ctrl+F or Cmd+F) for your API key string. It won't be there.
+**Verify that no keys are in the bundle:** Open DevTools → Sources, press Ctrl+F (Cmd+F on Mac), and search for your API key string. You won't find it.
+
+In development, the Vite dev server handles key injection. Your `.env` keys are read by `vite.config.js` and injected as request headers when forwarding to Deepgram and Anthropic — but they never appear in the browser bundle.
 
 ---
 
@@ -142,20 +95,72 @@ cd examples/04-proxy-server
 npx tsx server.ts
 ```
 
-The server listens on port 3004, serves the static files from `dist/`, and proxies all `/proxy/*` requests with credentials injected.
+The server listens on port 3004, serves static files from `dist/`, and proxies all `/proxy/*` requests with credentials injected by `createExpressProxy`.
 
 ---
 
-## Architecture
+## How it works
+
+### Development
 
 ```
-Development:
 Browser ──[no keys]──▶ Vite dev server ──[key injected by vite.config.js]──▶ Deepgram / Anthropic
+```
 
-Production:
+### Production
+
+```
 Browser ──[no keys]──▶ /proxy/deepgram  ──[key injected by createExpressProxy]──▶ wss://api.deepgram.com
 Browser ──[no keys]──▶ /proxy/anthropic ──[key injected by createExpressProxy]──▶ https://api.anthropic.com
 ```
+
+### Browser code (no API keys anywhere)
+
+```javascript
+const stt = new DeepgramSTT({
+  proxyUrl: `${window.location.origin}/proxy/deepgram`,
+  options: { model: 'nova-3', interimResults: true, endpointing: 300 },
+});
+
+const llm = new AnthropicLLM({
+  proxyUrl: `${window.location.origin}/proxy/anthropic`,
+  model: 'claude-haiku-4-6',
+  systemPrompt: 'You are a helpful voice assistant.',
+  maxTokens: 200,
+});
+
+const tts = new DeepgramTTS({
+  proxyUrl: `${window.location.origin}/proxy/deepgram`,
+  options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+});
+```
+
+### Production server (`server.ts`)
+
+```typescript
+import express from 'express';
+import { createServer } from 'http';
+import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+
+const app = express();
+const server = createServer(app);
+
+const proxy = createExpressProxy({
+  deepgramApiKey:  process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  pathPrefix: '/proxy',
+});
+
+app.use(proxy.middleware);
+proxy.attachWebSocket(server);  // required for Deepgram WebSocket connections
+
+app.use(express.static('dist'));  // serve the built front end
+server.listen(3004);
+```
+
+Other adapters available in the SDK:
+- **Next.js App Router** — `createNextJsProxy` from `@lukeocodes/composite-voice/proxy`
+- **Plain Node.js** — `createNodeProxy` from `@lukeocodes/composite-voice/proxy`
 
 ---
 
@@ -164,12 +169,13 @@ Browser ──[no keys]──▶ /proxy/anthropic ──[key injected by createE
 When deploying this pattern to production:
 
 - Load keys from environment variables only — never hard-code them in source files
-- Run the proxy behind HTTPS — keys are injected as HTTP headers which are plaintext over HTTP
-- Set spending limits and rate limits on your Deepgram and Anthropic dashboards
-- Scope your API keys to the minimum permissions required
-- Consider adding origin checks or rate limiting to the proxy itself to prevent abuse
+- Run the proxy behind HTTPS — credentials are injected as HTTP headers which are plaintext over plain HTTP
+- Set spending limits on your Deepgram and Anthropic dashboards
+- Scope your API keys to the minimum required permissions
+- Consider adding rate limiting at the proxy or reverse proxy level to prevent abuse
+- If the proxy and front end are on different origins, configure CORS appropriately
 
-See [SECURITY.md](../../SECURITY.md) for the full proxy security checklist.
+See [SECURITY.md](../../SECURITY.md) for the full security checklist.
 
 ---
 
@@ -177,29 +183,34 @@ See [SECURITY.md](../../SECURITY.md) for the full proxy security checklist.
 
 **404 on `/proxy/*` endpoints**
 
-- In development, the Vite dev server proxy is only active while `pnpm dev` is running
-- In production, ensure the Express server from `server.ts` is running and listening on the correct port
+- In development: the Vite dev proxy is only active while `pnpm dev` is running
+- In production: ensure `server.ts` is running and listening on the correct port
 
-**WebSocket connections fail**
+**WebSocket connections fail in production**
 
-WebSocket forwarding requires `proxy.attachWebSocket(server)` to be called with the HTTP server instance, not the Express app. Check `server.ts` and ensure this call is present.
+`proxy.attachWebSocket(server)` must be called with the HTTP server instance, **not** the Express app. Check `server.ts` and ensure this call is present.
 
-**Keys still visible in DevTools**
+If you're behind a load balancer or reverse proxy (e.g. nginx), configure it to pass WebSocket upgrade headers through.
 
-Check that your env vars in `.env` do **not** have the `VITE_` prefix. Any variable with that prefix is automatically exposed to the browser bundle.
+**Keys are still visible in DevTools**
 
-**WebSocket proxy not working in production**
+Check that your env vars in `.env` do **not** have the `VITE_` prefix. Any `VITE_*` variable is automatically exposed to the browser bundle by Vite by design.
 
-Ensure your production environment supports WebSocket upgrades. If you're behind a load balancer or reverse proxy (e.g. nginx), configure it to pass WebSocket upgrades through.
+**"Cannot find module '@lukeocodes/composite-voice'"**
+
+```bash
+pnpm build
+```
 
 ---
 
 ## What to try next
 
-Once you have the proxy pattern working, you can combine it with features from earlier examples:
+The proxy pattern combines with everything from the earlier examples:
 
-- Add `conversationHistory` (from Example 02) to the proxy-backed setup
-- Enable the `eagerLLM` pipeline (from Example 03) — it works with proxy URLs too
+- Add `conversationHistory` (from Example 02) — it works exactly the same with proxy URLs
+- Enable the `eagerLLM` pipeline (from Example 03) — works with `proxyUrl` too
+- Try the Next.js or plain Node.js proxy adapter in `src/proxy/adapters/`
 
 ---
 
@@ -209,4 +220,4 @@ Once you have the proxy pattern working, you can combine it with features from e
 |---------|--------|
 | Chrome / Edge | Full support — recommended |
 | Firefox | Works — Deepgram providers don't require Web Speech API |
-| Safari | Limited — WebSocket-based AudioWorklet support varies by version |
+| Safari | Limited — WebSocket AudioWorklet support varies by Safari version |
