@@ -1,6 +1,6 @@
 # CompositeVoice Examples
 
-Five standalone Vite applications, each demonstrating a different aspect of the SDK. They're designed to be read in order — each one builds on the previous.
+Five standalone Vite applications, each demonstrating a different aspect of the SDK. They are designed to be explored in order — each one builds on the concepts introduced by the previous.
 
 ## Quick start
 
@@ -9,13 +9,13 @@ Five standalone Vite applications, each demonstrating a different aspect of the 
 pnpm install
 pnpm build
 
-# Pick an example and run it
-pnpm example:00-native-anthropic-native:dev
+# Run any example
+pnpm example:00-native-anthropic-native:dev    # → http://localhost:3000
 ```
 
 ---
 
-## The examples
+## The examples at a glance
 
 | # | Directory | Stack | API keys | Port |
 |---|-----------|-------|----------|------|
@@ -23,7 +23,7 @@ pnpm example:00-native-anthropic-native:dev
 | [01](#01--best-in-class-deepgram--anthropic) | `01-deepgram-anthropic-deepgram` | DeepgramSTT + Anthropic + DeepgramTTS | Deepgram + Anthropic | 3001 |
 | [02](#02--conversation-history) | `02-conversation-history` | NativeSTT + Anthropic + NativeTTS + memory | Anthropic only | 3002 |
 | [03](#03--eager-pipeline) | `03-eager-pipeline` | DeepgramSTT + Anthropic + DeepgramTTS + eager LLM | Deepgram + Anthropic | 3003 |
-| [04](#04--server-side-proxy) | `04-proxy-server` | Full stack via server proxy | Server-side only | 3004 |
+| [04](#04--server-side-proxy) | `04-proxy-server` | All providers via server proxy | Server-side only | 3004 |
 
 ---
 
@@ -31,7 +31,7 @@ pnpm example:00-native-anthropic-native:dev
 
 **[examples/00-native-anthropic-native/](./00-native-anthropic-native/)**
 
-The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. No Deepgram account needed.
+The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. No Deepgram account needed — just one API key.
 
 ```
 Microphone → Web Speech API → AnthropicLLM → SpeechSynthesis → Speakers
@@ -39,7 +39,7 @@ Microphone → Web Speech API → AnthropicLLM → SpeechSynthesis → Speakers
 
 - Only one API key (Anthropic)
 - Works in Chrome and Edge
-- Great starting point before adding paid speech providers
+- Start here before adding paid speech providers
 
 ```bash
 pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
@@ -71,7 +71,7 @@ pnpm example:01-deepgram-anthropic-deepgram:dev   # http://localhost:3001
 
 **[examples/02-conversation-history/](./02-conversation-history/)**
 
-Enables multi-turn memory so the LLM remembers earlier exchanges. Shows how `conversationHistory` works and how to display a full chat transcript in the UI.
+Enables multi-turn memory so the LLM remembers earlier exchanges. Shows how `conversationHistory` works and how to display a full chat thread in the UI.
 
 ```
 Microphone → NativeSTT → AnthropicLLM (with history[]) → NativeTTS → Speakers
@@ -91,15 +91,17 @@ pnpm example:02-conversation-history:dev   # http://localhost:3002
 
 **[examples/03-eager-pipeline/](./03-eager-pipeline/)**
 
-Demonstrates the speculative LLM pipeline: the SDK starts generating a response before the user has finished speaking, using Deepgram's early end-of-turn "preflight" signal. The result is noticeably lower perceived latency.
+Demonstrates the speculative LLM pipeline: the SDK starts generating a response before the user has finished speaking, using Deepgram's early `preflight` end-of-turn signal. The result is noticeably lower perceived latency.
 
 ```
-Deepgram preflight → LLM (speculative start)
-Deepgram speech_final → LLM continues (text unchanged) OR cancels and restarts (text changed)
+Deepgram preflight  → LLM starts (speculative)
+Deepgram speech_final → LLM continues (text unchanged) | cancels and restarts (text changed)
+                                          ↓
+                            DeepgramTTS → Speakers
 ```
 
 - Real-time pipeline timing visualized in the UI
-- Configurable with `eagerLLM.enabled` and `cancelOnTextChange`
+- `eagerLLM.enabled` and `cancelOnTextChange` configuration
 - Requires Deepgram + Anthropic
 
 ```bash
@@ -112,13 +114,13 @@ pnpm example:03-eager-pipeline:dev   # http://localhost:3003
 
 **[examples/04-proxy-server/](./04-proxy-server/)**
 
-Keeps API keys out of the browser entirely. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request. The browser bundle contains zero secrets.
+Keeps API keys completely out of the browser. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request. The browser bundle contains zero secrets.
 
 ```
 Browser ──[no keys]──▶ Express proxy ──[keys injected]──▶ Deepgram / Anthropic
 ```
 
-- `proxyUrl` used instead of `apiKey` in provider configs
+- `proxyUrl` used instead of `apiKey` in all provider configs
 - Vite dev proxy for development; `createExpressProxy` for production
 - `server.ts` is a complete, runnable production example
 
@@ -140,7 +142,7 @@ Each example is an independent **Vite application** inside the Nx monorepo. They
 }
 ```
 
-When you run an example, Nx automatically builds the SDK first if it has changed.
+The Vite config resolves `@lukeocodes/composite-voice` directly to the local `dist/` folder, so you always need to run `pnpm build` first. After that, running `pnpm dev` in the root alongside an example dev server gives you live rebuilds.
 
 ---
 
@@ -154,7 +156,7 @@ The SDK hasn't been built yet:
 pnpm build
 ```
 
-**"Module not found" errors**
+**"Module not found" or dependency errors**
 
 Install workspace dependencies:
 
@@ -164,7 +166,7 @@ pnpm install
 
 **Microphone not working**
 
-- Grant microphone permission in your browser
+- Grant microphone permission when your browser asks (or check the address bar lock icon)
 - HTTPS is required for microphone access in production; `localhost` is always allowed
 - For `NativeSTT`: Chrome and Edge only — Web Speech API is not supported in Firefox or Safari
 
@@ -181,6 +183,7 @@ pnpm exec nx reset
 1. Create a directory: `examples/my-example/`
 2. Add `package.json` with `@lukeocodes/composite-voice: "workspace:*"` in dependencies
 3. Add `project.json` with Nx targets (copy from an existing example)
-4. Add scripts to the root `package.json`
-5. Run `pnpm install`
-6. Add a `README.md` explaining what the example demonstrates
+4. Add a `vite.config.js` that resolves the SDK to `../../dist/index.mjs`
+5. Add dev/build/preview scripts to the root `package.json`
+6. Run `pnpm install`
+7. Write a `README.md` explaining what the example demonstrates and how to run it
