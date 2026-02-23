@@ -48,8 +48,8 @@ describe('DeepgramTTS', () => {
 
       expect(provider.isReady()).toBe(true);
       expect(mockCreateClient).toHaveBeenCalled();
-      expect(provider.config.voice).toBe('aura-asteria-en');
-      expect(provider.config.sampleRate).toBe(16000);
+      expect(provider.config.voice).toBe('aura-2-thalia-en');
+      expect(provider.config.sampleRate).toBe(24000);
       expect(provider.config.outputFormat).toBe('linear16');
       expect(provider.type).toBe('websocket');
     });

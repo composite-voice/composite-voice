@@ -10,6 +10,7 @@ import type { LLMProvider } from '../../src/core/types/providers';
 // Mock LLM provider for testing
 class MockLLMProvider implements LLMProvider {
   type = 'rest' as const;
+  managedAudio = false as const;
   config = { model: 'mock' };
 
   async initialize() {}
@@ -217,6 +218,7 @@ describe('Composite Mode Integration', () => {
       // Create provider that fails initialization
       class FailingProvider implements LLMProvider {
         type = 'rest' as const;
+        managedAudio = false as const;
         config = { model: 'fail' };
 
         async initialize() {

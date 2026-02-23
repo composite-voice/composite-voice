@@ -20,6 +20,7 @@ import type { AudioChunk, AudioMetadata } from '../../src/core/types/audio';
  */
 export class MockSTTProvider implements STTProvider {
   type = 'rest' as const;
+  managedAudio = false as const;
   config: STTProviderConfig = { model: 'mock' };
   private ready = false;
   private transcriptionCallback?: (result: TranscriptionResult) => void;
@@ -61,6 +62,7 @@ export class MockSTTProvider implements STTProvider {
  */
 export class MockLLMProvider implements LLMProvider {
   type = 'rest' as const;
+  managedAudio = false as const;
   config: LLMProviderConfig = { model: 'mock' };
   private ready = false;
   public generateCalled = false;
@@ -105,6 +107,7 @@ export class MockLLMProvider implements LLMProvider {
  */
 export class MockTTSProvider implements TTSProvider {
   type = 'rest' as const;
+  managedAudio = false as const;
   config: TTSProviderConfig = { model: 'mock' };
   private ready = false;
   private audioCallback?: (chunk: AudioChunk) => void;
@@ -158,6 +161,7 @@ export class MockTTSProvider implements TTSProvider {
  */
 export class MockAllInOneProvider implements AllInOneProvider {
   type = 'websocket' as const;
+  managedAudio = false as const;
   config: AllInOneProviderConfig = { model: 'mock' };
   private ready = false;
   private connected = false;
@@ -252,6 +256,7 @@ export class MockAllInOneProvider implements AllInOneProvider {
  */
 export class FailingProvider implements LLMProvider {
   type = 'rest' as const;
+  managedAudio = false as const;
   config: LLMProviderConfig = { model: 'fail' };
 
   async initialize() {

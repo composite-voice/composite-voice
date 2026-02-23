@@ -1,0 +1,22 @@
+{
+  "name": "@lukeocodes/composite-voice-example-01-deepgram-anthropic-deepgram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deepgram nova-3 STT + Anthropic claude-haiku-4-6 LLM + Deepgram aura-2 TTS example",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0",
+    "@deepgram/sdk": ">=4.11.2"
+  }
+}

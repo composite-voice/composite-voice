@@ -1,0 +1,44 @@
+{
+    "name": "@types/dom-speech-recognition",
+    "version": "0.0.7",
+    "description": "TypeScript definitions for dom-speech-recognition",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/dom-speech-recognition",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Bradford Smith",
+            "githubUsername": "brad4d",
+            "url": "https://github.com/brad4d"
+        },
+        {
+            "name": "Ben Lickly",
+            "githubUsername": "blickly",
+            "url": "https://github.com/blickly"
+        },
+        {
+            "name": "James Wright",
+            "githubUsername": "12wrigja",
+            "url": "https://github.com/12wrigja"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "typesVersions": {
+        "<=5.9": {
+            "*": [
+                "ts5.9/*"
+            ]
+        }
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/dom-speech-recognition"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "peerDependencies": {},
+    "typesPublisherContentHash": "84ead5bf7c4e43dd276a4375ace941bb00113e1640eec9621d3ac6c2871350cc",
+    "typeScriptVersion": "5.2",
+    "nonNpm": true
+}

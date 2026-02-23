@@ -15,6 +15,7 @@ import { ProviderInitializationError } from '../../../utils/errors';
 type AnthropicSDK = typeof import('@anthropic-ai/sdk').default;
 type AnthropicInstance = InstanceType<AnthropicSDK>;
 type MessageParam = import('@anthropic-ai/sdk/resources/messages').MessageParam;
+type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').MessageStreamEvent;
 
 /**
  * Anthropic LLM provider configuration
@@ -46,15 +47,13 @@ export class AnthropicLLM extends BaseLLMProvider {
   private client: AnthropicInstance | null = null;
 
   constructor(config: AnthropicLLMConfig, logger?: Logger) {
-    super(
-      {
-        model: config.model ?? 'claude-haiku-4-6',
-        maxTokens: config.maxTokens ?? 1024,
-        stream: config.stream ?? true,
-        ...config,
-      },
-      logger
-    );
+    const normalizedConfig: AnthropicLLMConfig = {
+      maxTokens: 1024,
+      stream: true,
+      ...config,
+      model: config.model ?? 'claude-haiku-4-6',
+    };
+    super(normalizedConfig, logger);
   }
 
   protected async onInitialize(): Promise<void> {
@@ -165,7 +164,7 @@ export class AnthropicLLM extends BaseLLMProvider {
             messageCount: messages.length,
           });
 
-          const streamParams: Parameters<AnthropicInstance['messages']['stream']>[0] = {
+          const stream = client.messages.stream({
             model: config.model,
             max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
             messages,
@@ -174,12 +173,15 @@ export class AnthropicLLM extends BaseLLMProvider {
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(options.stopSequences ? { stop_sequences: options.stopSequences } : {}),
             ...(options.extra ?? {}),
-          };
+          });
 
-          const stream = client.messages.stream(streamParams);
-
-          for await (const text of stream.textStream) {
-            yield text;
+          for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
+            if (
+              event.type === 'content_block_delta' &&
+              event.delta.type === 'text_delta'
+            ) {
+              yield event.delta.text;
+            }
           }
 
           logger.debug('Anthropic streaming request completed');

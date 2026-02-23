@@ -31,6 +31,37 @@ pnpm example:basic-browser:build
 
 See [basic-browser/README.md](./basic-browser/README.md) for more details.
 
+---
+
+### 2. Deepgram + Anthropic + Deepgram (`01-deepgram-anthropic-deepgram/`)
+
+A production-quality voice agent using Deepgram's best-in-class speech models with
+Anthropic's fastest Claude model:
+
+- **STT**: Deepgram nova-3 (real-time WebSocket transcription)
+- **LLM**: Anthropic claude-haiku-4-6 (fastest Claude 4.6 model)
+- **TTS**: Deepgram aura-2-thalia-en (24 kHz streaming synthesis)
+
+**Setup:**
+```bash
+cd examples/01-deepgram-anthropic-deepgram
+cp sample.env .env
+# Edit .env and add your Deepgram and Anthropic API keys
+```
+
+**Running:**
+```bash
+# From workspace root
+pnpm example:01-deepgram-anthropic-deepgram:dev
+
+# Or using nx directly
+nx run example-01-deepgram-anthropic-deepgram:dev
+```
+
+**Required API keys** (in `.env`):
+- `VITE_DEEPGRAM_API_KEY` — [Get one at console.deepgram.com](https://console.deepgram.com)
+- `VITE_ANTHROPIC_API_KEY` — [Get one at console.anthropic.com](https://console.anthropic.com)
+
 ## Workspace Structure
 
 All examples are part of the **Nx monorepo** and automatically depend on the root SDK package (`@lukeocodes/composite-voice`).

@@ -52,7 +52,10 @@
     "prepare": "husky",
     "example:basic-browser:dev": "nx run example-basic-browser:dev",
     "example:basic-browser:build": "nx run example-basic-browser:build",
-    "example:basic-browser:preview": "nx run example-basic-browser:preview"
+    "example:basic-browser:preview": "nx run example-basic-browser:preview",
+    "example:01-deepgram-anthropic-deepgram:dev": "nx run example-01-deepgram-anthropic-deepgram:dev",
+    "example:01-deepgram-anthropic-deepgram:build": "nx run example-01-deepgram-anthropic-deepgram:build",
+    "example:01-deepgram-anthropic-deepgram:preview": "nx run example-01-deepgram-anthropic-deepgram:preview"
   },
   "keywords": [
     "voice",
