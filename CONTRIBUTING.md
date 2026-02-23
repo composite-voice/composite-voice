@@ -1,10 +1,8 @@
 # Contributing to CompositeVoice
 
-Welcome! We're genuinely glad you're here.
+First: thank you. CompositeVoice gets better when more people contribute to it, and we genuinely appreciate your time — whether that's a bug report, a typo fix, a new provider, or helping someone in Discussions.
 
-CompositeVoice is open source and we believe it gets better when more people contribute to it. Whether this is your first open-source contribution or your thousandth, whether you're fixing a typo or building a new provider — you're in the right place.
-
-This guide covers everything you need to go from "I want to help" to a merged pull request.
+This guide covers everything from "I found a bug" to "I want to build a provider". Skip to whatever applies to you.
 
 ---
 
@@ -25,23 +23,22 @@ This guide covers everything you need to go from "I want to help" to a merged pu
 
 ## Ways to contribute
 
-Not all contributions are code. These are all genuinely valuable:
+Not all contributions are code. These are all valuable:
 
-**No code required:**
-- **Report a bug** — a clear, reproducible bug report saves hours of debugging. Use the [bug report template](https://github.com/lukeocodes/composite-voice/issues/new?template=bug_report.md).
-- **Request a feature** — describe the problem you're trying to solve, not just the solution. Use the [feature request template](https://github.com/lukeocodes/composite-voice/issues/new?template=feature_request.md).
-- **Improve docs** — typo fixes, clearer examples, missing edge cases, better explanations. Docs PRs merge fast.
+**No code needed:**
+- **Report a bug** — a clear, reproducible report saves hours of debugging. Use the [bug report template](https://github.com/lukeocodes/composite-voice/issues/new?template=bug_report.md).
+- **Request a feature** — describe the problem you're trying to solve, not just the solution you have in mind. Use the [feature request template](https://github.com/lukeocodes/composite-voice/issues/new?template=feature_request.md).
+- **Improve docs** — typos, clearer examples, missing edge cases, better explanations. Docs PRs merge fast.
 - **Answer questions** — help others in [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions).
-- **Share what you've built** — post in Discussions or link to your project.
+- **Share what you've built** — show and tell in Discussions, or link to your project.
 
 **With code:**
-- **Fix a bug** — ideally with a test that proves it stays fixed.
-- **Implement a new provider** — see [Adding a provider](#adding-a-provider) for the checklist.
-- **Improve test coverage** — especially for edge cases and error paths.
+- **Fix a bug** — ideally with a test that confirms it stays fixed.
+- **Add a new provider** — see [Adding a provider](#adding-a-provider) below.
+- **Improve test coverage** — especially error paths and edge cases.
 - **Performance improvements** — please include benchmark data.
-- **Browser compatibility** — fixes for specific browsers or environments.
 
-**Before starting large changes** — new top-level config options, architectural changes, new external dependencies, or breaking public API changes — please [open an issue](https://github.com/lukeocodes/composite-voice/issues/new) first. A short description of your intent is enough. This prevents duplicate work and avoids you spending time on a direction that might not be the right fit.
+**Before starting large changes** — new top-level config options, architectural changes, new external dependencies, or breaking public API changes — please [open an issue](https://github.com/lukeocodes/composite-voice/issues/new) first to discuss intent. This prevents duplicate work and avoids you spending time on something that might not fit.
 
 For bug fixes and small improvements, open a PR directly.
 
@@ -51,11 +48,11 @@ For bug fixes and small improvements, open a PR directly.
 
 Not sure where to start? Look for issues labelled:
 
-- [`good first issue`](https://github.com/lukeocodes/composite-voice/labels/good%20first%20issue) — small, well-defined tasks that don't require deep knowledge of the codebase
-- [`help wanted`](https://github.com/lukeocodes/composite-voice/labels/help%20wanted) — issues where maintainer input is available but the work is ready to be picked up
-- [`documentation`](https://github.com/lukeocodes/composite-voice/labels/documentation) — documentation improvements that don't require running code
+- [`good first issue`](https://github.com/lukeocodes/composite-voice/labels/good%20first%20issue) — small, well-scoped tasks that don't require deep codebase knowledge
+- [`help wanted`](https://github.com/lukeocodes/composite-voice/labels/help%20wanted) — issues where the direction is clear but maintainer capacity is limited
+- [`documentation`](https://github.com/lukeocodes/composite-voice/labels/documentation) — docs improvements that don't require running code
 
-If nothing on the list resonates, try running one of the [examples](./examples/) and see if anything feels rough. Good bug reports are worth as much as code.
+If nothing on the list fits, try running one of the [examples](./examples/) and see if anything feels rough. Clear bug reports are worth as much as code PRs.
 
 ---
 
@@ -69,7 +66,7 @@ If nothing on the list resonates, try running one of the [examples](./examples/)
 
 ### Fork and clone
 
-1. Fork the repository on GitHub — click the **Fork** button at the top right of [this page](https://github.com/lukeocodes/composite-voice).
+1. Fork the repository — click **Fork** at the top of [this page](https://github.com/lukeocodes/composite-voice).
 2. Clone your fork:
 
 ```bash
@@ -77,7 +74,7 @@ git clone https://github.com/your-username/composite-voice.git
 cd composite-voice
 ```
 
-3. Add the upstream remote so you can sync later:
+3. Add the upstream remote:
 
 ```bash
 git remote add upstream https://github.com/lukeocodes/composite-voice.git
@@ -91,9 +88,7 @@ pnpm build
 pnpm test
 ```
 
-If all three commands succeed, your environment is ready.
-
-If something fails, [open an issue](https://github.com/lukeocodes/composite-voice/issues) with the full output — we'll help you get set up.
+All three should succeed. If something fails, [open an issue](https://github.com/lukeocodes/composite-voice/issues) with the output — we'll help you get set up.
 
 ---
 
@@ -108,10 +103,10 @@ pnpm dev
 # Run the full test suite
 pnpm test
 
-# Run tests in watch mode (reruns affected tests on save)
+# Run tests in watch mode
 pnpm test:watch
 
-# Generate a coverage report (must meet the 50% global threshold)
+# Generate a coverage report
 pnpm test:coverage
 
 # TypeScript type checking (no emit)
@@ -119,33 +114,33 @@ pnpm type-check
 
 # Linting
 pnpm lint
-pnpm lint:fix     # auto-fix what can be fixed automatically
+pnpm lint:fix
 
 # Formatting
 pnpm format
 pnpm format:check
 ```
 
-### Testing changes against an example
+### Testing against an example
 
-The fastest way to see your changes in action:
+The fastest way to see your changes in a real browser:
 
 ```bash
 # Terminal 1: watch mode SDK rebuild
 pnpm dev
 
-# Terminal 2: run an example (resolves the SDK from the local dist/)
+# Terminal 2: run an example (resolves the SDK from local dist/)
 pnpm example:00-native-anthropic-native:dev    # http://localhost:3000
 ```
 
-Vite hot-reloads the example whenever the SDK rebuild completes. Changes in `src/` appear in the browser within a second or two.
+Vite hot-reloads the example when the SDK rebuild completes. Changes in `src/` appear in the browser within a second or two.
 
 ### Project structure
 
 ```
 src/
 ├── CompositeVoice.ts          # Main orchestrator — wires STT, LLM, TTS together
-├── index.ts                   # Public API barrel export
+├── index.ts                   # Public API exports
 ├── core/
 │   ├── audio/                 # AudioCapture, AudioPlayer
 │   ├── events/                # Type-safe EventEmitter
@@ -165,11 +160,11 @@ tests/
 ├── unit/                      # Unit tests — mirror src/ structure exactly
 ├── integration/               # Full pipeline tests with mock providers
 ├── mocks/                     # Shared mock provider implementations
-└── setup.ts                   # Browser API mocks for jsdom (AudioContext, Web Speech, etc.)
+└── setup.ts                   # Browser API mocks for jsdom
 
 examples/
-├── 00-native-anthropic-native/    # Simplest possible agent
-├── 01-deepgram-anthropic-deepgram/ # Best-in-class WebSocket setup
+├── 00-native-anthropic-native/    # Simplest possible setup
+├── 01-deepgram-anthropic-deepgram/ # Production WebSocket pipeline
 ├── 02-conversation-history/       # Multi-turn memory
 ├── 03-eager-pipeline/             # Speculative LLM generation
 └── 04-proxy-server/               # Server-side API key proxy
@@ -187,7 +182,7 @@ examples/
    git checkout -b docs/what-you-improved
    ```
 
-2. **Make focused commits.** One logical change per commit. Easier to review, easier to revert.
+2. **Make focused commits.** One logical change per commit. Easier to review, easier to revert if needed.
 
 3. **Write or update tests** for any behaviour you've changed. New code without tests is likely to regress.
 
@@ -197,24 +192,22 @@ examples/
    pnpm type-check && pnpm lint && pnpm test
    ```
 
-5. **Push your branch** and open a pull request against `main`.
-
-6. **Fill in the PR description.** Link related issues with `Fixes #123` or `Closes #456`.
-
-Pull requests are reviewed by the maintainer. We may ask for changes before merging. That's normal — code review is a conversation, not a judgment. The goal is a better end result for everyone.
+5. **Push and open a PR** against `main`. Fill in the PR description — link related issues with `Fixes #123`.
 
 ### What makes a PR easy to review
 
-- Small, focused changes (one feature or fix per PR)
-- A clear description of *why* the change is needed, not just *what* it does
-- Tests that demonstrate the before/after behaviour
-- No unrelated changes mixed in
+- Small, focused changes (one feature or fix per PR — not a refactor + feature + fix bundled together)
+- A clear description of *why* the change was needed, not just what it does
+- Tests that show the before/after behaviour
+- No unrelated changes
+
+Code review is a conversation, not a verdict. Changes may be requested before merging. That's normal and expected.
 
 ---
 
 ## Commit style
 
-This project enforces [Conventional Commits](https://www.conventionalcommits.org/) via a pre-commit hook (`commitlint`). Commits that don't match the format are rejected before they're created.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by a pre-commit hook. Commits that don't match the format are rejected before they're created.
 
 ### Format
 
@@ -250,7 +243,6 @@ fix(deepgram-stt): handle socket close during reconnection
 docs(readme): add turn-taking configuration table
 test(native-tts): cover error event when synthesis fails
 chore(deps): bump @anthropic-ai/sdk to 0.30.0
-refactor(state): simplify agent state machine transitions
 ```
 
 ### Breaking changes
@@ -261,7 +253,7 @@ Add `!` after the type/scope and include a `BREAKING CHANGE:` footer:
 feat(config)!: rename systemPrompt to system
 
 BREAKING CHANGE: the `systemPrompt` option has been renamed to `system`
-to align with the Anthropic SDK convention. Update all call sites.
+to align with the Anthropic SDK convention.
 ```
 
 ---
@@ -269,12 +261,14 @@ to align with the Anthropic SDK convention. Update all call sites.
 ## Code style
 
 - **TypeScript strict mode is on.** Avoid `any`. If you genuinely need an escape hatch, add a comment explaining why.
-- **Formatting** is enforced by Prettier — just run `pnpm format` and it will sort everything out.
-- **Linting** is enforced by ESLint — run `pnpm lint:fix` to auto-fix what's fixable.
+- **Formatting** is enforced by Prettier — run `pnpm format` and it sorts everything out.
+- **Linting** is enforced by ESLint — run `pnpm lint:fix` to auto-fix what can be fixed automatically.
 - **Public API surface** — classes and public methods should have JSDoc comments.
 - Keep functions small and names descriptive. Prefer explicit types over inferred ones at public API boundaries.
-- Don't add error handling for things that cannot go wrong at runtime. Trust TypeScript and internal guarantees.
+- Don't add error handling for things that can't go wrong at runtime. Trust TypeScript.
 - Don't add backwards-compatibility shims or dead code paths. If something is unused, remove it.
+
+The coverage threshold is **50% globally**. New code should aim higher, especially for branching logic.
 
 ---
 
@@ -282,9 +276,7 @@ to align with the Anthropic SDK convention. Update all call sites.
 
 Tests live in `tests/` and mirror the `src/` directory structure exactly. If you add `src/providers/stt/whisper/WhisperSTT.ts`, its test goes in `tests/unit/providers/stt/WhisperSTT.test.ts`.
 
-The test environment is **jsdom** — a simulated browser. Browser APIs that jsdom doesn't provide (`AudioContext`, `MediaDevices`, Web Speech API, `WebSocket`) are mocked in `tests/setup.ts`.
-
-### What makes a good test
+The test environment is **jsdom** — a simulated browser. APIs that jsdom doesn't provide (`AudioContext`, `MediaDevices`, Web Speech, `WebSocket`) are mocked in `tests/setup.ts`.
 
 ```typescript
 describe('MyProvider', () => {
@@ -297,18 +289,13 @@ describe('MyProvider', () => {
     expect(errors).toHaveLength(1);
     expect(errors[0].message).toContain('expected error text');
   });
-
-  it('emits interim transcripts as audio arrives', async () => {
-    // ...
-  });
 });
 ```
 
 Guidelines:
 - **Test behaviour, not implementation.** What does a consumer of this code observe?
-- **Cover the happy path and error paths.** Error paths are where bugs hide.
-- **Name tests descriptively:** `it('emits an error when connection fails')` not `it('handles errors')`.
-- **The coverage threshold is 50% globally.** New code should aim higher, especially for branching logic.
+- **Cover both happy paths and error paths.** Error paths are where bugs hide.
+- **Name tests descriptively:** `it('emits an error when the connection fails')` not `it('handles errors')`.
 
 ---
 
@@ -340,7 +327,7 @@ Providers extend one of the abstract base classes in `src/providers/base/`:
 
 ### Reference implementations
 
-Study these before writing your own — they demonstrate the correct patterns:
+Study these before writing your own:
 
 - **WebSocket STT:** [`src/providers/stt/deepgram/DeepgramSTT.ts`](./src/providers/stt/deepgram/DeepgramSTT.ts)
 - **HTTP streaming LLM:** [`src/providers/llm/anthropic/AnthropicLLM.ts`](./src/providers/llm/anthropic/AnthropicLLM.ts)
@@ -351,11 +338,9 @@ Study these before writing your own — they demonstrate the correct patterns:
 
 ## Getting help
 
-Stuck? Don't struggle alone.
-
-- **Questions and ideas** — [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions) — the best place for open-ended questions
+- **Questions and ideas** — [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions)
 - **Bug reports** — [GitHub Issues](https://github.com/lukeocodes/composite-voice/issues)
-- **Security vulnerabilities** — [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new) — private channel, please don't use public issues for security reports
+- **Security vulnerabilities** — [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new) — private channel, please don't use public issues
 - **Code of conduct** — [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
-We want every contributor to feel welcome and supported. If something in this guide is unclear or out of date, that's a bug — please open an issue or send a PR.
+We want every contributor to feel welcome. If something in this guide is unclear or out of date, that's a bug — open an issue or send a PR.
