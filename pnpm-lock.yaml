@@ -17,6 +17,9 @@ importers:
       openai:
         specifier: '>=6.5.0'
         version: 6.5.0(ws@8.18.3)
+      ws:
+        specifier: '>=8.0.0'
+        version: 8.18.3
     devDependencies:
       '@commitlint/cli':
         specifier: ^20.1.0
@@ -79,6 +82,19 @@ importers:
         specifier: ^5.4.3
         version: 5.9.3
 
+  examples/00-native-anthropic-native:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
   examples/01-deepgram-anthropic-deepgram:
     dependencies:
       '@anthropic-ai/sdk':
@@ -124,15 +140,18 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@20.19.22)
 
-  examples/basic-browser:
+  examples/04-proxy-server:
     dependencies:
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
-      openai:
-        specifier: '>=6.5.0'
-        version: 6.5.0(ws@8.18.3)
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0
+      '@deepgram/sdk':
+        specifier: '>=4.11.2'
+        version: 4.11.2
       vite:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@20.19.22)
