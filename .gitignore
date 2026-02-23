@@ -4,6 +4,9 @@ node_modules/
 # pnpm local store (when store-dir is inside the workspace)
 .pnpm-store/
 
+# Claude Code session state (local only)
+.claude/*.local.md
+
 # Build output
 dist/
 build/
