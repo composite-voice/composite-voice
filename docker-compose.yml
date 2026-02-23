@@ -1,0 +1,32 @@
+services:
+  claude:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: composite-voice-claude
+    volumes:
+      # Mount project source — changes persist to host
+      - .:/workspace
+      # Preserve node_modules from the image (avoids platform mismatch)
+      - node_modules:/workspace/node_modules
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+    # Interactive terminal for Claude Code
+    stdin_open: true
+    tty: true
+    # Restrict container capabilities for additional safety
+    security_opt:
+      - no-new-privileges:true
+    # No network restrictions — Claude Code needs API access
+    # But drop unnecessary Linux capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+
+volumes:
+  node_modules:

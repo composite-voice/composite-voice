@@ -72,6 +72,11 @@ export interface NativeSTTConfig extends STTProviderConfig {
  */
 export class NativeSTT extends LiveSTTProvider {
   declare public config: NativeSTTConfig;
+  /**
+   * NativeSTT manages its own audio capture via the SpeechRecognition API.
+   * CompositeVoice will not set up AudioCapture when this is true.
+   */
+  public override readonly managedAudio = true;
   private recognition: SpeechRecognition | null = null;
   // State is now managed externally by AudioCaptureStateMachine!
   // No more isRecognizing or isPaused flags

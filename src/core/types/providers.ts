@@ -30,6 +30,18 @@ export interface BaseProvider {
   /** Type of communication this provider uses */
   readonly type: ProviderType;
 
+  /**
+   * Whether this provider manages its own audio pipeline.
+   *
+   * When true, CompositeVoice will NOT set up AudioCapture (for STT) or
+   * AudioPlayer (for TTS) — the provider handles audio directly with the
+   * device (e.g. NativeSTT uses SpeechRecognition, NativeTTS uses
+   * SpeechSynthesis).
+   *
+   * @default false
+   */
+  readonly managedAudio: boolean;
+
   /** Initialize the provider */
   initialize(): Promise<void>;
 

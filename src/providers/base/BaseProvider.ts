@@ -15,6 +15,12 @@ import { Logger } from '../../utils/logger';
  */
 export abstract class BaseProvider implements IBaseProvider {
   public readonly type: ProviderType;
+  /**
+   * Whether this provider manages its own audio pipeline.
+   * Override to `true` in providers that bypass the SDK audio I/O
+   * (e.g. NativeSTT, NativeTTS).
+   */
+  public readonly managedAudio: boolean = false;
   protected config: BaseProviderConfig;
   protected logger: Logger;
   protected initialized = false;

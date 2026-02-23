@@ -180,8 +180,8 @@ export class CompositeVoice {
 
     // Setup TTS provider callbacks (only Live TTS has onAudio)
     if (isLiveTTS(tts)) {
-      // Initialize AudioPlayer for Live TTS (unless native TTS which plays directly)
-      if (tts.constructor.name !== 'NativeTTS') {
+      // Initialize AudioPlayer for Live TTS (unless provider manages its own audio)
+      if (!tts.managedAudio) {
         this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
       }
 
@@ -318,11 +318,11 @@ export class CompositeVoice {
 
       // REST TTS: synthesize and play
       if (isRestTTS(tts)) {
-        // Native TTS plays directly via browser
-        if (tts.constructor.name === 'NativeTTS') {
+        if (tts.managedAudio) {
+          // Provider manages its own audio playback (e.g. NativeTTS via SpeechSynthesis)
           await tts.synthesize(text);
         } else {
-          // Non-native REST TTS: get audio blob and play via AudioPlayer
+          // SDK-managed TTS: get audio blob and play via AudioPlayer
           if (!this.audioPlayer) {
             this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
           }
@@ -422,13 +422,13 @@ export class CompositeVoice {
     try {
       const { stt } = this.config;
 
-      // Native STT manages its own audio capture
-      if (stt.constructor.name === 'NativeSTT') {
+      // Provider manages its own audio capture (e.g. NativeSTT via SpeechRecognition)
+      if (stt.managedAudio) {
         if (isLiveSTT(stt)) {
           await stt.connect();
         }
       } else {
-        // Non-native STT: CompositeVoice captures audio and sends to provider
+        // SDK-managed STT: CompositeVoice captures audio and sends to provider
         if (isLiveSTT(stt)) {
           // Initialize AudioCapture if needed
           if (!this.audioCapture) {

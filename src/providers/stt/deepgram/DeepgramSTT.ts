@@ -90,7 +90,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       this.deepgram = createClient(this.config.apiKey);
 
       this.logger.info('Deepgram STT initialized (WebSocket mode)', {
-        model: this.config.options?.model ?? 'nova-2',
+        model: this.config.options?.model ?? 'nova-3',
         language: this.config.language,
       });
     } catch (error) {
@@ -139,7 +139,7 @@ export class DeepgramSTT extends LiveSTTProvider {
 
       // Build connection options
       const options: Record<string, unknown> = {
-        model: this.config.options?.model ?? 'nova-2',
+        model: this.config.options?.model ?? 'nova-3',
         language: this.config.language,
         punctuate: this.config.options?.punctuation ?? true,
         smart_format: this.config.options?.smartFormat ?? true,

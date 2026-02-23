@@ -69,11 +69,23 @@ export {
   BaseTTSProvider,
 } from './providers/base/index';
 
-// Built-in providers
+// Built-in providers - STT
 export { NativeSTT } from './providers/stt/native/index';
-export { NativeTTS } from './providers/tts/native/index';
+export type { NativeSTTConfig } from './providers/stt/native/index';
+export { DeepgramSTT } from './providers/stt/deepgram/index';
+export type { DeepgramSTTConfig, DeepgramTranscriptionOptions } from './providers/stt/deepgram/index';
+
+// Built-in providers - LLM
 export { OpenAILLM } from './providers/llm/openai/index';
 export type { OpenAILLMConfig } from './providers/llm/openai/index';
+export { AnthropicLLM } from './providers/llm/anthropic/index';
+export type { AnthropicLLMConfig } from './providers/llm/anthropic/index';
+
+// Built-in providers - TTS
+export { NativeTTS } from './providers/tts/native/index';
+export type { NativeTTSConfig } from './providers/tts/native/index';
+export { DeepgramTTS } from './providers/tts/deepgram/index';
+export type { DeepgramTTSConfig, DeepgramTTSOptions } from './providers/tts/deepgram/index';
 
 // Utilities
 export {

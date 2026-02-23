@@ -18,7 +18,12 @@ type LiveTTSClient = any;
  * Deepgram-specific TTS options
  */
 export interface DeepgramTTSOptions {
-  /** Model to use (e.g., 'aura-asteria-en', 'aura-luna-en', 'aura-stella-en', 'aura-athena-en', 'aura-hera-en', 'aura-orion-en', 'aura-arcas-en', 'aura-perseus-en', 'aura-angus-en', 'aura-orpheus-en', 'aura-helios-en', 'aura-zeus-en') */
+  /**
+   * Model to use.
+   * Aura 2 (default): 'aura-2-thalia-en', 'aura-2-andromeda-en', 'aura-2-janus-en',
+   *   'aura-2-proteus-en', 'aura-2-orion-en', 'aura-2-luna-en', 'aura-2-arcas-en'
+   * Aura 1 (legacy): 'aura-asteria-en', 'aura-luna-en', 'aura-stella-en'
+   */
   model?: string;
   /** Audio encoding format (e.g., 'linear16', 'mulaw', 'alaw') */
   encoding?: string;
@@ -53,8 +58,8 @@ export class DeepgramTTS extends LiveTTSProvider {
 
   constructor(config: DeepgramTTSConfig, logger?: Logger) {
     const finalConfig = {
-      voice: config.voice ?? 'aura-asteria-en',
-      sampleRate: config.sampleRate ?? 16000,
+      voice: config.voice ?? 'aura-2-thalia-en',
+      sampleRate: config.sampleRate ?? 24000,
       outputFormat: config.outputFormat ?? 'linear16',
       ...config,
     };
@@ -121,9 +126,9 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       // Build connection options
       const options: Record<string, unknown> = {
-        model: this.config.options?.model ?? this.config.voice ?? 'aura-asteria-en',
+        model: this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en',
         encoding: this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16',
-        sample_rate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 16000,
+        sample_rate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
         container: this.config.options?.container ?? 'none',
       };
 
@@ -195,7 +200,7 @@ export class DeepgramTTS extends LiveTTSProvider {
           data: arrayBuffer,
           timestamp: Date.now(),
           metadata: {
-            sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 16000,
+            sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
             encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
               | 'linear16'
               | 'opus'
@@ -229,7 +234,7 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       if (metadata) {
         this.emitMetadata({
-          sampleRate: metadata.sample_rate ?? this.config.sampleRate ?? 16000,
+          sampleRate: metadata.sample_rate ?? this.config.sampleRate ?? 24000,
           encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
             | 'linear16'
             | 'opus'

@@ -25,6 +25,11 @@ export interface NativeTTSConfig extends TTSProviderConfig {
  */
 export class NativeTTS extends RestTTSProvider {
   declare public config: NativeTTSConfig;
+  /**
+   * NativeTTS manages its own audio playback via the SpeechSynthesis API.
+   * CompositeVoice will not set up AudioPlayer when this is true.
+   */
+  public override readonly managedAudio = true;
   private synthesis: SpeechSynthesis;
   private availableVoices: SpeechSynthesisVoice[] = [];
   private selectedVoice: SpeechSynthesisVoice | null = null;
