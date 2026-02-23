@@ -13,8 +13,9 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
     },
     server: {
+      host: true,
       port: 3004,
-      open: true,
+      open: false,
       proxy: {
         // ── Anthropic (HTTP / SSE) ──────────────────────────────────────
         // Browser sends:  POST http://localhost:3004/proxy/anthropic/v1/messages

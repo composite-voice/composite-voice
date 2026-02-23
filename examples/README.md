@@ -1,184 +1,181 @@
 # CompositeVoice Examples
 
-Five standalone Vite apps, each introducing one new concept and building on the previous. Work through them in order, or jump to the one that matches your use case.
+Five standalone Vite apps that each demonstrate a distinct capability of the SDK. Work through them in order for a progressive learning path, or jump straight to the one that matches your use case.
+
+---
+
+## At a glance
+
+| # | Example | Stack | What it introduces | API keys | Port |
+|---|---------|-------|--------------------|----------|------|
+| [00](./00-native-anthropic-native/) | Native STT + Anthropic + Native TTS | NativeSTT · AnthropicLLM · NativeTTS | The minimum viable setup — free STT and TTS, one API key | Anthropic only | 3000 |
+| [01](./01-deepgram-anthropic-deepgram/) | Deepgram + Anthropic + Deepgram | DeepgramSTT · AnthropicLLM · DeepgramTTS | Production WebSocket pipeline, real-time streaming, cross-browser | Deepgram + Anthropic | 3001 |
+| [02](./02-conversation-history/) | Conversation History | + `conversationHistory` | Multi-turn memory — the AI remembers earlier exchanges | Anthropic only | 3002 |
+| [03](./03-eager-pipeline/) | Eager Pipeline | + `eagerLLM` | Speculative generation — LLM starts before user finishes speaking | Deepgram + Anthropic | 3003 |
+| [04](./04-proxy-server/) | Server-Side Proxy | + proxy server | API keys stay on the server — zero secrets in the browser bundle | Server-side only | 3004 |
+
+---
+
+## Prerequisites
+
+- **Node.js** 18 or later
+- **pnpm** — `npm install -g pnpm`
+- **Chrome or Edge** for examples 00 and 02 (Web Speech API limitation — Firefox does not support `NativeSTT`)
+- API keys for the providers you need:
+  - [Anthropic](https://console.anthropic.com/) — required for examples 00, 01, 02, 03 (client-side), 04 (server-side)
+  - [Deepgram](https://console.deepgram.com/) — required for examples 01, 03 (client-side), 04 (server-side). Free tier available, no credit card required.
+
+---
 
 ## Quick start
 
-```bash
-# From the repo root
-pnpm install && pnpm build
+From the repo root, install and build once:
 
-# Run any example
+```bash
+pnpm install && pnpm build
+```
+
+> The examples import the compiled SDK from `dist/`. This build step is required before running any example. For active SDK development, run `pnpm dev` in a second terminal so `dist/` rebuilds on every save.
+
+Copy the env template for the example you want, fill in your keys, and start the dev server:
+
+```bash
+# Example 00 — only needs an Anthropic key
+cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
+# edit .env and add ANTHROPIC_API_KEY=sk-ant-...
 pnpm example:00-native-anthropic-native:dev    # → http://localhost:3000
 ```
 
----
-
-## The examples
-
-| # | Stack | New concept | API keys | Port |
-|---|-------|-------------|----------|------|
-| [00](#00--simplest-voice-agent) | NativeSTT + Anthropic + NativeTTS | Minimal setup | Anthropic only | 3000 |
-| [01](#01--deepgram--anthropic--deepgram) | DeepgramSTT + Anthropic + DeepgramTTS | WebSocket pipeline | Deepgram + Anthropic | 3001 |
-| [02](#02--conversation-history) | + memory | `conversationHistory` | Anthropic only | 3002 |
-| [03](#03--eager-pipeline) | + speculation | Preflight LLM generation | Deepgram + Anthropic | 3003 |
-| [04](#04--server-side-proxy) | + security | `proxyUrl`, server-side keys | Server-side only | 3004 |
-
----
-
-### 00 — Simplest voice agent
-
-**[examples/00-native-anthropic-native/](./00-native-anthropic-native/)**
-
-The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. One API key, no WebSockets.
-
-```
-Microphone → Web Speech API → AnthropicLLM → SpeechSynthesis → Speakers
-```
-
-- Free STT and TTS — browser built-ins only
-- One API key (Anthropic)
-- Chrome and Edge only (Web Speech API limitation)
-- **Start here**
+All five dev commands:
 
 ```bash
-pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
+pnpm example:00-native-anthropic-native:dev      # → http://localhost:3000
+pnpm example:01-deepgram-anthropic-deepgram:dev  # → http://localhost:3001
+pnpm example:02-conversation-history:dev         # → http://localhost:3002
+pnpm example:03-eager-pipeline:dev               # → http://localhost:3003
+pnpm example:04-proxy-server:dev                 # → http://localhost:3004
 ```
 
 ---
+
+## What each example teaches
+
+### 00 — Native STT + Anthropic + Native TTS
+
+The simplest possible voice agent. Browser-native speech recognition (Web Speech API), Claude for intelligence, and browser-native speech synthesis (SpeechSynthesis). One API key. No WebSockets.
+
+This is where to start if you want to understand how CompositeVoice wires providers together — the `idle → ready → listening → thinking → speaking` state machine, the event system, and the basic turn-taking lifecycle.
+
+**Best for:** First demo, learning the SDK, Chrome/Edge users who want zero setup friction.
 
 ### 01 — Deepgram + Anthropic + Deepgram
 
-**[examples/01-deepgram-anthropic-deepgram/](./01-deepgram-anthropic-deepgram/)**
+The recommended production configuration. Real-time WebSocket STT via Deepgram nova-3, Claude, and 24 kHz streaming TTS. Works in Chrome, Edge, and Firefox.
 
-The recommended production configuration: real-time WebSocket STT, Claude, and 24 kHz streaming TTS. Works in Firefox.
+Swapping providers is one constructor change per provider — the core CompositeVoice setup is identical to example 00.
 
-```
-Microphone → DeepgramSTT (nova-3, WS) → AnthropicLLM → DeepgramTTS (aura-2, WS) → Speakers
-```
+**Best for:** Production apps, Firefox support, better accuracy, more natural speech quality.
 
-- Real-time transcript streaming via WebSocket
-- 24 kHz TTS for natural-sounding speech
-- Works in Chrome, Edge, and Firefox
-- Deepgram free tier — no credit card required
+### 02 — Conversation History
 
-```bash
-pnpm example:01-deepgram-anthropic-deepgram:dev   # http://localhost:3001
-```
+Adds multi-turn memory so the agent remembers what was said earlier in the session. Demonstrates the `conversationHistory` configuration, `getHistory()`, and `clearHistory()` — plus a chat-thread UI that renders the full conversation alongside the voice interaction.
 
----
+**Best for:** Q&A agents, assistants that track tasks, any use case that requires context across turns.
 
-### 02 — Conversation history
+### 03 — Eager Pipeline
 
-**[examples/02-conversation-history/](./02-conversation-history/)**
+Demonstrates speculative LLM generation. With Deepgram v2 models, the SDK fires a `preflight` event slightly before `speech_final`. The SDK uses this to start the LLM early — if the final transcript matches, the response continues uninterrupted; if it differs, generation restarts correctly.
 
-Enables multi-turn memory so the LLM remembers earlier exchanges within a session. Demonstrates the `conversationHistory` config, the `getHistory()` and `clearHistory()` APIs, and a chat-thread UI.
+A real-time event timeline in the UI makes the pipeline timing visible.
 
-```
-Microphone → NativeSTT → AnthropicLLM (with history[]) → NativeTTS → Speakers
-```
+**Best for:** Production apps where reducing perceived latency matters.
 
-- `conversationHistory.enabled = true` with `maxTurns: 10`
-- Full conversation thread in the UI
-- Only one API key (Anthropic)
+### 04 — Server-Side Proxy
 
-```bash
-pnpm example:02-conversation-history:dev   # http://localhost:3002
-```
+Keeps API keys completely off the client. An Express server injects credentials before forwarding requests to the AI providers. The browser uses `proxyUrl` instead of `apiKey` in every provider config — no secrets in the bundle.
+
+Includes a complete `server.ts` using `createExpressProxy` from the SDK's proxy module.
+
+**Best for:** Any deployment where you must not expose API keys to end users.
 
 ---
 
-### 03 — Eager pipeline
+## Scripts reference
 
-**[examples/03-eager-pipeline/](./03-eager-pipeline/)**
-
-Demonstrates the speculative LLM pipeline: the SDK starts generating a response before the user has finished speaking, using Deepgram's early `preflight` end-of-turn signal. Real-time pipeline timing is visualized in the UI.
-
-```
-Deepgram preflight → LLM starts (speculative)
-Deepgram speech_final → LLM continues (text unchanged) | cancels + restarts (text changed)
-                                         ↓
-                           DeepgramTTS → Speakers
-```
-
-- `eagerLLM.enabled = true` and `cancelOnTextChange` demonstrated
-- Real-time event timeline in the UI
-- Requires Deepgram + Anthropic
-
-```bash
-pnpm example:03-eager-pipeline:dev   # http://localhost:3003
-```
+| Command | What it does | Port |
+|---------|--------------|------|
+| `pnpm example:00-native-anthropic-native:dev` | Dev server for example 00 | 3000 |
+| `pnpm example:00-native-anthropic-native:build` | Production build | — |
+| `pnpm example:00-native-anthropic-native:preview` | Preview production build | 3000 |
+| `pnpm example:01-deepgram-anthropic-deepgram:dev` | Dev server for example 01 | 3001 |
+| `pnpm example:01-deepgram-anthropic-deepgram:build` | Production build | — |
+| `pnpm example:01-deepgram-anthropic-deepgram:preview` | Preview production build | 3001 |
+| `pnpm example:02-conversation-history:dev` | Dev server for example 02 | 3002 |
+| `pnpm example:02-conversation-history:build` | Production build | — |
+| `pnpm example:03-eager-pipeline:dev` | Dev server for example 03 | 3003 |
+| `pnpm example:03-eager-pipeline:build` | Production build | — |
+| `pnpm example:04-proxy-server:dev` | Dev server for example 04 | 3004 |
+| `pnpm example:04-proxy-server:build` | Production build | — |
 
 ---
 
-### 04 — Server-side proxy
+## Getting API keys
 
-**[examples/04-proxy-server/](./04-proxy-server/)**
+**Anthropic** — all examples:
 
-Keeps API keys completely out of the browser bundle. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request.
+1. Sign up at [console.anthropic.com](https://console.anthropic.com/) and generate a key
+2. Add it to the example's `.env`: `ANTHROPIC_API_KEY=sk-ant-...`
 
-```
-Browser ──[no keys]──▶ Express proxy ──[keys injected]──▶ Deepgram / Anthropic
-```
+**Deepgram** — examples 01, 03, and 04:
 
-- `proxyUrl` used instead of `apiKey` in all provider configs
-- Vite dev proxy for development; `createExpressProxy` for production
-- `server.ts` is a complete, runnable production example
-- API keys never appear in the browser bundle
+1. Sign up free at [console.deepgram.com](https://console.deepgram.com/) — no credit card required
+2. Generate a key and add it to the example's `.env`: `DEEPGRAM_API_KEY=...`
 
-```bash
-pnpm example:04-proxy-server:dev   # http://localhost:3004
-```
-
----
-
-## How the examples are structured
-
-Each example is an independent Vite app in a pnpm workspace. They reference the root SDK package via the `workspace:*` protocol:
-
-```json
-{
-  "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
-  }
-}
-```
-
-The Vite config in each example resolves `@lukeocodes/composite-voice` to `../../dist/index.mjs`, so you always need to run `pnpm build` before starting an example. For active development, run `pnpm dev` (SDK watch mode) in one terminal and the example dev server in another.
+> All examples use Vite's dev proxy to inject API keys server-side — no secrets are bundled into the browser. See example 04 for an in-depth look at the proxy architecture.
 
 ---
 
 ## Troubleshooting
 
-**"Cannot find module '@lukeocodes/composite-voice'"**
+**"Cannot find module '@lukeocodes/composite-voice'" or blank page**
 
-Build the SDK first:
+The SDK must be compiled before examples can import it:
 
 ```bash
 pnpm build
 ```
 
-**"Module not found" or dependency errors**
-
-Install workspace dependencies:
+For active development, run both in separate terminals:
 
 ```bash
-pnpm install
+# Terminal 1 — recompiles SDK on every save
+pnpm dev
+
+# Terminal 2 — serves the example
+pnpm example:00-native-anthropic-native:dev
 ```
 
-**Microphone not working**
+**Microphone permission not prompted or denied**
 
-- Grant microphone permission when the browser prompts, or click the lock icon in the address bar
-- HTTPS is required for microphone access in production; `localhost` is always permitted
-- For `NativeSTT` (examples 00 and 02): Chrome and Edge only
+- Click any button on the page before speaking — browsers require a user gesture to grant mic access
+- If previously denied, click the lock icon in the address bar and reset the permission
+- Microphone access requires `localhost` or HTTPS
+
+**NativeSTT does nothing (examples 00 and 02)**
+
+The Web Speech API is only fully supported in Chrome and Edge. Switch to example 01 for Firefox support.
+
+**API key error at startup**
+
+Copy the example's `sample.env` to `.env` in the same directory and fill in the keys:
+
+```bash
+cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
+```
 
 ---
 
-## Adding a new example
+## Further reading
 
-1. Create a directory: `examples/my-example/`
-2. Add `package.json` with `"@lukeocodes/composite-voice": "workspace:*"` in `dependencies`
-3. Add a `vite.config.js` that resolves the SDK to `../../dist/index.mjs`
-4. Add dev/build/preview scripts to the root `package.json`
-5. Run `pnpm install` to register the new workspace package
-6. Write a `README.md` explaining what the example demonstrates and what someone will learn from it
+- [Main README](../README.md) — complete SDK reference: all providers, configuration, events, and the proxy API
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — how to add a new provider, run the test suite, and submit a pull request

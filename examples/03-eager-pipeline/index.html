@@ -304,9 +304,6 @@
             AnthropicLLM,
         } from '@lukeocodes/composite-voice';
 
-        const DEEPGRAM_API_KEY  = import.meta.env.VITE_DEEPGRAM_API_KEY;
-        const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-
         let agent = null;
         let t0 = null; // time of last preflight or speech_final (whichever comes first)
 
@@ -372,20 +369,9 @@
             clearError();
             initBtn.disabled = true;
 
-            if (!DEEPGRAM_API_KEY || DEEPGRAM_API_KEY === 'your-deepgram-api-key-here') {
-                showError('VITE_DEEPGRAM_API_KEY is not set. Copy sample.env to .env and add your keys.');
-                initBtn.disabled = false;
-                return;
-            }
-            if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
-                showError('VITE_ANTHROPIC_API_KEY is not set. Copy sample.env to .env and add your keys.');
-                initBtn.disabled = false;
-                return;
-            }
-
             try {
                 const stt = new DeepgramSTT({
-                    apiKey: DEEPGRAM_API_KEY,
+                    proxyUrl: `${window.location.origin}/proxy/deepgram`,
                     language: 'en-US',
                     options: {
                         // Use nova-3 with endpointing so speech_final fires reliably
@@ -400,7 +386,7 @@
                 });
 
                 const llm = new AnthropicLLM({
-                    apiKey: ANTHROPIC_API_KEY,
+                    proxyUrl: `${window.location.origin}/proxy/anthropic`,
                     model: 'claude-haiku-4-6',
                     systemPrompt: 'You are a helpful voice assistant. Keep responses to one or two sentences.',
                     maxTokens: 150,
@@ -409,7 +395,7 @@
                 });
 
                 const tts = new DeepgramTTS({
-                    apiKey: DEEPGRAM_API_KEY,
+                    proxyUrl: `${window.location.origin}/proxy/deepgram`,
                     options: {
                         model: 'aura-2-thalia-en',
                         encoding: 'linear16',

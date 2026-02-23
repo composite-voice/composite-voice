@@ -1,39 +1,40 @@
 # Example 02 — Conversation History
 
-Enables multi-turn memory so the AI remembers what was said earlier in the session. The LLM receives the full conversation history on every turn, enabling natural back-and-forth exchanges.
+Adds multi-turn memory so the AI remembers what was said earlier in the session. The full conversation history is included in every LLM call, enabling natural back-and-forth exchanges.
 
-| | Provider | Cost |
-|-|----------|------|
-| **STT** | `NativeSTT` — Web Speech API | Free |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 with `conversationHistory` | Pay per token |
-| **TTS** | `NativeTTS` — SpeechSynthesis API | Free |
+| | Provider | Transport | Browser support |
+|-|----------|-----------|-----------------|
+| **STT** | `NativeSTT` — Web Speech API | Browser built-in, free | Chrome, Edge |
+| **LLM** | `AnthropicLLM` with `conversationHistory` | HTTP streaming | All |
+| **TTS** | `NativeTTS` — SpeechSynthesis API | Browser built-in, free | All modern browsers |
 
 ---
 
 ## What you'll learn
 
-- How to enable `conversationHistory` so the agent remembers earlier exchanges
-- What `maxTurns` does and how to tune it for cost vs. context length
-- How to use `agent.getHistory()` and `agent.clearHistory()`
-- How prompt size grows with conversation history — and how to manage it
+- How to enable `conversationHistory` to give the agent persistent session memory
+- What `maxTurns` controls and how to tune it for cost vs. context length
+- How to use `agent.getHistory()` to inspect the conversation
+- How `agent.clearHistory()` resets context without reinitializing
+- How conversation history grows the LLM prompt — and how to manage cost
 
 ---
 
-## What's different from Example 00
+## What this adds over Example 00
 
-By default, `CompositeVoice` is stateless — each utterance is sent to the LLM with no memory of previous exchanges. This example enables `conversationHistory`:
+By default, `CompositeVoice` is stateless — each utterance goes to the LLM with no memory of previous exchanges. One config option changes that:
 
 ```javascript
 const agent = new CompositeVoice({
   stt, llm, tts,
   conversationHistory: {
     enabled: true,
-    maxTurns: 10,   // keep the last 10 user+assistant pairs in context
+    maxTurns: 10,   // keep the last 10 user + assistant pairs in context
   },
 });
 ```
 
-Each completed turn is automatically appended to an internal history array and included in the next LLM call:
+Each completed turn is automatically appended and included in the next LLM call:
 
 ```
 You:  "My name is Sam."
@@ -48,8 +49,7 @@ The UI shows the full conversation as a chat thread. The **Clear History** butto
 
 ## Prerequisites
 
-- Node.js 18+
-- pnpm
+- **Node.js** 18 or later and **pnpm** (`npm install -g pnpm`)
 - **Chrome or Edge** — required for `NativeSTT`
 - An [Anthropic API key](https://console.anthropic.com/)
 
@@ -57,23 +57,20 @@ The UI shows the full conversation as a chat thread. The **Clear History** butto
 
 ## Setup
 
-All commands from the **repo root**:
+Run all commands from the **repo root**:
 
 ```bash
-# 1. Install dependencies
-pnpm install
+# 1. Install dependencies and build the SDK
+pnpm install && pnpm build
 
-# 2. Build the SDK
-pnpm build
-
-# 3. Copy the env template and add your key
+# 2. Copy the env template
 cp examples/02-conversation-history/sample.env examples/02-conversation-history/.env
 ```
 
-Edit `.env`:
+Open `.env` and fill in your key:
 
 ```env
-VITE_ANTHROPIC_API_KEY=sk-ant-...your-key-here...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
@@ -95,27 +92,28 @@ Microphone
     ↓
 NativeSTT
     ↓  transcription.speechFinal
-AnthropicLLM ←── conversationHistory[]
-    ↓  llm.complete  (response appended to history automatically)
+AnthropicLLM ←── full conversationHistory[]
+    ↓  llm.complete → { role: 'user' } and { role: 'assistant' } appended
 NativeTTS
     ↓
 Speakers
 ```
 
-After each exchange, `CompositeVoice` appends `{ role: 'user', content: '...' }` and `{ role: 'assistant', content: '...' }` pairs to the internal history. The full history is passed as the `messages` array on every subsequent LLM call.
+After each exchange, CompositeVoice appends both the user utterance and the assistant response to an internal history array. The full history is included as the `messages` array on every subsequent LLM call.
 
 ### History API
 
 ```typescript
-// Read the current conversation history
+// Read the current conversation
 const history = agent.getHistory();
+// Returns: Array<{ role: 'user' | 'assistant', content: string }>
 // [
-//   { role: 'user', content: 'My name is Sam.' },
+//   { role: 'user',      content: 'My name is Sam.' },
 //   { role: 'assistant', content: 'Nice to meet you, Sam!' },
 //   ...
 // ]
 
-// Reset without reinitializing the agent
+// Reset the conversation without reinitializing
 agent.clearHistory();
 ```
 
@@ -125,7 +123,7 @@ agent.clearHistory();
 
 | Setting | Effect |
 |---------|--------|
-| `maxTurns: 0` | Keep the entire session (cost grows every turn) |
+| `maxTurns: 0` | Keep the entire session — cost grows every turn |
 | `maxTurns: 5` | Lightweight — remembers the last 5 exchanges |
 | `maxTurns: 10` | Good default for most use cases |
 | `maxTurns: 20+` | Long context for complex multi-step tasks |
@@ -136,21 +134,21 @@ agent.clearHistory();
 
 **The AI doesn't remember something from earlier**
 
-Older messages are dropped once `maxTurns` is reached. Increase it — or set `maxTurns: 0` to keep the entire session.
+The oldest messages are dropped once `maxTurns` is reached. Increase it, or set `maxTurns: 0` to keep the entire session in context (at higher cost).
 
 **Costs are higher than expected**
 
-History grows the prompt on every turn. Use `maxTurns` to cap the context size. Shorter responses also help:
+History grows the prompt on every turn. To reduce cost, use a lower `maxTurns` and shorter responses:
 
 ```javascript
-new AnthropicLLM({ model: 'claude-haiku-4-6', maxTokens: 150 })
+new AnthropicLLM({ model: 'claude-haiku-4-5-20251001', maxTokens: 100 })
 ```
 
-**"VITE_ANTHROPIC_API_KEY is not set"**
+**"ANTHROPIC_API_KEY is not set"**
 
 ```bash
 cp examples/02-conversation-history/sample.env examples/02-conversation-history/.env
-# Then edit .env and add your key
+# Then open .env and add your key
 ```
 
 **"Cannot find module '@lukeocodes/composite-voice'"**
@@ -166,14 +164,14 @@ pnpm build
 | Example | What it adds |
 |---------|-------------|
 | [03 — Eager pipeline](../03-eager-pipeline/) | Lower latency with speculative LLM generation |
-| [04 — Server-side proxy](../04-proxy-server/) | Keep API keys completely out of the browser |
+| [04 — Server-side proxy](../04-proxy-server/) | Keep API keys completely out of the browser bundle |
 
 ---
 
 ## Browser support
 
-| Browser | Status |
-|---------|--------|
-| Chrome / Edge | Full support — recommended |
-| Firefox | Not supported — Web Speech API unavailable |
-| Safari | Partial — Web Speech API support is limited and inconsistent |
+| Browser | Status | Notes |
+|---------|--------|-------|
+| Chrome / Edge | Recommended | Web Speech API fully supported |
+| Firefox | NativeSTT unavailable | Use Example 01's stack with `conversationHistory` enabled |
+| Safari | Unreliable | Use Example 01's stack instead |
