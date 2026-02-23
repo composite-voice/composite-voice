@@ -201,10 +201,10 @@ export class AgentStateMachine {
 
     this.callbacks.clear();
 
-    // Clear references (using delete to avoid undefined assignment issues)
-    delete (this as any).captureStateMachine;
-    delete (this as any).playbackStateMachine;
-    delete (this as any).processingStateMachine;
+    // Clear references
+    delete this.captureStateMachine;
+    delete this.playbackStateMachine;
+    delete this.processingStateMachine;
 
     this.logger?.info('AgentStateMachine disposed');
   }

@@ -57,10 +57,14 @@ export function getBrowserAPISupport(): BrowserAPISupport {
   return {
     mediaDevices: Boolean(navigator.mediaDevices?.getUserMedia),
     speechRecognition: Boolean(
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      (window as Window & { SpeechRecognition?: unknown }).SpeechRecognition ||
+        (window as Window & { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
     ),
     speechSynthesis: Boolean(window.speechSynthesis),
-    audioContext: Boolean((window as any).AudioContext || (window as any).webkitAudioContext),
+    audioContext: Boolean(
+      (window as Window & { AudioContext?: unknown }).AudioContext ||
+        (window as Window & { webkitAudioContext?: unknown }).webkitAudioContext
+    ),
   };
 }
 

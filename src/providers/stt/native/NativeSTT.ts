@@ -100,7 +100,7 @@ export class NativeSTT extends LiveSTTProvider {
 
   protected onInitialize(): Promise<void> {
     this.logger.debug('Starting NativeSTT initialization');
-    
+
     // Check if Web Speech API is available
     const SpeechRecognitionAPI =
       (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition })
@@ -175,9 +175,10 @@ export class NativeSTT extends LiveSTTProvider {
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       // Provide more helpful error messages
       let errorMessage = event.message || event.error;
-      
+
       if (event.error === 'not-allowed') {
-        errorMessage = 'Microphone access denied. Please allow microphone permissions in your browser.';
+        errorMessage =
+          'Microphone access denied. Please allow microphone permissions in your browser.';
       } else if (event.error === 'no-speech') {
         errorMessage = 'No speech detected. Please try speaking again.';
       } else if (event.error === 'audio-capture') {
@@ -240,9 +241,9 @@ export class NativeSTT extends LiveSTTProvider {
     this.logger.debug('Attempting to connect NativeSTT', {
       isReady: this.isReady(),
       hasRecognition: !!this.recognition,
-      initialized: (this as any).initialized,
+      initialized: this.initialized,
     });
-    
+
     this.assertReady();
 
     if (!this.recognition) {
@@ -347,7 +348,7 @@ export class NativeSTT extends LiveSTTProvider {
   /**
    * Native provider doesn't use sendAudio (it directly accesses microphone via SpeechRecognition API)
    * This method is a no-op and should not be called. CompositeVoice should NOT call this method.
-   * 
+   *
    * @param _chunk Audio chunk (unused)
    */
   sendAudio(_chunk: ArrayBuffer): void {

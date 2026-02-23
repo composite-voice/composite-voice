@@ -115,7 +115,7 @@ export function shouldPauseCaptureOnPlayback(
   logger?.debug(`Turn-taking: Auto mode with ${autoStrategy} strategy (${sttName} + ${ttsName})`);
 
   switch (autoStrategy) {
-    case 'conservative':
+    case 'conservative': {
       // Pause by default, unless STT provider uses MediaDevices with echo cancellation
       const supportsEchoCancellation = providerSupportsEchoCancellation(sttName);
       const captureMethod = PROVIDER_CAPTURE_METHOD[sttName] || 'unknown';
@@ -126,8 +126,9 @@ export function shouldPauseCaptureOnPlayback(
           `echo cancellation: ${supportsEchoCancellation ? 'supported' : 'not supported'})`
       );
       return shouldPause;
+    }
 
-    case 'aggressive':
+    case 'aggressive': {
       // Only pause for known problematic combinations
       const requiresPause = checkCombinationRequiresPause(
         sttName,
@@ -136,8 +137,9 @@ export function shouldPauseCaptureOnPlayback(
       );
       logger?.debug(`Turn-taking: Aggressive - ${requiresPause ? 'PAUSE' : 'CONTINUE'}`);
       return requiresPause;
+    }
 
-    case 'detect':
+    case 'detect': {
       // Attempt runtime detection - check if browser supports echo cancellation
       const hasEchoCancellation = detectEchoCancellationSupport(sttProvider);
       const shouldPauseDetect = !hasEchoCancellation;
@@ -146,6 +148,7 @@ export function shouldPauseCaptureOnPlayback(
           `(echo cancellation: ${hasEchoCancellation ? 'supported' : 'not supported'})`
       );
       return shouldPauseDetect;
+    }
 
     default:
       logger?.warn(`Unknown turn-taking strategy: ${autoStrategy}, defaulting to conservative`);
