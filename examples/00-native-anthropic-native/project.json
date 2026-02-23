@@ -1,0 +1,35 @@
+{
+  "name": "example-00-native-anthropic-native",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "examples/00-native-anthropic-native",
+  "projectType": "application",
+  "tags": ["type:example", "scope:browser"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "vite",
+        "cwd": "examples/00-native-anthropic-native"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "vite build",
+        "cwd": "examples/00-native-anthropic-native"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "vite preview",
+        "cwd": "examples/00-native-anthropic-native"
+      }
+    }
+  },
+  "implicitDependencies": ["@lukeocodes/composite-voice"]
+}

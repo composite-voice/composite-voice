@@ -1,84 +1,136 @@
 # CompositeVoice Examples
 
-This directory contains example applications demonstrating how to use the CompositeVoice SDK.
+Five standalone Vite applications, each demonstrating a different aspect of the SDK. They're designed to be read in order — each one builds on the previous.
 
-Each example is a separate **Nx application** within the monorepo workspace, configured to use the SDK as a workspace dependency.
+## Quick start
 
-## Available Examples
-
-### 1. Basic Browser Example (`basic-browser/`)
-
-A Vite-based browser application demonstrating CompositeVoice with:
-
-- **Native browser STT** (Web Speech Recognition API)
-- **OpenAI GPT** for natural language processing
-- **Native browser TTS** (Speech Synthesis API)
-- Modern UI with state visualization
-
-**Running:**
 ```bash
-# From workspace root
-pnpm example:basic-browser:dev
+# From the repo root
+pnpm install
+pnpm build
 
-# Or using nx directly
-nx run example-basic-browser:dev
+# Pick an example and run it
+pnpm example:00-native-anthropic-native:dev
 ```
-
-**Building:**
-```bash
-pnpm example:basic-browser:build
-```
-
-See [basic-browser/README.md](./basic-browser/README.md) for more details.
 
 ---
 
-### 2. Deepgram + Anthropic + Deepgram (`01-deepgram-anthropic-deepgram/`)
+## The examples
 
-A production-quality voice agent using Deepgram's best-in-class speech models with
-Anthropic's fastest Claude model:
+| # | Directory | Stack | API keys | Port |
+|---|-----------|-------|----------|------|
+| [00](#00--simplest-voice-agent) | `00-native-anthropic-native` | NativeSTT + Anthropic + NativeTTS | Anthropic only | 3000 |
+| [01](#01--best-in-class-deepgram--anthropic) | `01-deepgram-anthropic-deepgram` | DeepgramSTT + Anthropic + DeepgramTTS | Deepgram + Anthropic | 3001 |
+| [02](#02--conversation-history) | `02-conversation-history` | NativeSTT + Anthropic + NativeTTS + memory | Anthropic only | 3002 |
+| [03](#03--eager-pipeline) | `03-eager-pipeline` | DeepgramSTT + Anthropic + DeepgramTTS + eager LLM | Deepgram + Anthropic | 3003 |
+| [04](#04--server-side-proxy) | `04-proxy-server` | Full stack via server proxy | Server-side only | 3004 |
 
-- **STT**: Deepgram nova-3 (real-time WebSocket transcription)
-- **LLM**: Anthropic claude-haiku-4-6 (fastest Claude 4.6 model)
-- **TTS**: Deepgram aura-2-thalia-en (24 kHz streaming synthesis)
+---
 
-**Setup:**
-```bash
-cd examples/01-deepgram-anthropic-deepgram
-cp sample.env .env
-# Edit .env and add your Deepgram and Anthropic API keys
+### 00 — Simplest voice agent
+
+**[examples/00-native-anthropic-native/](./00-native-anthropic-native/)**
+
+The fastest path to a working voice agent: browser-native speech recognition, Anthropic for intelligence, browser-native speech synthesis. No Deepgram account needed.
+
+```
+Microphone → Web Speech API → AnthropicLLM → SpeechSynthesis → Speakers
 ```
 
-**Running:**
-```bash
-# From workspace root
-pnpm example:01-deepgram-anthropic-deepgram:dev
+- Only one API key (Anthropic)
+- Works in Chrome and Edge
+- Great starting point before adding paid speech providers
 
-# Or using nx directly
-nx run example-01-deepgram-anthropic-deepgram:dev
+```bash
+pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
 ```
 
-**Required API keys** (in `.env`):
-- `VITE_DEEPGRAM_API_KEY` — [Get one at console.deepgram.com](https://console.deepgram.com)
-- `VITE_ANTHROPIC_API_KEY` — [Get one at console.anthropic.com](https://console.anthropic.com)
+---
 
-## Workspace Structure
+### 01 — Best-in-class (Deepgram + Anthropic)
 
-All examples are part of the **Nx monorepo** and automatically depend on the root SDK package (`@lukeocodes/composite-voice`).
+**[examples/01-deepgram-anthropic-deepgram/](./01-deepgram-anthropic-deepgram/)**
 
-### How It Works
+Production-quality voice agent using Deepgram's real-time WebSocket STT and streaming TTS at 24 kHz, paired with Anthropic's fastest Claude model.
 
-When you run an example:
+```
+Microphone → DeepgramSTT (nova-3, WS) → AnthropicLLM → DeepgramTTS (aura-2, WS) → Speakers
+```
 
-1. **Nx checks dependencies**: Determines if the SDK needs to be rebuilt
-2. **Builds SDK if needed**: Ensures the latest SDK changes are available
-3. **Runs the example**: Starts the example application with the built SDK
+- Real-time transcript streaming via WebSocket
+- 24 kHz streaming TTS for natural playback
+- Works in Chrome, Edge, and Firefox
 
-This ensures examples **always use the latest local SDK changes** without manual rebuilding.
+```bash
+pnpm example:01-deepgram-anthropic-deepgram:dev   # http://localhost:3001
+```
 
-### Workspace Dependencies
+---
 
-Examples use the `workspace:*` protocol in their `package.json`:
+### 02 — Conversation history
+
+**[examples/02-conversation-history/](./02-conversation-history/)**
+
+Enables multi-turn memory so the LLM remembers earlier exchanges. Shows how `conversationHistory` works and how to display a full chat transcript in the UI.
+
+```
+Microphone → NativeSTT → AnthropicLLM (with history[]) → NativeTTS → Speakers
+```
+
+- Full conversation thread displayed in the UI
+- `agent.getHistory()` and `agent.clearHistory()` demonstrated
+- Only one API key (Anthropic)
+
+```bash
+pnpm example:02-conversation-history:dev   # http://localhost:3002
+```
+
+---
+
+### 03 — Eager pipeline
+
+**[examples/03-eager-pipeline/](./03-eager-pipeline/)**
+
+Demonstrates the speculative LLM pipeline: the SDK starts generating a response before the user has finished speaking, using Deepgram's early end-of-turn "preflight" signal. The result is noticeably lower perceived latency.
+
+```
+Deepgram preflight → LLM (speculative start)
+Deepgram speech_final → LLM continues (text unchanged) OR cancels and restarts (text changed)
+```
+
+- Real-time pipeline timing visualized in the UI
+- Configurable with `eagerLLM.enabled` and `cancelOnTextChange`
+- Requires Deepgram + Anthropic
+
+```bash
+pnpm example:03-eager-pipeline:dev   # http://localhost:3003
+```
+
+---
+
+### 04 — Server-side proxy
+
+**[examples/04-proxy-server/](./04-proxy-server/)**
+
+Keeps API keys out of the browser entirely. A server-side proxy sits between the browser and the providers, injecting credentials before forwarding each request. The browser bundle contains zero secrets.
+
+```
+Browser ──[no keys]──▶ Express proxy ──[keys injected]──▶ Deepgram / Anthropic
+```
+
+- `proxyUrl` used instead of `apiKey` in provider configs
+- Vite dev proxy for development; `createExpressProxy` for production
+- `server.ts` is a complete, runnable production example
+
+```bash
+pnpm example:04-proxy-server:dev   # http://localhost:3004
+```
+
+---
+
+## How the workspace is structured
+
+Each example is an independent **Vite application** inside the Nx monorepo. They depend on the root SDK package via the `workspace:*` protocol:
 
 ```json
 {
@@ -88,97 +140,47 @@ Examples use the `workspace:*` protocol in their `package.json`:
 }
 ```
 
-This tells pnpm to link to the local SDK package in the workspace.
+When you run an example, Nx automatically builds the SDK first if it has changed.
 
-## Adding New Examples
-
-To add a new example application, follow the guide in [Nx Monorepo Setup](../docs/Nx%20Monorepo%20Setup.md#adding-new-examples).
-
-### Quick Steps:
-
-1. Create directory: `mkdir -p examples/my-example`
-2. Add `package.json` with workspace dependency
-3. Add `project.json` with Nx configuration
-4. Add scripts to root `package.json`
-5. Run `pnpm install`
-
-## Common Tasks
-
-### Running All Example Tests
-```bash
-nx run-many --target=test --projects=tag:type:example
-```
-
-### Building All Examples
-```bash
-nx run-many --target=build --projects=tag:type:example
-```
-
-### Viewing Dependency Graph
-```bash
-nx graph
-```
-
-This shows how examples depend on the SDK and each other.
-
-## Requirements
-
-- Node.js >= 18.0.0
-- pnpm >= 8.0.0
-- Modern browser with Web Audio API support
-- Nx (installed as dev dependency)
-
-## Benefits of Nx Structure
-
-1. **Automatic dependency management**: SDK is built before examples
-2. **Fast rebuilds**: Nx caches build outputs
-3. **Affected commands**: Only rebuild what changed
-4. **Single install**: `pnpm install` at root installs everything
-5. **Consistent tooling**: Same commands across all examples
+---
 
 ## Troubleshooting
 
-### "Cannot find module '@lukeocodes/composite-voice'"
+**"Cannot find module '@lukeocodes/composite-voice'"**
 
 The SDK hasn't been built yet:
 
 ```bash
-# From workspace root
 pnpm build
 ```
 
-Or just run the example - Nx will build the SDK automatically:
-
-```bash
-pnpm example:basic-browser:dev
-```
-
-### "Module not found" errors in examples
+**"Module not found" errors**
 
 Install workspace dependencies:
 
 ```bash
-# From workspace root
 pnpm install
 ```
 
-### Browser console errors
+**Microphone not working**
 
-- Check that your browser supports the required APIs
-- For Chrome, you may need to enable experimental features
-- HTTPS is required for microphone access in production
-- Make sure you've granted microphone permissions
+- Grant microphone permission in your browser
+- HTTPS is required for microphone access in production; `localhost` is always allowed
+- For `NativeSTT`: Chrome and Edge only — Web Speech API is not supported in Firefox or Safari
 
-### Nx cache issues
-
-Clear the Nx cache:
+**Nx cache issues**
 
 ```bash
-nx reset
+pnpm exec nx reset
 ```
 
-## Resources
+---
 
-- [Nx Monorepo Setup Documentation](../docs/Nx%20Monorepo%20Setup.md)
-- [CompositeVoice Main README](../README.md)
-- [Nx Documentation](https://nx.dev)
+## Adding a new example
+
+1. Create a directory: `examples/my-example/`
+2. Add `package.json` with `@lukeocodes/composite-voice: "workspace:*"` in dependencies
+3. Add `project.json` with Nx targets (copy from an existing example)
+4. Add scripts to the root `package.json`
+5. Run `pnpm install`
+6. Add a `README.md` explaining what the example demonstrates

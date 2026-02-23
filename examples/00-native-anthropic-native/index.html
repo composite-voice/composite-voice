@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CompositeVoice - Simplest Voice Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+                Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 0.3rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stack-badges {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .badge.free { background: rgba(16, 185, 129, 0.25); border-color: rgba(16, 185, 129, 0.4); }
+        .badge.api  { background: rgba(139, 92, 246, 0.25); border-color: rgba(139, 92, 246, 0.4); }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4b5563;
+            flex-shrink: 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .state-idle      .dot { background: #4b5563; }
+        .state-ready     .dot { background: #3b82f6; }
+        .state-listening .dot { background: #f59e0b; }
+        .state-thinking  .dot { background: #8b5cf6; }
+        .state-speaking  .dot { background: #10b981; }
+        .state-error     .dot { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.6; transform: scale(0.85); }
+        }
+
+        #state-label {
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 100px;
+            padding: 11px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.18s;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        button.primary {
+            background: rgba(59, 130, 246, 0.6);
+            border-color: rgba(59, 130, 246, 0.8);
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.8);
+        }
+
+        button.danger {
+            background: rgba(239, 68, 68, 0.5);
+            border-color: rgba(239, 68, 68, 0.7);
+        }
+
+        .transcript-section,
+        .response-section {
+            margin-top: 20px;
+        }
+
+        .section-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .text-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 14px 16px;
+            min-height: 64px;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .text-box .placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
+
+        .text-box .interim {
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        .text-box .streaming {
+            color: #c4b5fd;
+        }
+
+        .error-box {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            color: #fca5a5;
+            font-size: 0.88rem;
+            display: none;
+        }
+
+        .error-box.visible { display: block; }
+
+        .hint {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.78rem;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>CompositeVoice</h1>
+        <p class="subtitle">Example 00 — Simplest Voice Agent</p>
+        <div class="stack-badges">
+            <span class="badge free">STT: Web Speech API</span>
+            <span class="badge api">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge free">TTS: SpeechSynthesis API</span>
+        </div>
+
+        <div class="card">
+            <div class="status-row state-idle" id="status">
+                <div class="dot"></div>
+                <span id="state-label">Idle — click Initialize to start</span>
+            </div>
+
+            <div class="controls">
+                <button id="init-btn" class="primary">Initialize</button>
+                <button id="start-btn" disabled>Start Listening</button>
+                <button id="stop-btn" disabled>Stop Listening</button>
+                <button id="dispose-btn" class="danger" disabled>Dispose</button>
+            </div>
+
+            <div class="transcript-section">
+                <div class="section-label">You said</div>
+                <div class="text-box" id="transcript">
+                    <span class="placeholder">Your speech will appear here...</span>
+                </div>
+            </div>
+
+            <div class="response-section">
+                <div class="section-label">AI response</div>
+                <div class="text-box" id="response">
+                    <span class="placeholder">The AI response will appear here...</span>
+                </div>
+            </div>
+
+            <div class="error-box" id="error-box"></div>
+        </div>
+
+        <p class="hint">Requires Chrome or Edge &middot; Microphone permission needed</p>
+    </div>
+
+    <script type="module">
+        import {
+            CompositeVoice,
+            NativeSTT,
+            NativeTTS,
+            AnthropicLLM,
+        } from '@lukeocodes/composite-voice';
+
+        const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+
+        let agent = null;
+
+        const statusEl   = document.getElementById('status');
+        const stateLabel = document.getElementById('state-label');
+        const initBtn    = document.getElementById('init-btn');
+        const startBtn   = document.getElementById('start-btn');
+        const stopBtn    = document.getElementById('stop-btn');
+        const disposeBtn = document.getElementById('dispose-btn');
+        const transcriptEl = document.getElementById('transcript');
+        const responseEl   = document.getElementById('response');
+        const errorBox     = document.getElementById('error-box');
+
+        const STATE_LABELS = {
+            idle:      'Idle — click Initialize to start',
+            ready:     'Ready — click Start Listening',
+            listening: 'Listening...',
+            thinking:  'Thinking...',
+            speaking:  'Speaking...',
+            error:     'Error',
+        };
+
+        function setStatus(state) {
+            statusEl.className = `status-row state-${state}`;
+            stateLabel.textContent = STATE_LABELS[state] ?? state;
+        }
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.classList.add('visible');
+        }
+
+        function clearError() {
+            errorBox.classList.remove('visible');
+        }
+
+        initBtn.addEventListener('click', async () => {
+            clearError();
+            initBtn.disabled = true;
+
+            if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'your-anthropic-api-key-here') {
+                showError('VITE_ANTHROPIC_API_KEY is not set. Copy sample.env to .env and add your key.');
+                initBtn.disabled = false;
+                return;
+            }
+
+            try {
+                agent = new CompositeVoice({
+                    stt: new NativeSTT({
+                        language: 'en-US',
+                        continuous: true,
+                        interimResults: true,
+                    }),
+                    llm: new AnthropicLLM({
+                        apiKey: ANTHROPIC_API_KEY,
+                        model: 'claude-haiku-4-6',
+                        systemPrompt: 'You are a helpful voice assistant. Keep responses concise — two or three sentences at most.',
+                        maxTokens: 200,
+                        temperature: 0.7,
+                    }),
+                    tts: new NativeTTS({
+                        rate: 1.0,
+                        preferLocal: true,
+                    }),
+                });
+
+                agent.on('agent.stateChange', (e) => setStatus(e.state));
+
+                agent.on('transcription.interim', (e) => {
+                    if (e.text.trim()) {
+                        transcriptEl.innerHTML = `<span class="interim">${e.text}</span>`;
+                    }
+                });
+
+                agent.on('transcription.final', (e) => {
+                    if (e.text.trim()) {
+                        transcriptEl.textContent = e.text;
+                    }
+                });
+
+                agent.on('llm.start', () => {
+                    responseEl.innerHTML = '';
+                });
+
+                agent.on('llm.chunk', (e) => {
+                    let span = responseEl.querySelector('span.streaming');
+                    if (!span) {
+                        span = document.createElement('span');
+                        span.className = 'streaming';
+                        responseEl.appendChild(span);
+                    }
+                    span.textContent += e.chunk;
+                });
+
+                agent.on('llm.complete', () => {
+                    const span = responseEl.querySelector('span.streaming');
+                    if (span) span.className = '';
+                });
+
+                agent.on('agent.error', (e) => {
+                    showError(`Error: ${e.error.message}`);
+                });
+
+                await agent.initialize();
+
+                startBtn.disabled = false;
+                disposeBtn.disabled = false;
+                setStatus('ready');
+            } catch (err) {
+                showError(`Initialization failed: ${err.message}`);
+                initBtn.disabled = false;
+            }
+        });
+
+        startBtn.addEventListener('click', async () => {
+            clearError();
+            startBtn.disabled = true;
+            try {
+                await agent.startListening();
+                stopBtn.disabled = false;
+            } catch (err) {
+                showError(`Failed to start: ${err.message}`);
+                startBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            try {
+                await agent.stopListening();
+                startBtn.disabled = false;
+            } catch (err) {
+                showError(`Failed to stop: ${err.message}`);
+                stopBtn.disabled = false;
+            }
+        });
+
+        disposeBtn.addEventListener('click', async () => {
+            try {
+                await agent.dispose();
+                agent = null;
+                initBtn.disabled = false;
+                startBtn.disabled = true;
+                stopBtn.disabled = true;
+                disposeBtn.disabled = true;
+                transcriptEl.innerHTML = '<span class="placeholder">Your speech will appear here...</span>';
+                responseEl.innerHTML = '<span class="placeholder">The AI response will appear here...</span>';
+                setStatus('idle');
+            } catch (err) {
+                showError(`Failed to dispose: ${err.message}`);
+            }
+        });
+    </script>
+</body>
+
+</html>
