@@ -5,33 +5,35 @@ Demonstrates multi-turn conversation memory: the LLM receives the full history o
 | | Provider | Cost |
 |-|----------|------|
 | **STT** | `NativeSTT` — Web Speech API | Free |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 with `conversationHistory` | Pay per token |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-5 with `conversationHistory` | Pay per token |
 | **TTS** | `NativeTTS` — SpeechSynthesis API | Free |
 
 ---
 
 ## What's different from Example 00
 
-By default, the agent is stateless — each utterance is sent to the LLM in isolation. This example enables `conversationHistory`:
+By default, `CompositeVoice` is stateless — each utterance is sent to the LLM in isolation, with no memory of previous exchanges. This example enables `conversationHistory`:
 
-```js
-agent = new CompositeVoice({
+```javascript
+const agent = new CompositeVoice({
   stt, llm, tts,
   conversationHistory: {
     enabled: true,
-    maxTurns: 10,   // keep the last 10 user+assistant pairs
+    maxTurns: 10,   // keep the last 10 user+assistant pairs in context
   },
 });
 ```
 
-Each response is appended to an internal history array, and the full history is included in every subsequent LLM call. This enables natural back-and-forth exchanges:
+Each completed turn is appended to an internal history array, and the full history is included in every subsequent LLM call. This enables natural back-and-forth exchanges:
 
-> **You:** "My name is Sam."
-> **AI:** "Nice to meet you, Sam!"
-> **You:** "What's my name?"
-> **AI:** "Your name is Sam."
+```
+You:  "My name is Sam."
+AI:   "Nice to meet you, Sam!"
+You:  "What's my name?"
+AI:   "Your name is Sam."
+```
 
-The UI shows the full conversation as a chat thread. The **Clear History** button calls `agent.clearHistory()` and starts a fresh session.
+The UI in this example shows the full conversation as a chat thread. The **Clear History** button calls `agent.clearHistory()` to start a fresh session without reinitializing the whole agent.
 
 ---
 
@@ -39,7 +41,7 @@ The UI shows the full conversation as a chat thread. The **Clear History** butto
 
 - Node.js 18+
 - pnpm
-- Chrome or Edge
+- Chrome or Edge — required for `NativeSTT` (Web Speech API)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ---
@@ -55,14 +57,14 @@ pnpm install
 # 2. Build the SDK
 pnpm build
 
-# 3. Create your env file
+# 3. Copy the sample env file
 cp examples/02-conversation-history/sample.env examples/02-conversation-history/.env
 ```
 
 Edit `examples/02-conversation-history/.env`:
 
 ```env
-VITE_ANTHROPIC_API_KEY=your-anthropic-api-key-here
+VITE_ANTHROPIC_API_KEY=sk-ant-...your-key-here...
 ```
 
 ---
@@ -80,22 +82,40 @@ Open [http://localhost:3002](http://localhost:3002) in Chrome or Edge.
 ## How it works
 
 ```
-Microphone → NativeSTT → AnthropicLLM (with history[]) → NativeTTS → Speakers
-                                  ↑
-                          conversationHistory[]
+Microphone
+    ↓
+NativeSTT
+    ↓  transcription.final
+AnthropicLLM ←── conversationHistory[]
+    ↓  llm.chunk + appends to history
+NativeTTS
+    ↓
+Speakers
 ```
 
-`maxTurns: 10` keeps the last 10 user + assistant pairs (20 messages total). Older messages are dropped from the front of the array when the limit is reached. Set `maxTurns: 0` to keep the entire session.
+After each exchange, `CompositeVoice` automatically appends a `{ role: 'user', content: '...' }` and `{ role: 'assistant', content: '...' }` pair to the internal history. The history is passed as the `messages` array on every subsequent LLM call.
 
-**Key API:**
+`maxTurns: 10` keeps the last 10 user + assistant pairs (20 messages total). When the limit is reached, the oldest pair is dropped from the front of the array to make room. This keeps costs under control while preserving recent context.
+
+### Key API
 
 ```typescript
-// Read the current history
+// Read the current conversation history
 const history = agent.getHistory(); // LLMMessage[]
+// Returns: [{ role: 'user', content: '...' }, { role: 'assistant', content: '...' }, ...]
 
-// Reset the conversation
+// Reset the conversation without reinitializing
 agent.clearHistory();
 ```
+
+### Tuning `maxTurns`
+
+| Setting | Effect |
+|---------|--------|
+| `maxTurns: 0` | Keep the entire session (costs grow unbounded) |
+| `maxTurns: 5` | Lightweight, remembers the last 5 exchanges |
+| `maxTurns: 10` | Good default for most use cases |
+| `maxTurns: 20+` | Long context for complex multi-step tasks |
 
 ---
 
@@ -103,11 +123,31 @@ agent.clearHistory();
 
 **The AI doesn't remember something I said earlier**
 
-Check `maxTurns` — if it's set too low, older messages may have been dropped. Increase it or set to `0`.
+If `maxTurns` is set too low, older messages may have been dropped from the context window. Increase it or set it to `0` to keep the entire session.
 
-**Costs are high**
+**Costs seem higher than expected**
 
-Conversation history grows the prompt on every turn. Use `maxTurns` to limit context size, or use a more cost-efficient model.
+Conversation history grows the prompt on every turn. Use `maxTurns` to cap the context size. Alternatively, try a more efficient model for long conversations:
+
+```javascript
+new AnthropicLLM({
+  model: 'claude-haiku-4-5',   // fast and cost-efficient
+  maxTokens: 150,              // shorter responses = lower cost per turn
+})
+```
+
+**"VITE_ANTHROPIC_API_KEY is not set"**
+
+```bash
+cp examples/02-conversation-history/sample.env examples/02-conversation-history/.env
+# Then add your key
+```
+
+**"Cannot find module '@lukeocodes/composite-voice'"**
+
+```bash
+pnpm build
+```
 
 ---
 
@@ -115,8 +155,8 @@ Conversation history grows the prompt on every turn. Use `maxTurns` to limit con
 
 | Example | What it adds |
 |---------|-------------|
-| **[03 — Eager pipeline](../03-eager-pipeline/)** | Lower latency with speculative LLM start |
-| **[04 — Server-side proxy](../04-proxy-server/)** | API keys server-side only |
+| **[03 — Eager pipeline](../03-eager-pipeline/)** | Lower latency with speculative LLM generation |
+| **[04 — Server-side proxy](../04-proxy-server/)** | Keep API keys out of the browser entirely |
 
 ---
 
@@ -124,6 +164,6 @@ Conversation history grows the prompt on every turn. Use `maxTurns` to limit con
 
 | Browser | Status |
 |---------|--------|
-| Chrome / Edge | Full support (recommended) |
+| Chrome / Edge | Full support — recommended |
 | Firefox | Not supported — Web Speech API unavailable |
-| Safari | Partial — Web Speech API implementation is limited |
+| Safari | Partial — Web Speech API support is limited and inconsistent |
