@@ -3,10 +3,7 @@
  * Contains common functionality for all STT providers
  */
 
-import type {
-  STTProviderConfig,
-  TranscriptionResult,
-} from '../../core/types/providers';
+import type { STTProviderConfig, TranscriptionResult } from '../../core/types/providers';
 import { BaseProvider } from './BaseProvider';
 import { Logger } from '../../utils/logger';
 

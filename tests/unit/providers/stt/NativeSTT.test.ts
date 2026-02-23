@@ -110,7 +110,9 @@ describe('NativeSTT', () => {
       delete (global as any).SpeechRecognition;
       delete (global as any).webkitSpeechRecognition;
       // Wrapped in ProviderInitializationError by base class
-      await expect(provider.initialize()).rejects.toThrow('Failed to initialize provider: NativeSTT');
+      await expect(provider.initialize()).rejects.toThrow(
+        'Failed to initialize provider: NativeSTT'
+      );
     });
 
     it('should fall back to webkitSpeechRecognition', async () => {
@@ -152,7 +154,9 @@ describe('NativeSTT', () => {
       mockRecognition.start.mockImplementation(() => {});
 
       // Error message is wrapped in ProviderConnectionError
-      await expect(fastProvider.connect()).rejects.toThrow('Failed to connect to provider: NativeSTT');
+      await expect(fastProvider.connect()).rejects.toThrow(
+        'Failed to connect to provider: NativeSTT'
+      );
       await fastProvider.dispose();
     }, 1000);
 

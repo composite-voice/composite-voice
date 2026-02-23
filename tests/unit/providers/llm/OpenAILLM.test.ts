@@ -69,7 +69,10 @@ describe('OpenAILLM', () => {
     });
 
     it('should initialize successfully using proxyUrl instead of apiKey', async () => {
-      const proxyConfig: OpenAILLMConfig = { model: 'gpt-4', proxyUrl: 'http://localhost:3000/proxy/openai' };
+      const proxyConfig: OpenAILLMConfig = {
+        model: 'gpt-4',
+        proxyUrl: 'http://localhost:3000/proxy/openai',
+      };
       const testProvider = new OpenAILLM(proxyConfig);
       await expect(testProvider.initialize()).resolves.not.toThrow();
       await testProvider.dispose();

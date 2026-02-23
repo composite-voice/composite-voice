@@ -79,9 +79,7 @@ export function matchHttpRoute(
   const slashIdx = rest.indexOf('/');
   const provider = slashIdx === -1 ? rest : rest.slice(0, slashIdx);
 
-  return (
-    routes.find((r) => r.type === 'http' && r.provider === provider) ?? null
-  );
+  return routes.find((r) => r.type === 'http' && r.provider === provider) ?? null;
 }
 
 /** Find an HTTP route by provider name directly. */
@@ -95,11 +93,7 @@ export function matchHttpRouteByProvider(
 /**
  * Find a WebSocket route whose provider prefix matches the upgrade request URL.
  */
-export function matchWsRoute(
-  routes: ProxyRoute[],
-  url: string,
-  prefix: string
-): ProxyRoute | null {
+export function matchWsRoute(routes: ProxyRoute[], url: string, prefix: string): ProxyRoute | null {
   if (!url.startsWith(prefix)) return null;
 
   const afterPrefix = url.slice(prefix.length);
@@ -109,9 +103,7 @@ export function matchWsRoute(
   const slashIdx = rest.indexOf('/');
   const provider = slashIdx === -1 ? rest : rest.slice(0, slashIdx);
 
-  return (
-    routes.find((r) => r.type === 'websocket' && r.provider === provider) ?? null
-  );
+  return routes.find((r) => r.type === 'websocket' && r.provider === provider) ?? null;
 }
 
 /**

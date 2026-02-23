@@ -2,7 +2,10 @@
  * Base REST STT provider class
  */
 
-import type { RestSTTProvider as IRestSTTProvider, STTProviderConfig } from '../../core/types/providers';
+import type {
+  RestSTTProvider as IRestSTTProvider,
+  STTProviderConfig,
+} from '../../core/types/providers';
 import { BaseSTTProvider } from './BaseSTTProvider';
 import { Logger } from '../../utils/logger';
 
@@ -22,4 +25,3 @@ export abstract class RestSTTProvider extends BaseSTTProvider implements IRestST
    */
   abstract transcribe(audio: Blob): Promise<void>;
 }
-

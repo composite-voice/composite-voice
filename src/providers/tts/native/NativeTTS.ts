@@ -151,11 +151,11 @@ export class NativeTTS extends RestTTSProvider {
 
   /**
    * Synthesize text to speech (REST-style, but plays immediately)
-   * 
+   *
    * Note: Native TTS uses SpeechSynthesis API which directly plays to speakers.
    * Audio flow: Text → SpeechSynthesis.speak() → Speakers
    * This provider does NOT emit audio via onAudio() callbacks.
-   * 
+   *
    * @param text Text to synthesize
    * @returns Empty Blob (audio is played directly by browser, cannot be captured)
    */

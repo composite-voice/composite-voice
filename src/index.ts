@@ -78,7 +78,10 @@ export {
 export { NativeSTT } from './providers/stt/native/index';
 export type { NativeSTTConfig } from './providers/stt/native/index';
 export { DeepgramSTT } from './providers/stt/deepgram/index';
-export type { DeepgramSTTConfig, DeepgramTranscriptionOptions } from './providers/stt/deepgram/index';
+export type {
+  DeepgramSTTConfig,
+  DeepgramTranscriptionOptions,
+} from './providers/stt/deepgram/index';
 
 // Built-in providers - LLM
 export { OpenAILLM } from './providers/llm/openai/index';

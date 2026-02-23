@@ -15,7 +15,7 @@
 - [ ] Documentation improvement
 - [ ] Refactoring (no behaviour change)
 - [ ] Performance improvement
-- [ ] Breaking change (describe in the body what breaks and how to migrate)
+- [ ] Breaking change — describe what breaks and how to migrate in the body above
 
 ## Checklist
 
@@ -28,8 +28,8 @@
 
 ## How to test
 
-<!-- Tell the reviewer how to verify this change works correctly.
-     Include setup steps, required env vars, and specific things to check.
+<!-- Tell the reviewer how to verify this works.
+     Include setup steps, env vars needed, and what to specifically check.
      Example: "Run example 01 and verify the transcript appears within 500 ms of speaking." -->
 
 ## Notes for reviewers

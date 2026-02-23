@@ -160,7 +160,9 @@ describe('AnthropicLLM', () => {
 
     it('should pass temperature and max_tokens to SDK', async () => {
       const result = await provider.generate('Test', { temperature: 0.9, maxTokens: 200 });
-      for await (const _ of result) { /* consume */ }
+      for await (const _ of result) {
+        /* consume */
+      }
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -172,7 +174,9 @@ describe('AnthropicLLM', () => {
 
     it('should use config max_tokens as default', async () => {
       const result = await provider.generate('Test');
-      for await (const _ of result) { /* consume */ }
+      for await (const _ of result) {
+        /* consume */
+      }
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -211,7 +215,9 @@ describe('AnthropicLLM', () => {
       ];
 
       const result = await provider.generateFromMessages(messages);
-      for await (const _ of result) { /* consume */ }
+      for await (const _ of result) {
+        /* consume */
+      }
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -229,7 +235,9 @@ describe('AnthropicLLM', () => {
       ];
 
       const result = await provider.generateFromMessages(messages);
-      for await (const _ of result) { /* consume */ }
+      for await (const _ of result) {
+        /* consume */
+      }
 
       const callArgs = mockMessagesStream.mock.calls[0][0];
       const messageRoles = callArgs.messages.map((m: { role: string }) => m.role);
@@ -266,8 +274,12 @@ describe('AnthropicLLM', () => {
 
     it('should pass stop sequences to SDK', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages, { stopSequences: ['STOP', 'END'] });
-      for await (const _ of result) { /* consume */ }
+      const result = await provider.generateFromMessages(messages, {
+        stopSequences: ['STOP', 'END'],
+      });
+      for await (const _ of result) {
+        /* consume */
+      }
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -279,7 +291,9 @@ describe('AnthropicLLM', () => {
     it('should pass model to SDK', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.generateFromMessages(messages);
-      for await (const _ of result) { /* consume */ }
+      for await (const _ of result) {
+        /* consume */
+      }
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({

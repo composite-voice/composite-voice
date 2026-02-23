@@ -41,7 +41,7 @@ paste here
 - **Node.js:** (`node -v`)
 - **Package version:** (`@lukeocodes/composite-voice` version from package.json)
 - **STT provider:** (e.g. NativeSTT, DeepgramSTT with nova-3)
-- **LLM provider:** (e.g. AnthropicLLM with claude-haiku-4-5)
+- **LLM provider:** (e.g. AnthropicLLM with claude-haiku-4-5-20251001)
 - **TTS provider:** (e.g. NativeTTS, DeepgramTTS with aura-2-thalia-en)
 
 ## Additional context
