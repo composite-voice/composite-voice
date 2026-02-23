@@ -1,6 +1,6 @@
 # CompositeVoice Examples
 
-Five standalone Vite apps, each introducing one new concept and building on the previous. Work through them in order, or jump straight to the one that matches your use case.
+Five standalone Vite apps, each introducing one new concept and building on the previous. Work through them in order, or jump to the one that matches your use case.
 
 ## Quick start
 
@@ -51,7 +51,7 @@ pnpm example:00-native-anthropic-native:dev   # http://localhost:3000
 
 **[examples/01-deepgram-anthropic-deepgram/](./01-deepgram-anthropic-deepgram/)**
 
-The recommended production configuration: real-time WebSocket STT, the fastest Claude model, and streaming TTS at 24 kHz. All three providers stream simultaneously. Works in Firefox.
+The recommended production configuration: real-time WebSocket STT, Claude, and 24 kHz streaming TTS. Works in Firefox.
 
 ```
 Microphone → DeepgramSTT (nova-3, WS) → AnthropicLLM → DeepgramTTS (aura-2, WS) → Speakers
@@ -134,7 +134,7 @@ pnpm example:04-proxy-server:dev   # http://localhost:3004
 
 ## How the examples are structured
 
-Each example is an independent Vite app in the pnpm workspace. They reference the root SDK package via the `workspace:*` protocol:
+Each example is an independent Vite app in a pnpm workspace. They reference the root SDK package via the `workspace:*` protocol:
 
 ```json
 {

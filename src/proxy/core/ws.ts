@@ -65,23 +65,17 @@ export async function proxyWebSocket(
 
   wss.handleUpgrade(req, socket, head, (clientWs: WsWebSocket) => {
     upstreamWs.on('open', () => {
-      clientWs.on(
-        'message',
-        (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-          if (upstreamWs.readyState === WebSocket.OPEN) {
-            upstreamWs.send(data, { binary: isBinary });
-          }
+      clientWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+        if (upstreamWs.readyState === WebSocket.OPEN) {
+          upstreamWs.send(data, { binary: isBinary });
         }
-      );
+      });
 
-      upstreamWs.on(
-        'message',
-        (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-          if (clientWs.readyState === WebSocket.OPEN) {
-            clientWs.send(data, { binary: isBinary });
-          }
+      upstreamWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(data, { binary: isBinary });
         }
-      );
+      });
 
       clientWs.on('close', (code: number, reason: Buffer) => {
         if (upstreamWs.readyState === WebSocket.OPEN) {

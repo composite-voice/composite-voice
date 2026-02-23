@@ -2,9 +2,9 @@
 
 ## Supported versions
 
-| Version | Supported |
-|---------|-----------|
-| 0.1.x (latest) | Yes |
+| Version        | Supported |
+| -------------- | --------- |
+| 0.1.x (latest) | Yes       |
 
 Only the latest release receives security updates. If you're on an older version, please update before reporting.
 
@@ -16,9 +16,9 @@ Only the latest release receives security updates. If you're on an older version
 
 Instead, please create a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This opens a private channel visible only to the maintainer, allowing us to coordinate a fix before any public disclosure.
 
-### What to include in your report
+### What to include
 
-The more detail you can provide, the faster we can respond:
+The more detail you provide, the faster we can respond:
 
 - A clear description of the vulnerability and what it allows an attacker to do
 - Steps to reproduce, or a minimal proof-of-concept
@@ -28,7 +28,7 @@ The more detail you can provide, the faster we can respond:
 
 ### What to expect
 
-You'll receive an acknowledgement promptly after submitting. We aim to:
+You'll receive an acknowledgement shortly after submitting. We aim to:
 
 - **Triage** all reports within **7 days** of receipt
 - **Release a fix** within **30 days** of confirmed impact
@@ -39,18 +39,18 @@ We will credit you in the release notes unless you prefer to remain anonymous. W
 
 ## API key security
 
-CompositeVoice is a browser SDK. Any API key embedded directly in a browser bundle is visible to anyone who opens DevTools. **Never ship real API keys to the browser in production.**
+CompositeVoice is a browser SDK. Any API key embedded directly in a browser bundle is visible to anyone who opens DevTools → Sources. **Never ship real API keys to the browser in production.**
 
 ### Recommended: server-side proxy
 
 The built-in proxy middleware keeps credentials on the server. The browser bundle contains zero secrets:
 
 ```typescript
-// server.ts
+// server.ts — API keys live here, never in the browser
 import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
 
 const proxy = createExpressProxy({
-  deepgramApiKey:  process.env.DEEPGRAM_API_KEY,
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   pathPrefix: '/proxy',
 });
@@ -69,22 +69,24 @@ See [Example 04](./examples/04-proxy-server/) for a complete, runnable productio
 
 ### Alternative: origin restrictions
 
-If shipping keys to the browser is unavoidable in your situation, restrict each key to specific origins in the provider dashboard:
+If server-side proxying isn't possible, restrict each key to specific origins in the provider dashboard:
 
 - **Anthropic:** [console.anthropic.com](https://console.anthropic.com/)
 - **Deepgram:** [console.deepgram.com](https://console.deepgram.com/)
 - **OpenAI:** [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
-This limits the blast radius of an exposed key to requests from your domain. It's not a substitute for the proxy pattern — it's a fallback.
+This limits the blast radius of an exposed key to requests from your domain. It's a fallback — not a substitute for the proxy pattern.
 
 ### Local development
 
-For local development (where keys aren't exposed to the internet), placing them in a `.env` file is fine — provided `.env` is in `.gitignore`, which it is by default in this project. All examples include a `sample.env` template.
+For local development, placing keys in a `.env` file is fine — they're not exposed to the internet. All examples include a `sample.env` template:
 
 ```bash
 cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
-# Edit the .env file and add your keys
+# Edit .env and add your keys
 ```
+
+The `.env` file is listed in `.gitignore` by default. Do not commit it.
 
 ---
 
@@ -92,13 +94,13 @@ cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-n
 
 When running the proxy in production, verify all of these:
 
-- [ ] API keys are loaded from environment variables — never hard-coded in source files
-- [ ] The server runs behind HTTPS — keys are injected as HTTP headers which are plaintext over plain HTTP
-- [ ] Spending limits are set on all provider dashboards (Anthropic, Deepgram)
-- [ ] API keys are scoped to the minimum required permissions
-- [ ] API usage is monitored and alerts are configured for unexpected spikes
-- [ ] If the proxy and front end are on different origins, `cors.origins` is configured appropriately
-- [ ] Rate limiting is applied at the proxy or reverse proxy level to prevent abuse
+- [ ] API keys loaded from environment variables only — never hard-coded in source files
+- [ ] Server runs behind HTTPS — credentials are injected as HTTP headers (plaintext over HTTP)
+- [ ] Spending limits configured on all provider dashboards (Anthropic, Deepgram, OpenAI)
+- [ ] API keys scoped to the minimum required permissions
+- [ ] API usage monitored with alerts configured for unexpected spikes
+- [ ] CORS configured appropriately if the proxy and front end are on different origins
+- [ ] Rate limiting applied at the proxy or reverse proxy level to prevent abuse
 
 ---
 

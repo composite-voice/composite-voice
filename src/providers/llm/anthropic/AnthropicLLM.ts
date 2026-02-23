@@ -215,10 +215,7 @@ export class AnthropicLLM extends BaseLLMProvider {
 
           for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
             if (signal?.aborted) break;
-            if (
-              event.type === 'content_block_delta' &&
-              event.delta.type === 'text_delta'
-            ) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
               yield event.delta.text;
             }
           }

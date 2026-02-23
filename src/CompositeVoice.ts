@@ -322,17 +322,22 @@ export class CompositeVoice {
       }
 
       if (shouldCancel) {
-        this.logger.debug('speech_final text differs from preflight — cancelling eager, restarting', {
-          preflight: eagerText,
-          final: text,
-        });
+        this.logger.debug(
+          'speech_final text differs from preflight — cancelling eager, restarting',
+          {
+            preflight: eagerText,
+            final: text,
+          }
+        );
         this.eagerAbortController.abort();
         this.eagerAbortController = null;
         this.eagerText = null;
         void this.processLLM(text);
       } else {
         // Accept the preflight response even though text changed
-        this.logger.debug('speech_final text differs but cancelOnTextChange=false — accepting eager response');
+        this.logger.debug(
+          'speech_final text differs but cancelOnTextChange=false — accepting eager response'
+        );
         this.eagerAbortController = null;
         this.eagerText = null;
       }

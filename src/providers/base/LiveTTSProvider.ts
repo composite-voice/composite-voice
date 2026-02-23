@@ -2,7 +2,10 @@
  * Base Live TTS provider class
  */
 
-import type { LiveTTSProvider as ILiveTTSProvider, TTSProviderConfig } from '../../core/types/providers';
+import type {
+  LiveTTSProvider as ILiveTTSProvider,
+  TTSProviderConfig,
+} from '../../core/types/providers';
 import { BaseTTSProvider } from './BaseTTSProvider';
 import { Logger } from '../../utils/logger';
 

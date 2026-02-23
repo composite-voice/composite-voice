@@ -53,6 +53,9 @@ Dockerfile
 docker-compose.yml
 docker-compose.*.yml
 
+# Build tool configs (local overrides, not committed)
+.npmrc-builds
+
 # AI-assisted development prompt history
 prompt-log/
 

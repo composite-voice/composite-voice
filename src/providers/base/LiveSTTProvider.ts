@@ -33,4 +33,3 @@ export abstract class LiveSTTProvider extends BaseSTTProvider implements ILiveST
    */
   abstract disconnect(): Promise<void>;
 }
-

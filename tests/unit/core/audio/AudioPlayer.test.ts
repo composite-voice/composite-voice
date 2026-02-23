@@ -103,7 +103,11 @@ describe('AudioPlayer', () => {
 
   describe('setMetadata', () => {
     it('should accept audio metadata', () => {
-      const metadata: AudioMetadata = { sampleRate: 24000, channels: 1, encoding: 'linear16' as const };
+      const metadata: AudioMetadata = {
+        sampleRate: 24000,
+        channels: 1,
+        encoding: 'linear16' as const,
+      };
       expect(() => player.setMetadata(metadata)).not.toThrow();
     });
   });

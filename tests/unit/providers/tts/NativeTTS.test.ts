@@ -169,9 +169,7 @@ describe('NativeTTS', () => {
 
     it('should reject when speech errors', async () => {
       mockSynthesis.speak.mockImplementation(() => {
-        Promise.resolve().then(() =>
-          mockUtterance.onerror?.({ error: 'synthesis-failed' })
-        );
+        Promise.resolve().then(() => mockUtterance.onerror?.({ error: 'synthesis-failed' }));
       });
       await expect(provider.synthesize('fail')).rejects.toThrow('synthesis-failed');
     });

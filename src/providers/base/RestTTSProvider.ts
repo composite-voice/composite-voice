@@ -2,7 +2,10 @@
  * Base REST TTS provider class
  */
 
-import type { RestTTSProvider as IRestTTSProvider, TTSProviderConfig } from '../../core/types/providers';
+import type {
+  RestTTSProvider as IRestTTSProvider,
+  TTSProviderConfig,
+} from '../../core/types/providers';
 import { BaseTTSProvider } from './BaseTTSProvider';
 import { Logger } from '../../utils/logger';
 
@@ -19,4 +22,3 @@ export abstract class RestTTSProvider extends BaseTTSProvider implements IRestTT
    */
   abstract synthesize(text: string): Promise<Blob>;
 }
-
