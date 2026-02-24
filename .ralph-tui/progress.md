@@ -60,3 +60,17 @@ after each iteration and it's included in prompts for context.
   - Placeholder text varies between examples ("will appear here" vs "will stream here") — `waitForNonPlaceholder` must account for all variants.
 ---
 
+## 2026-02-24 - composite-voice-ekb.18
+- **What was implemented**: E2E Playwright test for example 31-anthropic-streaming-config (NativeSTT + Anthropic LLM + NativeTTS)
+- **Files changed**:
+  - `examples/31-anthropic-streaming-config/e2e/31-anthropic-streaming-config.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, config sliders, controls, state label, no console errors)
+    2. Streaming config controls interactivity (slider value changes propagate to display)
+    3. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with utterance verification and escalating retry strategy
+- **Learnings:**
+  - For examples using both NativeSTT + NativeTTS, use `injectNativeMocks()` (not just `injectNativeSTTMock()`) — both browser speech APIs are unavailable in headless Chromium.
+  - TTS verification for NativeTTS mocks uses `window.__ttsMockUtterances` (populated by the mock), while REST-based TTS (OpenAI) uses network request interception. Choose the right verification strategy based on the provider type.
+  - Range input interactivity in Playwright can be tested with `fill()` + `dispatchEvent('input')` to trigger the slider's event handler.
+  - Streaming config examples have additional UI elements (sliders, config display, apply button) that should be verified separately from the conversation round-trip test.
+---
+
