@@ -200,3 +200,17 @@ after each iteration and it's included in prompts for context.
   - The `autoRecover: true` flag enables automatic state recovery after errors, detected by `agent.stateChange` event transitioning out of `'error'` state. This is a testable behavior but requires triggering a real error during an active conversation (not just emitting a synthetic event), so testing the recovery *transition* is better suited for integration tests.
   - Error simulation controls in example 04 use distinct mechanisms: "Break Proxy" mutates `llmInstance.proxyUrl` to an invalid endpoint (requires active conversation to trigger), "Emit Agent Error" fires a synthetic `agent.error` event (immediately testable). The emit approach is ideal for E2E testing error logging and counter UI.
 ---
+
+## 2026-02-24 - composite-voice-ekb.7
+- **What was implemented**: E2E Playwright test for example 05-turn-taking (NativeSTT + Anthropic LLM + NativeTTS with turn-taking strategy selector)
+- **Files changed**:
+  - `examples/05-turn-taking/e2e/05-turn-taking.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, 4 strategy cards with titles/configs, default selection, mic status indicator with turn-state badge, info panel, controls, content areas, state label, no console errors)
+    2. Strategy selection UI interactivity (clicking cards toggles `.selected` class through all 4 strategies and updates info panel content — Conservative→Aggressive→Detect→Always Pause→Conservative cycle)
+    3. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with `#active-strategy-label` verification, utterance polling, and escalating retry strategy
+- **Learnings:**
+  - Example 05 follows the same NativeSTT + NativeTTS mock injection pattern as examples 04, 12, 13, 30, 31, 40 — confirming this pattern is stable across all NativeSTT+NativeTTS examples.
+  - Strategy cards use `data-strategy` and `data-auto-strategy` attributes, but the JS derives a key like `auto-conservative`. The `.selected` class toggles between cards on click, similar to model cards in example 30 (`.active` on labels).
+  - The `#active-strategy-label` element is empty before initialization and populates with "Active: {strategy name}" after `agent.initialize()` — this is a good assertion to confirm the strategy was applied to the agent.
+  - Info panel content updates dynamically based on strategy selection even before initialization — this is purely client-side DOM logic that can be tested without API calls.
+---
