@@ -254,3 +254,16 @@ after each iteration and it's included in prompts for context.
   - The `#error` box in example 00 is hidden by default (`display: none`) and only shown via `.visible` class on error — can verify it's hidden with `isVisible() === false` rather than checking for a class.
   - Splitting the STT transcript check into its own test case (separate from the full round-trip) provides faster feedback on STT mock issues without needing to wait for LLM/TTS verification. The full round-trip test still covers STT as part of the pipeline.
 ---
+
+## 2026-02-24 - composite-voice-ekb.3
+- **What was implemented**: E2E Playwright test for example 01-conversation-history (NativeSTT + Anthropic LLM + NativeTTS with multi-turn conversation history)
+- **Files changed**:
+  - `examples/01-conversation-history/e2e/01-conversation-history.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, 4 badges including feature badge, status area, controls with clear-history button, interim bar, conversation area with placeholder, turn count info cards, error banner hidden, no console errors)
+    2. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with dynamic user/assistant message bubble verification, TTS utterance polling, turn count increment, and state return to Ready/Listening using escalating retry strategy
+- **Learnings:**
+  - Example 01 uses dynamic conversation bubbles (`.message.user .bubble` / `.message.assistant .bubble`) instead of static `#transcript`/`#response` panels — requires `waitForMessageBubble` helper with `waitForFunction` polling, matching the "Dynamic conversation bubble verification" codebase pattern from example 24.
+  - The `#status-text` element in example 01 uses bare state labels (`Ready`, `Listening...`, `Thinking...`) from the `STATE_LABELS` map — no additional suffix like example 00's `Ready — click Start`. Assertions must match the exact text from the example's own status update logic.
+  - Turn count verification (`#turn-count >= 1`) confirms the conversation history feature is actively tracking turns, and `#turn-badge` provides a human-readable version ("1 turn" vs "2 turns"). This is the same pattern used in example 24.
+  - Example 01 shares the same NativeSTT + NativeTTS mock injection pattern as all other Native provider examples (00, 04, 05, 12, 13, 30, 31, 40, 42), further confirming the pattern's stability.
+---
