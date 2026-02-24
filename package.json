@@ -111,7 +111,10 @@
     "example:13-multi-language:preview": "pnpm --filter @lukeocodes/composite-voice-example-13-multi-language preview",
     "example:31-anthropic-streaming-config:dev": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config dev",
     "example:31-anthropic-streaming-config:build": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config build",
-    "example:31-anthropic-streaming-config:preview": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config preview"
+    "example:31-anthropic-streaming-config:preview": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config preview",
+    "example:50-webllm-pipeline:dev": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline dev",
+    "example:50-webllm-pipeline:build": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline build",
+    "example:50-webllm-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline preview"
   },
   "keywords": [
     "voice",
@@ -153,7 +156,8 @@
     "@anthropic-ai/sdk": ">=0.67.0",
     "@deepgram/sdk": ">=4.11.2",
     "openai": ">=6.5.0",
-    "ws": ">=8.0.0"
+    "ws": ">=8.0.0",
+    "@mlc-ai/web-llm": ">=0.2.74"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {
@@ -166,6 +170,9 @@
       "optional": true
     },
     "ws": {
+      "optional": true
+    },
+    "@mlc-ai/web-llm": {
       "optional": true
     }
   },

@@ -14,3 +14,7 @@ export type { OpenAILLMConfig } from './openai';
 // Re-export Anthropic provider
 export { AnthropicLLM } from './anthropic';
 export type { AnthropicLLMConfig } from './anthropic';
+
+// Re-export WebLLM provider
+export { WebLLMLLM } from './webllm';
+export type { WebLLMLLMConfig, WebLLMLoadProgress } from './webllm';

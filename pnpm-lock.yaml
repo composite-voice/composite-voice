@@ -14,6 +14,9 @@ importers:
       '@deepgram/sdk':
         specifier: '>=4.11.2'
         version: 4.11.2
+      '@mlc-ai/web-llm':
+        specifier: '>=0.2.74'
+        version: 0.2.81
       openai:
         specifier: '>=6.5.0'
         version: 6.5.0(ws@8.18.3)
@@ -341,6 +344,19 @@ importers:
       openai:
         specifier: '>=6.5.0'
         version: 6.5.0(ws@8.18.3)
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
+  examples/50-webllm-pipeline:
+    dependencies:
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+      '@mlc-ai/web-llm':
+        specifier: ^0.2.74
+        version: 0.2.81
     devDependencies:
       vite:
         specifier: ^5.0.0
@@ -1177,6 +1193,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@mlc-ai/web-llm@0.2.81':
+    resolution: {integrity: sha512-V2zdaHeCfv7KjnN6WOrt85v6tfefDVyTvWXZ5IN7OXu21Ee1hDg/jQu3ANWN/wjy2qdhVD16cAhoNpnxqyf+Gg==}
 
   '@next/env@15.5.12':
     resolution: {integrity: sha512-pUvdJN1on574wQHjaBfNGDt9Mz5utDSZFsIIQkMzPgNS8ZvT4H2mwOrOIClwsQOb6EGx5M76/CZr6G8i6pSpLg==}
@@ -2605,6 +2624,10 @@ packages:
 
   lodash.upperfirst@4.3.1:
     resolution: {integrity: sha512-sReKOYJIJf74dhJONhU4e0/shzi1trVbSWDOhKYE5XV2O+H7Sb2Dihwuc7xWxVl+DgFPyTqIN3zMfT9cq5iWDg==}
+
+  loglevel@1.9.2:
+    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
+    engines: {node: '>= 0.6.0'}
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
@@ -4259,6 +4282,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@mlc-ai/web-llm@0.2.81':
+    dependencies:
+      loglevel: 1.9.2
+
   '@next/env@15.5.12': {}
 
   '@next/swc-darwin-arm64@15.5.12':
@@ -5900,6 +5927,8 @@ snapshots:
   lodash.uniq@4.5.0: {}
 
   lodash.upperfirst@4.3.1: {}
+
+  loglevel@1.9.2: {}
 
   lru-cache@10.4.3: {}
 
