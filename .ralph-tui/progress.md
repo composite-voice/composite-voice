@@ -9,6 +9,7 @@ after each iteration and it's included in prompts for context.
 - **pnpm workspace flags**: Use `-w` or `--workspace-root` flag when adding dependencies to the root package.json (e.g., `pnpm add -wD @playwright/test`).
 - **TypeScript strict mode casts for window**: In browser-evaluated code, use `window as any` (with eslint-disable comment) instead of `window as Record<string, unknown>` — the latter fails strict type checking because `Window` doesn't have an index signature.
 - **Network request monitoring for REST-based TTS**: When a TTS provider uses REST (e.g. OpenAI TTS) rather than SpeechSynthesis, verify TTS by intercepting `page.on('response')` and matching the endpoint URL (e.g. `/v1/audio/speech`), rather than checking DOM elements or mocks.
+- **Dynamic conversation bubble verification**: For conversation-style UIs (e.g. example 24) where messages are dynamically created `.message.user/.assistant .bubble` elements, use `waitForFunction` polling for the DOM elements to exist with non-empty text, rather than `waitForNonPlaceholder` which assumes the target element already exists at page load.
 
 ---
 
@@ -96,5 +97,17 @@ after each iteration and it's included in prompts for context.
   - Voice gallery examples have unique UI interactivity (card selection with CSS class toggling, label updates) that should be tested separately from the conversation round-trip — this verifies client-side DOM logic without needing API connectivity.
   - DeepgramTTS is WebSocket-based, so TTS verification uses `#tts-log` DOM element (populated by `tts.start`/`tts.complete` events) rather than network request interception used for REST-based TTS providers like OpenAI.
   - Example 23 follows the same all-real-API pattern as example 41 — no browser mocks needed, Chromium fake audio capture feeds DeepgramSTT directly.
+---
+
+## 2026-02-24 - composite-voice-ekb.16
+- **What was implemented**: E2E Playwright test for example 24-deepgram-conversation-history (DeepgramSTT + Anthropic LLM + DeepgramTTS with multi-turn conversation history)
+- **Files changed**:
+  - `examples/24-deepgram-conversation-history/e2e/24-deepgram-conversation-history.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, provider badges, feature badge, controls, status area, conversation area with placeholder, turn count info cards, interim bar, no console errors)
+    2. Full conversation round-trip with real APIs (initialize → start listening → STT user message bubble → LLM assistant message bubble → TTS state verification → turn count increment) using escalating retry strategy
+- **Learnings:**
+  - Conversation-style UI examples (with dynamic `.message.user/.assistant .bubble` elements) require a different helper (`waitForMessageBubble`) than the `waitForNonPlaceholder` pattern used for static `#transcript`/`#response` elements — the DOM elements don't exist at page load, they're created dynamically by event handlers.
+  - When an example lacks a `#tts-log` element for TTS verification, agent state transition works as an alternative — checking that the status moves past "Thinking..." (to "Speaking...", "Listening...", or "Ready") confirms TTS engaged.
+  - Turn count verification (`#turn-count >= 1`) is a good way to confirm the conversation history feature is actively tracking turns, specific to conversation-history examples.
 ---
 
