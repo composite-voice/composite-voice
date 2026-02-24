@@ -295,3 +295,18 @@ after each iteration and it's included in prompts for context.
   - LLM chunk accumulation (consecutive `llm.chunk` events consolidating into a single row) doesn't require special test assertions — the accumulated row still carries `data-category="llm"` so category-based counting works correctly.
   - The event timeline populates even during initialization (agent.ready, agent.stateChange events fire before any conversation starts), making the timeline population testable independently of the LLM round-trip.
 ---
+
+## 2026-02-24 - composite-voice-ekb.22
+- **What was implemented**: Final review and summary issue for all 20 E2E example tests
+- **Files changed**: No code changes — this was a review/summary bead
+- **Actions taken**:
+  - Verified all 20 E2E spec files exist (54 total test cases across 20 examples)
+  - Confirmed no E2E failure issues were filed during the review (0 failures)
+  - Killed stale dev servers on ports 3001 and 3025
+  - Verified `pnpm test` passes (19 suites, 375 tests)
+  - Created GitHub Issue #4: `[E2E] Summary: Comprehensive Example Review Results` with full results table, mock effectiveness analysis, common patterns, and recommendations
+- **Learnings:**
+  - The `e2e` label didn't exist on the repo — needed `gh label create` before filing the issue
+  - Port 3025 had a persistent/respawning process that required `kill -9` to fully terminate
+  - Example 50 (WebLLM) was excluded from the review scope since it requires in-browser WebGPU model download — flagged as a recommendation for future lightweight render-only testing
+---

@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:40:31.607Z",
-  "currentIteration": 20,
+  "updatedAt": "2026-02-24T19:45:23.581Z",
+  "currentIteration": 21,
   "maxIterations": 10,
-  "tasksCompleted": 20,
+  "tasksCompleted": 21,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -137,8 +137,8 @@
       {
         "id": "composite-voice-ekb.5",
         "title": "US-004: E2E test 03-event-inspector (port 3003)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.22",
@@ -348,6 +348,16 @@
       "durationMs": 260146,
       "startedAt": "2026-02-24T19:32:02.141Z",
       "endedAt": "2026-02-24T19:36:22.287Z"
+    },
+    {
+      "iteration": 21,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.5",
+      "taskTitle": "US-004: E2E test 03-event-inspector (port 3003)",
+      "taskCompleted": true,
+      "durationMs": 228178,
+      "startedAt": "2026-02-24T19:36:43.307Z",
+      "endedAt": "2026-02-24T19:40:31.485Z"
     }
   ],
   "skippedTaskIds": [],
