@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:25:02.130Z",
-  "currentIteration": 16,
+  "updatedAt": "2026-02-24T19:28:29.689Z",
+  "currentIteration": 17,
   "maxIterations": 10,
-  "tasksCompleted": 16,
+  "tasksCompleted": 17,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -113,8 +113,8 @@
       {
         "id": "composite-voice-ekb.9",
         "title": "US-008: E2E test 11-nextjs-proxy (port 3011)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.2",
@@ -308,6 +308,16 @@
       "durationMs": 144691,
       "startedAt": "2026-02-24T19:17:30.540Z",
       "endedAt": "2026-02-24T19:19:55.231Z"
+    },
+    {
+      "iteration": 17,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.9",
+      "taskTitle": "US-008: E2E test 11-nextjs-proxy (port 3011)",
+      "taskCompleted": true,
+      "durationMs": 285391,
+      "startedAt": "2026-02-24T19:20:16.612Z",
+      "endedAt": "2026-02-24T19:25:02.003Z"
     }
   ],
   "skippedTaskIds": [],
