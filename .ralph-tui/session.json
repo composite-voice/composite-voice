@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:31:41.074Z",
-  "currentIteration": 18,
+  "updatedAt": "2026-02-24T19:36:22.433Z",
+  "currentIteration": 19,
   "maxIterations": 10,
-  "tasksCompleted": 18,
+  "tasksCompleted": 19,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -125,8 +125,8 @@
       {
         "id": "composite-voice-ekb.3",
         "title": "US-002: E2E test 01-conversation-history (port 3001)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.4",
@@ -328,6 +328,16 @@
       "durationMs": 186554,
       "startedAt": "2026-02-24T19:25:22.966Z",
       "endedAt": "2026-02-24T19:28:29.520Z"
+    },
+    {
+      "iteration": 19,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.3",
+      "taskTitle": "US-002: E2E test 01-conversation-history (port 3001)",
+      "taskCompleted": true,
+      "durationMs": 170356,
+      "startedAt": "2026-02-24T19:28:50.576Z",
+      "endedAt": "2026-02-24T19:31:40.932Z"
     }
   ],
   "skippedTaskIds": [],

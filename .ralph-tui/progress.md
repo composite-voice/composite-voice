@@ -267,3 +267,17 @@ after each iteration and it's included in prompts for context.
   - Turn count verification (`#turn-count >= 1`) confirms the conversation history feature is actively tracking turns, and `#turn-badge` provides a human-readable version ("1 turn" vs "2 turns"). This is the same pattern used in example 24.
   - Example 01 shares the same NativeSTT + NativeTTS mock injection pattern as all other Native provider examples (00, 04, 05, 12, 13, 30, 31, 40, 42), further confirming the pattern's stability.
 ---
+
+## 2026-02-24 - composite-voice-ekb.4
+- **What was implemented**: E2E Playwright test for example 02-system-persona (NativeSTT + Anthropic LLM + NativeTTS with persona selector)
+- **Files changed**:
+  - `examples/02-system-persona/e2e/02-system-persona.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (5 persona cards with correct data-persona attributes, default assistant selection, controls, content areas with placeholders, empty active persona label, hidden error box, state label, no console errors)
+    2. Persona selection UI interactivity (clicking cards toggles `.selected` class through all 5 personas — assistant→tech→storyteller→coach→pirate→assistant cycle, verifying mutual exclusivity)
+    3. Full conversation round-trip: mocked STT → Anthropic LLM (with default assistant persona) → mocked TTS with active persona label verification ("Active: Helpful Assistant"), utterance polling, state return to Ready/Listening, and escalating retry strategy
+- **Learnings:**
+  - Example 02 shares identical element IDs with example 00 (`#btn-init`, `#btn-start`, `#btn-stop`, `#transcript`, `#response`, `#state-label`, `#error`) — the persona-specific additions are `#persona-grid`, `.persona-card[data-persona]`, and `#active-persona-label`. This made the test structure nearly identical to example 00 with persona-specific assertions layered on top.
+  - Persona switching triggers `agent.dispose()` + `initializeAgent()` when the agent is already initialized, but only toggles the `.selected` class when not initialized. The UI interactivity test covers the pre-init class toggling (pure DOM, no API calls), while the round-trip test covers the post-init active persona label update.
+  - The `#active-persona-label` is empty before initialization and populates with "Active: {title}" after `agent.initialize()` — same pattern as `#active-strategy-label` in example 05.
+  - State labels in example 02 match example 00 exactly ("Idle — select a persona and click Initialize" for idle, "Ready — click Start" for ready) except the idle label has a persona-specific suffix.
+---
