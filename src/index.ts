@@ -98,6 +98,12 @@ export { DeepgramTTS } from './providers/tts/deepgram/index';
 export type { DeepgramTTSConfig, DeepgramTTSOptions } from './providers/tts/deepgram/index';
 export { OpenAITTS } from './providers/tts/openai/index';
 export type { OpenAITTSConfig, OpenAITTSVoice, OpenAITTSFormat } from './providers/tts/openai/index';
+export { ElevenLabsTTS } from './providers/tts/elevenlabs/index';
+export type {
+  ElevenLabsTTSConfig,
+  ElevenLabsTTSModel,
+  ElevenLabsOutputFormat,
+} from './providers/tts/elevenlabs/index';
 
 // Utilities
 export {
