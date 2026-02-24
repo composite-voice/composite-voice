@@ -60,3 +60,15 @@ docker-compose.*.yml
 # AI-assisted development prompt history
 prompt-log/
 
+# Ralph TUI (keep config.toml, ignore runtime/session state)
+.ralph-tui/ralph.lock
+.ralph-tui/session.json
+.ralph-tui/session-meta.json
+.ralph-tui/progress.md
+.ralph-tui/iterations/
+
+# Playwright (MCP console logs and test artifacts)
+.playwright-mcp/
+playwright-report/
+test-results/
+
