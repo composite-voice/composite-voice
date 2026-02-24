@@ -281,3 +281,17 @@ after each iteration and it's included in prompts for context.
   - The `#active-persona-label` is empty before initialization and populates with "Active: {title}" after `agent.initialize()` — same pattern as `#active-strategy-label` in example 05.
   - State labels in example 02 match example 00 exactly ("Idle — select a persona and click Initialize" for idle, "Ready — click Start" for ready) except the idle label has a persona-specific suffix.
 ---
+
+## 2026-02-24 - composite-voice-ekb.5
+- **What was implemented**: E2E Playwright test for example 03-event-inspector (NativeSTT + Anthropic LLM + NativeTTS with event timeline)
+- **Files changed**:
+  - `examples/03-event-inspector/e2e/03-event-inspector.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI controls, filter chips with 5 categories all checked, event counter at "0 events", timeline with empty state, content areas with placeholders, hidden error box, state label, no console errors)
+    2. Event timeline population: after initialization and conversation start, verifies event rows appear in the timeline with correct structure (`.event-time`, `.event-type`, `.event-data`), empty state removed, counter incremented, and events from multiple categories (transcription, llm, agent) present
+    3. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with event timeline verification — confirms event rows exist for all 4 pipeline categories (transcription, llm, tts, agent), event counter >= 5, TTS utterance polling, and state return to Ready/Listening using escalating retry strategy
+- **Learnings:**
+  - Example 03 shares identical element IDs with example 00 (`#btn-init`, `#btn-start`, `#btn-stop`, `#transcript`, `#response`, `#state-label`, `#error`) plus event-inspector-specific additions: `#timeline`, `#event-counter`, `#btn-clear`, `#filters`, `.filter-chip[data-category]`, `.event-row[data-category]`.
+  - Event rows use `data-category` attributes that enable both CSS filtering (via checkbox toggle of `display: none`) and test assertions (via `page.locator('.event-row[data-category="llm"]')`). This data attribute approach is ideal for E2E testing.
+  - LLM chunk accumulation (consecutive `llm.chunk` events consolidating into a single row) doesn't require special test assertions — the accumulated row still carries `data-category="llm"` so category-based counting works correctly.
+  - The event timeline populates even during initialization (agent.ready, agent.stateChange events fire before any conversation starts), making the timeline population testable independently of the LLM round-trip.
+---
