@@ -85,3 +85,16 @@ after each iteration and it's included in prompts for context.
   - Placeholder text in this example uses both "will appear here" and "will stream here" — the `waitForNonPlaceholder` helper already handles both variants.
 ---
 
+## 2026-02-24 - composite-voice-ekb.15
+- **What was implemented**: E2E Playwright test for example 23-deepgram-voices (DeepgramSTT + Anthropic LLM + DeepgramTTS with voice gallery)
+- **Files changed**:
+  - `examples/23-deepgram-voices/e2e/23-deepgram-voices.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, provider badges, voice gallery with 10 cards, controls, content areas, no console errors)
+    2. Voice selection UI interactivity (clicking a different voice card updates selection class, active voice label, and TTS tag)
+    3. Full conversation round-trip with real APIs (initialize → start listening → STT transcription → LLM response → TTS activity) using escalating retry strategy
+- **Learnings:**
+  - Voice gallery examples have unique UI interactivity (card selection with CSS class toggling, label updates) that should be tested separately from the conversation round-trip — this verifies client-side DOM logic without needing API connectivity.
+  - DeepgramTTS is WebSocket-based, so TTS verification uses `#tts-log` DOM element (populated by `tts.start`/`tts.complete` events) rather than network request interception used for REST-based TTS providers like OpenAI.
+  - Example 23 follows the same all-real-API pattern as example 41 — no browser mocks needed, Chromium fake audio capture feeds DeepgramSTT directly.
+---
+
