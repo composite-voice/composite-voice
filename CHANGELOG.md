@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.0](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v1.0.0...composite-voice-v1.1.0) (2026-02-24)
+
+
+### Features
+
+* composite-voice-ekb.1 - US-000: Set up shared test infrastructure and audio fixture ([66fecb0](https://github.com/lukeocodes/composite-voice/commit/66fecb0b112a49b8f4c757f52ed69cdd0b50ceca))
+* composite-voice-ekb.10 - US-009: E2E test 12-custom-provider (port 3012) ([d672786](https://github.com/lukeocodes/composite-voice/commit/d672786cf70219dbfbdfbdd6ef98188b0db01f05))
+* composite-voice-ekb.11 - US-010: E2E test 13-multi-language (port 3013) ([59c7ec5](https://github.com/lukeocodes/composite-voice/commit/59c7ec557afba9217e55a4b9696712f3b9e6f7e4))
+* composite-voice-ekb.12 - US-011: E2E test 20-deepgram-pipeline (port 3020) ([6dca9c8](https://github.com/lukeocodes/composite-voice/commit/6dca9c82b2b17a54ac8256eafeb5bc0cc64fd48a))
+* composite-voice-ekb.13 - US-012: E2E test 21-eager-pipeline (port 3021) ([0d3069b](https://github.com/lukeocodes/composite-voice/commit/0d3069bc6ff3a986456a540146901e63fef72851))
+* composite-voice-ekb.14 - US-013: E2E test 22-deepgram-options (port 3022) ([aafb2d9](https://github.com/lukeocodes/composite-voice/commit/aafb2d96100d8b6bd29906643cb19d6141c7d1b4))
+* composite-voice-ekb.15 - US-014: E2E test 23-deepgram-voices (port 3023) ([762fd1e](https://github.com/lukeocodes/composite-voice/commit/762fd1e67053b9db87686149a92f178459245fe7))
+* composite-voice-ekb.16 - US-015: E2E test 24-deepgram-conversation-history (port 3024) ([2c55f8e](https://github.com/lukeocodes/composite-voice/commit/2c55f8ed1602c772c0779d19b7fa05126bd87d89))
+* composite-voice-ekb.17 - US-016: E2E test 30-anthropic-models (port 3030) ([ebf36e5](https://github.com/lukeocodes/composite-voice/commit/ebf36e523f6dbb2b0fa111de3b015c9ad26408ab))
+* composite-voice-ekb.18 - US-017: E2E test 31-anthropic-streaming-config (port 3031) ([59536e3](https://github.com/lukeocodes/composite-voice/commit/59536e35bf97319776400d630aaaf695771dcc20))
+* composite-voice-ekb.19 - US-018: E2E test 40-openai-pipeline (port 3040) ([8839694](https://github.com/lukeocodes/composite-voice/commit/8839694558b237e29c9f86e8ad44b37cfd1bc127))
+* composite-voice-ekb.2 - US-001: E2E test 00-minimal-voice-agent (port 3000) ([72ab0d0](https://github.com/lukeocodes/composite-voice/commit/72ab0d002cd636e13be1a69c134acc128c675e2d))
+* composite-voice-ekb.20 - US-019: E2E test 41-openai-deepgram (port 3041) ([ed73d6b](https://github.com/lukeocodes/composite-voice/commit/ed73d6b74f1c1604043bd2fb7068ae77c80af2dc))
+* composite-voice-ekb.21 - US-020: E2E test 42-openai-tts-pipeline (port 3042) ([09e46d7](https://github.com/lukeocodes/composite-voice/commit/09e46d70e2fcd0325083d24550642ca1a41ddea4))
+* composite-voice-ekb.22 - US-021: Final review and summary issue ([0933e8d](https://github.com/lukeocodes/composite-voice/commit/0933e8d8b2c1af0c42e52315e84743db9cc710a8))
+* composite-voice-ekb.3 - US-002: E2E test 01-conversation-history (port 3001) ([2a7dfef](https://github.com/lukeocodes/composite-voice/commit/2a7dfefb9af8700d420c86dc4cfaa56850fb30e9))
+* composite-voice-ekb.4 - US-003: E2E test 02-system-persona (port 3002) ([f79c011](https://github.com/lukeocodes/composite-voice/commit/f79c0111e2a5d2208466fe0dc41fca861a7a162c))
+* composite-voice-ekb.5 - US-004: E2E test 03-event-inspector (port 3003) ([11906d6](https://github.com/lukeocodes/composite-voice/commit/11906d6f0322b167d6045b4c3a1d8080a07db4e6))
+* composite-voice-ekb.6 - US-005: E2E test 04-error-recovery (port 3004) ([dfbf21a](https://github.com/lukeocodes/composite-voice/commit/dfbf21ada44bb021811d6e121964f2c6f2baf6e0))
+* composite-voice-ekb.7 - US-006: E2E test 05-turn-taking (port 3005) ([601cd05](https://github.com/lukeocodes/composite-voice/commit/601cd05beed63026983ef8fdd501ea703f8d0439))
+* composite-voice-ekb.8 - US-007: E2E test 10-proxy-server (port 3010) ([03d05cc](https://github.com/lukeocodes/composite-voice/commit/03d05ccfebb0912ec78e9b4e72a4f9c96300c885))
+* composite-voice-ekb.9 - US-008: E2E test 11-nextjs-proxy (port 3011) ([fffd190](https://github.com/lukeocodes/composite-voice/commit/fffd190dbfc434841cb6f1c5df6f92f04c4c0fe0))
+* **examples:** expand to 19 examples across 5 provider categories ([16abdf0](https://github.com/lukeocodes/composite-voice/commit/16abdf0073f605d4a1b12cd522accd5d6ec3c4b6))
+* **providers:** add OpenAI TTS provider ([469d967](https://github.com/lukeocodes/composite-voice/commit/469d967a2410bf1466304ab7fb4b365af713412a))
+* **providers:** add WebLLM as optional in-browser LLM provider ([97f5127](https://github.com/lukeocodes/composite-voice/commit/97f5127b132bbaffa2a43d568ee51199bfda1ed2))
+
+
+### Bug Fixes
+
+* **ci:** update lockfile and add frozen-lockfile pre-commit check ([5adac27](https://github.com/lukeocodes/composite-voice/commit/5adac27e8725bde0c5872a5527202ed5364ca50b))
+
 ## [1.0.0](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.1.0...composite-voice-v1.0.0) (2026-02-23)
 
 
