@@ -66,28 +66,32 @@ export function installNativeTTSMock(): void {
     speak(utterance: SpeechSynthesisUtterance): void {
       const { speakDelayMs } = getConfig();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const utt = utterance as any;
+
       // Capture utterance data for assertions
       utterances.push({
-        text: utterance.text,
-        voice: utterance.voice?.name ?? null,
-        lang: utterance.lang,
-        rate: utterance.rate,
-        pitch: utterance.pitch,
+        text: utt.text,
+        voice: utt.voice?.name ?? null,
+        lang: utt.lang,
+        rate: utt.rate,
+        pitch: utt.pitch,
         timestamp: Date.now(),
       });
 
       mockSynthesis.speaking = true;
 
-      // Fire onstart immediately
-      if (utterance.onstart) {
-        utterance.onstart(new SpeechSynthesisEvent('start', { utterance }));
+      // Fire onstart immediately (use plain Event to avoid SpeechSynthesisEvent
+      // constructor issues with mock utterances)
+      if (utt.onstart) {
+        utt.onstart(new Event('start'));
       }
 
       // Fire onend after delay to simulate speech duration
       setTimeout(() => {
         mockSynthesis.speaking = false;
-        if (utterance.onend) {
-          utterance.onend(new SpeechSynthesisEvent('end', { utterance }));
+        if (utt.onend) {
+          utt.onend(new Event('end'));
         }
       }, speakDelayMs);
     },
@@ -106,6 +110,36 @@ export function installNativeTTSMock(): void {
       mockSynthesis.paused = false;
     },
   };
+
+  // Mock SpeechSynthesisUtterance so its `voice` setter accepts plain objects.
+  // The real browser setter throws TypeError when assigned a non-SpeechSynthesisVoice
+  // value, but our mock voices from getVoices() are plain objects.
+  const OriginalUtterance = w.SpeechSynthesisUtterance;
+  class MockUtterance {
+    text: string;
+    lang = '';
+    voice: unknown = null;
+    volume = 1;
+    rate = 1;
+    pitch = 1;
+    onstart: ((ev: Event) => void) | null = null;
+    onend: ((ev: Event) => void) | null = null;
+    onerror: ((ev: Event) => void) | null = null;
+    onpause: ((ev: Event) => void) | null = null;
+    onresume: ((ev: Event) => void) | null = null;
+    onmark: ((ev: Event) => void) | null = null;
+    onboundary: ((ev: Event) => void) | null = null;
+
+    constructor(text = '') {
+      this.text = text;
+    }
+  }
+
+  Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+    value: MockUtterance,
+    writable: true,
+    configurable: true,
+  });
 
   // Replace the global speechSynthesis
   Object.defineProperty(window, 'speechSynthesis', {
