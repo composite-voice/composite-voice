@@ -349,6 +349,19 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@20.19.22)
 
+  examples/42-openai-tts-pipeline:
+    dependencies:
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+      openai:
+        specifier: '>=6.5.0'
+        version: 6.5.0(ws@8.18.3)
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
   examples/50-webllm-pipeline:
     dependencies:
       '@lukeocodes/composite-voice':
