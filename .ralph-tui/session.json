@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:11:00.989Z",
-  "currentIteration": 12,
+  "updatedAt": "2026-02-24T19:14:14.929Z",
+  "currentIteration": 13,
   "maxIterations": 10,
-  "tasksCompleted": 12,
+  "tasksCompleted": 13,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -89,8 +89,8 @@
       {
         "id": "composite-voice-ekb.13",
         "title": "US-012: E2E test 21-eager-pipeline (port 3021)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.6",
@@ -268,6 +268,16 @@
       "durationMs": 195680,
       "startedAt": "2026-02-24T19:05:13.812Z",
       "endedAt": "2026-02-24T19:08:29.492Z"
+    },
+    {
+      "iteration": 13,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.13",
+      "taskTitle": "US-012: E2E test 21-eager-pipeline (port 3021)",
+      "taskCompleted": true,
+      "durationMs": 130590,
+      "startedAt": "2026-02-24T19:08:50.278Z",
+      "endedAt": "2026-02-24T19:11:00.868Z"
     }
   ],
   "skippedTaskIds": [],

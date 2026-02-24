@@ -187,3 +187,16 @@ after each iteration and it's included in prompts for context.
   - Placeholder text patterns vary: example 21 uses "Waiting for speech/transcript/response..." instead of "will appear here" — the `waitForNonPlaceholder` helper must be customized per-example to match the actual placeholder text.
   - The eager pipeline adds a timing panel (`.timing-panel`) with 4 latency metrics (`#t-preflight`, `#t-speech-final`, `#t-llm-first-token`, `#t-tts-start`) — these are visible at page load with "—" placeholder values, making them good candidates for render verification without requiring API calls.
 ---
+
+## 2026-02-24 - composite-voice-ekb.6
+- **What was implemented**: E2E Playwright test for example 04-error-recovery (NativeSTT + Anthropic LLM + NativeTTS with error simulation and auto-recovery)
+- **Files changed**:
+  - `examples/04-error-recovery/e2e/04-error-recovery.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, error simulation controls, proxy status indicator, recovery status panel, error event log, content areas, state label, no console errors)
+    2. Full conversation round-trip: mocked STT → Anthropic LLM (via Vite proxy) → mocked TTS with utterance polling and escalating retry strategy
+    3. Error simulation: emit agent error verifies error count increments, last error updates, recovery status changes, and error log populates with entries
+- **Learnings:**
+  - Error simulation tests (e.g. "Emit Agent Error") are purely UI-driven with no API dependency, making them deterministic and fast — no need for the `withRetry` escalating timeout pattern. Only the conversation round-trip test needs retry logic.
+  - The `autoRecover: true` flag enables automatic state recovery after errors, detected by `agent.stateChange` event transitioning out of `'error'` state. This is a testable behavior but requires triggering a real error during an active conversation (not just emitting a synthetic event), so testing the recovery *transition* is better suited for integration tests.
+  - Error simulation controls in example 04 use distinct mechanisms: "Break Proxy" mutates `llmInstance.proxyUrl` to an invalid endpoint (requires active conversation to trigger), "Emit Agent Error" fires a synthetic `agent.error` event (immediately testable). The emit approach is ideal for E2E testing error logging and counter UI.
+---
