@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T18:25:57.438Z",
-  "currentIteration": 7,
+  "updatedAt": "2026-02-24T18:29:08.521Z",
+  "currentIteration": 8,
   "maxIterations": 10,
-  "tasksCompleted": 7,
+  "tasksCompleted": 8,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -59,8 +59,8 @@
       {
         "id": "composite-voice-ekb.17",
         "title": "US-016: E2E test 30-anthropic-models (port 3030)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.14",
@@ -218,6 +218,16 @@
       "durationMs": 162877,
       "startedAt": "2026-02-24T18:20:10.173Z",
       "endedAt": "2026-02-24T18:22:53.050Z"
+    },
+    {
+      "iteration": 8,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.17",
+      "taskTitle": "US-016: E2E test 30-anthropic-models (port 3030)",
+      "taskCompleted": true,
+      "durationMs": 162777,
+      "startedAt": "2026-02-24T18:23:14.498Z",
+      "endedAt": "2026-02-24T18:25:57.275Z"
     }
   ],
   "skippedTaskIds": [],
