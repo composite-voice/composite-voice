@@ -112,6 +112,9 @@
     "example:31-anthropic-streaming-config:dev": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config dev",
     "example:31-anthropic-streaming-config:build": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config build",
     "example:31-anthropic-streaming-config:preview": "pnpm --filter @lukeocodes/composite-voice-example-31-anthropic-streaming-config preview",
+    "example:42-openai-tts-pipeline:dev": "pnpm --filter @lukeocodes/composite-voice-example-42-openai-tts-pipeline dev",
+    "example:42-openai-tts-pipeline:build": "pnpm --filter @lukeocodes/composite-voice-example-42-openai-tts-pipeline build",
+    "example:42-openai-tts-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-42-openai-tts-pipeline preview",
     "example:50-webllm-pipeline:dev": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline dev",
     "example:50-webllm-pipeline:build": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline build",
     "example:50-webllm-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline preview"
