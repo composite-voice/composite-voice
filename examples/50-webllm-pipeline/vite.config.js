@@ -10,6 +10,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 3050,
+    strictPort: true,
     open: false,
     headers: {
       // Required for SharedArrayBuffer used by some WebLLM model variants

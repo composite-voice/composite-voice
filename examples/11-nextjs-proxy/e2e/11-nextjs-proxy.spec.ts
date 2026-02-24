@@ -15,11 +15,13 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
   createContext,
   startDevServer,
   collectDiagnostics,
+  getJsErrors,
   withRetry,
   createGitHubIssue,
   type DevServer,
@@ -30,6 +32,9 @@ import { injectNativeMocks } from '../../../tests/e2e/mocks/inject';
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const EXAMPLE_DIR = path.resolve(__dirname, '..');
 const PORT = 3011;
@@ -174,14 +179,7 @@ test.describe('11-nextjs-proxy E2E', () => {
     await expect(page.getByText('Waiting for response...')).toBeVisible();
 
     // No JS errors during initial load (filter Next.js dev noise and favicon)
-    const jsErrors = diag.consoleErrors.filter(
-      (e) =>
-        !e.text.includes('favicon') &&
-        !e.text.includes('404') &&
-        !e.text.includes('hydration') &&
-        !e.text.includes('Warning:'),
-    );
-    expect(jsErrors).toHaveLength(0);
+    expect(getJsErrors(diag, ['hydration', 'Warning:'])).toHaveLength(0);
 
     await context.close();
     await browser.close();

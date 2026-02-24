@@ -12,11 +12,13 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
   createContext,
   startDevServer,
   collectDiagnostics,
+  getJsErrors,
   withRetry,
   createGitHubIssue,
   type DevServer,
@@ -27,6 +29,9 @@ import { injectNativeMocks } from '../../../tests/e2e/mocks/inject';
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const EXAMPLE_DIR = path.resolve(__dirname, '..');
 const PORT = 3040;
@@ -115,10 +120,7 @@ test.describe('40-openai-pipeline E2E', () => {
     await expect(page.locator('#state-label')).toContainText('Idle');
 
     // No JS errors during initial load
-    const jsErrors = diag.consoleErrors.filter(
-      (e) => !e.text.includes('favicon') && !e.text.includes('404'),
-    );
-    expect(jsErrors).toHaveLength(0);
+    expect(getJsErrors(diag)).toHaveLength(0);
 
     await context.close();
     await browser.close();

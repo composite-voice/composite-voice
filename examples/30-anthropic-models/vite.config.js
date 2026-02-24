@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3030,
+      strictPort: true,
       open: false,
       proxy: {
         '/proxy/anthropic': {
