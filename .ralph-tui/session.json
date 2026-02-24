@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T18:08:29.350Z",
-  "currentIteration": 1,
+  "updatedAt": "2026-02-24T18:11:44.872Z",
+  "currentIteration": 2,
   "maxIterations": 10,
-  "tasksCompleted": 1,
+  "tasksCompleted": 2,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -23,8 +23,8 @@
       {
         "id": "composite-voice-ekb.20",
         "title": "US-019: E2E test 41-openai-deepgram (port 3041)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.21",
@@ -158,6 +158,16 @@
       "durationMs": 598138,
       "startedAt": "2026-02-24T17:55:20.561Z",
       "endedAt": "2026-02-24T18:05:18.699Z"
+    },
+    {
+      "iteration": 2,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.20",
+      "taskTitle": "US-019: E2E test 41-openai-deepgram (port 3041)",
+      "taskCompleted": true,
+      "durationMs": 169168,
+      "startedAt": "2026-02-24T18:05:40.018Z",
+      "endedAt": "2026-02-24T18:08:29.186Z"
     }
   ],
   "skippedTaskIds": [],
