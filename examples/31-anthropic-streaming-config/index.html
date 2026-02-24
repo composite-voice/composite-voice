@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 31 Anthropic Streaming Config</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 50%, #6d28d9 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: #c4b5fd; font-size: 0.875rem; margin-top: 6px; }
+
+    /* Config panel */
+    .config-panel {
+      margin-bottom: 24px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+    .config-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #a78bfa;
+      margin-bottom: 16px;
+    }
+
+    .slider-group {
+      margin-bottom: 18px;
+    }
+    .slider-group:last-of-type {
+      margin-bottom: 0;
+    }
+    .slider-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .slider-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #f5f3ff;
+    }
+    .slider-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      color: #c4b5fd;
+    }
+    .slider-desc {
+      font-size: 0.72rem;
+      color: #8b5cf6;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #a78bfa;
+      border: 2px solid #f5f3ff;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #c4b5fd;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #a78bfa;
+      border: 2px solid #f5f3ff;
+      cursor: pointer;
+    }
+
+    /* Apply button */
+    .config-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 18px;
+    }
+    #btn-apply {
+      flex: none;
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid rgba(167, 139, 250, 0.5);
+      border-radius: 8px;
+      background: rgba(167, 139, 250, 0.3);
+      color: #f5f3ff;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #btn-apply:hover:not(:disabled) { background: rgba(167, 139, 250, 0.5); }
+    #btn-apply:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Current config display */
+    .config-display {
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(167, 139, 250, 0.15);
+      border-radius: 8px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: #c4b5fd;
+      white-space: pre;
+    }
+
+    /* State badge */
+    .state-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #334155;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    [data-state="ready"]     .dot { background: #a78bfa; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #c084fc; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #10b981; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.875rem; color: #c4b5fd; }
+
+    /* Controls */
+    .controls { display: flex; gap: 8px; margin-bottom: 24px; }
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start {
+      background: rgba(167, 139, 250, 0.3);
+      border-color: rgba(167, 139, 250, 0.5);
+    }
+    #btn-start:hover:not(:disabled) { background: rgba(167, 139, 250, 0.5); }
+
+    /* Text panels */
+    .field { margin-bottom: 16px; }
+    .field-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7c3aed;
+      margin-bottom: 8px;
+    }
+    .panel {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 14px 16px;
+      min-height: 64px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .placeholder { color: #4c1d95; font-style: italic; }
+    .interim { color: #7c3aed; }
+
+    /* Error */
+    .error {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+      line-height: 1.5;
+    }
+    .error.visible { display: block; }
+
+    .hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>CompositeVoice</h1>
+      <p class="tagline">31 Anthropic Streaming Config &mdash; NativeSTT &middot; Anthropic Claude &middot; NativeTTS</p>
+    </header>
+
+    <!-- Config Panel -->
+    <div class="config-panel">
+      <div class="config-title">Streaming parameters</div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Temperature</span>
+          <span class="slider-value" id="temperature-value">0.7</span>
+        </div>
+        <div class="slider-desc">Lower = more deterministic, higher = more creative</div>
+        <input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0.7" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Max Tokens</span>
+          <span class="slider-value" id="max-tokens-value">200</span>
+        </div>
+        <div class="slider-desc">Maximum response length in tokens</div>
+        <input type="range" id="max-tokens-slider" min="50" max="1000" step="50" value="200" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Top P</span>
+          <span class="slider-value" id="top-p-value">1.0</span>
+        </div>
+        <div class="slider-desc">Nucleus sampling &mdash; lower values focus on more likely tokens</div>
+        <input type="range" id="top-p-slider" min="0" max="1" step="0.1" value="1" />
+      </div>
+
+      <div class="config-actions">
+        <button id="btn-apply" disabled>Apply &amp; Reinitialize</button>
+      </div>
+    </div>
+
+    <!-- Current config as JSON -->
+    <div class="config-display" id="config-display">{
+  "temperature": 0.7,
+  "maxTokens": 200,
+  "topP": 1.0
+}</div>
+
+    <div id="root" data-state="idle">
+      <div class="state-bar">
+        <div class="dot"></div>
+        <span class="state-label" id="state-label">Idle &mdash; click Initialize</span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-init">Initialize</button>
+        <button id="btn-start" disabled>Start</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+
+      <div class="field">
+        <div class="field-label">You said</div>
+        <div class="panel" id="transcript">
+          <span class="placeholder">Your words will appear here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">AI response</div>
+        <div class="panel" id="response">
+          <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+  </div>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+
+    // ─── UI references ─────────────────────────────────────────────────────────
+    const root           = document.getElementById('root');
+    const stateLabel     = document.getElementById('state-label');
+    const btnInit        = document.getElementById('btn-init');
+    const btnStart       = document.getElementById('btn-start');
+    const btnStop        = document.getElementById('btn-stop');
+    const btnApply       = document.getElementById('btn-apply');
+    const transcript     = document.getElementById('transcript');
+    const response       = document.getElementById('response');
+    const errorBox       = document.getElementById('error');
+    const configDisplay  = document.getElementById('config-display');
+
+    const temperatureSlider = document.getElementById('temperature-slider');
+    const temperatureValue  = document.getElementById('temperature-value');
+    const maxTokensSlider   = document.getElementById('max-tokens-slider');
+    const maxTokensValue    = document.getElementById('max-tokens-value');
+    const topPSlider        = document.getElementById('top-p-slider');
+    const topPValue         = document.getElementById('top-p-value');
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    // ─── Config state ──────────────────────────────────────────────────────────
+    let config = {
+      temperature: 0.7,
+      maxTokens: 200,
+      topP: 1.0,
+    };
+
+    let agent = null;
+    let isInitialized = false;
+
+    // ─── UI helpers ────────────────────────────────────────────────────────────
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+    };
+
+    const clearError = () => errorBox.classList.remove('visible');
+
+    const updateConfigDisplay = () => {
+      configDisplay.textContent = JSON.stringify({
+        temperature: config.temperature,
+        maxTokens: config.maxTokens,
+        topP: config.topP,
+      }, null, 2);
+    };
+
+    // ─── Slider event handlers ─────────────────────────────────────────────────
+    temperatureSlider.addEventListener('input', () => {
+      temperatureValue.textContent = parseFloat(temperatureSlider.value).toFixed(1);
+    });
+
+    maxTokensSlider.addEventListener('input', () => {
+      maxTokensValue.textContent = maxTokensSlider.value;
+    });
+
+    topPSlider.addEventListener('input', () => {
+      topPValue.textContent = parseFloat(topPSlider.value).toFixed(1);
+    });
+
+    // ─── Apply & Reinitialize ──────────────────────────────────────────────────
+    btnApply.addEventListener('click', async () => {
+      config.temperature = parseFloat(temperatureSlider.value);
+      config.maxTokens = parseInt(maxTokensSlider.value, 10);
+      config.topP = parseFloat(topPSlider.value);
+      updateConfigDisplay();
+
+      if (isInitialized) {
+        clearError();
+        btnStart.disabled = true;
+        btnStop.disabled = true;
+        btnApply.disabled = true;
+
+        try {
+          await agent.dispose();
+        } catch (_) {
+          // best effort
+        }
+
+        agent = null;
+        isInitialized = false;
+        setUIState('idle');
+        stateLabel.textContent = 'Applying config\u2026';
+
+        // Reset panels
+        transcript.innerHTML = '<span class="placeholder">Your words will appear here\u2026</span>';
+        response.innerHTML = '<span class="placeholder">Claude\u2019s reply will stream here\u2026</span>';
+
+        // Auto-reinitialize with new config
+        await initializeAgent();
+        btnApply.disabled = false;
+      }
+    });
+
+    // ─── Agent initialization ──────────────────────────────────────────────────
+    async function initializeAgent() {
+      clearError();
+      btnInit.disabled = true;
+
+      agent = new CompositeVoice({
+        stt: new NativeSTT({
+          language: 'en-US',
+          continuous: true,
+          interimResults: true,
+        }),
+
+        llm: new AnthropicLLM({
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
+          model: 'claude-haiku-4-5-20251001',
+          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+          maxTokens: config.maxTokens,
+          temperature: config.temperature,
+          topP: config.topP,
+        }),
+
+        tts: new NativeTTS({
+          rate: 1.0,
+          preferLocal: true,
+        }),
+      });
+
+      // ── Events ──────────────────────────────────────────────────────────────
+      agent.on('agent.stateChange', (e) => setUIState(e.state));
+
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      // ── Initialize ──────────────────────────────────────────────────────────
+      try {
+        await agent.initialize();
+        isInitialized = true;
+        btnStart.disabled = false;
+        btnApply.disabled = false;
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+        btnApply.disabled = false;
+      }
+    }
+
+    // ─── Button handlers ───────────────────────────────────────────────────────
+    btnInit.addEventListener('click', async () => {
+      // Read current slider values into config before first init
+      config.temperature = parseFloat(temperatureSlider.value);
+      config.maxTokens = parseInt(maxTokensSlider.value, 10);
+      config.topP = parseFloat(topPSlider.value);
+      updateConfigDisplay();
+
+      await initializeAgent();
+    });
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>

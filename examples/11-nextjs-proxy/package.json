@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-11-nextjs-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js App Router proxy — secure deployment with createNextJsProxy",
+  "scripts": {
+    "dev": "next dev -p 3011",
+    "build": "next build",
+    "start": "next start -p 3011",
+    "preview": "next start -p 3011"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0"
+  }
+}
