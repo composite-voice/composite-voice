@@ -1,0 +1,22 @@
+{
+  "name": "@lukeocodes/composite-voice-example-23-deepgram-voices",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deepgram TTS voice gallery — preview and select from all Aura 2 voices",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0",
+    "@deepgram/sdk": ">=4.11.2"
+  }
+}

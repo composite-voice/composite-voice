@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 05 Turn Taking</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 780px;
+    }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 28px; }
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: rgba(255,255,255,0.65); font-size: 0.875rem; margin-top: 6px; }
+
+    /* Strategy cards */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 10px;
+    }
+
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .strategy-card {
+      position: relative;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .strategy-card:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .strategy-card.selected {
+      border-color: #60a5fa;
+      background: rgba(96,165,250,0.15);
+      box-shadow: 0 0 0 1px #60a5fa, 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .strategy-card .strategy-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+    .strategy-card .strategy-config {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.68rem;
+      color: #60a5fa;
+      margin-bottom: 6px;
+    }
+    .strategy-card .strategy-desc {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    /* State badge */
+    .state-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #334155;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    [data-state="ready"]     .dot { background: #3b82f6; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #8b5cf6; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #10b981; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.875rem; color: rgba(255,255,255,0.7); }
+    .active-strategy-label {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.45);
+      font-style: italic;
+    }
+
+    /* Controls */
+    .controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    button {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.15); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start {
+      background: rgba(59,130,246,0.3);
+      border-color: rgba(59,130,246,0.5);
+    }
+    #btn-start:hover:not(:disabled) { background: rgba(59,130,246,0.5); }
+
+    /* Microphone status indicator */
+    .mic-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .mic-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+    .mic-icon.active {
+      background: rgba(34,197,94,0.2);
+    }
+    .mic-icon.paused {
+      background: rgba(239,68,68,0.2);
+    }
+    .mic-icon.idle {
+      background: rgba(148,163,184,0.15);
+    }
+    .mic-details {
+      flex: 1;
+    }
+    .mic-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 2px;
+    }
+    .mic-sublabel {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+    .turn-state-badge {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .turn-state-badge.capturing {
+      background: rgba(34,197,94,0.2);
+      color: #86efac;
+      border: 1px solid rgba(34,197,94,0.3);
+    }
+    .turn-state-badge.paused {
+      background: rgba(239,68,68,0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .turn-state-badge.inactive {
+      background: rgba(148,163,184,0.12);
+      color: #94a3b8;
+      border: 1px solid rgba(148,163,184,0.2);
+    }
+
+    /* Info panel */
+    .info-panel {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+    .info-panel strong {
+      color: #e2e8f0;
+    }
+    .info-panel code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.75rem;
+      background: rgba(255,255,255,0.08);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #60a5fa;
+    }
+
+    /* Text panels */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 8px;
+    }
+    .panel {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 14px 16px;
+      min-height: 64px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .placeholder { color: rgba(255,255,255,0.2); font-style: italic; }
+    .interim { color: rgba(255,255,255,0.4); }
+
+    /* Error */
+    .error {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+      line-height: 1.5;
+    }
+    .error.visible { display: block; }
+
+    .hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.15);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>CompositeVoice</h1>
+      <p class="tagline">05 Turn Taking &mdash; NativeSTT &middot; Anthropic Claude &middot; NativeTTS</p>
+    </header>
+
+    <!-- Strategy selector -->
+    <div class="section-label">Choose a turn-taking strategy</div>
+    <div class="strategy-grid" id="strategy-grid">
+      <div class="strategy-card selected" data-strategy="auto" data-auto-strategy="conservative">
+        <div class="strategy-title">Auto (Conservative)</div>
+        <div class="strategy-config">pauseCaptureOnPlayback: 'auto'</div>
+        <div class="strategy-desc">SDK decides based on providers. Conservative mode pauses unless STT has echo cancellation support.</div>
+      </div>
+      <div class="strategy-card" data-strategy="auto" data-auto-strategy="aggressive">
+        <div class="strategy-title">Auto (Aggressive)</div>
+        <div class="strategy-config">autoStrategy: 'aggressive'</div>
+        <div class="strategy-desc">Only pauses for known problematic provider combinations. Allows more concurrent audio.</div>
+      </div>
+      <div class="strategy-card" data-strategy="auto" data-auto-strategy="detect">
+        <div class="strategy-title">Auto (Detect)</div>
+        <div class="strategy-config">autoStrategy: 'detect'</div>
+        <div class="strategy-desc">Attempts runtime echo cancellation detection. Falls back to pause if not supported.</div>
+      </div>
+      <div class="strategy-card" data-strategy="true">
+        <div class="strategy-title">Always Pause</div>
+        <div class="strategy-config">pauseCaptureOnPlayback: true</div>
+        <div class="strategy-desc">Always pauses microphone during TTS playback. Safest option &mdash; prevents all echo.</div>
+      </div>
+    </div>
+
+    <div id="root" data-state="idle">
+      <div class="state-bar">
+        <div class="dot"></div>
+        <span class="state-label" id="state-label">Idle &mdash; select a strategy and click Initialize</span>
+        <span class="active-strategy-label" id="active-strategy-label"></span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-init">Initialize</button>
+        <button id="btn-start" disabled>Start</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+
+      <!-- Microphone status indicator -->
+      <div class="section-label">Microphone &amp; Turn State</div>
+      <div class="mic-status">
+        <div class="mic-icon idle" id="mic-icon">&#127908;</div>
+        <div class="mic-details">
+          <div class="mic-label" id="mic-label">Microphone Inactive</div>
+          <div class="mic-sublabel" id="mic-sublabel">Initialize and start to begin capturing</div>
+        </div>
+        <div class="turn-state-badge inactive" id="turn-badge">Inactive</div>
+      </div>
+
+      <!-- Info panel -->
+      <div class="info-panel" id="info-panel">
+        <strong>Auto (Conservative)</strong> &mdash; The SDK will pause microphone capture during TTS playback because
+        <code>NativeSTT</code> uses the Web Speech API, which does not support echo cancellation.
+        This prevents the AI from hearing its own voice and re-triggering the pipeline.
+      </div>
+
+      <!-- Text panels -->
+      <div class="panels">
+        <div>
+          <div class="field-label">You said</div>
+          <div class="panel" id="transcript">
+            <span class="placeholder">Your words will appear here&hellip;</span>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">AI response</div>
+          <div class="panel" id="response">
+            <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+  </div>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+
+    // ─── Strategy definitions ──────────────────────────────────────────────────
+    const STRATEGIES = {
+      'auto-conservative': {
+        title: 'Auto (Conservative)',
+        config: { pauseCaptureOnPlayback: 'auto', autoStrategy: 'conservative' },
+        info: '<strong>Auto (Conservative)</strong> — The SDK will pause microphone capture during TTS playback because <code>NativeSTT</code> uses the Web Speech API, which does not support echo cancellation. This prevents the AI from hearing its own voice and re-triggering the pipeline.',
+      },
+      'auto-aggressive': {
+        title: 'Auto (Aggressive)',
+        config: { pauseCaptureOnPlayback: 'auto', autoStrategy: 'aggressive' },
+        info: '<strong>Auto (Aggressive)</strong> — Only pauses for known problematic combinations (like <code>NativeSTT</code> + <code>NativeTTS</code>). With other provider combos this would allow full-duplex audio. Since this example uses NativeSTT, it will still pause.',
+      },
+      'auto-detect': {
+        title: 'Auto (Detect)',
+        config: { pauseCaptureOnPlayback: 'auto', autoStrategy: 'detect' },
+        info: '<strong>Auto (Detect)</strong> — Checks at runtime whether the browser and STT provider support echo cancellation. <code>NativeSTT</code> uses the SpeechRecognition API which never has echo cancellation, so this will pause. With <code>DeepgramSTT</code> (getUserMedia), it may allow full-duplex.',
+      },
+      'true': {
+        title: 'Always Pause',
+        config: { pauseCaptureOnPlayback: true },
+        info: '<strong>Always Pause</strong> — Microphone capture is unconditionally paused during TTS playback. This is the safest option and prevents all echo, but means the user cannot interrupt the AI while it speaks.',
+      },
+    };
+
+    // ─── UI Elements ───────────────────────────────────────────────────────────
+    const root                = document.getElementById('root');
+    const stateLabel          = document.getElementById('state-label');
+    const activeStrategyLabel = document.getElementById('active-strategy-label');
+    const btnInit             = document.getElementById('btn-init');
+    const btnStart            = document.getElementById('btn-start');
+    const btnStop             = document.getElementById('btn-stop');
+    const transcript          = document.getElementById('transcript');
+    const response            = document.getElementById('response');
+    const errorBox            = document.getElementById('error');
+    const infoPanel           = document.getElementById('info-panel');
+    const micIcon             = document.getElementById('mic-icon');
+    const micLabel            = document.getElementById('mic-label');
+    const micSublabel         = document.getElementById('mic-sublabel');
+    const turnBadge           = document.getElementById('turn-badge');
+    const strategyGrid        = document.getElementById('strategy-grid');
+    const strategyCards       = strategyGrid.querySelectorAll('.strategy-card');
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 select a strategy and click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    // ─── State ─────────────────────────────────────────────────────────────────
+    let selectedStrategyKey = 'auto-conservative';
+    let agent = null;
+    let isInitialized = false;
+    let micCapturing = false;
+
+    // ─── UI Helpers ────────────────────────────────────────────────────────────
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+    };
+
+    const clearError = () => errorBox.classList.remove('visible');
+
+    const updateMicStatus = (status) => {
+      // status: 'active' | 'paused' | 'inactive'
+      micIcon.className = `mic-icon ${status === 'active' ? 'active' : status === 'paused' ? 'paused' : 'idle'}`;
+      turnBadge.className = `turn-state-badge ${status === 'active' ? 'capturing' : status === 'paused' ? 'paused' : 'inactive'}`;
+
+      if (status === 'active') {
+        micLabel.textContent = 'Microphone Active';
+        micSublabel.textContent = 'Capturing audio — speak now';
+        turnBadge.textContent = 'Capturing';
+        micCapturing = true;
+      } else if (status === 'paused') {
+        micLabel.textContent = 'Microphone Paused';
+        micSublabel.textContent = 'Paused during TTS playback (turn-taking)';
+        turnBadge.textContent = 'Paused';
+        micCapturing = false;
+      } else {
+        micLabel.textContent = 'Microphone Inactive';
+        micSublabel.textContent = 'Initialize and start to begin capturing';
+        turnBadge.textContent = 'Inactive';
+        micCapturing = false;
+      }
+    };
+
+    const getStrategyKey = (card) => {
+      const strategy = card.dataset.strategy;
+      const autoStrategy = card.dataset.autoStrategy;
+      if (strategy === 'auto' && autoStrategy) return `auto-${autoStrategy}`;
+      return strategy;
+    };
+
+    const updateInfoPanel = (key) => {
+      const strategy = STRATEGIES[key];
+      if (strategy) {
+        infoPanel.innerHTML = strategy.info;
+      }
+    };
+
+    const updateActiveLabel = (key) => {
+      const strategy = STRATEGIES[key];
+      activeStrategyLabel.textContent = strategy ? `Active: ${strategy.title}` : '';
+    };
+
+    // ─── Strategy selection ────────────────────────────────────────────────────
+    strategyCards.forEach((card) => {
+      card.addEventListener('click', async () => {
+        const key = getStrategyKey(card);
+        if (key === selectedStrategyKey && isInitialized) return;
+
+        // Update visual selection
+        strategyCards.forEach((c) => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedStrategyKey = key;
+        updateInfoPanel(key);
+
+        // If already initialized, dispose and reinitialize with new strategy
+        if (isInitialized) {
+          clearError();
+          btnStart.disabled = true;
+          btnStop.disabled = true;
+
+          try {
+            await agent.dispose();
+          } catch (_) {
+            // best effort
+          }
+
+          agent = null;
+          isInitialized = false;
+          updateMicStatus('inactive');
+          setUIState('idle');
+          stateLabel.textContent = 'Switching strategy\u2026';
+
+          // Reset panels
+          transcript.innerHTML = '<span class="placeholder">Your words will appear here\u2026</span>';
+          response.innerHTML = '<span class="placeholder">Claude\u2019s reply will stream here\u2026</span>';
+
+          // Auto-reinitialize with the new strategy
+          await initializeAgent();
+        }
+      });
+    });
+
+    // ─── Agent initialization ──────────────────────────────────────────────────
+    async function initializeAgent() {
+      clearError();
+      btnInit.disabled = true;
+
+      const strategy = STRATEGIES[selectedStrategyKey];
+      const turnTakingConfig = strategy.config;
+
+      agent = new CompositeVoice({
+        stt: new NativeSTT({
+          language: 'en-US',
+          continuous: true,
+          interimResults: true,
+        }),
+
+        llm: new AnthropicLLM({
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
+          model: 'claude-haiku-4-5-20251001',
+          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+          maxTokens: 200,
+        }),
+
+        tts: new NativeTTS({
+          rate: 1.0,
+          preferLocal: true,
+        }),
+
+        turnTaking: turnTakingConfig,
+      });
+
+      // ── State changes ────────────────────────────────────────────────────
+      agent.on('agent.stateChange', (e) => {
+        setUIState(e.state);
+
+        // Update mic status based on agent state
+        if (e.state === 'listening') {
+          updateMicStatus('active');
+        } else if (e.state === 'speaking') {
+          // During speaking, mic may be paused depending on turn-taking config
+          updateMicStatus('paused');
+        } else if (e.state === 'thinking') {
+          // Keep showing active while thinking — mic is still capturing
+          updateMicStatus('active');
+        } else if (e.state === 'ready') {
+          updateMicStatus('inactive');
+        }
+      });
+
+      // ── Audio capture events for precise mic tracking ────────────────────
+      agent.on('audio.capture.start', () => {
+        updateMicStatus('active');
+      });
+
+      agent.on('audio.capture.stop', () => {
+        const currentState = root.dataset.state;
+        if (currentState === 'speaking') {
+          updateMicStatus('paused');
+        } else {
+          updateMicStatus('inactive');
+        }
+      });
+
+      // ── Playback events ──────────────────────────────────────────────────
+      agent.on('audio.playback.start', () => {
+        // If capture was paused for playback, show paused
+        if (!micCapturing) {
+          updateMicStatus('paused');
+        }
+      });
+
+      agent.on('audio.playback.end', () => {
+        const currentState = root.dataset.state;
+        if (currentState === 'listening') {
+          updateMicStatus('active');
+        }
+      });
+
+      // ── Transcript / response ────────────────────────────────────────────
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      // ── Errors ───────────────────────────────────────────────────────────
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      // ── Initialize ───────────────────────────────────────────────────────
+      try {
+        await agent.initialize();
+        isInitialized = true;
+        btnStart.disabled = false;
+        updateActiveLabel(selectedStrategyKey);
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+      }
+    }
+
+    // ─── Button handlers ───────────────────────────────────────────────────────
+    btnInit.addEventListener('click', () => initializeAgent());
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      updateMicStatus('inactive');
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>

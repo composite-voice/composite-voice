@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 13 Multi-Language</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0c4a6e 0%, #155e75 50%, #164e63 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: #67e8f9; font-size: 0.875rem; margin-top: 6px; }
+
+    /* Language selector */
+    .language-section { margin-bottom: 24px; }
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #22d3ee;
+      margin-bottom: 10px;
+    }
+    .language-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .language-card {
+      position: relative;
+      padding: 14px 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      text-align: center;
+    }
+    .language-card:hover {
+      background: rgba(0, 0, 0, 0.35);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    .language-card.active {
+      border-color: #22d3ee;
+      background: rgba(34, 211, 238, 0.12);
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+    }
+    .language-flag {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+    }
+    .language-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #f0f9ff;
+      margin-bottom: 2px;
+    }
+    .language-native {
+      font-size: 0.75rem;
+      color: #67e8f9;
+      margin-bottom: 4px;
+    }
+    .language-code {
+      font-size: 0.6rem;
+      color: #a5f3fc;
+      font-family: ui-monospace, monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* Current language indicator */
+    .current-language {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #a5f3fc;
+    }
+    .current-language-label { font-weight: 600; }
+    .current-language-value { color: #ecfeff; font-weight: 700; }
+
+    /* State badge */
+    .state-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #334155;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    [data-state="ready"]     .dot { background: #22d3ee; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #a78bfa; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #10b981; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.875rem; color: #a5f3fc; }
+
+    /* Controls */
+    .controls { display: flex; gap: 8px; margin-bottom: 24px; }
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start {
+      background: rgba(34, 211, 238, 0.3);
+      border-color: rgba(34, 211, 238, 0.5);
+    }
+    #btn-start:hover:not(:disabled) { background: rgba(34, 211, 238, 0.5); }
+
+    /* Text panels */
+    .field { margin-bottom: 16px; }
+    .field-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0e7490;
+      margin-bottom: 8px;
+    }
+    .panel {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      padding: 14px 16px;
+      min-height: 64px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .placeholder { color: #164e63; font-style: italic; }
+    .interim { color: #0e7490; }
+
+    /* Error */
+    .error {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #fca5a5;
+      line-height: 1.5;
+    }
+    .error.visible { display: block; }
+
+    .hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.2);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>CompositeVoice</h1>
+      <p class="tagline">13 Multi-Language &mdash; NativeSTT &middot; Anthropic Claude &middot; NativeTTS</p>
+    </header>
+
+    <!-- Language Selector -->
+    <div class="language-section">
+      <div class="section-label">Choose a language</div>
+      <div class="language-grid" id="language-grid">
+        <div class="language-card active" data-lang="en-US">
+          <div class="language-flag">&#127482;&#127480;</div>
+          <div class="language-name">English</div>
+          <div class="language-native">English</div>
+          <div class="language-code">en-US</div>
+        </div>
+        <div class="language-card" data-lang="es-ES">
+          <div class="language-flag">&#127466;&#127480;</div>
+          <div class="language-name">Spanish</div>
+          <div class="language-native">Espa&#241;ol</div>
+          <div class="language-code">es-ES</div>
+        </div>
+        <div class="language-card" data-lang="fr-FR">
+          <div class="language-flag">&#127467;&#127479;</div>
+          <div class="language-name">French</div>
+          <div class="language-native">Fran&#231;ais</div>
+          <div class="language-code">fr-FR</div>
+        </div>
+        <div class="language-card" data-lang="de-DE">
+          <div class="language-flag">&#127465;&#127466;</div>
+          <div class="language-name">German</div>
+          <div class="language-native">Deutsch</div>
+          <div class="language-code">de-DE</div>
+        </div>
+        <div class="language-card" data-lang="ja-JP">
+          <div class="language-flag">&#127471;&#127477;</div>
+          <div class="language-name">Japanese</div>
+          <div class="language-native">&#26085;&#26412;&#35486;</div>
+          <div class="language-code">ja-JP</div>
+        </div>
+        <div class="language-card" data-lang="pt-BR">
+          <div class="language-flag">&#127463;&#127479;</div>
+          <div class="language-name">Portuguese</div>
+          <div class="language-native">Portugu&#234;s</div>
+          <div class="language-code">pt-BR</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="root" data-state="idle">
+      <!-- Current language indicator -->
+      <div class="current-language">
+        <span class="current-language-label">Active language:</span>
+        <span class="current-language-value" id="current-lang-display">English (en-US)</span>
+      </div>
+
+      <div class="state-bar">
+        <div class="dot"></div>
+        <span class="state-label" id="state-label">Idle &mdash; select a language and click Initialize</span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-init">Initialize</button>
+        <button id="btn-start" disabled>Start</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+
+      <div class="field">
+        <div class="field-label">You said</div>
+        <div class="panel" id="transcript">
+          <span class="placeholder">Your words will appear here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">AI response</div>
+        <div class="panel" id="response">
+          <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+  </div>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+
+    // ─── Language definitions ──────────────────────────────────────────────────
+    const LANGUAGES = {
+      'en-US': {
+        name: 'English',
+        nativeName: 'English',
+        systemPrompt:
+          'You are a helpful voice assistant. Respond in English. Keep your responses to two or three sentences. ' +
+          'Speak naturally and conversationally.',
+      },
+      'es-ES': {
+        name: 'Spanish',
+        nativeName: 'Español',
+        systemPrompt:
+          'Eres un asistente de voz útil. Responde siempre en español. Mantén tus respuestas en dos o tres oraciones. ' +
+          'Habla de forma natural y conversacional.',
+      },
+      'fr-FR': {
+        name: 'French',
+        nativeName: 'Français',
+        systemPrompt:
+          'Tu es un assistant vocal utile. Réponds toujours en français. Limite tes réponses à deux ou trois phrases. ' +
+          'Parle de manière naturelle et conversationnelle.',
+      },
+      'de-DE': {
+        name: 'German',
+        nativeName: 'Deutsch',
+        systemPrompt:
+          'Du bist ein hilfreicher Sprachassistent. Antworte immer auf Deutsch. Halte deine Antworten auf zwei bis drei Sätze. ' +
+          'Sprich natürlich und gesprächig.',
+      },
+      'ja-JP': {
+        name: 'Japanese',
+        nativeName: '日本語',
+        systemPrompt:
+          'あなたは便利な音声アシスタントです。常に日本語で応答してください。回答は2〜3文に収めてください。' +
+          '自然で会話的な話し方をしてください。',
+      },
+      'pt-BR': {
+        name: 'Portuguese',
+        nativeName: 'Português',
+        systemPrompt:
+          'Você é um assistente de voz útil. Responda sempre em português brasileiro. Mantenha suas respostas em duas ou três frases. ' +
+          'Fale de forma natural e conversacional.',
+      },
+    };
+
+    // ─── UI references ─────────────────────────────────────────────────────────
+    const root               = document.getElementById('root');
+    const stateLabel         = document.getElementById('state-label');
+    const btnInit            = document.getElementById('btn-init');
+    const btnStart           = document.getElementById('btn-start');
+    const btnStop            = document.getElementById('btn-stop');
+    const transcript         = document.getElementById('transcript');
+    const response           = document.getElementById('response');
+    const errorBox           = document.getElementById('error');
+    const languageGrid       = document.getElementById('language-grid');
+    const languageCards      = languageGrid.querySelectorAll('.language-card');
+    const currentLangDisplay = document.getElementById('current-lang-display');
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 select a language and click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    let selectedLang = 'en-US';
+    let agent = null;
+    let isInitialized = false;
+
+    // ─── UI helpers ────────────────────────────────────────────────────────────
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+    };
+
+    const clearError = () => errorBox.classList.remove('visible');
+
+    const updateLangDisplay = (langCode) => {
+      const lang = LANGUAGES[langCode];
+      currentLangDisplay.textContent = `${lang.name} (${langCode})`;
+    };
+
+    // ─── Find a TTS voice matching the language ────────────────────────────────
+    function findVoiceForLanguage(langCode) {
+      const voices = window.speechSynthesis.getVoices();
+      // Try exact match first (e.g. "en-US")
+      let voice = voices.find((v) => v.lang === langCode);
+      if (voice) return voice;
+
+      // Try prefix match (e.g. "en" matches "en-GB")
+      const prefix = langCode.split('-')[0];
+      voice = voices.find((v) => v.lang.startsWith(prefix));
+      return voice || null;
+    }
+
+    // ─── Language selection ────────────────────────────────────────────────────
+    languageCards.forEach((card) => {
+      card.addEventListener('click', async () => {
+        const langCode = card.dataset.lang;
+        if (langCode === selectedLang && isInitialized) return;
+
+        // Update visual selection
+        languageCards.forEach((c) => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedLang = langCode;
+        updateLangDisplay(langCode);
+
+        // If already initialized, dispose and reinitialize with new language
+        if (isInitialized) {
+          clearError();
+          btnStart.disabled = true;
+          btnStop.disabled = true;
+
+          try {
+            await agent.dispose();
+          } catch (_) {
+            // best effort
+          }
+
+          agent = null;
+          isInitialized = false;
+          setUIState('idle');
+          stateLabel.textContent = 'Switching language\u2026';
+
+          // Reset panels
+          transcript.innerHTML = '<span class="placeholder">Your words will appear here\u2026</span>';
+          response.innerHTML = '<span class="placeholder">Claude\u2019s reply will stream here\u2026</span>';
+
+          // Auto-reinitialize with the new language
+          await initializeAgent();
+        }
+      });
+    });
+
+    // ─── Agent initialization ──────────────────────────────────────────────────
+    async function initializeAgent() {
+      clearError();
+      btnInit.disabled = true;
+
+      const lang = LANGUAGES[selectedLang];
+      const matchedVoice = findVoiceForLanguage(selectedLang);
+
+      const ttsOptions = {
+        rate: 1.0,
+        preferLocal: true,
+      };
+
+      // If we found a voice matching the selected language, use it
+      if (matchedVoice) {
+        ttsOptions.voice = matchedVoice.name;
+      }
+
+      agent = new CompositeVoice({
+        stt: new NativeSTT({
+          language: selectedLang,
+          continuous: true,
+          interimResults: true,
+        }),
+
+        llm: new AnthropicLLM({
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
+          model: 'claude-haiku-4-5-20251001',
+          systemPrompt: lang.systemPrompt,
+          maxTokens: 200,
+        }),
+
+        tts: new NativeTTS(ttsOptions),
+      });
+
+      // ── Events ──────────────────────────────────────────────────────────────
+      agent.on('agent.stateChange', (e) => setUIState(e.state));
+
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      // ── Initialize ──────────────────────────────────────────────────────────
+      try {
+        await agent.initialize();
+        isInitialized = true;
+        btnStart.disabled = false;
+        updateLangDisplay(selectedLang);
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+      }
+    }
+
+    // ─── Button handlers ───────────────────────────────────────────────────────
+    btnInit.addEventListener('click', () => initializeAgent());
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>

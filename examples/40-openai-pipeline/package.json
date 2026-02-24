@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-40-openai-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal OpenAI voice agent — NativeSTT + OpenAI GPT + NativeTTS",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "openai": ">=6.5.0"
+  }
+}

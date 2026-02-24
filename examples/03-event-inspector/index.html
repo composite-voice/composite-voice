@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 03 Event Inspector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0e17;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 24px;
+    }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 16px; }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: #64748b; font-size: 0.8rem; margin-top: 4px; }
+
+    /* Layout */
+    .top-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    /* State badge */
+    .state-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #334155;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    [data-state="ready"]     .dot { background: #3b82f6; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #8b5cf6; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #10b981; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.8rem; color: #94a3b8; }
+
+    /* Controls */
+    .controls { display: flex; gap: 8px; margin-bottom: 12px; }
+    button {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start {
+      background: rgba(59,130,246,0.3);
+      border-color: rgba(59,130,246,0.5);
+    }
+    #btn-start:hover:not(:disabled) { background: rgba(59,130,246,0.5); }
+
+    /* Text panels */
+    .field-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    .panel {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 48px;
+      max-height: 80px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .placeholder { color: #334155; font-style: italic; }
+    .interim { color: #64748b; }
+
+    /* Error */
+    .error {
+      display: none;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #fca5a5;
+      line-height: 1.4;
+    }
+    .error.visible { display: block; }
+
+    /* ─── Event Inspector ─────────────────────────────────────────────── */
+    .inspector {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .inspector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .inspector-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    .event-counter {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.7rem;
+      color: #64748b;
+      background: rgba(255,255,255,0.04);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    #btn-clear {
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      background: rgba(239,68,68,0.15);
+      border-color: rgba(239,68,68,0.3);
+      color: #fca5a5;
+    }
+    #btn-clear:hover:not(:disabled) { background: rgba(239,68,68,0.25); }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid transparent;
+      transition: opacity 0.15s, border-color 0.15s;
+    }
+    .filter-chip input { display: none; }
+    .filter-chip.inactive { opacity: 0.3; }
+
+    .filter-chip[data-category="transcription"] {
+      background: rgba(34,211,238,0.12);
+      color: #22d3ee;
+      border-color: rgba(34,211,238,0.25);
+    }
+    .filter-chip[data-category="llm"] {
+      background: rgba(168,85,247,0.12);
+      color: #a855f7;
+      border-color: rgba(168,85,247,0.25);
+    }
+    .filter-chip[data-category="tts"] {
+      background: rgba(34,197,94,0.12);
+      color: #22c55e;
+      border-color: rgba(34,197,94,0.25);
+    }
+    .filter-chip[data-category="agent"] {
+      background: rgba(59,130,246,0.12);
+      color: #3b82f6;
+      border-color: rgba(59,130,246,0.25);
+    }
+    .filter-chip[data-category="audio"] {
+      background: rgba(148,163,184,0.12);
+      color: #94a3b8;
+      border-color: rgba(148,163,184,0.25);
+    }
+
+    /* Timeline */
+    .timeline {
+      flex: 1;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.72rem;
+      line-height: 1.7;
+      min-height: 200px;
+    }
+
+    .timeline-empty {
+      padding: 40px 16px;
+      text-align: center;
+      color: #334155;
+      font-style: italic;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .event-row {
+      display: flex;
+      gap: 10px;
+      padding: 3px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.02);
+      transition: background 0.1s;
+    }
+    .event-row:hover { background: rgba(255,255,255,0.03); }
+
+    .event-time {
+      color: #475569;
+      flex-shrink: 0;
+      width: 72px;
+      text-align: right;
+    }
+
+    .event-type {
+      flex-shrink: 0;
+      width: 200px;
+      font-weight: 600;
+    }
+
+    .event-data {
+      color: #64748b;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Event type colors */
+    .event-type.transcription { color: #22d3ee; }
+    .event-type.llm { color: #a855f7; }
+    .event-type.tts { color: #22c55e; }
+    .event-type.agent { color: #3b82f6; }
+    .event-type.audio { color: #94a3b8; }
+
+    .hint {
+      text-align: center;
+      font-size: 0.7rem;
+      color: #1e293b;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>CompositeVoice</h1>
+    <p class="tagline">03 Event Inspector &mdash; NativeSTT &middot; Anthropic Claude &middot; NativeTTS</p>
+  </header>
+
+  <div id="root" data-state="idle">
+    <div class="state-bar">
+      <div class="dot"></div>
+      <span class="state-label" id="state-label">Idle &mdash; click Initialize</span>
+    </div>
+
+    <div class="controls">
+      <button id="btn-init">Initialize</button>
+      <button id="btn-start" disabled>Start</button>
+      <button id="btn-stop" disabled>Stop</button>
+    </div>
+
+    <div class="top-row">
+      <div>
+        <div class="field-label">You said</div>
+        <div class="panel" id="transcript">
+          <span class="placeholder">Your words will appear here&hellip;</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">AI response</div>
+        <div class="panel" id="response">
+          <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <!-- Event Inspector -->
+    <div class="inspector">
+      <div class="inspector-header">
+        <span class="inspector-title">Event Timeline</span>
+        <span class="event-counter" id="event-counter">0 events</span>
+        <button id="btn-clear">Clear</button>
+      </div>
+
+      <div class="filters" id="filters">
+        <label class="filter-chip" data-category="transcription">
+          <input type="checkbox" checked value="transcription" />
+          Transcription
+        </label>
+        <label class="filter-chip" data-category="llm">
+          <input type="checkbox" checked value="llm" />
+          LLM
+        </label>
+        <label class="filter-chip" data-category="tts">
+          <input type="checkbox" checked value="tts" />
+          TTS
+        </label>
+        <label class="filter-chip" data-category="agent">
+          <input type="checkbox" checked value="agent" />
+          Agent
+        </label>
+        <label class="filter-chip" data-category="audio">
+          <input type="checkbox" checked value="audio" />
+          Audio
+        </label>
+      </div>
+
+      <div class="timeline" id="timeline">
+        <div class="timeline-empty">Events will appear here once the agent is running&hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+
+    // ─── Constants ─────────────────────────────────────────────────────────────
+    const ALL_EVENTS = [
+      'transcription.start', 'transcription.interim', 'transcription.final',
+      'transcription.speechFinal', 'transcription.preflight', 'transcription.error',
+      'llm.start', 'llm.chunk', 'llm.complete', 'llm.error',
+      'tts.start', 'tts.audio', 'tts.complete', 'tts.error',
+      'agent.ready', 'agent.stateChange', 'agent.error',
+      'audio.capture.start', 'audio.capture.stop', 'audio.capture.error',
+      'audio.playback.start', 'audio.playback.end', 'audio.playback.error',
+    ];
+
+    // ─── UI Elements ───────────────────────────────────────────────────────────
+    const root         = document.getElementById('root');
+    const stateLabel   = document.getElementById('state-label');
+    const btnInit      = document.getElementById('btn-init');
+    const btnStart     = document.getElementById('btn-start');
+    const btnStop      = document.getElementById('btn-stop');
+    const btnClear     = document.getElementById('btn-clear');
+    const transcript   = document.getElementById('transcript');
+    const response     = document.getElementById('response');
+    const errorBox     = document.getElementById('error');
+    const timeline     = document.getElementById('timeline');
+    const eventCounter = document.getElementById('event-counter');
+    const filtersEl    = document.getElementById('filters');
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    // ─── State ─────────────────────────────────────────────────────────────────
+    let sessionStart = null;
+    let eventCount = 0;
+    let events = [];     // { time, type, category, data, element }
+    let llmChunkAccumulator = { chars: 0, lastRow: null, text: '' };
+
+    const activeFilters = new Set(['transcription', 'llm', 'tts', 'agent', 'audio']);
+
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.classList.add('visible');
+    };
+
+    const clearError = () => errorBox.classList.remove('visible');
+
+    const getCategory = (eventType) => {
+      if (eventType.startsWith('transcription.')) return 'transcription';
+      if (eventType.startsWith('llm.'))           return 'llm';
+      if (eventType.startsWith('tts.'))           return 'tts';
+      if (eventType.startsWith('agent.'))         return 'agent';
+      if (eventType.startsWith('audio.'))         return 'audio';
+      return 'unknown';
+    };
+
+    const formatTime = (ms) => {
+      if (ms < 1000) return `+${Math.round(ms)}ms`;
+      return `+${(ms / 1000).toFixed(3)}s`;
+    };
+
+    const escapeHtml = (str) =>
+      str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const summarizeEvent = (eventType, data) => {
+      if (!data) return '';
+
+      switch (eventType) {
+        case 'transcription.interim':
+          return data.text ? `"${escapeHtml(data.text)}"` : '';
+        case 'transcription.final':
+        case 'transcription.speechFinal':
+          return data.text ? `"${escapeHtml(data.text)}"` : '';
+        case 'transcription.start':
+          return 'recognition started';
+        case 'transcription.preflight':
+          return data.text ? `preflight: "${escapeHtml(data.text)}"` : 'preflight signal';
+        case 'transcription.error':
+          return data.error?.message ?? data.message ?? 'error';
+
+        case 'llm.start':
+          return data.model ? `model: ${data.model}` : 'generation started';
+        case 'llm.chunk':
+          return `"${escapeHtml(data.chunk ?? '')}"`;
+        case 'llm.complete':
+          return data.text ? `${data.text.length} chars total` : 'complete';
+        case 'llm.error':
+          return data.error?.message ?? data.message ?? 'error';
+
+        case 'tts.start':
+          return data.text ? `"${escapeHtml(data.text.slice(0, 60))}${data.text.length > 60 ? '\u2026' : ''}"` : 'synthesis started';
+        case 'tts.audio':
+          return 'audio chunk received';
+        case 'tts.complete':
+          return 'synthesis complete';
+        case 'tts.error':
+          return data.error?.message ?? data.message ?? 'error';
+
+        case 'agent.ready':
+          return 'all providers initialized';
+        case 'agent.stateChange':
+          return `${data.previousState ?? '?'} \u2192 ${data.state}`;
+        case 'agent.error':
+          return data.error?.message ?? data.message ?? 'error';
+
+        case 'audio.capture.start':
+          return 'microphone active';
+        case 'audio.capture.stop':
+          return 'microphone stopped';
+        case 'audio.capture.error':
+          return data.error?.message ?? 'capture error';
+        case 'audio.playback.start':
+          return 'playback started';
+        case 'audio.playback.end':
+          return 'playback ended';
+        case 'audio.playback.error':
+          return data.error?.message ?? 'playback error';
+
+        default:
+          try { return escapeHtml(JSON.stringify(data).slice(0, 120)); }
+          catch { return ''; }
+      }
+    };
+
+    const createEventRow = (time, eventType, category, dataSummary) => {
+      const row = document.createElement('div');
+      row.className = 'event-row';
+      row.dataset.category = category;
+
+      if (!activeFilters.has(category)) {
+        row.style.display = 'none';
+      }
+
+      row.innerHTML =
+        `<span class="event-time">${formatTime(time)}</span>` +
+        `<span class="event-type ${category}">${eventType}</span>` +
+        `<span class="event-data">${dataSummary}</span>`;
+
+      return row;
+    };
+
+    const addEvent = (eventType, data) => {
+      if (!sessionStart) sessionStart = performance.now();
+      const elapsed = performance.now() - sessionStart;
+      const category = getCategory(eventType);
+
+      // ── Accumulate llm.chunk events ──────────────────────────────────────
+      if (eventType === 'llm.chunk') {
+        const chunkText = data?.chunk ?? '';
+        llmChunkAccumulator.chars += chunkText.length;
+        llmChunkAccumulator.text += chunkText;
+
+        if (llmChunkAccumulator.lastRow) {
+          // Update existing accumulated row
+          const dataSpan = llmChunkAccumulator.lastRow.querySelector('.event-data');
+          const preview = escapeHtml(llmChunkAccumulator.text.slice(0, 80));
+          const ellipsis = llmChunkAccumulator.text.length > 80 ? '\u2026' : '';
+          dataSpan.textContent = `accumulated ${llmChunkAccumulator.chars} chars: "${llmChunkAccumulator.text.slice(0, 80)}${llmChunkAccumulator.text.length > 80 ? '\u2026' : ''}"`;
+          const timeSpan = llmChunkAccumulator.lastRow.querySelector('.event-time');
+          timeSpan.textContent = formatTime(elapsed);
+          scrollToBottom();
+          return;
+        }
+
+        // First chunk: create the row
+        const summary = `accumulated ${llmChunkAccumulator.chars} chars: "${escapeHtml(chunkText)}"`;
+        const row = createEventRow(elapsed, 'llm.chunk', category, summary);
+        llmChunkAccumulator.lastRow = row;
+
+        // Remove empty state
+        const empty = timeline.querySelector('.timeline-empty');
+        if (empty) empty.remove();
+
+        timeline.appendChild(row);
+        eventCount++;
+        updateCounter();
+        events.push({ time: elapsed, type: eventType, category, data: summary, element: row });
+        scrollToBottom();
+        return;
+      }
+
+      // Reset chunk accumulator when LLM completes or starts fresh
+      if (eventType === 'llm.complete' || eventType === 'llm.start') {
+        llmChunkAccumulator = { chars: 0, lastRow: null, text: '' };
+      }
+
+      const summary = summarizeEvent(eventType, data);
+      const row = createEventRow(elapsed, eventType, category, summary);
+
+      // Remove empty state
+      const empty = timeline.querySelector('.timeline-empty');
+      if (empty) empty.remove();
+
+      timeline.appendChild(row);
+      eventCount++;
+      updateCounter();
+      events.push({ time: elapsed, type: eventType, category, data: summary, element: row });
+      scrollToBottom();
+    };
+
+    const scrollToBottom = () => {
+      timeline.scrollTop = timeline.scrollHeight;
+    };
+
+    const updateCounter = () => {
+      eventCounter.textContent = `${eventCount} event${eventCount !== 1 ? 's' : ''}`;
+    };
+
+    const clearTimeline = () => {
+      events = [];
+      eventCount = 0;
+      sessionStart = null;
+      llmChunkAccumulator = { chars: 0, lastRow: null, text: '' };
+      timeline.innerHTML = '<div class="timeline-empty">Events will appear here once the agent is running\u2026</div>';
+      updateCounter();
+    };
+
+    // ─── Filters ───────────────────────────────────────────────────────────────
+    filtersEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const chip = cb.closest('.filter-chip');
+        const cat = cb.value;
+
+        if (cb.checked) {
+          activeFilters.add(cat);
+          chip.classList.remove('inactive');
+        } else {
+          activeFilters.delete(cat);
+          chip.classList.add('inactive');
+        }
+
+        // Toggle visibility of existing rows
+        events.forEach((evt) => {
+          if (evt.element) {
+            evt.element.style.display = activeFilters.has(evt.category) ? '' : 'none';
+          }
+        });
+      });
+    });
+
+    btnClear.addEventListener('click', clearTimeline);
+
+    // ─── Agent ─────────────────────────────────────────────────────────────────
+    let agent;
+
+    btnInit.addEventListener('click', async () => {
+      clearError();
+      btnInit.disabled = true;
+
+      agent = new CompositeVoice({
+        stt: new NativeSTT({
+          language: 'en-US',
+          continuous: true,
+          interimResults: true,
+        }),
+
+        llm: new AnthropicLLM({
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
+          model: 'claude-haiku-4-5-20251001',
+          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+          maxTokens: 200,
+        }),
+
+        tts: new NativeTTS({
+          rate: 1.0,
+          preferLocal: true,
+        }),
+      });
+
+      // ── Subscribe to ALL events for the timeline ─────────────────────────
+      ALL_EVENTS.forEach((eventType) => {
+        agent.on(eventType, (data) => addEvent(eventType, data));
+      });
+
+      // ── Standard UI bindings ─────────────────────────────────────────────
+      agent.on('agent.stateChange', (e) => setUIState(e.state));
+
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      // ── Initialize ───────────────────────────────────────────────────────
+      try {
+        await agent.initialize();
+        btnStart.disabled = false;
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+      }
+    });
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>
