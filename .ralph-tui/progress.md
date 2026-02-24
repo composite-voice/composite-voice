@@ -9,6 +9,7 @@ after each iteration and it's included in prompts for context.
 - **pnpm workspace flags**: Use `-w` or `--workspace-root` flag when adding dependencies to the root package.json (e.g., `pnpm add -wD @playwright/test`).
 - **TypeScript strict mode casts for window**: In browser-evaluated code, use `window as any` (with eslint-disable comment) instead of `window as Record<string, unknown>` — the latter fails strict type checking because `Window` doesn't have an index signature.
 - **Network request monitoring for REST-based TTS**: When a TTS provider uses REST (e.g. OpenAI TTS) rather than SpeechSynthesis, verify TTS by intercepting `page.on('response')` and matching the endpoint URL (e.g. `/v1/audio/speech`), rather than checking DOM elements or mocks.
+- **React/Next.js E2E selectors**: When the UI is React-rendered without `id` attributes, use Playwright's `getByRole('button', { name: 'Initialize' })` and heading-sibling traversal (`h2` → parent → `p`) instead of CSS ID selectors. For state verification, poll spans by `textContent` since CSS `text-transform` only affects visual rendering.
 - **Dynamic conversation bubble verification**: For conversation-style UIs (e.g. example 24) where messages are dynamically created `.message.user/.assistant .bubble` elements, use `waitForFunction` polling for the DOM elements to exist with non-empty text, rather than `waitForNonPlaceholder` which assumes the target element already exists at page load.
 
 ---
@@ -225,4 +226,18 @@ after each iteration and it's included in prompts for context.
   - The proxy example uses the same UI element IDs as example 20 (`#init-btn`, `#start-btn`, `#stop-btn`, `#dispose-btn`, `#transcript`, `#response`, `#tts-log`, `#status-text`) plus proxy-specific elements (`.badge.proxy`, `.proxy-info`, `#error-banner`, `#status-detail`).
   - Vite's dev proxy is transparent to the E2E test — the same real-API testing pattern (Chromium fake audio capture, no browser mocks) works identically whether providers connect directly or through a proxy. The proxy just adds an HTTP/WebSocket hop on the same origin.
   - The `pnpm dev` command starts a single Vite dev server that serves both the frontend and the proxy routes — no separate server process needed for the E2E test.
+---
+
+## 2026-02-24 - composite-voice-ekb.9
+- **What was implemented**: E2E Playwright test for example 11-nextjs-proxy (NativeSTT + Anthropic LLM via Next.js App Router proxy + NativeTTS)
+- **Files changed**:
+  - `examples/11-nextjs-proxy/e2e/11-nextjs-proxy.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (heading, provider subtitle, state indicator, 3 control buttons with correct enabled/disabled states, content area headings with placeholder text, no console errors with Next.js dev noise filtered)
+    2. Full conversation round-trip via Next.js proxy: mocked STT → Anthropic LLM (via `/api/proxy/anthropic`) → mocked TTS with utterance polling and escalating retry strategy
+- **Learnings:**
+  - React/Next.js examples have NO element IDs — unlike Vite examples which use `#init-btn`, `#transcript`, etc. Playwright's `getByRole('button', { name: 'Initialize' })` and heading-sibling traversal (`h2` → parentElement → `p`) are the correct selector patterns for React-rendered DOM.
+  - Next.js compiles TypeScript on first page request, making startup significantly slower than Vite. The `startDevServer` timeout needs 60s (vs Vite's 30s default), and the first `page.goto('/')` also needs a `toBeVisible({ timeout: 30_000 })` wait for the h1 to confirm compilation completed.
+  - The `startDevServer` helper passes `--port <N>` which is a Vite flag, but pnpm forwards unknown flags to the underlying script. Since the port is already baked into the Next.js `dev` script (`next dev -p 3011`), the extra `--port` is harmless and works with Next.js 15+ which accepts both `-p` and `--port`.
+  - Next.js dev console output can include hydration warnings and React development warnings — these should be filtered out of the "no console errors" assertion alongside the standard favicon/404 filters.
+  - React conditional rendering means placeholder text appears inside a `<span>` within the `<p>`, but real content replaces the entire `<p>` children. The `waitForContent` helper checks for absence of placeholder text patterns rather than checking for a specific DOM structure.
 ---

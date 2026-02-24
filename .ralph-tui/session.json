@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:19:55.407Z",
-  "currentIteration": 15,
+  "updatedAt": "2026-02-24T19:25:02.130Z",
+  "currentIteration": 16,
   "maxIterations": 10,
-  "tasksCompleted": 15,
+  "tasksCompleted": 16,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -107,8 +107,8 @@
       {
         "id": "composite-voice-ekb.8",
         "title": "US-007: E2E test 10-proxy-server (port 3010)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.9",
@@ -298,6 +298,16 @@
       "durationMs": 153565,
       "startedAt": "2026-02-24T19:14:35.721Z",
       "endedAt": "2026-02-24T19:17:09.286Z"
+    },
+    {
+      "iteration": 16,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.8",
+      "taskTitle": "US-007: E2E test 10-proxy-server (port 3010)",
+      "taskCompleted": true,
+      "durationMs": 144691,
+      "startedAt": "2026-02-24T19:17:30.540Z",
+      "endedAt": "2026-02-24T19:19:55.231Z"
     }
   ],
   "skippedTaskIds": [],
