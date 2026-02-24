@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:04:34.322Z",
-  "currentIteration": 10,
+  "updatedAt": "2026-02-24T19:08:29.621Z",
+  "currentIteration": 11,
   "maxIterations": 10,
-  "tasksCompleted": 10,
+  "tasksCompleted": 11,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -77,8 +77,8 @@
       {
         "id": "composite-voice-ekb.11",
         "title": "US-010: E2E test 13-multi-language (port 3013)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.12",
@@ -248,6 +248,16 @@
       "durationMs": 158250,
       "startedAt": "2026-02-24T18:29:29.721Z",
       "endedAt": "2026-02-24T18:32:07.971Z"
+    },
+    {
+      "iteration": 11,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.11",
+      "taskTitle": "US-010: E2E test 13-multi-language (port 3013)",
+      "taskCompleted": true,
+      "durationMs": 1847952,
+      "startedAt": "2026-02-24T18:33:46.247Z",
+      "endedAt": "2026-02-24T19:04:34.199Z"
     }
   ],
   "skippedTaskIds": [],
