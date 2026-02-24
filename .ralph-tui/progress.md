@@ -111,3 +111,16 @@ after each iteration and it's included in prompts for context.
   - Turn count verification (`#turn-count >= 1`) is a good way to confirm the conversation history feature is actively tracking turns, specific to conversation-history examples.
 ---
 
+## 2026-02-24 - composite-voice-ekb.17
+- **What was implemented**: E2E Playwright test for example 30-anthropic-models (NativeSTT + Anthropic LLM with model selector + NativeTTS)
+- **Files changed**:
+  - `examples/30-anthropic-models/e2e/30-anthropic-models.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, 3 model cards with names/badges, latency indicator, controls, content areas, state label, no console errors)
+    2. Model selection UI interactivity (clicking different model cards toggles `.active` class correctly in both directions)
+    3. Full conversation round-trip: mocked STT → Anthropic LLM (Haiku default) → mocked TTS with utterance verification and escalating retry strategy
+- **Learnings:**
+  - Model selector examples use CSS class toggling (`.active`) on `<label>` elements wrapping radio inputs — Playwright's `.click()` on the label triggers both the radio change and the JS click handler.
+  - The model selector's `reinitializeWithModel()` dispose/recreate pattern means testing model switching mid-session would require API calls for each model — testing the UI class toggling separately is more cost-effective.
+  - This example follows the same NativeSTT + LLM + NativeTTS mock pattern as 31 and 40, but adds model selector verification as a unique test case.
+---
+
