@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
+  "status": "running",
+  "startedAt": "2026-02-24T17:52:18.347Z",
+  "updatedAt": "2026-02-24T18:05:18.855Z",
+  "currentIteration": 0,
+  "maxIterations": 10,
+  "tasksCompleted": 0,
+  "isPaused": false,
+  "agentPlugin": "claude",
+  "trackerState": {
+    "plugin": "beads",
+    "epicId": "composite-voice-ekb",
+    "totalTasks": 22,
+    "tasks": [
+      {
+        "id": "composite-voice-ekb.1",
+        "title": "US-000: Set up shared test infrastructure and audio fixture",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.20",
+        "title": "US-019: E2E test 41-openai-deepgram (port 3041)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.21",
+        "title": "US-020: E2E test 42-openai-tts-pipeline (port 3042)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.18",
+        "title": "US-017: E2E test 31-anthropic-streaming-config (port 3031)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.19",
+        "title": "US-018: E2E test 40-openai-pipeline (port 3040)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.15",
+        "title": "US-014: E2E test 23-deepgram-voices (port 3023)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.16",
+        "title": "US-015: E2E test 24-deepgram-conversation-history (port 3024)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.17",
+        "title": "US-016: E2E test 30-anthropic-models (port 3030)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.14",
+        "title": "US-013: E2E test 22-deepgram-options (port 3022)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.10",
+        "title": "US-009: E2E test 12-custom-provider (port 3012)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.11",
+        "title": "US-010: E2E test 13-multi-language (port 3013)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.12",
+        "title": "US-011: E2E test 20-deepgram-pipeline (port 3020)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.13",
+        "title": "US-012: E2E test 21-eager-pipeline (port 3021)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.6",
+        "title": "US-005: E2E test 04-error-recovery (port 3004)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.7",
+        "title": "US-006: E2E test 05-turn-taking (port 3005)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.8",
+        "title": "US-007: E2E test 10-proxy-server (port 3010)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.9",
+        "title": "US-008: E2E test 11-nextjs-proxy (port 3011)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.2",
+        "title": "US-001: E2E test 00-minimal-voice-agent (port 3000)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.3",
+        "title": "US-002: E2E test 01-conversation-history (port 3001)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.4",
+        "title": "US-003: E2E test 02-system-persona (port 3002)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.5",
+        "title": "US-004: E2E test 03-event-inspector (port 3003)",
+        "status": "open",
+        "completedInSession": false
+      },
+      {
+        "id": "composite-voice-ekb.22",
+        "title": "US-021: Final review and summary issue",
+        "status": "open",
+        "completedInSession": false
+      }
+    ]
+  },
+  "iterations": [],
+  "skippedTaskIds": [],
+  "cwd": "/Users/lukeoliff/Projects/lukeocodes/composite-voice",
+  "activeTaskIds": [],
+  "subagentPanelVisible": true
+}

@@ -138,6 +138,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
+    "@playwright/test": "^1.58.2",
     "@types/dom-speech-recognition": "^0.0.7",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.30",
@@ -158,9 +159,9 @@
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.67.0",
     "@deepgram/sdk": ">=4.11.2",
+    "@mlc-ai/web-llm": ">=0.2.74",
     "openai": ">=6.5.0",
-    "ws": ">=8.0.0",
-    "@mlc-ai/web-llm": ">=0.2.74"
+    "ws": ">=8.0.0"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {
