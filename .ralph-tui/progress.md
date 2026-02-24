@@ -241,3 +241,16 @@ after each iteration and it's included in prompts for context.
   - Next.js dev console output can include hydration warnings and React development warnings — these should be filtered out of the "no console errors" assertion alongside the standard favicon/404 filters.
   - React conditional rendering means placeholder text appears inside a `<span>` within the `<p>`, but real content replaces the entire `<p>` children. The `waitForContent` helper checks for absence of placeholder text patterns rather than checking for a specific DOM structure.
 ---
+
+## 2026-02-24 - composite-voice-ekb.2
+- **What was implemented**: E2E Playwright test for example 00-minimal-voice-agent (NativeSTT + Anthropic LLM + NativeTTS)
+- **Files changed**:
+  - `examples/00-minimal-voice-agent/e2e/00-minimal-voice-agent.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, button enabled/disabled states, hidden error box, state label, no console errors)
+    2. STT transcript verification: mocked STT fires transcript event that appears in `#transcript`
+    3. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with utterance verification, state machine return to Ready/Listening, and escalating retry strategy
+- **Learnings:**
+  - Example 00 is the simplest baseline — it uses the standard `#btn-init`, `#btn-start`, `#btn-stop`, `#transcript`, `#response`, `#state-label` element IDs shared across most Vite examples. No extra UI features (no config panels, model selectors, or error simulation controls).
+  - The `#error` box in example 00 is hidden by default (`display: none`) and only shown via `.visible` class on error — can verify it's hidden with `isVisible() === false` rather than checking for a class.
+  - Splitting the STT transcript check into its own test case (separate from the full round-trip) provides faster feedback on STT mock issues without needing to wait for LLM/TTS verification. The full round-trip test still covers STT as part of the pipeline.
+---
