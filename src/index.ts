@@ -88,6 +88,8 @@ export { OpenAILLM } from './providers/llm/openai/index';
 export type { OpenAILLMConfig } from './providers/llm/openai/index';
 export { AnthropicLLM } from './providers/llm/anthropic/index';
 export type { AnthropicLLMConfig } from './providers/llm/anthropic/index';
+export { WebLLMLLM } from './providers/llm/webllm/index';
+export type { WebLLMLLMConfig, WebLLMLoadProgress } from './providers/llm/webllm/index';
 
 // Built-in providers - TTS
 export { NativeTTS } from './providers/tts/native/index';
