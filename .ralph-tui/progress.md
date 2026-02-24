@@ -214,3 +214,15 @@ after each iteration and it's included in prompts for context.
   - The `#active-strategy-label` element is empty before initialization and populates with "Active: {strategy name}" after `agent.initialize()` — this is a good assertion to confirm the strategy was applied to the agent.
   - Info panel content updates dynamically based on strategy selection even before initialization — this is purely client-side DOM logic that can be tested without API calls.
 ---
+
+## 2026-02-24 - composite-voice-ekb.8
+- **What was implemented**: E2E Playwright test for example 10-proxy-server (DeepgramSTT + Anthropic LLM + DeepgramTTS via Vite dev proxy)
+- **Files changed**:
+  - `examples/10-proxy-server/e2e/10-proxy-server.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, 4 badges including proxy badge, proxy-info section, status area, controls, content areas, hidden error banner, no console errors)
+    2. Full conversation round-trip via proxy with real APIs (initialize → start listening → STT transcription via proxy→Deepgram → LLM response via proxy→Anthropic → TTS activity via proxy→Deepgram) using escalating retry strategy
+- **Learnings:**
+  - The proxy example uses the same UI element IDs as example 20 (`#init-btn`, `#start-btn`, `#stop-btn`, `#dispose-btn`, `#transcript`, `#response`, `#tts-log`, `#status-text`) plus proxy-specific elements (`.badge.proxy`, `.proxy-info`, `#error-banner`, `#status-detail`).
+  - Vite's dev proxy is transparent to the E2E test — the same real-API testing pattern (Chromium fake audio capture, no browser mocks) works identically whether providers connect directly or through a proxy. The proxy just adds an HTTP/WebSocket hop on the same origin.
+  - The `pnpm dev` command starts a single Vite dev server that serves both the frontend and the proxy routes — no separate server process needed for the E2E test.
+---
