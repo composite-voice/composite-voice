@@ -137,3 +137,15 @@ after each iteration and it's included in prompts for context.
   - Example 22 follows the same all-real-API pattern as examples 41 and 23 — no browser mocks needed, Chromium fake audio capture feeds DeepgramSTT directly. The unique aspect is the config panel interactivity testing.
 ---
 
+## 2026-02-24 - composite-voice-ekb.10
+- **What was implemented**: E2E Playwright test for example 12-custom-provider (NativeSTT + MockLLM custom provider + NativeTTS)
+- **Files changed**:
+  - `examples/12-custom-provider/e2e/12-custom-provider.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, provider tagline, no-API-key banner, controls, token delay selector, content areas, source code viewer toggle, state label, no console errors)
+    2. Source code viewer toggle interactivity (click toggles `.visible` class on `#source-code`, verifies MockLLM class source is displayed)
+    3. Full conversation round-trip: mocked STT → MockLLM (in-browser) → mocked TTS with response content validation and utterance verification using escalating retry strategy
+- **Learnings:**
+  - Example 12 is fully self-contained (no API keys, no external calls) — the MockLLM cycles through predefined responses in the browser. This makes the round-trip test faster and more deterministic than real-API tests.
+  - Because MockLLM responses are known strings, we can regex-validate the response content (e.g. `/mock LLM|BaseLLMProvider/i`) rather than just checking for non-empty text — stronger assertion than generic `waitForNonPlaceholder`.
+  - This example follows the same NativeSTT + NativeTTS mock injection pattern as examples 30, 31, and 40, confirming the pattern is stable across different LLM providers (Anthropic, OpenAI, and custom).
+---
