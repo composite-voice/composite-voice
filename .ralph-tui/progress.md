@@ -164,3 +164,14 @@ after each iteration and it's included in prompts for context.
   - Chromium's real `SpeechSynthesisUtterance.voice` setter throws `TypeError: Failed to convert value to 'SpeechSynthesisVoice'` when assigned a plain object. The `MockUtterance` class avoids this by using a simple property instead of the browser's typed setter. This was the root cause of silent TTS failures (state went to `speaking → error` with no visible error messages).
   - TTS utterance polling with `waitForFunction` is more reliable than immediate `page.evaluate` — TTS may fire slightly after LLM response completes.
 ---
+
+## 2026-02-24 - composite-voice-ekb.12
+- **What was implemented**: E2E Playwright test for example 20-deepgram-pipeline (DeepgramSTT + Anthropic LLM + DeepgramTTS)
+- **Files changed**:
+  - `examples/20-deepgram-pipeline/e2e/20-deepgram-pipeline.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, provider badges with Deepgram/Anthropic/Deepgram, status area, controls, content areas, no console errors)
+    2. Full conversation round-trip with real APIs (initialize → start listening → STT transcription via Deepgram nova-3 → LLM response via Anthropic claude-haiku-4-6 → TTS activity via Deepgram aura-2) using escalating retry strategy
+- **Learnings:**
+  - Example 20 is structurally nearly identical to example 41 (same UI elements: `#init-btn`, `#start-btn`, `#stop-btn`, `#dispose-btn`, `#transcript`, `#response`, `#tts-log`, `#status-text`) — the only differences are the LLM provider (Anthropic vs OpenAI) and port (3020 vs 3041). This confirms the Deepgram pipeline pattern is stable across different LLM providers.
+  - All-Deepgram pipeline tests (STT + TTS) verify three distinct pipeline stages via separate DOM elements: `#transcript` (STT output), `#response` (LLM streaming output), and `#tts-log` (TTS activity log) — each populated by different event handlers (`transcription.final`, `llm.chunk`, `tts.start`/`tts.complete`).
+---
