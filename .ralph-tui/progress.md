@@ -149,3 +149,18 @@ after each iteration and it's included in prompts for context.
   - Because MockLLM responses are known strings, we can regex-validate the response content (e.g. `/mock LLM|BaseLLMProvider/i`) rather than just checking for non-empty text — stronger assertion than generic `waitForNonPlaceholder`.
   - This example follows the same NativeSTT + NativeTTS mock injection pattern as examples 30, 31, and 40, confirming the pattern is stable across different LLM providers (Anthropic, OpenAI, and custom).
 ---
+
+## 2026-02-24 - composite-voice-ekb.11
+- **What was implemented**: E2E Playwright test for example 13-multi-language (NativeSTT + Anthropic LLM + NativeTTS with language selector)
+- **Files changed**:
+  - `examples/13-multi-language/e2e/13-multi-language.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, 6 language cards with names, active default English, current language display, controls, content areas, state label, no console errors)
+    2. Language selection UI interactivity (clicking language cards toggles `.active` class, updates `#current-lang-display` — tests English→Spanish→French→Japanese→English cycle)
+    3. Full conversation round-trip: mocked STT → Anthropic LLM → mocked TTS with utterance polling and escalating retry strategy
+  - `tests/e2e/mocks/native-tts.ts` — **critical fix**: added `MockUtterance` class that replaces `window.SpeechSynthesisUtterance` so the `.voice` setter accepts plain objects from `getVoices()`. Updated `speak()` to use `any` cast and plain `Event` instead of `SpeechSynthesisEvent`. This fix benefits ALL existing NativeTTS-mocked tests (12, 13, 30, 31, 40).
+- **Learnings:**
+  - Playwright 1.58 runs spec files as ESM in Node 24, but transpiled helper modules are CJS. The `createRequire(import.meta.url)` pattern resolves CJS imports from ESM context, with `fileURLToPath(import.meta.url)` providing `__dirname` equivalent.
+  - Vite's `loadEnv()` reads `.env` from `process.cwd()` (the example dir), not from parent directories. Tests that need API keys from root `.env` must manually load them into `process.env` before starting the dev server.
+  - Chromium's real `SpeechSynthesisUtterance.voice` setter throws `TypeError: Failed to convert value to 'SpeechSynthesisVoice'` when assigned a plain object. The `MockUtterance` class avoids this by using a simple property instead of the browser's typed setter. This was the root cause of silent TTS failures (state went to `speaking → error` with no visible error messages).
+  - TTS utterance polling with `waitForFunction` is more reliable than immediate `page.evaluate` — TTS may fire slightly after LLM response completes.
+---
