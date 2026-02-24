@@ -124,3 +124,16 @@ after each iteration and it's included in prompts for context.
   - This example follows the same NativeSTT + LLM + NativeTTS mock pattern as 31 and 40, but adds model selector verification as a unique test case.
 ---
 
+## 2026-02-24 - composite-voice-ekb.14
+- **What was implemented**: E2E Playwright test for example 22-deepgram-options (DeepgramSTT + Anthropic LLM + DeepgramTTS with config panel)
+- **Files changed**:
+  - `examples/22-deepgram-options/e2e/22-deepgram-options.spec.ts` — new Playwright test file with three test cases:
+    1. Page render verification (UI elements, provider badges, config panel with all controls, content areas, status, no console errors)
+    2. Configuration controls interactivity (model/language dropdowns, endpointing slider with display update, toggle switches, config summary JSON verification)
+    3. Full conversation round-trip with real APIs (initialize → start listening → STT transcription → LLM response → TTS activity) using escalating retry strategy
+- **Learnings:**
+  - Toggle checkboxes styled with `opacity: 0` and custom `.toggle-slider` overlays require `{ force: true }` in Playwright's `.uncheck()` / `.check()` to bypass visibility checks — the actual input is invisible by design.
+  - Config summary (`#config-summary`) containing JSON of all config values is a convenient single assertion point to verify multiple UI control changes propagated correctly.
+  - Example 22 follows the same all-real-API pattern as examples 41 and 23 — no browser mocks needed, Chromium fake audio capture feeds DeepgramSTT directly. The unique aspect is the config panel interactivity testing.
+---
+
