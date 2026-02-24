@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T18:14:39.772Z",
-  "currentIteration": 3,
+  "updatedAt": "2026-02-24T18:17:02.798Z",
+  "currentIteration": 4,
   "maxIterations": 10,
-  "tasksCompleted": 3,
+  "tasksCompleted": 4,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -35,8 +35,8 @@
       {
         "id": "composite-voice-ekb.18",
         "title": "US-017: E2E test 31-anthropic-streaming-config (port 3031)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.19",
@@ -178,6 +178,16 @@
       "durationMs": 174395,
       "startedAt": "2026-02-24T18:08:50.346Z",
       "endedAt": "2026-02-24T18:11:44.741Z"
+    },
+    {
+      "iteration": 4,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.18",
+      "taskTitle": "US-017: E2E test 31-anthropic-streaming-config (port 3031)",
+      "taskCompleted": true,
+      "durationMs": 153700,
+      "startedAt": "2026-02-24T18:12:05.934Z",
+      "endedAt": "2026-02-24T18:14:39.634Z"
     }
   ],
   "skippedTaskIds": [],

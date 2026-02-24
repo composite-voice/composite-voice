@@ -74,3 +74,14 @@ after each iteration and it's included in prompts for context.
   - Streaming config examples have additional UI elements (sliders, config display, apply button) that should be verified separately from the conversation round-trip test.
 ---
 
+## 2026-02-24 - composite-voice-ekb.19
+- **What was implemented**: E2E Playwright test for example 40-openai-pipeline (NativeSTT + OpenAI LLM + NativeTTS)
+- **Files changed**:
+  - `examples/40-openai-pipeline/e2e/40-openai-pipeline.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, provider badge, controls, state label, no console errors)
+    2. Full conversation round-trip: mocked STT → OpenAI LLM → mocked TTS with utterance verification and escalating retry strategy
+- **Learnings:**
+  - Example 40 follows the same NativeSTT + LLM + NativeTTS pattern as 31-anthropic-streaming-config — same mock injection, same verification strategy. The only difference is the LLM provider (OpenAI vs Anthropic) and the absence of config controls.
+  - Placeholder text in this example uses both "will appear here" and "will stream here" — the `waitForNonPlaceholder` helper already handles both variants.
+---
+
