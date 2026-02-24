@@ -34,3 +34,15 @@ after each iteration and it's included in prompts for context.
   - The existing Jest test suite (19 suites, 375 tests) uses jsdom with extensive browser API mocks in `tests/setup.ts`. E2E tests are separate under `tests/e2e/` and use Playwright + Chromium.
 ---
 
+## 2026-02-24 - composite-voice-ekb.20
+- **What was implemented**: E2E Playwright test for example 41-openai-deepgram (DeepgramSTT + OpenAI LLM + DeepgramTTS)
+- **Files changed**:
+  - `examples/41-openai-deepgram/e2e/41-openai-deepgram.spec.ts` — new Playwright test file with two test cases:
+    1. Page render verification (UI elements, provider badges, controls, no console errors)
+    2. Full conversation round-trip with real APIs (initialize → start listening → STT transcription → LLM response → TTS activity) using escalating retry strategy
+- **Learnings:**
+  - Real-API E2E tests (Deepgram/OpenAI) don't need browser mocks — Chromium's `--use-file-for-fake-audio-capture` feeds WAV audio directly into getUserMedia which DeepgramSTT consumes via its WebSocket pipeline.
+  - E2E spec files placed under `examples/*/e2e/*.spec.ts` are automatically excluded from Jest (which only matches `**/*.test.ts` in `tests/` root).
+  - The `waitForNonPlaceholder` pattern is useful for real-API tests where you can't predict exact text — just check that placeholder text is replaced with actual content.
+---
+

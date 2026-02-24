@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T18:05:18.855Z",
-  "currentIteration": 0,
+  "updatedAt": "2026-02-24T18:08:29.350Z",
+  "currentIteration": 1,
   "maxIterations": 10,
-  "tasksCompleted": 0,
+  "tasksCompleted": 1,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -17,8 +17,8 @@
       {
         "id": "composite-voice-ekb.1",
         "title": "US-000: Set up shared test infrastructure and audio fixture",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.20",
@@ -148,7 +148,18 @@
       }
     ]
   },
-  "iterations": [],
+  "iterations": [
+    {
+      "iteration": 1,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.1",
+      "taskTitle": "US-000: Set up shared test infrastructure and audio fixture",
+      "taskCompleted": true,
+      "durationMs": 598138,
+      "startedAt": "2026-02-24T17:55:20.561Z",
+      "endedAt": "2026-02-24T18:05:18.699Z"
+    }
+  ],
   "skippedTaskIds": [],
   "cwd": "/Users/lukeoliff/Projects/lukeocodes/composite-voice",
   "activeTaskIds": [],
