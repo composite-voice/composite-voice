@@ -1,0 +1,90 @@
+name: E2E Tests
+
+on:
+    # Run on PRs to catch regressions before merge
+    pull_request:
+        branches:
+            - main
+    # Weekly scheduled run to monitor flaky test stability
+    # against real external APIs (Deepgram, Anthropic, OpenAI)
+    schedule:
+        - cron: "0 6 * * 1" # Every Monday at 06:00 UTC
+    # Manual trigger for ad-hoc runs
+    workflow_dispatch:
+
+# Cancel in-flight runs for the same PR/branch
+concurrency:
+    group: e2e-${{ github.head_ref || github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    e2e:
+        name: E2E Playwright Tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22.x
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Install Playwright Chromium
+              run: pnpm exec playwright install chromium --with-deps
+
+            - name: Download audio fixture
+              run: |
+                  mkdir -p tests/fixtures
+                  curl -fsSL -o tests/fixtures/spacewalk.wav https://dpgr.am/spacewalk.wav
+
+            - name: Create example .env files
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+                  DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+                  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+              run: |
+                  # Write .env to each example that needs API keys.
+                  # Examples using NativeSTT/NativeTTS mocks still need LLM keys
+                  # for the real Anthropic/OpenAI API calls through Vite proxy.
+                  for dir in examples/*/; do
+                    if [ -f "$dir/sample.env" ]; then
+                      envsubst < "$dir/sample.env" > "$dir/.env"
+                    else
+                      # Fallback: create .env with all available keys
+                      {
+                        [ -n "$ANTHROPIC_API_KEY" ] && echo "VITE_ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+                        [ -n "$DEEPGRAM_API_KEY" ]  && echo "VITE_DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY"
+                        [ -n "$OPENAI_API_KEY" ]    && echo "VITE_OPENAI_API_KEY=$OPENAI_API_KEY"
+                      } > "$dir/.env"
+                    fi
+                  done
+
+            - name: Build SDK
+              run: pnpm run build
+
+            - name: Run E2E tests
+              env:
+                  CI: true
+                  # 4 parallel workers balances speed vs CI resource limits
+                  PLAYWRIGHT_WORKERS: 4
+              run: pnpm run test:e2e
+
+            - name: Upload Playwright report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-report
+                  path: playwright-report/
+                  retention-days: 14

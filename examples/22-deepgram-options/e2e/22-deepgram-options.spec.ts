@@ -12,11 +12,13 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
   createContext,
   startDevServer,
   collectDiagnostics,
+  getJsErrors,
   withRetry,
   createGitHubIssue,
   type DevServer,
@@ -26,6 +28,9 @@ import {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const EXAMPLE_DIR = path.resolve(__dirname, '..');
 const PORT = 3022;
@@ -126,10 +131,7 @@ test.describe('22-deepgram-options E2E', () => {
     await expect(page.locator('#status-text')).toContainText('Idle');
 
     // No JS errors during initial load
-    const jsErrors = diag.consoleErrors.filter(
-      (e) => !e.text.includes('favicon') && !e.text.includes('404'),
-    );
-    expect(jsErrors).toHaveLength(0);
+    expect(getJsErrors(diag)).toHaveLength(0);
 
     await context.close();
     await browser.close();

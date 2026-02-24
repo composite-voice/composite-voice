@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3042,
+      strictPort: true,
       open: false,
       proxy: {
         '/proxy/openai': {

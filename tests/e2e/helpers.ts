@@ -9,12 +9,17 @@
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import * as net from 'node:net';
+import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /** Absolute path to the fake audio fixture used by Chromium's audio capture */
 const FIXTURE_WAV = path.resolve(__dirname, '../fixtures/spacewalk.wav');
@@ -87,7 +92,19 @@ export async function startDevServer(
   port: number,
   timeoutMs = 30_000,
 ): Promise<DevServer> {
-  const child = spawn('pnpm', ['dev', '--port', String(port)], {
+  // Next.js examples have the port hardcoded in their dev script (-p PORT)
+  // and already fail on port conflicts. Vite examples need --strictPort to
+  // prevent silent auto-increment to neighboring ports during parallel runs.
+  const isNextJs =
+    existsSync(path.join(exampleDir, 'next.config.mjs')) ||
+    existsSync(path.join(exampleDir, 'next.config.js')) ||
+    existsSync(path.join(exampleDir, 'next.config.ts'));
+
+  const args = isNextJs
+    ? ['dev']
+    : ['dev', '--', '--port', String(port), '--strictPort'];
+
+  const child = spawn('pnpm', args, {
     cwd: exampleDir,
     stdio: 'pipe',
     env: { ...process.env, BROWSER: 'none' },
@@ -203,6 +220,43 @@ export function collectDiagnostics(page: Page): PageDiagnostics {
   });
 
   return diagnostics;
+}
+
+// ---------------------------------------------------------------------------
+// Console error filtering
+// ---------------------------------------------------------------------------
+
+/**
+ * Benign console error patterns that should be excluded from assertions.
+ *
+ * - `favicon` / `404`  — standard browser noise from missing resources
+ * - `net::ERR_`        — Chrome network-layer errors (CONNECTION_REFUSED,
+ *                         SOCKET_NOT_CONNECTED, etc.) from external API
+ *                         connections that are expected in test environments
+ *                         without valid API keys
+ */
+const BENIGN_PATTERNS = ['favicon', '404', 'net::ERR_'];
+
+/**
+ * Filter collected console errors down to actual JS application errors,
+ * excluding benign browser-level noise.
+ *
+ * @param diagnostics   - Collected page diagnostics
+ * @param extraExcludes - Additional substrings to exclude (e.g. 'hydration' for Next.js)
+ */
+export function getJsErrors(
+  diagnostics: PageDiagnostics,
+  extraExcludes: string[] = [],
+): Array<{ level: string; text: string }> {
+  return diagnostics.consoleErrors.filter((e) => {
+    for (const pattern of BENIGN_PATTERNS) {
+      if (e.text.includes(pattern)) return false;
+    }
+    for (const exclude of extraExcludes) {
+      if (e.text.includes(exclude)) return false;
+    }
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------

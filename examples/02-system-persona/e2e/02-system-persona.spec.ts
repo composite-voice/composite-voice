@@ -16,11 +16,13 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   launchBrowser,
   createContext,
   startDevServer,
   collectDiagnostics,
+  getJsErrors,
   withRetry,
   createGitHubIssue,
   type DevServer,
@@ -31,6 +33,9 @@ import { injectNativeMocks } from '../../../tests/e2e/mocks/inject';
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const EXAMPLE_DIR = path.resolve(__dirname, '..');
 const PORT = 3002;
@@ -153,10 +158,7 @@ test.describe('02-system-persona E2E', () => {
     expect(isVisible).toBe(false);
 
     // ── No JS errors during initial load ──────────────────────────────
-    const jsErrors = diag.consoleErrors.filter(
-      (e) => !e.text.includes('favicon') && !e.text.includes('404'),
-    );
-    expect(jsErrors).toHaveLength(0);
+    expect(getJsErrors(diag)).toHaveLength(0);
 
     await context.close();
     await browser.close();

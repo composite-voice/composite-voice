@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3010,
+      strictPort: true,
       open: false,
       proxy: {
         // ── Anthropic (HTTP / SSE) ──────────────────────────────────────
