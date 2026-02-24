@@ -3,10 +3,10 @@
   "sessionId": "8f8e12ff-c371-4bb4-b975-edf70b4c3bb3",
   "status": "running",
   "startedAt": "2026-02-24T17:52:18.347Z",
-  "updatedAt": "2026-02-24T19:14:14.929Z",
-  "currentIteration": 13,
+  "updatedAt": "2026-02-24T19:17:09.421Z",
+  "currentIteration": 14,
   "maxIterations": 10,
-  "tasksCompleted": 13,
+  "tasksCompleted": 14,
   "isPaused": false,
   "agentPlugin": "claude",
   "trackerState": {
@@ -95,8 +95,8 @@
       {
         "id": "composite-voice-ekb.6",
         "title": "US-005: E2E test 04-error-recovery (port 3004)",
-        "status": "open",
-        "completedInSession": false
+        "status": "completed",
+        "completedInSession": true
       },
       {
         "id": "composite-voice-ekb.7",
@@ -278,6 +278,16 @@
       "durationMs": 130590,
       "startedAt": "2026-02-24T19:08:50.278Z",
       "endedAt": "2026-02-24T19:11:00.868Z"
+    },
+    {
+      "iteration": 14,
+      "status": "completed",
+      "taskId": "composite-voice-ekb.6",
+      "taskTitle": "US-005: E2E test 04-error-recovery (port 3004)",
+      "taskCompleted": true,
+      "durationMs": 172922,
+      "startedAt": "2026-02-24T19:11:21.877Z",
+      "endedAt": "2026-02-24T19:14:14.799Z"
     }
   ],
   "skippedTaskIds": [],
