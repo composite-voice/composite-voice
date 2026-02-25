@@ -42,28 +42,12 @@ const sites = [
     <script is:inline>
       (function() {
         var el = document.documentElement;
-        var KEY = 'cv-preferences';
         var p = {};
         try {
-          var raw = localStorage.getItem(KEY);
-          if (raw) { p = JSON.parse(raw); }
-          else {
-            var m = document.cookie.match(new RegExp('(?:^|; )' + KEY + '=([^;]*)'));
-            if (m) {
-              p = JSON.parse(decodeURIComponent(m[1]));
-              localStorage.setItem(KEY, JSON.stringify(p));
-            }
-          }
-          var legacy = { 'cv-theme': 'theme', 'cv-contrast': 'contrast', 'cv-motion': 'motion', 'cv-transparency': 'transparency', 'cv-font-size': 'fontSize' };
-          var migrated = false;
-          for (var k in legacy) {
-            var v = localStorage.getItem(k);
-            if (v !== null) { p[legacy[k]] = v; localStorage.removeItem(k); migrated = true; }
-          }
-          if (migrated) localStorage.setItem(KEY, JSON.stringify(p));
+          var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+          if (m) p = JSON.parse(decodeURIComponent(m[2]));
         } catch(e) {}
-        var theme = p.theme || 'system';
-        el.style.colorScheme = theme === 'system' ? 'light dark' : theme;
+        el.style.colorScheme = (p.theme && p.theme !== 'system') ? p.theme : 'light dark';
         if (p.contrast && p.contrast !== 'system') el.dataset.contrast = p.contrast;
         if (p.motion && p.motion !== 'system') el.dataset.motion = p.motion;
         if (p.transparency && p.transparency !== 'system') el.dataset.transparency = p.transparency;
