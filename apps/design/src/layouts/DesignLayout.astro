@@ -70,7 +70,7 @@ const currentPath = Astro.url.pathname;
       })();
     </script>
   </head>
-  <body class="bg-neutral-50 text-neutral-900 font-sans antialiased" itemscope itemtype="https://schema.org/WebPage">
+  <body class="bg-neutral-50 text-foreground font-sans antialiased" itemscope itemtype="https://schema.org/WebPage">
     <!-- Skip to content link -->
     <a
       href="#main-content"
@@ -114,13 +114,13 @@ const currentPath = Astro.url.pathname;
         <div class="px-5 py-6 flex items-center justify-between">
           <a href="/" class="block">
             <span class="text-lg font-bold text-primary-600 tracking-tight">CompositeVoice</span>
-            <span class="block text-xs text-neutral-500 font-medium mt-0.5">Design System</span>
+            <span class="block text-xs text-foreground-muted font-medium mt-0.5">Design System</span>
           </a>
           <!-- Close button (mobile) -->
           <button
             type="button"
             id="mobile-close-btn"
-            class="md:hidden p-1 rounded text-neutral-500 hover:text-neutral-900"
+            class="md:hidden p-1 rounded text-foreground-muted hover:text-foreground"
             aria-label="Close navigation menu"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -141,7 +141,7 @@ const currentPath = Astro.url.pathname;
                     "block px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                     isActive
                       ? "bg-primary-50 text-primary-700"
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+                      : "text-foreground-muted hover:bg-neutral-50 hover:text-foreground",
                   ]}
                   aria-current={isActive ? "page" : undefined}
                   itemprop="url"
@@ -162,11 +162,11 @@ const currentPath = Astro.url.pathname;
       <main id="main-content" class="flex-1 md:ml-64 pt-16 md:pt-0" itemprop="mainContentOfPage">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <header class="mb-8 sm:mb-10">
-            <h1 class="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight" itemprop="name">
+            <h1 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight" itemprop="name">
               {title}
             </h1>
             {description && (
-              <p class="mt-2 text-base sm:text-lg text-neutral-500" itemprop="description">
+              <p class="mt-2 text-base sm:text-lg text-foreground-muted" itemprop="description">
                 {description}
               </p>
             )}

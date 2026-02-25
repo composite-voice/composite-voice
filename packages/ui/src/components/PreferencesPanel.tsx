@@ -38,7 +38,7 @@ export function PreferencesPanel({ className = "" }: PreferencesPanelProps) {
     >
       {sections.map(({ label, Component }) => (
         <div key={label} className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-neutral-500">{label}</span>
+          <span className="text-xs font-medium text-foreground-muted">{label}</span>
           <Component />
         </div>
       ))}

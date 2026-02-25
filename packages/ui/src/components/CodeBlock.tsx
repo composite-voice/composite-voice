@@ -82,7 +82,7 @@ export function CodeBlock({
     >
       {title && (
         <div className="flex items-center px-4 py-2 bg-surface-sunken border-b border-neutral-200">
-          <span className="text-xs font-medium text-neutral-500 font-mono">{title}</span>
+          <span className="text-xs font-medium text-foreground-muted font-mono">{title}</span>
         </div>
       )}
 
@@ -101,7 +101,7 @@ export function CodeBlock({
                     <div key={i} {...lineProps}>
                       {showLineNumbers && (
                         <span
-                          className="inline-block w-8 text-right mr-4 text-neutral-500 select-none"
+                          className="inline-block w-8 text-right mr-4 text-foreground-muted select-none"
                           aria-hidden="true"
                         >
                           {i + 1}

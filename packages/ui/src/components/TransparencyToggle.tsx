@@ -70,8 +70,8 @@ export function TransparencyToggle() {
           onClick={() => select(opt.value)}
           className={`flex-1 flex items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
             pref === opt.value
-              ? "bg-surface text-neutral-900 shadow-card"
-              : "text-neutral-500 hover:text-neutral-700"
+              ? "bg-surface text-foreground shadow-card"
+              : "text-foreground-muted hover:text-foreground"
           }`}
         >
           {opt.icon}

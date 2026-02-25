@@ -116,6 +116,10 @@
   --color-surface-sunken: light-dark(#f4f4f5, #27272a);
   --color-surface-overlay: light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
 
+  /* Foreground — semantic text color tokens with WCAG-safe dark mode values */
+  --color-foreground: light-dark(#18181b, #f4f4f5);
+  --color-foreground-muted: light-dark(#71717a, #a1a1aa);
+
   /* On-filled — text color for solid colored backgrounds (buttons, banners) */
   --color-on-filled: light-dark(#ffffff, #09090b);
 

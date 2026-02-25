@@ -59,8 +59,8 @@ const weightMap: Record<HeadingWeight, string> = {
 };
 
 const colorMap: Record<HeadingColor, string> = {
-  default: "text-neutral-900",
-  muted: "text-neutral-500",
+  default: "text-foreground",
+  muted: "text-foreground-muted",
   primary: "text-primary-600",
   secondary: "text-secondary-600",
   accent: "text-accent-600",

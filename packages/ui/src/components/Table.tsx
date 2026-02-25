@@ -82,7 +82,7 @@ export function TableCaption({
 }: TableCaptionProps) {
   return (
     <caption
-      className={`text-sm text-neutral-500 py-2 ${side === "bottom" ? "caption-bottom" : ""} ${className}`}
+      className={`text-sm text-foreground-muted py-2 ${side === "bottom" ? "caption-bottom" : ""} ${className}`}
     >
       <Text as="span" size="sm" color="muted">
         {children}
