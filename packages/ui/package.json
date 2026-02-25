@@ -1,0 +1,19 @@
+{
+  "name": "@lukeocodes/composite-voice-ui",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme.css": "./src/theme.css",
+    "./icons": "./src/icons.tsx",
+    "./components/*": "./src/components/*.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "prism-react-renderer": "^2.4.1"
+  }
+}
