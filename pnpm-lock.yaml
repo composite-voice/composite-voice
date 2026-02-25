@@ -410,6 +410,22 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@20.19.22)
 
+  examples/70-assemblyai-pipeline:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0
+      '@deepgram/sdk':
+        specifier: '>=4.11.2'
+        version: 4.11.2
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
   examples/80-elevenlabs-pipeline:
     dependencies:
       '@anthropic-ai/sdk':
