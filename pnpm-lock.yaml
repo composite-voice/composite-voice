@@ -194,6 +194,22 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
 
+  examples/110-mistral-pipeline:
+    dependencies:
+      '@deepgram/sdk':
+        specifier: '>=4.11.2'
+        version: 4.11.2
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+      openai:
+        specifier: '>=6.5.0'
+        version: 6.5.0(ws@8.18.3)
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@20.19.22)
+
   examples/12-custom-provider:
     dependencies:
       '@lukeocodes/composite-voice':
