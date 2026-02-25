@@ -10,10 +10,9 @@
 
 import { useState, useEffect } from "react";
 import { LayersIcon, MonitorIcon, SquareIcon } from "../icons";
+import { getPreference, setPreference } from "../preferences";
 
 type TransparencyPref = "normal" | "system" | "reduce";
-
-const STORAGE_KEY = "cv-transparency";
 
 function applyTransparency(pref: TransparencyPref) {
   const el = document.documentElement;
@@ -22,14 +21,6 @@ function applyTransparency(pref: TransparencyPref) {
   } else {
     el.dataset.transparency = pref;
   }
-}
-
-function getStored(): TransparencyPref {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "normal" || v === "system" || v === "reduce") return v;
-  } catch {}
-  return "system";
 }
 
 const options: { value: TransparencyPref; label: string; icon: React.ReactNode }[] = [
@@ -42,7 +33,7 @@ export function TransparencyToggle() {
   const [pref, setPref] = useState<TransparencyPref>("system");
 
   useEffect(() => {
-    const stored = getStored();
+    const stored = getPreference("transparency");
     setPref(stored);
     applyTransparency(stored);
   }, []);
@@ -50,7 +41,7 @@ export function TransparencyToggle() {
   function select(value: TransparencyPref) {
     setPref(value);
     applyTransparency(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+    setPreference("transparency", value);
   }
 
   return (

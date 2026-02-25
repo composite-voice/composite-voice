@@ -8,22 +8,13 @@
 
 import { useState, useEffect } from "react";
 import { SunIcon, MonitorIcon, MoonIcon } from "../icons";
+import { getPreference, setPreference } from "../preferences";
 
 type Theme = "light" | "dark" | "system";
-
-const STORAGE_KEY = "cv-theme";
 
 function applyTheme(theme: Theme) {
   const el = document.documentElement;
   el.style.colorScheme = theme === "system" ? "light dark" : theme;
-}
-
-function getStored(): Theme {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark" || v === "system") return v;
-  } catch {}
-  return "system";
 }
 
 const options: { value: Theme; label: string; icon: React.ReactNode }[] = [
@@ -36,7 +27,7 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
-    const stored = getStored();
+    const stored = getPreference("theme");
     setTheme(stored);
     applyTheme(stored);
   }, []);
@@ -44,7 +35,7 @@ export function ThemeToggle() {
   function select(value: Theme) {
     setTheme(value);
     applyTheme(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+    setPreference("theme", value);
   }
 
   return (

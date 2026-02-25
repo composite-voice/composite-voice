@@ -10,10 +10,9 @@
 
 import { useState, useEffect } from "react";
 import { PlayIcon, MonitorIcon, PauseIcon } from "../icons";
+import { getPreference, setPreference } from "../preferences";
 
 type MotionPref = "full" | "system" | "reduce";
-
-const STORAGE_KEY = "cv-motion";
 
 function applyMotion(pref: MotionPref) {
   const el = document.documentElement;
@@ -22,14 +21,6 @@ function applyMotion(pref: MotionPref) {
   } else {
     el.dataset.motion = pref;
   }
-}
-
-function getStored(): MotionPref {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "full" || v === "system" || v === "reduce") return v;
-  } catch {}
-  return "system";
 }
 
 const options: { value: MotionPref; label: string; icon: React.ReactNode }[] = [
@@ -42,7 +33,7 @@ export function MotionToggle() {
   const [pref, setPref] = useState<MotionPref>("system");
 
   useEffect(() => {
-    const stored = getStored();
+    const stored = getPreference("motion");
     setPref(stored);
     applyMotion(stored);
   }, []);
@@ -50,7 +41,7 @@ export function MotionToggle() {
   function select(value: MotionPref) {
     setPref(value);
     applyMotion(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+    setPreference("motion", value);
   }
 
   return (

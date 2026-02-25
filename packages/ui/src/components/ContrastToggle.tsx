@@ -10,10 +10,9 @@
 
 import { useState, useEffect } from "react";
 import { CircleIcon, MonitorIcon, ContrastIcon } from "../icons";
+import { getPreference, setPreference } from "../preferences";
 
 type ContrastPref = "normal" | "system" | "more";
-
-const STORAGE_KEY = "cv-contrast";
 
 function applyContrast(pref: ContrastPref) {
   const el = document.documentElement;
@@ -22,14 +21,6 @@ function applyContrast(pref: ContrastPref) {
   } else {
     el.dataset.contrast = pref;
   }
-}
-
-function getStored(): ContrastPref {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "normal" || v === "system" || v === "more") return v;
-  } catch {}
-  return "system";
 }
 
 const options: { value: ContrastPref; label: string; icon: React.ReactNode }[] = [
@@ -42,7 +33,7 @@ export function ContrastToggle() {
   const [pref, setPref] = useState<ContrastPref>("system");
 
   useEffect(() => {
-    const stored = getStored();
+    const stored = getPreference("contrast");
     setPref(stored);
     applyContrast(stored);
   }, []);
@@ -50,7 +41,7 @@ export function ContrastToggle() {
   function select(value: ContrastPref) {
     setPref(value);
     applyContrast(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+    setPreference("contrast", value);
   }
 
   return (
