@@ -23,6 +23,10 @@ export type { AnthropicLLMConfig } from './anthropic';
 export { GroqLLM } from './groq';
 export type { GroqLLMConfig } from './groq';
 
+// Re-export Mistral provider
+export { MistralLLM } from './mistral';
+export type { MistralLLMConfig } from './mistral';
+
 // Re-export WebLLM provider
 export { WebLLMLLM } from './webllm';
 export type { WebLLMLLMConfig, WebLLMLoadProgress } from './webllm';

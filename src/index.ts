@@ -95,6 +95,8 @@ export { AnthropicLLM } from './providers/llm/anthropic/index';
 export type { AnthropicLLMConfig } from './providers/llm/anthropic/index';
 export { GroqLLM } from './providers/llm/groq/index';
 export type { GroqLLMConfig } from './providers/llm/groq/index';
+export { MistralLLM } from './providers/llm/mistral/index';
+export type { MistralLLMConfig } from './providers/llm/mistral/index';
 export { WebLLMLLM } from './providers/llm/webllm/index';
 export type { WebLLMLLMConfig, WebLLMLoadProgress } from './providers/llm/webllm/index';
 
