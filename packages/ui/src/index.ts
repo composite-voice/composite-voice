@@ -194,6 +194,8 @@ export { Pagination } from "./components/Pagination";
 export { ColorSwatch, ColorPalette } from "./components/ColorSwatch";
 
 /* ── Preferences ─────────────────────────────── */
+export { getPreferences, getPreference, setPreference, migratePreferences } from "./preferences";
+export type { Preferences } from "./preferences";
 export { ThemeToggle } from "./components/ThemeToggle";
 export { ContrastToggle } from "./components/ContrastToggle";
 export { MotionToggle } from "./components/MotionToggle";

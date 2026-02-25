@@ -10,10 +10,9 @@
  */
 
 import { useState, useEffect } from "react";
+import { getPreference, setPreference } from "../preferences";
 
 type FontSizePref = "sm" | "base" | "lg";
-
-const STORAGE_KEY = "cv-font-size";
 
 function applyFontSize(pref: FontSizePref) {
   const el = document.documentElement;
@@ -22,14 +21,6 @@ function applyFontSize(pref: FontSizePref) {
   } else {
     el.dataset.fontSize = pref;
   }
-}
-
-function getStored(): FontSizePref {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "sm" || v === "base" || v === "lg") return v;
-  } catch {}
-  return "base";
 }
 
 const options: { value: FontSizePref; label: string; icon: React.ReactNode }[] = [
@@ -66,7 +57,7 @@ export function FontSizeToggle() {
   const [pref, setPref] = useState<FontSizePref>("base");
 
   useEffect(() => {
-    const stored = getStored();
+    const stored = getPreference("fontSize");
     setPref(stored);
     applyFontSize(stored);
   }, []);
@@ -74,7 +65,7 @@ export function FontSizeToggle() {
   function select(value: FontSizePref) {
     setPref(value);
     applyFontSize(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
+    setPreference("fontSize", value);
   }
 
   return (
