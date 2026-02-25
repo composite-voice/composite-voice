@@ -65,14 +65,47 @@ jobs:
                   manifest-file: .github/.release-please-manifest.json
                   target-branch: ${{ github.ref_name }}
 
-    publish:
-        name: Publish to npm and GitHub Packages
+    publish-npm:
+        name: Publish to npm
         runs-on: ubuntu-latest
         needs: release-please
         if: ${{ needs.release-please.outputs.release_created }}
         permissions:
             contents: read
             id-token: write
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22.x"
+                  registry-url: "https://registry.npmjs.org"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build package
+              run: pnpm run build
+
+            - name: Publish to npm (OIDC trusted publishing)
+              run: npm publish --provenance --access public
+
+    publish-github:
+        name: Publish to GitHub Packages
+        runs-on: ubuntu-latest
+        needs: release-please
+        if: ${{ needs.release-please.outputs.release_created }}
+        permissions:
+            contents: read
             packages: write
 
         steps:
@@ -88,6 +121,7 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: "22.x"
+                  registry-url: "https://npm.pkg.github.com"
                   cache: "pnpm"
 
             - name: Install dependencies
@@ -96,16 +130,7 @@ jobs:
             - name: Build package
               run: pnpm run build
 
-            - name: Publish to npm (OIDC trusted publishing)
-              run: npm publish --provenance --access public
-
-            - name: Setup Node.js for GitHub Packages
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "22.x"
-                  registry-url: "https://npm.pkg.github.com"
-
             - name: Publish to GitHub Packages
-              run: pnpm publish --no-git-checks --access public
+              run: npm publish --access public
               env:
                   NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
