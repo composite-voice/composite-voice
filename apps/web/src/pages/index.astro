@@ -1,21 +1,208 @@
 ---
-import "../styles/global.css";
-import { Button } from "@lukeocodes/composite-voice-ui";
+import Layout from "../layouts/Layout.astro";
+import pkg from "../../../../package.json";
+import {
+  Button,
+  Badge,
+  Card,
+  CardBody,
+  CardTitle,
+  CardDescription,
+  CodeBlock,
+  CopyCommand,
+  MicIcon,
+  ZapIcon,
+  RefreshCwIcon,
+  SlidersIcon,
+  ShieldIcon,
+  PackageIcon,
+} from "@lukeocodes/composite-voice-ui";
+
+const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
+const version = pkg.version;
+
+const features = [
+  {
+    icon: MicIcon,
+    title: "Composable Pipeline",
+    description: "Mix and match STT, LLM, and TTS providers. Swap Deepgram for AssemblyAI or OpenAI for Anthropic — your pipeline, your choice.",
+  },
+  {
+    icon: ZapIcon,
+    title: "Eager Streaming",
+    description: "Speculative LLM generation begins during speech recognition. Responses start before the user finishes speaking.",
+  },
+  {
+    icon: RefreshCwIcon,
+    title: "Resilient Connections",
+    description: "WebSocket reconnection with exponential backoff. Graceful fallbacks keep voice sessions alive through network hiccups.",
+  },
+  {
+    icon: SlidersIcon,
+    title: "Turn-Taking Strategies",
+    description: "Auto, conservative, aggressive, or detect — choose how the system handles conversational flow and interruptions.",
+  },
+  {
+    icon: ShieldIcon,
+    title: "Server-Side Proxy",
+    description: "Express, Next.js, and plain Node adapters keep API keys off the client. Zero-config proxy routing for any provider.",
+  },
+  {
+    icon: PackageIcon,
+    title: "Extensible Providers",
+    description: "Abstract base classes for STT, LLM, and TTS. Build custom providers for any service with a clean, typed interface.",
+  },
+];
+
+const providers = {
+  "Speech-to-Text": ["Deepgram", "AssemblyAI", "Web Speech API"],
+  "Large Language Models": ["Anthropic", "OpenAI", "Groq", "Google Gemini", "Mistral", "WebLLM"],
+  "Text-to-Speech": ["Deepgram", "OpenAI", "ElevenLabs", "Cartesia", "Web Speech API"],
+};
+
+const exampleCode = `import { CompositeVoice } from "@lukeocodes/composite-voice";
+import { DeepgramSTT } from "@lukeocodes/composite-voice/stt";
+import { AnthropicLLM } from "@lukeocodes/composite-voice/llm";
+import { DeepgramTTS } from "@lukeocodes/composite-voice/tts";
+
+const voice = new CompositeVoice({
+  stt: new DeepgramSTT({ model: "nova-3" }),
+  llm: new AnthropicLLM({ model: "claude-sonnet-4-20250514" }),
+  tts: new DeepgramTTS({ model: "aura-asteria-en" }),
+});
+
+voice.on("transcript", (text) => console.log("User:", text));
+voice.on("response", (text) => console.log("AI:", text));
+
+await voice.start();`;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>CompositeVoice</title>
-	</head>
-	<body class="bg-neutral-50 min-h-screen flex items-center justify-center">
-		<div class="text-center">
-			<h1 class="text-4xl font-bold text-foreground mb-4">CompositeVoice</h1>
-			<Button client:load>Get Started</Button>
-		</div>
-	</body>
-</html>
+<Layout>
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-primary-50/50 to-transparent pointer-events-none" aria-hidden="true"></div>
+    <div class="relative max-w-4xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28 pb-16 sm:pb-24 text-center">
+      <Badge variant="primary" className="mb-6">Open Source</Badge>
+
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight leading-[1.1]">
+        Build voice interfaces<br class="hidden sm:inline" /> for the web
+      </h1>
+
+      <p class="mt-6 text-lg sm:text-xl text-foreground-muted max-w-2xl mx-auto leading-relaxed">
+        A composable SDK for speech-to-text, LLM, and text-to-speech pipelines.
+        Mix providers, stream responses, and ship conversational AI — all from the browser.
+      </p>
+
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <Button as="a" href={CV_DOCS_URL} size="lg" client:load>
+          Get Started
+        </Button>
+        <Button as="a" href="https://github.com/lukeocodes/composite-voice" variant="outline" size="lg" client:load>
+          GitHub
+        </Button>
+      </div>
+
+      <div class="mt-8 flex justify-center">
+        <CopyCommand command={`pnpm i @lukeocodes/composite-voice@${version}`} client:load />
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+    <div class="text-center mb-12 sm:mb-16">
+      <h2 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+        Everything you need for voice
+      </h2>
+      <p class="mt-3 text-foreground-muted text-lg max-w-2xl mx-auto">
+        Event-driven architecture, typed APIs, and production-ready defaults.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {features.map(({ icon: Icon, title, description }) => (
+        <Card variant="outlined">
+          <CardBody>
+            <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mb-4">
+              <Icon size="md" className="text-primary-600" />
+            </div>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardBody>
+        </Card>
+      ))}
+    </div>
+  </section>
+
+  <!-- Providers -->
+  <section class="bg-surface-sunken border-y border-neutral-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+      <div class="text-center mb-12 sm:mb-16">
+        <h2 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          Your pipeline, your providers
+        </h2>
+        <p class="mt-3 text-foreground-muted text-lg max-w-2xl mx-auto">
+          First-class support for leading AI services — or bring your own with extensible base classes.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+        {Object.entries(providers).map(([category, names]) => (
+          <div>
+            <h3 class="text-sm font-semibold text-foreground-muted uppercase tracking-wider mb-4">{category}</h3>
+            <ul class="space-y-2">
+              {names.map((name) => (
+                <li class="flex items-center gap-2 text-sm text-foreground">
+                  <span class="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" aria-hidden="true"></span>
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Example -->
+  <section class="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+    <div class="text-center mb-10 sm:mb-12">
+      <h2 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+        Up and running in minutes
+      </h2>
+      <p class="mt-3 text-foreground-muted text-lg max-w-2xl mx-auto">
+        Three providers, a few lines of code, and you have a working voice pipeline.
+      </p>
+    </div>
+
+    <CodeBlock code={exampleCode} language="typescript" title="voice.ts" client:load />
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-primary-600 text-on-filled">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-20 text-center">
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">
+        Ready to build?
+      </h2>
+      <p class="mt-3 text-on-filled/80 text-lg max-w-xl mx-auto">
+        Get started with the documentation, explore the design system, or jump straight into the code.
+      </p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href={CV_DOCS_URL}
+          class="inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-button bg-surface text-primary-600 hover:bg-neutral-50 transition-colors shadow-sm"
+        >
+          Read the Docs
+        </a>
+        <a
+          href="https://github.com/lukeocodes/composite-voice"
+          class="inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-button border border-on-filled/30 text-on-filled hover:bg-on-filled/10 transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+</Layout>

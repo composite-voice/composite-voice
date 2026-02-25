@@ -37,6 +37,7 @@ export function Radio({
   disabled,
   ...props
 }: RadioProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const sizes = sizeMap[size];
 
   const borderColor = error
@@ -53,7 +54,7 @@ export function Radio({
           disabled={disabled}
           aria-invalid={error || undefined}
           className="peer absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-          {...props}
+          {...domProps}
         />
         <span
           className={`${sizes.outer} rounded-full border-2 transition-colors duration-150 flex items-center justify-center ${borderColor} peer-checked:border-primary-600`}

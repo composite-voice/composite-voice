@@ -46,6 +46,7 @@ export function Checkbox({
   id,
   ...props
 }: CheckboxProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const inputRef = useRef<HTMLInputElement>(null);
   const sizes = sizeMap[size];
 
@@ -72,7 +73,7 @@ export function Checkbox({
           disabled={disabled}
           aria-invalid={error || undefined}
           className="peer absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-          {...props}
+          {...domProps}
         />
         <span
           className={`${sizes.box} rounded border transition-colors duration-150 flex items-center justify-center ${borderColor} peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-indeterminate:bg-primary-600 peer-indeterminate:border-primary-600`}

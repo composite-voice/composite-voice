@@ -51,6 +51,7 @@ export function Textarea({
   disabled,
   ...props
 }: TextareaProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const borderColor = error
     ? "border-danger-500 focus:ring-danger-500"
     : `${variantStyles[variant]} focus:border-primary-500 focus:ring-primary-500`;
@@ -73,7 +74,7 @@ export function Textarea({
       className={classes}
       disabled={disabled}
       aria-invalid={error || undefined}
-      {...props}
+      {...domProps}
     />
   );
 }

@@ -66,6 +66,7 @@ export function Modal({
   children,
   ...props
 }: ModalProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -152,7 +153,7 @@ export function Modal({
         aria-modal="true"
         onKeyDown={handleKeyDown}
         className={`relative w-full ${sizeStyles[size]} bg-surface rounded-card shadow-modal animate-slide-up motion-reduce:animate-fade-in overflow-hidden ${className}`}
-        {...props}
+        {...domProps}
       >
         {children}
       </div>

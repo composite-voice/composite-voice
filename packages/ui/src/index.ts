@@ -204,6 +204,7 @@ export { FontSizeToggle } from "./components/FontSizeToggle";
 export { PreferencesPanel } from "./components/PreferencesPanel";
 
 /* ── Code & Prose ────────────────────────────── */
+export { CopyCommand } from "./components/CopyCommand";
 export { Code } from "./components/Code";
 export { CodeBlock } from "./components/CodeBlock";
 export { CodeTabs } from "./components/CodeTabs";

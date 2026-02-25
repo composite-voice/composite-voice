@@ -36,11 +36,12 @@ export function ButtonGroup({
   className = "",
   ...props
 }: ButtonGroupProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   return (
     <div
       role="group"
       className={`inline-flex ${orientationMap[orientation]} ${spacingMap[spacing]} ${className}`}
-      {...props}
+      {...domProps}
     >
       {children}
     </div>

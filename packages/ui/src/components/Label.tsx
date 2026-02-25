@@ -35,10 +35,11 @@ export function Label({
   children,
   ...props
 }: LabelProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   return (
     <label
       className={`inline-flex items-center gap-1 ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${className}`}
-      {...props}
+      {...domProps}
     >
       <Text as="span" size={sizeMap[size]} weight="medium" color={disabled ? "muted" : "default"}>
         {children}

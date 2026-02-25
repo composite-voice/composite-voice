@@ -33,12 +33,13 @@ export function IconButton({
   className = "",
   ...props
 }: IconButtonProps) {
+  const { key: _, ...restProps } = props as typeof props & { key?: React.Key };
   return (
     <Button
       size={size}
       className={`${sizeMap[size]} ${className}`}
       aria-label={ariaLabel}
-      {...props}
+      {...restProps}
     >
       <span aria-hidden="true">{icon}</span>
       <VisuallyHidden>{ariaLabel}</VisuallyHidden>

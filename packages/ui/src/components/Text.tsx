@@ -117,6 +117,8 @@ export function Text({
   children,
   ...props
 }: TextProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
+
   const classes = [
     "font-sans",
     sizeMap[size],
@@ -131,7 +133,7 @@ export function Text({
     .join(" ");
 
   return (
-    <Element className={classes} {...props}>
+    <Element className={classes} {...domProps}>
       {children}
     </Element>
   );
