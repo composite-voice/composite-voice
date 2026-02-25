@@ -112,7 +112,7 @@ export function ColorPalette({
             <Text as="p" size="xs" weight="medium" color="default" className="text-center">
               {shade.shade}
             </Text>
-            <Text as="p" size="xs" color="muted" className="font-mono text-center">
+            <Text as="p" size="xs" color="muted" className="font-mono text-center truncate hidden sm:block">
               {shade.value}
             </Text>
           </div>

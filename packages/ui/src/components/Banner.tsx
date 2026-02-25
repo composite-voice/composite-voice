@@ -55,7 +55,7 @@ interface BannerProps {
 const variantStyles: Record<BannerVariant, string> = {
   info: "bg-info-600 text-on-filled",
   success: "bg-success-600 text-on-filled",
-  warning: "bg-warning-500 text-warning-950",
+  warning: "bg-warning-600 text-on-filled",
   danger: "bg-danger-600 text-on-filled",
   neutral: "bg-neutral-800 text-on-filled",
 };
@@ -63,7 +63,7 @@ const variantStyles: Record<BannerVariant, string> = {
 const actionVariants: Record<BannerVariant, "ghost" | "outline"> = {
   info: "ghost",
   success: "ghost",
-  warning: "outline",
+  warning: "ghost",
   danger: "ghost",
   neutral: "ghost",
 };

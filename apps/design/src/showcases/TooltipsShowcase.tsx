@@ -20,7 +20,7 @@ export default function TooltipsShowcase() {
       {/* Positions */}
       <section>
         <Heading level={2}>Positions</Heading>
-        <div className="flex flex-wrap items-center gap-8">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8">
           <Tooltip content="Tooltip on top" position="top">
             <Button>Top</Button>
           </Tooltip>
@@ -39,7 +39,7 @@ export default function TooltipsShowcase() {
       {/* On Different Elements */}
       <section>
         <Heading level={2}>On Different Elements</Heading>
-        <div className="flex flex-wrap items-center gap-8">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8">
           <Tooltip content="This is a button tooltip">
             <Button>Button</Button>
           </Tooltip>
@@ -63,7 +63,7 @@ export default function TooltipsShowcase() {
       {/* Custom Delay */}
       <section>
         <Heading level={2}>Custom Delay</Heading>
-        <div className="flex flex-wrap items-center gap-8">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8">
           <Tooltip content="Appeared instantly!" delay={0}>
             <Button>Instant</Button>
           </Tooltip>
@@ -76,7 +76,7 @@ export default function TooltipsShowcase() {
       {/* Rich Content */}
       <section>
         <Heading level={2}>Rich Content</Heading>
-        <div className="flex flex-wrap items-center gap-8">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8">
           <Tooltip content="Press Ctrl+S to save">
             <Button>
               <InfoIcon /> Save shortcut

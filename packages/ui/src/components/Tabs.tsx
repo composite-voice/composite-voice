@@ -15,7 +15,7 @@
  * - Automatic activation on arrow key press
  */
 
-import { createContext, useContext, useState, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { Text } from "./Text";
 
 /* ── Context ──────────────────────────────────── */
@@ -94,6 +94,28 @@ export function TabList({
   ...props
 }: TabListProps) {
   const tabListRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = tabListRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 1);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = tabListRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    const observer = new ResizeObserver(checkScroll);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      observer.disconnect();
+    };
+  }, [checkScroll]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     const tabList = tabListRef.current;
@@ -129,14 +151,22 @@ export function TabList({
   };
 
   return (
-    <div
-      ref={tabListRef}
-      role="tablist"
-      className={`flex border-b border-neutral-200 ${className}`}
-      onKeyDown={handleKeyDown}
-      {...props}
-    >
-      {children}
+    <div className="relative">
+      <div
+        ref={tabListRef}
+        role="tablist"
+        className={`flex overflow-x-auto overflow-y-hidden border-b border-neutral-200 ${className}`}
+        onKeyDown={handleKeyDown}
+        {...props}
+      >
+        {children}
+      </div>
+      {canScrollLeft && (
+        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-surface via-surface/60 to-transparent pointer-events-none" aria-hidden="true" />
+      )}
+      {canScrollRight && (
+        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-surface via-surface/60 to-transparent pointer-events-none" aria-hidden="true" />
+      )}
     </div>
   );
 }
@@ -173,7 +203,7 @@ export function Tab({
       tabIndex={isActive ? 0 : -1}
       disabled={disabled}
       onClick={() => !disabled && setActiveTab(value)}
-      className={`relative px-4 py-2.5 -mb-px border-b-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 -mb-px border-b-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset disabled:opacity-50 disabled:cursor-not-allowed ${
         isActive
           ? "border-primary-600 text-primary-600"
           : "border-transparent text-foreground-muted hover:text-foreground hover:border-neutral-300"

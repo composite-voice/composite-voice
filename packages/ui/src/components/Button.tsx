@@ -60,9 +60,9 @@ const variantStyles: Record<ButtonVariant, string> = {
   danger:
     "bg-danger-600 text-on-filled hover:bg-danger-700 active:bg-danger-800 shadow-sm",
   ghost:
-    "bg-transparent text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200",
+    "bg-transparent text-foreground hover:bg-neutral-100 active:bg-neutral-200",
   outline:
-    "bg-transparent text-neutral-700 border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100",
+    "bg-transparent text-foreground border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100",
   link:
     "bg-transparent text-primary-600 hover:text-primary-700 underline-offset-4 hover:underline p-0 h-auto",
 };
