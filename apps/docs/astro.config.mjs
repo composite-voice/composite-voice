@@ -10,9 +10,12 @@ export default defineConfig({
 		starlight({
 			title: 'CompositeVoice',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lukeocodes/composite-voice' }],
-			customCss: ['./src/styles/starlight-theme.css'],
+			customCss: ['./src/styles/global.css', './src/styles/starlight-theme.css'],
 			components: {
 				Header: './src/components/Header.astro',
+				ThemeProvider: './src/components/ThemeProvider.astro',
+				ThemeSelect: './src/components/ThemeSelect.astro',
+				MobileMenuToggle: './src/components/MobileMenuToggle.astro',
 			},
 			sidebar: [
 				{

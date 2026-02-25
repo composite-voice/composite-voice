@@ -1,0 +1,36 @@
+---
+/**
+ * ThemeSelect override — replaces Starlight's dropdown with our ThemeToggle.
+ * Bridges theme changes to both cv-preferences and Starlight's data-theme.
+ */
+import { ThemeToggle } from "@lukeocodes/composite-voice-ui";
+---
+
+<div class="cv-theme-select">
+  <ThemeToggle client:load />
+</div>
+
+<script>
+  // Watch for cv-preferences changes and sync data-theme for Starlight CSS
+  function syncStarlightTheme() {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('cv-preferences') || '{}');
+      const theme = prefs.theme || 'system';
+      const el = document.documentElement;
+
+      if (theme === 'system') {
+        const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        el.dataset.theme = preferLight ? 'light' : 'dark';
+      } else {
+        el.dataset.theme = theme;
+      }
+    } catch {}
+  }
+
+  // MutationObserver on color-scheme style changes (set by ThemeToggle)
+  const observer = new MutationObserver(() => syncStarlightTheme());
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['style'],
+  });
+</script>

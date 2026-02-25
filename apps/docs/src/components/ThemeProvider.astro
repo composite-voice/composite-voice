@@ -1,0 +1,66 @@
+---
+/**
+ * ThemeProvider override — bridges cv-preferences with Starlight's data-theme.
+ * Prevents FOUC by running inline before first paint.
+ */
+---
+
+<script is:inline>
+  (function() {
+    var el = document.documentElement;
+    var p = {};
+    try {
+      var raw = localStorage.getItem('cv-preferences');
+      if (raw) p = JSON.parse(raw);
+      // Migrate legacy per-key storage
+      var legacy = { 'cv-theme': 'theme', 'cv-contrast': 'contrast', 'cv-motion': 'motion', 'cv-transparency': 'transparency', 'cv-font-size': 'fontSize' };
+      var migrated = false;
+      for (var k in legacy) {
+        var v = localStorage.getItem(k);
+        if (v !== null) { p[legacy[k]] = v; localStorage.removeItem(k); migrated = true; }
+      }
+      if (migrated) localStorage.setItem('cv-preferences', JSON.stringify(p));
+      // Migrate starlight-theme to our system
+      var slTheme = localStorage.getItem('starlight-theme');
+      if (slTheme && !p.theme) {
+        p.theme = slTheme === 'auto' ? 'system' : slTheme;
+        localStorage.setItem('cv-preferences', JSON.stringify(p));
+        localStorage.removeItem('starlight-theme');
+      }
+    } catch(e) {}
+
+    var theme = p.theme || 'system';
+
+    // Set color-scheme for our design system
+    el.style.colorScheme = theme === 'system' ? 'light dark' : theme;
+
+    // Set data-theme for Starlight CSS
+    if (theme === 'system') {
+      var preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      el.dataset.theme = preferLight ? 'light' : 'dark';
+    } else {
+      el.dataset.theme = theme;
+    }
+
+    // Apply other preferences
+    if (p.contrast && p.contrast !== 'system') el.dataset.contrast = p.contrast;
+    if (p.motion && p.motion !== 'system') el.dataset.motion = p.motion;
+    if (p.transparency && p.transparency !== 'system') el.dataset.transparency = p.transparency;
+    if (p.fontSize && p.fontSize !== 'base') el.dataset.fontSize = p.fontSize;
+
+    // Listen for system theme changes when in "system" mode
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(e) {
+      try {
+        var prefs = JSON.parse(localStorage.getItem('cv-preferences') || '{}');
+        if (!prefs.theme || prefs.theme === 'system') {
+          el.dataset.theme = e.matches ? 'light' : 'dark';
+        }
+      } catch(err) {}
+    });
+
+    // Expose for Starlight compat (some components call this)
+    window.StarlightThemeProvider = {
+      updatePickers: function() {}
+    };
+  })();
+</script>
