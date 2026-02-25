@@ -4,6 +4,7 @@
 
 export * from './native/index';
 export * from './deepgram/index';
+export * from './assemblyai/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
