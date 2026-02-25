@@ -1,6 +1,7 @@
 /**
- * Deepgram STT provider using the official Deepgram SDK
- * WebSocket-only provider for real-time streaming transcription
+ * Deepgram real-time speech-to-text provider using the official Deepgram SDK.
+ *
+ * @packageDocumentation
  */
 
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
@@ -13,7 +14,15 @@ type DeepgramClient = typeof import('@deepgram/sdk').createClient;
 type LiveClient = import('@deepgram/sdk').LiveClient;
 
 /**
- * Deepgram-specific transcription options
+ * Deepgram-specific transcription options passed to the WebSocket connection.
+ *
+ * @remarks
+ * These options map to Deepgram's
+ * {@link https://developers.deepgram.com/docs/streaming | real-time streaming API}
+ * parameters. They are set on the {@link DeepgramSTTConfig.options} property
+ * and forwarded when the WebSocket connection is established.
+ *
+ * @see {@link DeepgramSTTConfig} for the full provider configuration
  */
 export interface DeepgramTranscriptionOptions {
   /**
@@ -55,9 +64,31 @@ export interface DeepgramTranscriptionOptions {
 }
 
 /**
- * Deepgram STT provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration options for the {@link DeepgramSTT} provider.
+ *
+ * @remarks
+ * Extends {@link STTProviderConfig} with Deepgram-specific settings. You must
+ * provide **either** `apiKey` (for direct browser-to-Deepgram connections) or
+ * `proxyUrl` (for server-side proxy that injects the API key). If both are
+ * provided, `proxyUrl` takes precedence.
+ *
+ * @example
+ * ```ts
+ * // Direct connection (API key exposed to browser -- development only)
+ * const config: DeepgramSTTConfig = {
+ *   apiKey: 'dg_abc123...',
+ *   options: { model: 'nova-3', smartFormat: true },
+ * };
+ *
+ * // Proxy connection (recommended for production)
+ * const config: DeepgramSTTConfig = {
+ *   proxyUrl: 'http://localhost:3001/api/proxy/deepgram',
+ *   options: { model: 'nova-3', punctuation: true },
+ * };
+ * ```
+ *
+ * @see {@link DeepgramTranscriptionOptions} for transcription-specific settings
+ * @see {@link DeepgramSTT} for the provider class
  */
 export interface DeepgramSTTConfig extends STTProviderConfig {
   /**
@@ -80,24 +111,103 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
 }
 
 /**
- * Deepgram STT provider
- * Real-time streaming transcription via WebSocket
- * CompositeVoice manages audio capture and sends chunks to this provider
+ * Deepgram real-time STT provider using the official `@deepgram/sdk`.
+ *
+ * @remarks
+ * `DeepgramSTT` extends {@link LiveSTTProvider} and connects to Deepgram's
+ * WebSocket-based streaming transcription API. It supports:
+ *
+ * - Real-time interim and final transcription results
+ * - Multi-segment utterance buffering (accumulates `is_final` segments
+ *   until `speech_final` to deliver a complete utterance)
+ * - Deepgram v2 preflight / eager end-of-turn signals for speculative
+ *   LLM generation
+ * - Proxy mode via {@link DeepgramSTTConfig.proxyUrl} (recommended for
+ *   production so the API key stays server-side)
+ *
+ * **Transport:** WebSocket (via `@deepgram/sdk`)
+ *
+ * **Browser support:** All modern browsers (Chrome, Firefox, Safari, Edge).
+ * Requires the `@deepgram/sdk` peer dependency to be installed.
+ *
+ * **Data flow:**
+ *
+ * ```
+ * Microphone -> AudioCapture -> sendAudio(chunk) -> Deepgram WebSocket
+ *                                                       |
+ * CompositeVoice <- onTranscription(result) <----------+
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { DeepgramSTT } from 'composite-voice';
+ *
+ * const stt = new DeepgramSTT({
+ *   proxyUrl: 'http://localhost:3001/api/proxy/deepgram',
+ *   language: 'en-US',
+ *   interimResults: true,
+ *   options: {
+ *     model: 'nova-3',
+ *     smartFormat: true,
+ *     punctuation: true,
+ *   },
+ * });
+ *
+ * await stt.initialize();
+ *
+ * stt.onTranscription((result) => {
+ *   if (result.isFinal && result.speechFinal) {
+ *     console.log('Complete utterance:', result.text);
+ *   }
+ * });
+ *
+ * await stt.connect();
+ * // ... send audio chunks via stt.sendAudio(chunk) ...
+ * await stt.disconnect();
+ * ```
+ *
+ * @see {@link LiveSTTProvider} for the base WebSocket STT class
+ * @see {@link DeepgramSTTConfig} for configuration options
+ * @see {@link DeepgramTranscriptionOptions} for transcription parameters
+ * @see {@link AssemblyAISTT} for an alternative real-time STT provider
  */
 export class DeepgramSTT extends LiveSTTProvider {
   declare public config: DeepgramSTTConfig;
+
+  /** The Deepgram SDK client instance. */
   private deepgram: Awaited<ReturnType<DeepgramClient>> | null = null;
+
+  /** The active Deepgram live transcription WebSocket client. */
   private liveClient: LiveClient | null = null;
+
+  /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
   /**
    * Accumulates `is_final` transcript segments within an utterance.
+   *
+   * @remarks
    * Deepgram may split one utterance into multiple `is_final` chunks before
-   * emitting `speech_final`.  We buffer them so we can hand the complete
+   * emitting `speech_final`. We buffer them so we can hand the complete
    * utterance text to CompositeVoice as a single `speechFinal` result.
    */
   private utteranceBuffer: string[] = [];
 
+  /**
+   * Create a new DeepgramSTT provider.
+   *
+   * @param config - Deepgram STT configuration. Must include either
+   *   `apiKey` or `proxyUrl`.
+   * @param logger - Optional parent logger; a child will be derived.
+   *
+   * @example
+   * ```ts
+   * const stt = new DeepgramSTT({
+   *   apiKey: 'dg_abc123...',
+   *   options: { model: 'nova-3' },
+   * });
+   * ```
+   */
   constructor(config: DeepgramSTTConfig, logger?: Logger) {
     const finalConfig = {
       language: config.language ?? 'en-US',
@@ -107,6 +217,13 @@ export class DeepgramSTT extends LiveSTTProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Dynamically import the Deepgram SDK and create the client.
+   *
+   * @throws {@link ProviderInitializationError}
+   * Thrown when neither `apiKey` nor `proxyUrl` is configured, or when
+   * the `@deepgram/sdk` peer dependency is not installed.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -148,6 +265,7 @@ export class DeepgramSTT extends LiveSTTProvider {
     }
   }
 
+  /** Disconnect the WebSocket (if connected) and release SDK resources. */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
@@ -159,7 +277,16 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Connect to Deepgram WebSocket for real-time transcription
+   * Open a WebSocket connection to Deepgram for real-time transcription.
+   *
+   * @remarks
+   * Builds connection options from {@link DeepgramSTTConfig} and waits for
+   * the WebSocket `open` event before resolving. The connection timeout
+   * defaults to {@link DeepgramSTTConfig.timeout | config.timeout} (10 000 ms).
+   *
+   * @throws {@link ProviderConnectionError}
+   * Thrown when the provider is not initialized, the Deepgram client is
+   * missing, or the connection times out / errors.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -249,7 +376,9 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Setup event handlers for live transcription
+   * Wire up event handlers on the Deepgram {@link liveClient} for
+   * `Transcript`, `EarlyEndOfTurn`, `Metadata`, `error`, `warning`,
+   * `close`, `UtteranceEnd`, and `SpeechStarted` events.
    */
   private setupEventHandlers(): void {
     if (!this.liveClient) return;
@@ -454,9 +583,14 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Send audio chunk for real-time transcription
-   * CompositeVoice sends audio chunks TO this provider
-   * @param chunk Audio data chunk (ArrayBuffer)
+   * Send a raw audio chunk to Deepgram for real-time transcription.
+   *
+   * @remarks
+   * The chunk is sent as a raw `ArrayBuffer` directly over the WebSocket.
+   * If the connection is not open, the chunk is silently dropped and a
+   * warning is logged.
+   *
+   * @param chunk - Raw audio data captured from the microphone.
    */
   sendAudio(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.liveClient) {
@@ -474,7 +608,14 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Disconnect from Deepgram WebSocket
+   * Gracefully close the Deepgram WebSocket connection.
+   *
+   * @remarks
+   * Calls `liveClient.finish()` to signal end-of-stream, then waits up
+   * to 1 second for the `close` event before force-resolving. Resets the
+   * utterance buffer and internal connection state.
+   *
+   * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
@@ -510,7 +651,9 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Check if currently connected (WebSocket mode)
+   * Check whether the Deepgram WebSocket connection is currently open.
+   *
+   * @returns `true` when connected and ready to receive audio.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

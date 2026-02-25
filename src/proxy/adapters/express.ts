@@ -1,14 +1,109 @@
 /**
- * Express / Connect middleware adapter.
+ * @packageDocumentation
+ * Express / Connect middleware adapter for the CompositeVoice proxy.
  *
+ * @remarks
  * Returns middleware compatible with Express 4/5 and any Connect-style
- * framework.  WebSocket proxying requires attaching an upgrade handler to
- * the underlying `http.Server`.
+ * framework (e.g., Polka, Restify). The middleware intercepts HTTP requests
+ * matching the configured path prefix and forwards them to upstream AI providers.
+ * WebSocket proxying (required for Deepgram STT/TTS, ElevenLabs, AssemblyAI, Cartesia)
+ * requires attaching an upgrade handler to the underlying `http.Server` via
+ * {@link ExpressProxyHandlers.attachWebSocket}.
  *
- * Server-side only — never imported by browser bundles.
+ * This module is server-side only and must never be imported by browser bundles.
  *
  * @example
- * ```ts
+ * ```typescript
+ * import express from 'express';
+ * import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+ *
+ * const app = express();
+ * const proxy = createExpressProxy({
+ *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   pathPrefix: '/api/proxy',
+ *   cors: { origins: ['http://localhost:5173'] },
+ * });
+ *
+ * app.use(proxy.middleware);
+ * // ...other routes...
+ *
+ * const server = app.listen(3000, () => proxy.attachWebSocket(server));
+ * ```
+ *
+ * @see {@link createNextJsProxy} for Next.js App Router usage
+ * @see {@link createNodeProxy} for plain Node.js HTTP server usage
+ */
+
+import type { IncomingMessage, ServerResponse, Server } from 'http';
+import type { Socket } from 'net';
+import { forwardHttpRequest } from '../core/http';
+import { proxyWebSocket } from '../core/ws';
+import type { CompositeVoiceProxyConfig } from '../types';
+import { buildRoutes, matchHttpRoute, matchWsRoute, setCorsHeaders } from '../utils/routing';
+
+/**
+ * Duck-typed Express/Connect "next" callback.
+ *
+ * @remarks
+ * Avoids a hard dependency on `@types/express` by duck-typing the callback
+ * signature that Express, Connect, and similar frameworks use.
+ */
+type NextFn = (err?: unknown) => void;
+
+/**
+ * Duck-typed Express/Connect middleware function signature.
+ *
+ * @remarks
+ * Compatible with any Connect-style framework without importing Express types directly.
+ */
+type MiddlewareFn = (req: IncomingMessage, res: ServerResponse, next: NextFn) => void;
+
+/**
+ * Handlers returned by {@link createExpressProxy}.
+ *
+ * @remarks
+ * Provides both an HTTP middleware and a WebSocket upgrade attachment method.
+ * The middleware handles REST/SSE proxying, while `attachWebSocket` enables
+ * bidirectional WebSocket relay for streaming providers like Deepgram, ElevenLabs,
+ * AssemblyAI, and Cartesia.
+ */
+export interface ExpressProxyHandlers {
+  /**
+   * Express / Connect middleware -- pass to `app.use(proxy.middleware)`.
+   *
+   * @remarks
+   * Intercepts requests matching the configured `pathPrefix` and forwards them
+   * to the appropriate upstream provider. Non-matching requests are passed to `next()`.
+   */
+  middleware: MiddlewareFn;
+
+  /**
+   * Attach WebSocket upgrade handling to the HTTP server.
+   *
+   * @remarks
+   * Must be called after the server starts listening. Listens for the `'upgrade'`
+   * event on the server and proxies WebSocket connections to the appropriate
+   * upstream provider based on the URL path.
+   *
+   * @param server - The HTTP server returned by `app.listen(...)`.
+   */
+  attachWebSocket(server: Server): void;
+}
+
+/**
+ * Create an Express-compatible proxy middleware and WebSocket attachment helper.
+ *
+ * @remarks
+ * Builds route configuration from the provided API keys, then returns a middleware
+ * function and a WebSocket upgrade handler. Only providers with configured API keys
+ * will have routes registered.
+ *
+ * @param config - Proxy configuration containing API keys, path prefix, and CORS settings.
+ * @returns An {@link ExpressProxyHandlers} object with `middleware` and `attachWebSocket`.
+ *
+ * @example
+ * ```typescript
  * import express from 'express';
  * import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
  *
@@ -20,36 +115,10 @@
  * });
  *
  * app.use(proxy.middleware);
- * // ...other routes...
- *
  * const server = app.listen(3000, () => proxy.attachWebSocket(server));
  * ```
- */
-
-import type { IncomingMessage, ServerResponse, Server } from 'http';
-import type { Socket } from 'net';
-import { forwardHttpRequest } from '../core/http';
-import { proxyWebSocket } from '../core/ws';
-import type { CompositeVoiceProxyConfig } from '../types';
-import { buildRoutes, matchHttpRoute, matchWsRoute, setCorsHeaders } from '../utils/routing';
-
-// Duck-typed to be compatible with Express without importing its types.
-type NextFn = (err?: unknown) => void;
-type MiddlewareFn = (req: IncomingMessage, res: ServerResponse, next: NextFn) => void;
-
-export interface ExpressProxyHandlers {
-  /** Express / Connect middleware — pass to `app.use(proxy.middleware)`. */
-  middleware: MiddlewareFn;
-
-  /**
-   * Attach WebSocket upgrade handling to the HTTP server.
-   * Pass the server returned by `app.listen(...)`.
-   */
-  attachWebSocket(server: Server): void;
-}
-
-/**
- * Create an Express-compatible proxy middleware and WebSocket attachment helper.
+ *
+ * @see {@link CompositeVoiceProxyConfig} for configuration options
  */
 export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressProxyHandlers {
   const routes = buildRoutes(config);

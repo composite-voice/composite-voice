@@ -1,5 +1,25 @@
 /**
  * Audio capture manager for microphone input
+ *
+ * @packageDocumentation
+ *
+ * @remarks
+ * This module provides the {@link AudioCapture} class, which manages microphone
+ * input using the Web Audio API. It handles the full lifecycle of audio
+ * capture: requesting microphone permissions, creating an `AudioContext` and
+ * `ScriptProcessorNode`, converting raw audio data to the configured format
+ * (e.g. 16-bit PCM), and delivering audio chunks to a callback.
+ *
+ * Audio data flows through the following pipeline:
+ *
+ * 1. `MediaStream` (from `getUserMedia`)
+ * 2. `MediaStreamAudioSourceNode`
+ * 3. `ScriptProcessorNode` (buffer processing)
+ * 4. Optional downsampling (if the hardware sample rate differs from config)
+ * 5. Format conversion (Float32 to Int16 PCM)
+ * 6. Callback delivery as `ArrayBuffer`
+ *
+ * @see {@link AudioPlayer} for the corresponding audio playback manager.
  */
 
 import type { AudioInputConfig, AudioCaptureState } from '../types/audio';
@@ -9,12 +29,68 @@ import { floatTo16BitPCM, downsampleAudio } from '../../utils/audio';
 import { DEFAULT_AUDIO_INPUT_CONFIG } from '../types/config';
 
 /**
- * Audio capture callback type
+ * Callback function that receives captured audio data.
+ *
+ * @remarks
+ * The `audioData` buffer contains audio in the format specified by the
+ * {@link AudioInputConfig.format} setting. By default this is 16-bit linear
+ * PCM.
+ *
+ * @param audioData - A buffer containing one chunk of captured audio data.
+ *
+ * @example
+ * ```ts
+ * const onAudioData: AudioCaptureCallback = (audioData) => {
+ *   // Forward to a WebSocket for real-time STT
+ *   websocket.send(audioData);
+ * };
+ * ```
  */
 export type AudioCaptureCallback = (audioData: ArrayBuffer) => void;
 
 /**
- * Audio capture manager
+ * Manages microphone audio capture using the Web Audio API.
+ *
+ * @remarks
+ * `AudioCapture` encapsulates the browser's `getUserMedia`, `AudioContext`, and
+ * `ScriptProcessorNode` APIs to provide a simple start/stop interface for
+ * microphone capture. It supports pause/resume, configurable sample rates,
+ * echo cancellation, noise suppression, and automatic gain control.
+ *
+ * Audio data is delivered as `ArrayBuffer` chunks to the callback provided to
+ * {@link AudioCapture.start | start()}. The chunk size is determined by the
+ * {@link AudioInputConfig.chunkDuration} setting (default 100ms), rounded to
+ * the nearest power-of-two buffer size for the `ScriptProcessorNode`.
+ *
+ * The class tracks its own state via {@link AudioCaptureState} values:
+ * `'inactive'`, `'starting'`, `'active'`, `'paused'`, and `'stopping'`.
+ *
+ * @example
+ * ```ts
+ * import { AudioCapture } from './AudioCapture';
+ *
+ * const capture = new AudioCapture({ sampleRate: 16000 }, logger);
+ *
+ * // Start capturing microphone audio
+ * await capture.start((audioData) => {
+ *   // Process or send the PCM audio chunk
+ *   sttProvider.sendAudio(audioData);
+ * });
+ *
+ * console.log(capture.isCapturing()); // true
+ *
+ * // Pause during TTS playback
+ * capture.pause();
+ *
+ * // Resume after playback ends
+ * await capture.resume();
+ *
+ * // Stop capture and release resources
+ * await capture.stop();
+ * ```
+ *
+ * @see {@link AudioPlayer} for audio playback.
+ * @see {@link AudioInputConfig} for available configuration options.
  */
 export class AudioCapture {
   private config: AudioInputConfig;
@@ -26,27 +102,52 @@ export class AudioCapture {
   private processorNode: ScriptProcessorNode | null = null;
   private callback: AudioCaptureCallback | null = null;
 
+  /**
+   * Creates a new `AudioCapture` instance.
+   *
+   * @remarks
+   * The instance starts in the `'inactive'` state. Call
+   * {@link AudioCapture.start | start()} to begin capturing audio.
+   *
+   * @param config - Partial audio input configuration. Missing fields are filled
+   *   from {@link DEFAULT_AUDIO_INPUT_CONFIG}.
+   * @param logger - Optional {@link Logger} instance. A child logger named
+   *   `'AudioCapture'` is created if provided.
+   */
   constructor(config: Partial<AudioInputConfig> = {}, logger?: Logger) {
     this.config = { ...DEFAULT_AUDIO_INPUT_CONFIG, ...config };
     this.logger = logger ? logger.child('AudioCapture') : undefined;
   }
 
   /**
-   * Get current capture state
+   * Returns the current capture state.
+   *
+   * @returns The current {@link AudioCaptureState} (`'inactive'`, `'starting'`,
+   *   `'active'`, `'paused'`, or `'stopping'`).
    */
   getState(): AudioCaptureState {
     return this.state;
   }
 
   /**
-   * Check if actively capturing
+   * Checks whether the capture is actively recording audio.
+   *
+   * @returns `true` if the state is `'active'`, `false` otherwise.
    */
   isCapturing(): boolean {
     return this.state === 'active';
   }
 
   /**
-   * Request microphone permission
+   * Requests microphone permission from the user without starting capture.
+   *
+   * @remarks
+   * This method calls `getUserMedia` to trigger the browser's permission
+   * prompt, then immediately stops the resulting stream. It is useful for
+   * pre-requesting permission during onboarding so that
+   * {@link AudioCapture.start | start()} can succeed without a permission dialog.
+   *
+   * @returns `true` if permission was granted, `false` if denied or unavailable.
    */
   async requestPermission(): Promise<boolean> {
     try {
@@ -61,7 +162,14 @@ export class AudioCapture {
   }
 
   /**
-   * Check microphone permission status
+   * Queries the current microphone permission status without prompting the user.
+   *
+   * @remarks
+   * Uses the Permissions API (`navigator.permissions.query`). If the
+   * Permissions API is not available (e.g. in some browsers), this method
+   * returns `'prompt'` as a safe fallback.
+   *
+   * @returns The permission state: `'granted'`, `'denied'`, or `'prompt'`.
    */
   async checkPermission(): Promise<'granted' | 'denied' | 'prompt'> {
     if (!navigator.permissions) {
@@ -77,7 +185,34 @@ export class AudioCapture {
   }
 
   /**
-   * Start capturing audio
+   * Starts capturing audio from the microphone.
+   *
+   * @remarks
+   * This method:
+   * 1. Requests microphone access via `getUserMedia`.
+   * 2. Creates an `AudioContext` at the configured sample rate.
+   * 3. Connects a `MediaStreamAudioSourceNode` through a `ScriptProcessorNode`.
+   * 4. Delivers processed audio chunks to the provided `callback`.
+   *
+   * If already capturing (`state === 'active'`), this method logs a warning
+   * and returns immediately without error.
+   *
+   * @param callback - The {@link AudioCaptureCallback} that receives audio data
+   *   chunks as `ArrayBuffer`.
+   *
+   * @throws {@link AudioCaptureError} if the Media Devices API is not supported
+   *   by the browser.
+   * @throws {@link MicrophonePermissionError} if the user denies microphone
+   *   access.
+   * @throws {@link AudioCaptureError} for any other failure during stream or
+   *   context creation.
+   *
+   * @example
+   * ```ts
+   * await capture.start((audioData) => {
+   *   websocket.send(audioData);
+   * });
+   * ```
    */
   async start(callback: AudioCaptureCallback): Promise<void> {
     if (this.state === 'active') {
@@ -156,7 +291,14 @@ export class AudioCapture {
   }
 
   /**
-   * Calculate appropriate buffer size
+   * Calculate the appropriate `ScriptProcessorNode` buffer size.
+   *
+   * @remarks
+   * The target buffer size is derived from `sampleRate * chunkDuration / 1000`,
+   * then rounded to the nearest valid power-of-two buffer size accepted by the
+   * Web Audio API (256 to 16384).
+   *
+   * @returns The buffer size as a power-of-two integer.
    */
   private calculateBufferSize(): number {
     const targetSize = (this.config.sampleRate * (this.config.chunkDuration ?? 100)) / 1000;
@@ -168,7 +310,15 @@ export class AudioCapture {
   }
 
   /**
-   * Process audio data from microphone
+   * Process raw audio data from the `ScriptProcessorNode`.
+   *
+   * @remarks
+   * This handler is invoked by the `onaudioprocess` event. It extracts channel
+   * data, applies downsampling if the hardware sample rate differs from the
+   * configured rate, converts to the target format, and delivers the result to
+   * the registered callback.
+   *
+   * @param event - The `AudioProcessingEvent` from the `ScriptProcessorNode`.
    */
   private processAudioData(event: AudioProcessingEvent): void {
     if (!this.callback || this.state !== 'active') {
@@ -200,7 +350,15 @@ export class AudioCapture {
   }
 
   /**
-   * Convert audio data to configured format
+   * Convert Float32 audio samples to the configured output format.
+   *
+   * @remarks
+   * Currently only PCM (16-bit linear) is fully implemented. Other formats
+   * (`wav`, `opus`, `mp3`, `webm`) fall back to PCM with a warning, leaving
+   * encoding to downstream providers.
+   *
+   * @param float32Data - The raw Float32 audio samples from the `ScriptProcessorNode`.
+   * @returns An `ArrayBuffer` containing the converted audio data.
    */
   private convertAudioData(float32Data: Float32Array): ArrayBuffer {
     switch (this.config.format) {
@@ -226,7 +384,12 @@ export class AudioCapture {
   }
 
   /**
-   * Pause audio capture
+   * Pauses audio capture by suspending the `AudioContext`.
+   *
+   * @remarks
+   * If the capture is not in the `'active'` state, this method logs a warning
+   * and returns without error. While paused, no audio data is delivered to the
+   * callback. Call {@link AudioCapture.resume | resume()} to continue capturing.
    */
   pause(): void {
     if (this.state !== 'active') {
@@ -242,7 +405,11 @@ export class AudioCapture {
   }
 
   /**
-   * Resume audio capture
+   * Resumes audio capture from a paused state.
+   *
+   * @remarks
+   * If the capture is not in the `'paused'` state, this method logs a warning
+   * and returns without error.
    */
   async resume(): Promise<void> {
     if (this.state !== 'paused') {
@@ -258,7 +425,15 @@ export class AudioCapture {
   }
 
   /**
-   * Stop capturing audio
+   * Stops audio capture and releases all audio resources.
+   *
+   * @remarks
+   * This method disconnects the audio processing graph, closes the
+   * `AudioContext`, stops all media stream tracks, and clears the callback.
+   * If already in the `'inactive'` state, this method is a no-op.
+   *
+   * After stopping, the instance can be restarted by calling
+   * {@link AudioCapture.start | start()} again with a new callback.
    */
   async stop(): Promise<void> {
     if (this.state === 'inactive') {
@@ -275,7 +450,12 @@ export class AudioCapture {
   }
 
   /**
-   * Clean up resources
+   * Releases all internal audio resources (nodes, context, stream, callback).
+   *
+   * @remarks
+   * Called internally by {@link AudioCapture.stop | stop()} and on error during
+   * {@link AudioCapture.start | start()}. Disconnects all audio nodes, closes
+   * the `AudioContext`, stops media stream tracks, and nullifies references.
    */
   private cleanup(): void {
     if (this.processorNode) {
@@ -303,21 +483,42 @@ export class AudioCapture {
   }
 
   /**
-   * Get audio context (for advanced use cases)
+   * Returns the underlying `AudioContext`, if one has been created.
+   *
+   * @remarks
+   * This is intended for advanced use cases where direct access to the audio
+   * context is needed (e.g. creating custom audio processing nodes). Returns
+   * `null` if capture has not been started or has been stopped.
+   *
+   * @returns The active `AudioContext`, or `null` if none exists.
    */
   getAudioContext(): AudioContext | null {
     return this.audioContext;
   }
 
   /**
-   * Get current audio configuration
+   * Returns a copy of the current audio input configuration.
+   *
+   * @remarks
+   * The returned object is a shallow copy; modifying it does not affect the
+   * internal configuration. Use {@link AudioCapture.updateConfig | updateConfig()}
+   * to change settings.
+   *
+   * @returns A copy of the current {@link AudioInputConfig}.
    */
   getConfig(): AudioInputConfig {
     return { ...this.config };
   }
 
   /**
-   * Update audio configuration (requires restart to take effect)
+   * Updates the audio input configuration.
+   *
+   * @remarks
+   * Configuration changes take effect on the next call to
+   * {@link AudioCapture.start | start()}. They do **not** affect an active
+   * capture session -- you must stop and restart capture for changes to apply.
+   *
+   * @param config - Partial configuration to merge with the current settings.
    */
   updateConfig(config: Partial<AudioInputConfig>): void {
     this.config = { ...this.config, ...config };
@@ -325,7 +526,13 @@ export class AudioCapture {
   }
 
   /**
-   * Release all resources. Safe to call from any state.
+   * Releases all resources by stopping capture. Safe to call from any state.
+   *
+   * @remarks
+   * This is a convenience method equivalent to calling
+   * {@link AudioCapture.stop | stop()}. It is intended for use in cleanup/teardown
+   * code where you want to ensure all resources are freed regardless of the
+   * current state.
    */
   async dispose(): Promise<void> {
     await this.stop();

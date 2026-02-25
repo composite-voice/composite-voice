@@ -1,5 +1,21 @@
 /**
- * Anthropic LLM provider using the official Anthropic SDK
+ * Anthropic LLM provider using the official `@anthropic-ai/sdk` package.
+ *
+ * @packageDocumentation
+ *
+ * @remarks
+ * This module provides the {@link AnthropicLLM} class for generating text with
+ * Anthropic's Claude family of models. Unlike the OpenAI-compatible providers,
+ * Anthropic uses its own Messages API format with a dedicated system parameter,
+ * `content_block_delta` streaming events, and `stop_sequences` (rather than
+ * `stop`).
+ *
+ * The `@anthropic-ai/sdk` npm package is a **peer dependency** and is
+ * dynamically imported during initialization. It does not need to be bundled
+ * unless this provider is used.
+ *
+ * @see {@link BaseLLMProvider} for the abstract base class all LLM providers extend.
+ * @see {@link OpenAICompatibleLLM} for the OpenAI-compatible base class used by other providers.
  */
 
 import { BaseLLMProvider } from '../../base/BaseLLMProvider';
@@ -18,49 +34,174 @@ type MessageParam = import('@anthropic-ai/sdk/resources/messages').MessageParam;
 type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').MessageStreamEvent;
 
 /**
- * Anthropic LLM provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration for the Anthropic LLM provider.
+ *
+ * @remarks
+ * Provide either {@link AnthropicLLMConfig.apiKey | apiKey} (direct API access)
+ * or {@link AnthropicLLMConfig.proxyUrl | proxyUrl} (server-side proxy). At
+ * least one must be set; if both are provided, `proxyUrl` takes precedence.
+ *
+ * Anthropic's API differs from OpenAI's in that `max_tokens` is **required**
+ * for every request. This config defaults it to `1024` if not explicitly set.
+ *
+ * @example
+ * ```ts
+ * // Direct API access
+ * const config: AnthropicLLMConfig = {
+ *   apiKey: 'sk-ant-...',
+ *   model: 'claude-haiku-4-6',
+ *   maxTokens: 2048,
+ *   systemPrompt: 'You are a helpful voice assistant.',
+ * };
+ *
+ * // Via server-side proxy (recommended for browser apps)
+ * const proxyConfig: AnthropicLLMConfig = {
+ *   proxyUrl: 'http://localhost:3000/api/proxy/anthropic',
+ *   model: 'claude-sonnet-4-6',
+ * };
+ * ```
+ *
+ * @see {@link LLMProviderConfig} for inherited base properties (temperature, topP, systemPrompt, etc.).
  */
 export interface AnthropicLLMConfig extends LLMProviderConfig {
   /**
    * Anthropic API key.
    * Required when connecting directly to Anthropic.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   * Omit when using `proxyUrl` -- the proxy server supplies the key.
+   *
+   * @defaultValue `undefined`
    */
   apiKey?: string;
   /**
    * URL of the CompositeVoice proxy server's Anthropic endpoint.
-   * Example: `'http://localhost:3000/api/proxy/anthropic'`
    *
+   * @remarks
    * When set, the Anthropic SDK sends requests to this URL instead of
    * `https://api.anthropic.com`, allowing browsers to reach Anthropic through a
-   * same-origin proxy that injects the real API key server-side.
+   * same-origin proxy that injects the real API key server-side. A dummy API
+   * key (`'proxy'`) is used with the SDK.
+   *
+   * @defaultValue `undefined`
+   *
+   * @example
+   * ```ts
+   * proxyUrl: 'http://localhost:3000/api/proxy/anthropic'
+   * ```
    */
   proxyUrl?: string;
   /**
-   * Model to use.
-   * Fastest (default): 'claude-haiku-4-6'
-   * Balanced: 'claude-sonnet-4-6'
-   * Most capable: 'claude-opus-4-6'
+   * Anthropic model identifier.
+   *
+   * @remarks
+   * - Fastest: `'claude-haiku-4-6'` (default)
+   * - Balanced: `'claude-sonnet-4-6'`
+   * - Most capable: `'claude-opus-4-6'`
+   *
+   * @defaultValue `'claude-haiku-4-6'`
    */
   model: string;
-  /** Maximum tokens to generate (required by Anthropic API, defaults to 1024) */
+  /**
+   * Maximum tokens to generate per response.
+   *
+   * @remarks
+   * Anthropic's Messages API requires this field on every request. The provider
+   * defaults to `1024` if not set in config or per-call options.
+   *
+   * @defaultValue `1024`
+   */
   maxTokens?: number;
-  /** Base URL for API (optional, for custom endpoints — use `proxyUrl` for proxy) */
+  /**
+   * Base URL for the Anthropic API.
+   *
+   * @remarks
+   * For custom endpoints only. Use `proxyUrl` for the CompositeVoice proxy
+   * pattern. When neither is set, the SDK defaults to `https://api.anthropic.com`.
+   *
+   * @defaultValue `undefined` (SDK default: `'https://api.anthropic.com'`)
+   */
   baseURL?: string;
-  /** Maximum retries for failed requests */
+  /**
+   * Maximum number of retries for failed API requests.
+   *
+   * @defaultValue `3`
+   */
   maxRetries?: number;
 }
 
 /**
- * Anthropic LLM provider
- * Uses the official Anthropic SDK for messages API with streaming
+ * Anthropic LLM provider for Claude models.
+ *
+ * @remarks
+ * Uses the official `@anthropic-ai/sdk` for the Messages API with full support
+ * for streaming (`messages.stream`) and non-streaming (`messages.create`)
+ * responses. The provider handles the Anthropic-specific message format
+ * automatically:
+ *
+ * - **System messages** are extracted from the message array and passed as the
+ *   top-level `system` parameter (Anthropic does not accept `role: 'system'`
+ *   in the messages array).
+ * - **Streaming** yields text from `content_block_delta` events with
+ *   `type: 'text_delta'`.
+ * - **Abort** support is provided via the `options.signal` parameter, which is
+ *   forwarded to the Anthropic SDK to cancel in-flight HTTP requests.
+ *
+ * @example Basic usage with direct API access
+ * ```ts
+ * import { AnthropicLLM } from 'composite-voice';
+ *
+ * const llm = new AnthropicLLM({
+ *   apiKey: process.env.ANTHROPIC_API_KEY,
+ *   model: 'claude-haiku-4-6',
+ *   maxTokens: 512,
+ *   systemPrompt: 'You are a concise voice assistant.',
+ * });
+ * await llm.initialize();
+ *
+ * const stream = await llm.generate('What is the speed of light?');
+ * for await (const chunk of stream) {
+ *   process.stdout.write(chunk);
+ * }
+ *
+ * await llm.dispose();
+ * ```
+ *
+ * @example Usage with a server-side proxy (browser-safe)
+ * ```ts
+ * import { AnthropicLLM } from 'composite-voice';
+ *
+ * const llm = new AnthropicLLM({
+ *   proxyUrl: 'http://localhost:3000/api/proxy/anthropic',
+ *   model: 'claude-sonnet-4-6',
+ * });
+ * await llm.initialize();
+ *
+ * const stream = await llm.generate('Tell me a joke.');
+ * for await (const chunk of stream) {
+ *   document.getElementById('output')!.textContent += chunk;
+ * }
+ * ```
+ *
+ * @see {@link AnthropicLLMConfig} for configuration options.
+ * @see {@link BaseLLMProvider} for the abstract base class.
+ * @see {@link OpenAILLM} for the OpenAI alternative.
  */
 export class AnthropicLLM extends BaseLLMProvider {
   declare public config: AnthropicLLMConfig;
   private client: AnthropicInstance | null = null;
 
+  /**
+   * Creates a new Anthropic LLM provider instance.
+   *
+   * @remarks
+   * The constructor normalizes the configuration by applying defaults:
+   * `maxTokens` defaults to `1024`, `stream` defaults to `true`, and
+   * `model` defaults to `'claude-haiku-4-6'`.
+   *
+   * @param config - Anthropic provider configuration. Must include at least
+   *   `model` and either `apiKey` or `proxyUrl`.
+   * @param logger - Optional custom logger instance. If omitted, a default
+   *   logger is created by the base class.
+   */
   constructor(config: AnthropicLLMConfig, logger?: Logger) {
     const normalizedConfig: AnthropicLLMConfig = {
       maxTokens: 1024,
@@ -71,6 +212,18 @@ export class AnthropicLLM extends BaseLLMProvider {
     super(normalizedConfig, logger);
   }
 
+  /**
+   * Initialize the Anthropic client.
+   *
+   * @remarks
+   * Dynamically imports the `@anthropic-ai/sdk` peer dependency, resolves the
+   * base URL (preferring `proxyUrl` over `baseURL`), and creates the SDK client
+   * instance. Called automatically by {@link BaseLLMProvider.initialize}.
+   *
+   * @throws {@link ProviderInitializationError}
+   * Thrown if neither `apiKey` nor `proxyUrl` is configured, or if the
+   * `@anthropic-ai/sdk` package cannot be found (peer dependency not installed).
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -116,13 +269,37 @@ export class AnthropicLLM extends BaseLLMProvider {
     }
   }
 
+  /**
+   * Dispose of the Anthropic client and release resources.
+   *
+   * @remarks
+   * Nullifies the client reference so that it can be garbage-collected.
+   * Called automatically by {@link BaseLLMProvider.dispose}.
+   */
   protected async onDispose(): Promise<void> {
     this.client = null;
     this.logger.info('Anthropic LLM disposed');
   }
 
   /**
-   * Generate a response from a prompt
+   * Generate an LLM response from a single text prompt.
+   *
+   * @remarks
+   * Convenience wrapper that converts the prompt to a message array (prepending
+   * the system prompt if configured) and delegates to
+   * {@link AnthropicLLM.generateFromMessages | generateFromMessages}.
+   *
+   * @param prompt - The user's text prompt.
+   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
+   * @returns An async iterable that yields text chunks. When streaming is enabled
+   *   (the default), chunks arrive incrementally; otherwise, a single chunk
+   *   containing the full response is yielded.
+   *
+   * @throws {@link Error}
+   * Thrown if the provider has not been initialized or the client is unavailable.
+   *
+   * @throws `AbortError`
+   * Thrown if the provided `options.signal` is aborted before or during generation.
    */
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     const messages = this.promptToMessages(prompt);
@@ -130,7 +307,43 @@ export class AnthropicLLM extends BaseLLMProvider {
   }
 
   /**
-   * Generate a response from a conversation
+   * Generate an LLM response from a multi-turn conversation.
+   *
+   * @remarks
+   * This is the primary generation method. It extracts system messages from the
+   * array and passes them as Anthropic's top-level `system` parameter (since
+   * Anthropic does not accept `role: 'system'` inline). Remaining messages are
+   * converted to the Anthropic `MessageParam` format.
+   *
+   * Dispatches to either the streaming (`messages.stream`) or non-streaming
+   * (`messages.create`) code path based on `config.stream`.
+   *
+   * @param messages - Array of conversation messages (system, user, assistant).
+   *   System messages are extracted and concatenated into the top-level `system`
+   *   parameter.
+   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
+   * @returns An async iterable that yields text chunks. When streaming is enabled
+   *   (the default), chunks arrive incrementally from `content_block_delta`
+   *   events; otherwise, a single chunk containing the full response is yielded.
+   *
+   * @throws {@link Error}
+   * Thrown if the provider has not been initialized or the client is unavailable.
+   *
+   * @throws `AbortError`
+   * Thrown if the provided `options.signal` is aborted before or during generation.
+   *
+   * @example
+   * ```ts
+   * const messages: LLMMessage[] = [
+   *   { role: 'system', content: 'You are a helpful assistant.' },
+   *   { role: 'user', content: 'Summarize the theory of relativity.' },
+   * ];
+   *
+   * const stream = await anthropicLLM.generateFromMessages(messages);
+   * for await (const chunk of stream) {
+   *   process.stdout.write(chunk);
+   * }
+   * ```
    */
   async generateFromMessages(
     messages: LLMMessage[],
@@ -168,7 +381,18 @@ export class AnthropicLLM extends BaseLLMProvider {
   }
 
   /**
-   * Stream response from Anthropic
+   * Stream a response from the Anthropic Messages API.
+   *
+   * @remarks
+   * Uses `client.messages.stream()` to open a server-sent events stream.
+   * Yields text from `content_block_delta` events where `delta.type` is
+   * `'text_delta'`. The abort signal is forwarded to the SDK so that in-flight
+   * HTTP requests can be cancelled.
+   *
+   * @param messages - Messages in Anthropic `MessageParam` format (no system role).
+   * @param system - Concatenated system prompt, or `undefined` if none.
+   * @param options - Merged generation options including an optional abort signal.
+   * @returns An async iterable of streamed text tokens.
    */
   private async streamResponse(
     messages: MessageParam[],
@@ -235,7 +459,17 @@ export class AnthropicLLM extends BaseLLMProvider {
   }
 
   /**
-   * Non-streaming response from Anthropic
+   * Perform a non-streaming request to the Anthropic Messages API.
+   *
+   * @remarks
+   * Makes a single API call with `stream: false` and yields the entire text
+   * content of the first content block as one string. Usage statistics
+   * (input/output tokens) are logged at debug level.
+   *
+   * @param messages - Messages in Anthropic `MessageParam` format (no system role).
+   * @param system - Concatenated system prompt, or `undefined` if none.
+   * @param options - Merged generation options including an optional abort signal.
+   * @returns An async iterable that yields a single string containing the full response.
    */
   private async nonStreamResponse(
     messages: MessageParam[],

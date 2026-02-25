@@ -1,5 +1,18 @@
 /**
- * Native browser TTS provider using Web Speech API
+ * Native browser TTS provider using the Web Speech API.
+ *
+ * @remarks
+ * This module provides a TTS provider that leverages the browser's built-in
+ * {@link https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis | SpeechSynthesis API}
+ * for text-to-speech conversion. Unlike other TTS providers in the SDK, NativeTTS
+ * manages its own audio playback directly through the browser -- CompositeVoice does
+ * NOT receive audio data from this provider. The audio flows directly from the
+ * SpeechSynthesis engine to the device speakers.
+ *
+ * Transport: None (browser-managed playback)
+ * Audio format: Browser-native (not capturable)
+ *
+ * @packageDocumentation
  */
 
 import { RestTTSProvider } from '../../base/RestTTSProvider';
@@ -7,33 +20,126 @@ import type { TTSProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 
 /**
- * Native TTS provider configuration
+ * Configuration options for the {@link NativeTTS} provider.
+ *
+ * @remarks
+ * Extends the base {@link TTSProviderConfig} with options specific to the
+ * browser's SpeechSynthesis API, including voice selection by name or language
+ * and a preference for local (offline) voices.
+ *
+ * @example
+ * ```typescript
+ * const config: NativeTTSConfig = {
+ *   voiceName: 'Google US English',
+ *   voiceLang: 'en-US',
+ *   preferLocal: true,
+ *   rate: 1.2,
+ *   pitch: 0,
+ * };
+ * ```
  */
 export interface NativeTTSConfig extends TTSProviderConfig {
-  /** Voice name or URI */
+  /**
+   * Voice name or URI to select from available browser voices.
+   *
+   * @remarks
+   * Performs a case-insensitive partial match against available voice names.
+   * If no match is found, falls back to language-based or default selection.
+   *
+   * @defaultValue `undefined` (uses `voice` or falls back to `'default'`)
+   */
   voiceName?: string;
-  /** Voice language */
+
+  /**
+   * BCP 47 language tag to filter available voices (e.g., `'en-US'`, `'fr'`).
+   *
+   * @remarks
+   * Used as a fallback when no voice matches `voiceName` or `voice`.
+   * Matches voices whose `lang` property starts with this value.
+   *
+   * @defaultValue `undefined`
+   */
   voiceLang?: string;
-  /** Prefer local voices */
+
+  /**
+   * Whether to prefer locally-installed voices over network voices.
+   *
+   * @remarks
+   * Local voices are typically lower latency and work offline. When `true`,
+   * the provider will prefer voices where `SpeechSynthesisVoice.localService`
+   * is `true`, if no voice was matched by name or language.
+   *
+   * @defaultValue `true`
+   */
   preferLocal?: boolean;
 }
 
 /**
- * Native browser TTS provider
- * Uses the Web Speech API (SpeechSynthesis)
- * Browser plays audio directly - CompositeVoice does NOT receive audio
+ * Native browser TTS provider using the Web Speech API (SpeechSynthesis).
+ *
+ * @remarks
+ * This provider uses the browser's built-in speech synthesis capabilities.
+ * It plays audio directly through the browser's audio output -- CompositeVoice
+ * does NOT receive audio data. The `synthesize()` method returns an empty `Blob`
+ * because the Web Speech API does not expose raw audio buffers.
+ *
+ * Key characteristics:
+ * - Zero setup required -- no API keys or external services needed
+ * - Audio is played directly by the browser (not routed through the SDK)
+ * - Voice selection supports name matching, language filtering, and local preference
+ * - Supports pause, resume, and cancel operations
+ * - Pitch is normalized from semitones (-20 to 20) to Web Speech range (0 to 2)
+ *
+ * Audio flow: `Text -> SpeechSynthesis.speak() -> Device Speakers`
+ *
+ * @example
+ * ```typescript
+ * import { NativeTTS } from 'composite-voice';
+ *
+ * const tts = new NativeTTS({
+ *   voiceName: 'Google US English',
+ *   rate: 1.0,
+ *   pitch: 0,
+ *   preferLocal: true,
+ * });
+ *
+ * await tts.initialize();
+ * await tts.synthesize('Hello, world!');
+ * ```
+ *
+ * @see {@link RestTTSProvider} - The base class this provider extends.
+ * @see {@link NativeTTSConfig} - Configuration options for this provider.
  */
 export class NativeTTS extends RestTTSProvider {
   declare public config: NativeTTSConfig;
   /**
-   * NativeTTS manages its own audio playback via the SpeechSynthesis API.
-   * CompositeVoice will not set up AudioPlayer when this is true.
+   * Indicates that NativeTTS manages its own audio playback via the SpeechSynthesis API.
+   *
+   * @remarks
+   * When `true`, CompositeVoice will not set up an AudioPlayer for this provider.
+   * Audio is played directly by the browser's SpeechSynthesis engine.
    */
   public override readonly managedAudio = true;
   private synthesis: SpeechSynthesis;
   private availableVoices: SpeechSynthesisVoice[] = [];
   private selectedVoice: SpeechSynthesisVoice | null = null;
 
+  /**
+   * Creates a new NativeTTS provider instance.
+   *
+   * @param config - Partial configuration for the native TTS provider.
+   *   Missing values are filled with sensible defaults.
+   * @param logger - Optional logger instance for debug and diagnostic output.
+   *
+   * @example
+   * ```typescript
+   * const tts = new NativeTTS({
+   *   voiceName: 'Samantha',
+   *   rate: 1.0,
+   *   pitch: 0,
+   * });
+   * ```
+   */
   constructor(config: Partial<NativeTTSConfig> = {}, logger?: Logger) {
     const voiceValue = config.voice ?? config.voiceName ?? 'default';
     super(
@@ -50,6 +156,15 @@ export class NativeTTS extends RestTTSProvider {
     this.synthesis = window.speechSynthesis;
   }
 
+  /**
+   * Initializes the provider by loading browser voices and selecting the best match.
+   *
+   * @remarks
+   * Waits for the browser to populate the voice list (which may be asynchronous
+   * in some browsers), then selects a voice based on the configured preferences.
+   *
+   * @throws Error if the SpeechSynthesis API is not supported in the current browser.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.synthesis) {
       throw new Error('Speech Synthesis API is not supported in this browser');
@@ -67,13 +182,23 @@ export class NativeTTS extends RestTTSProvider {
     });
   }
 
+  /**
+   * Disposes the provider and cancels any ongoing speech.
+   */
   protected async onDispose(): Promise<void> {
     // Cancel any ongoing speech
     this.synthesis.cancel();
   }
 
   /**
-   * Load available voices
+   * Loads available voices from the browser's SpeechSynthesis API.
+   *
+   * @remarks
+   * Some browsers load voices asynchronously. This method first checks if
+   * voices are already available, then listens for the `voiceschanged` event,
+   * with a 1-second fallback timeout to prevent indefinite waiting.
+   *
+   * @returns A promise that resolves once voices have been loaded.
    */
   private async loadVoices(): Promise<void> {
     return new Promise((resolve) => {
@@ -102,7 +227,14 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Select appropriate voice based on configuration
+   * Selects the most appropriate voice based on configuration preferences.
+   *
+   * @remarks
+   * Voice selection follows this priority order:
+   * 1. Match by voice name (case-insensitive partial match via `config.voice`)
+   * 2. Match by language tag (prefix match via `config.voiceLang`)
+   * 3. Prefer local voices if `config.preferLocal` is `true`
+   * 4. Fall back to the first available voice
    */
   private selectVoice(): void {
     if (this.availableVoices.length === 0) {
@@ -150,14 +282,24 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Synthesize text to speech (REST-style, but plays immediately)
+   * Synthesizes text to speech using the browser's SpeechSynthesis API.
    *
-   * Note: Native TTS uses SpeechSynthesis API which directly plays to speakers.
-   * Audio flow: Text → SpeechSynthesis.speak() → Speakers
-   * This provider does NOT emit audio via onAudio() callbacks.
+   * @remarks
+   * Unlike other TTS providers, NativeTTS plays audio directly through the
+   * browser's audio output. The returned `Blob` is always empty because the
+   * Web Speech API does not expose raw audio buffers. This provider does NOT
+   * emit audio via `onAudio()` callbacks.
    *
-   * @param text Text to synthesize
-   * @returns Empty Blob (audio is played directly by browser, cannot be captured)
+   * Audio flow: `Text -> SpeechSynthesisUtterance -> SpeechSynthesis.speak() -> Speakers`
+   *
+   * Pitch is converted from semitones (-20 to 20) to the Web Speech API range
+   * (0 to 2) using the formula: `1 + pitch / 20`.
+   *
+   * @param text - The text to synthesize into speech.
+   * @returns An empty `Blob` (audio is played directly by the browser and cannot be captured).
+   *
+   * @throws Error if the provider is not initialized.
+   * @throws Error if the speech synthesis encounters an error (e.g., network or voice failure).
    */
   async synthesize(text: string): Promise<Blob> {
     this.assertReady();
@@ -192,7 +334,11 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Cancel ongoing speech
+   * Cancels any ongoing speech synthesis immediately.
+   *
+   * @remarks
+   * Removes all utterances from the utterance queue and stops the
+   * currently speaking utterance, if any.
    */
   cancel(): void {
     this.synthesis.cancel();
@@ -200,7 +346,11 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Pause ongoing speech
+   * Pauses the currently speaking utterance.
+   *
+   * @remarks
+   * The utterance can be resumed later with {@link NativeTTS.resume}.
+   * If nothing is currently being spoken, this is a no-op.
    */
   pause(): void {
     this.synthesis.pause();
@@ -208,7 +358,12 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Resume paused speech
+   * Resumes a previously paused utterance.
+   *
+   * @remarks
+   * Has no effect if speech is not currently paused.
+   *
+   * @see {@link NativeTTS.pause}
    */
   resume(): void {
     this.synthesis.resume();
@@ -216,35 +371,63 @@ export class NativeTTS extends RestTTSProvider {
   }
 
   /**
-   * Check if currently speaking
+   * Checks whether the browser is currently speaking.
+   *
+   * @returns `true` if the SpeechSynthesis engine is actively speaking, `false` otherwise.
    */
   isSpeaking(): boolean {
     return this.synthesis.speaking;
   }
 
   /**
-   * Check if speech is paused
+   * Checks whether speech is currently paused.
+   *
+   * @returns `true` if the SpeechSynthesis engine is paused, `false` otherwise.
    */
   isPaused(): boolean {
     return this.synthesis.paused;
   }
 
   /**
-   * Get available voices
+   * Returns a copy of all voices available in the browser.
+   *
+   * @remarks
+   * The returned array is a shallow copy; modifying it does not affect
+   * the provider's internal voice list.
+   *
+   * @returns An array of {@link SpeechSynthesisVoice} objects available in the browser.
    */
   getAvailableVoices(): SpeechSynthesisVoice[] {
     return [...this.availableVoices];
   }
 
   /**
-   * Get currently selected voice
+   * Returns the currently selected voice, if any.
+   *
+   * @returns The selected {@link SpeechSynthesisVoice}, or `null` if no voice is selected.
    */
   getSelectedVoice(): SpeechSynthesisVoice | null {
     return this.selectedVoice;
   }
 
   /**
-   * Set voice by name
+   * Changes the active voice by name.
+   *
+   * @remarks
+   * Performs a case-insensitive partial match against available voice names.
+   * If the voice is found, it becomes the active voice for subsequent
+   * `synthesize()` calls.
+   *
+   * @param voiceName - The name (or partial name) of the voice to select.
+   * @returns `true` if a matching voice was found and selected, `false` otherwise.
+   *
+   * @example
+   * ```typescript
+   * const success = tts.setVoice('Google US English');
+   * if (!success) {
+   *   console.warn('Voice not found, using default');
+   * }
+   * ```
    */
   setVoice(voiceName: string): boolean {
     const voice = this.availableVoices.find(

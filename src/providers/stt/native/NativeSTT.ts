@@ -1,5 +1,7 @@
 /**
- * Native browser STT provider using Web Speech API
+ * Native browser speech-to-text provider using the Web Speech API.
+ *
+ * @packageDocumentation
  */
 
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
@@ -56,37 +58,126 @@ declare const SpeechRecognition: {
 };
 
 /**
- * Native STT provider configuration
+ * Configuration options for the {@link NativeSTT} provider.
+ *
+ * @remarks
+ * Extends {@link STTProviderConfig} with settings specific to the browser's
+ * `SpeechRecognition` API.
+ *
+ * @example
+ * ```ts
+ * const config: NativeSTTConfig = {
+ *   language: 'en-US',
+ *   continuous: true,
+ *   interimResults: true,
+ *   maxAlternatives: 1,
+ *   startTimeout: 5000,
+ * };
+ * ```
  */
 export interface NativeSTTConfig extends STTProviderConfig {
-  /** Enable continuous recognition */
+  /**
+   * Enable continuous recognition so the browser keeps listening after
+   * each utterance ends.
+   * @defaultValue `true`
+   */
   continuous?: boolean;
-  /** Maximum number of alternatives */
+  /**
+   * Maximum number of alternative transcriptions the browser should return
+   * per recognition result.
+   * @defaultValue `1`
+   */
   maxAlternatives?: number;
   /**
    * Maximum milliseconds to wait for the recognition `start` event after calling start().
    * If the browser does not fire `onstart` within this window, connect() rejects.
-   * @default 5000
+   * @defaultValue `5000`
    */
   startTimeout?: number;
 }
 
 /**
- * Native browser STT provider
- * Uses the Web Speech API (SpeechRecognition)
- * Browser manages microphone directly - CompositeVoice does NOT send audio
+ * Native browser STT provider backed by the Web Speech API (`SpeechRecognition`).
+ *
+ * @remarks
+ * Unlike other STT providers, `NativeSTT` manages its own audio pipeline
+ * -- the browser's `SpeechRecognition` API directly accesses the microphone.
+ * Because of this, the {@link managedAudio} flag is set to `true` and
+ * CompositeVoice will **not** set up an `AudioCapture` instance. The
+ * {@link sendAudio} method is a no-op.
+ *
+ * **Transport:** WebSocket-like (browser-managed, extends {@link LiveSTTProvider})
+ *
+ * **Browser support:**
+ * - Chrome / Edge (Chromium): Full support via `SpeechRecognition`
+ * - Safari: Partial support via `webkitSpeechRecognition`
+ * - Firefox: Not supported (as of 2025)
+ *
+ * **Data flow:**
+ *
+ * ```
+ * Microphone -> SpeechRecognition API (browser) -> onresult event
+ *                                                      |
+ * CompositeVoice <- onTranscription(result) <---------+
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { NativeSTT } from 'composite-voice';
+ *
+ * const stt = new NativeSTT({
+ *   language: 'en-US',
+ *   continuous: true,
+ *   interimResults: true,
+ *   maxAlternatives: 1,
+ * });
+ *
+ * await stt.initialize();
+ *
+ * stt.onTranscription((result) => {
+ *   console.log(result.text, result.isFinal);
+ * });
+ *
+ * await stt.connect(); // starts listening
+ * // ... later ...
+ * await stt.disconnect(); // stops listening
+ * ```
+ *
+ * @see {@link LiveSTTProvider} for the base WebSocket STT class
+ * @see {@link NativeSTTConfig} for configuration options
+ * @see {@link DeepgramSTT} for an alternative real-time STT provider
  */
 export class NativeSTT extends LiveSTTProvider {
   declare public config: NativeSTTConfig;
+
   /**
-   * NativeSTT manages its own audio capture via the SpeechRecognition API.
-   * CompositeVoice will not set up AudioCapture when this is true.
+   * NativeSTT manages its own audio capture via the `SpeechRecognition` API.
+   *
+   * @remarks
+   * When this flag is `true`, CompositeVoice will **not** set up
+   * `AudioCapture`. The browser's `SpeechRecognition` API handles
+   * microphone access and audio processing internally.
    */
   public override readonly managedAudio = true;
+
+  /** The underlying browser `SpeechRecognition` instance. */
   private recognition: SpeechRecognition | null = null;
   // State is now managed externally by AudioCaptureStateMachine!
   // No more isRecognizing or isPaused flags
 
+  /**
+   * Create a new NativeSTT provider.
+   *
+   * @param config - Partial configuration; unset values receive sensible
+   *   defaults (`language: 'en-US'`, `continuous: true`,
+   *   `interimResults: true`, `maxAlternatives: 1`).
+   * @param logger - Optional parent logger; a child will be derived.
+   *
+   * @example
+   * ```ts
+   * const stt = new NativeSTT({ language: 'fr-FR', continuous: false });
+   * ```
+   */
   constructor(config: Partial<NativeSTTConfig> = {}, logger?: Logger) {
     const finalConfig = {
       language: config.language ?? 'en-US',
@@ -98,6 +189,12 @@ export class NativeSTT extends LiveSTTProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Initialize the `SpeechRecognition` instance and configure it.
+   *
+   * @throws {@link Error}
+   * Thrown when the Web Speech API is not available in the current browser.
+   */
   protected onInitialize(): Promise<void> {
     this.logger.debug('Starting NativeSTT initialization');
 
@@ -130,6 +227,7 @@ export class NativeSTT extends LiveSTTProvider {
     return Promise.resolve();
   }
 
+  /** Disconnect and release the `SpeechRecognition` instance. */
   protected async onDispose(): Promise<void> {
     if (this.recognition) {
       await this.disconnect();
@@ -138,7 +236,8 @@ export class NativeSTT extends LiveSTTProvider {
   }
 
   /**
-   * Setup recognition event handlers
+   * Wire up `onresult`, `onerror`, `onend`, and `onstart` handlers on the
+   * `SpeechRecognition` instance.
    */
   private setupEventHandlers(): void {
     if (!this.recognition) return;
@@ -216,9 +315,14 @@ export class NativeSTT extends LiveSTTProvider {
   }
 
   /**
-   * Request microphone permission before starting recognition
-   * The Web Speech API will automatically request permission when start() is called,
-   * but we can pre-check using getUserMedia to provide better error messages
+   * Pre-check microphone permission via `getUserMedia`.
+   *
+   * @remarks
+   * The Web Speech API will request permission automatically when
+   * `start()` is called, but pre-checking allows for better error
+   * messages when permission is denied or no microphone is available.
+   *
+   * @returns `true` if microphone access was granted, `false` otherwise.
    */
   private async checkMicrophonePermission(): Promise<boolean> {
     try {
@@ -235,7 +339,17 @@ export class NativeSTT extends LiveSTTProvider {
   }
 
   /**
-   * Connect and start recognition
+   * Start the browser's speech recognition engine.
+   *
+   * @remarks
+   * Checks microphone permission, then calls `SpeechRecognition.start()`.
+   * The returned promise resolves once the browser fires the `onstart`
+   * event, or rejects if the start times out or permission is denied.
+   *
+   * @throws {@link ProviderConnectionError}
+   * Thrown when the provider is not initialized, microphone permission is
+   * denied, or the recognition engine does not start within
+   * {@link NativeSTTConfig.startTimeout | startTimeout} milliseconds.
    */
   async connect(): Promise<void> {
     this.logger.debug('Attempting to connect NativeSTT', {
@@ -320,7 +434,13 @@ export class NativeSTT extends LiveSTTProvider {
   }
 
   /**
-   * Disconnect and stop recognition (stateless)
+   * Stop the browser's speech recognition engine.
+   *
+   * @remarks
+   * Calls `SpeechRecognition.stop()`. If the recognition instance has
+   * already been stopped, the error is silently ignored.
+   *
+   * @returns Resolves immediately after requesting the stop.
    */
   disconnect(): Promise<void> {
     if (!this.recognition) {
@@ -339,17 +459,24 @@ export class NativeSTT extends LiveSTTProvider {
   }
 
   /**
-   * Check if recognition object exists and is ready
+   * Check whether the `SpeechRecognition` instance exists and is ready.
+   *
+   * @returns `true` when the recognition object has been created (after
+   *   initialization).
    */
   isConnected(): boolean {
     return this.recognition !== null;
   }
 
   /**
-   * Native provider doesn't use sendAudio (it directly accesses microphone via SpeechRecognition API)
-   * This method is a no-op and should not be called. CompositeVoice should NOT call this method.
+   * No-op -- NativeSTT directly accesses the microphone via the
+   * `SpeechRecognition` API and does not accept external audio data.
    *
-   * @param _chunk Audio chunk (unused)
+   * @remarks
+   * CompositeVoice should **not** call this method when
+   * {@link managedAudio} is `true`. Any invocation is silently ignored.
+   *
+   * @param _chunk - Audio chunk (unused).
    */
   sendAudio(_chunk: ArrayBuffer): void {
     // No-op: Native STT uses SpeechRecognition API which directly accesses the microphone

@@ -1,6 +1,17 @@
 /**
- * Cartesia TTS provider using WebSocket streaming API
- * Low-latency real-time streaming text-to-speech via WebSocket
+ * Cartesia TTS provider using WebSocket streaming API.
+ *
+ * @remarks
+ * This module provides a low-latency WebSocket-based real-time streaming text-to-speech
+ * provider powered by Cartesia's Sonic voice models. Text chunks are sent over a persistent
+ * WebSocket connection with context-based streaming continuation, and audio chunks are
+ * received as raw PCM or encoded audio.
+ *
+ * Transport: WebSocket (direct to Cartesia or via proxy)
+ * Audio format: Configurable (pcm_s16le, pcm_f32le, pcm_mulaw, pcm_alaw);
+ * default is `pcm_s16le` at 16 kHz in a `raw` container
+ *
+ * @packageDocumentation
  */
 
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
@@ -13,7 +24,14 @@ import {
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
- * Cartesia model IDs
+ * Cartesia voice model identifiers.
+ *
+ * @remarks
+ * - `sonic-2` -- Latest model with improved quality and speed (default)
+ * - `sonic` -- Previous-generation model
+ * - `sonic-multilingual` -- Multi-language support
+ *
+ * Custom model IDs are also accepted via the `string & {}` type widening.
  */
 export type CartesiaTTSModel =
   | 'sonic-2'
@@ -22,7 +40,15 @@ export type CartesiaTTSModel =
   | (string & {});
 
 /**
- * Cartesia output format encoding
+ * Cartesia output audio encoding types.
+ *
+ * @remarks
+ * - `pcm_s16le` -- 16-bit signed little-endian PCM (default)
+ * - `pcm_f32le` -- 32-bit float little-endian PCM
+ * - `pcm_mulaw` -- mu-law encoded PCM (telephony)
+ * - `pcm_alaw` -- A-law encoded PCM (telephony)
+ *
+ * Custom encoding strings are also accepted via the `string & {}` type widening.
  */
 export type CartesiaOutputEncoding =
   | 'pcm_s16le'
@@ -32,76 +58,167 @@ export type CartesiaOutputEncoding =
   | (string & {});
 
 /**
- * Cartesia output format configuration
+ * Cartesia output format configuration passed in each WebSocket message.
+ *
+ * @remarks
+ * Cartesia requires the output format to be specified in every synthesis request.
+ * For WebSocket streaming, the container is always `'raw'` (no wrapper).
  */
 export interface CartesiaOutputFormat {
-  /** Container format — always 'raw' for WebSocket streaming */
+  /**
+   * Container format.
+   *
+   * @remarks
+   * Always `'raw'` for WebSocket streaming (no WAV header or other wrapper).
+   */
   container: 'raw';
-  /** Audio encoding */
+
+  /**
+   * Audio encoding for the output samples.
+   *
+   * @see {@link CartesiaOutputEncoding}
+   */
   encoding: CartesiaOutputEncoding;
-  /** Sample rate in Hz */
+
+  /**
+   * Sample rate of the output audio in Hz.
+   */
   sample_rate: number;
 }
 
 /**
- * Cartesia TTS provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration for the {@link CartesiaTTS} provider.
+ *
+ * @remarks
+ * Provide either `apiKey` (for direct API access) or `proxyUrl` (for server-side proxy).
+ * At least one must be set. If both are provided, `proxyUrl` takes precedence and the
+ * API key is not sent to the client. The `voiceId` is always required.
+ *
+ * @example
+ * ```typescript
+ * // Direct API access
+ * const config: CartesiaTTSConfig = {
+ *   apiKey: 'cart-xxxxxxxxxxxx',
+ *   voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+ *   modelId: 'sonic-2',
+ *   language: 'en',
+ *   outputEncoding: 'pcm_s16le',
+ *   outputSampleRate: 24000,
+ * };
+ *
+ * // Via proxy server
+ * const proxyConfig: CartesiaTTSConfig = {
+ *   proxyUrl: 'http://localhost:3001/api/proxy/cartesia',
+ *   voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+ * };
+ * ```
+ *
+ * @see {@link CartesiaTTSModel} - Available model options.
+ * @see {@link CartesiaOutputEncoding} - Available encoding options.
  */
 export interface CartesiaTTSConfig extends TTSProviderConfig {
   /**
-   * Cartesia API key.
-   * Required when connecting directly to Cartesia.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   * Cartesia API key for direct authentication.
+   *
+   * @remarks
+   * Required when connecting directly to Cartesia (no proxy).
+   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
    */
   apiKey?: string;
+
   /**
    * URL of the CompositeVoice proxy server's Cartesia endpoint.
-   * Example: `'http://localhost:3000/api/proxy/cartesia'`
+   *
+   * @remarks
+   * When set, the WebSocket connection is routed through the proxy and the
+   * `apiKey` is not required on the client side. The HTTP URL is automatically
+   * converted to a WebSocket URL (`ws://` or `wss://`).
+   *
+   * @example `'http://localhost:3001/api/proxy/cartesia'`
    */
   proxyUrl?: string;
+
   /**
    * Cartesia voice ID (required).
-   * Find voice IDs via the Cartesia voice library.
+   *
+   * @remarks
+   * Find voice IDs via the {@link https://play.cartesia.ai/voices | Cartesia Voice Library}
+   * or the API's list voices endpoint.
    */
   voiceId: string;
+
   /**
    * Model ID to use for synthesis.
-   * @default 'sonic-2'
+   *
+   * @defaultValue `'sonic-2'`
+   * @see {@link CartesiaTTSModel}
    */
   modelId?: CartesiaTTSModel;
+
   /**
-   * Language code for synthesis.
-   * @default 'en'
+   * BCP 47 language code for synthesis.
+   *
+   * @defaultValue `'en'`
    */
   language?: string;
+
   /**
    * Output audio encoding format.
-   * @default 'pcm_s16le'
+   *
+   * @defaultValue `'pcm_s16le'`
+   * @see {@link CartesiaOutputEncoding}
    */
   outputEncoding?: CartesiaOutputEncoding;
+
   /**
    * Output audio sample rate in Hz.
-   * @default 16000
+   *
+   * @defaultValue `16000`
    */
   outputSampleRate?: number;
+
   /**
-   * Speech speed multiplier. Values > 1 speed up, < 1 slow down.
+   * Speech speed multiplier.
+   *
+   * @remarks
+   * Values greater than 1 speed up speech; values less than 1 slow it down.
+   *
+   * @defaultValue `undefined` (uses Cartesia's default)
    */
   speed?: number;
+
   /**
    * Emotion controls for voice expression.
-   * Array of emotion tags, e.g. ['positivity:high', 'curiosity']
+   *
+   * @remarks
+   * An array of emotion tags that influence the voice's expressiveness.
+   * Example tags: `'positivity:high'`, `'curiosity'`, `'anger:low'`.
+   *
+   * @defaultValue `undefined`
+   *
+   * @example
+   * ```typescript
+   * { emotion: ['positivity:high', 'curiosity'] }
+   * ```
    */
   emotion?: string[];
+
   /**
    * Cartesia API version string.
-   * @default '2024-06-10'
+   *
+   * @remarks
+   * Used as a query parameter in the WebSocket URL for direct connections.
+   *
+   * @defaultValue `'2024-06-10'`
    */
   cartesiaVersion?: string;
 }
 
-/** Map Cartesia encoding to SDK AudioEncoding */
+/**
+ * Maps Cartesia output encoding strings to SDK-compatible {@link AudioEncoding} values.
+ *
+ * @internal
+ */
 const ENCODING_MAP: Record<string, 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw'> = {
   pcm_s16le: 'linear16',
   pcm_f32le: 'linear16',
@@ -110,9 +227,53 @@ const ENCODING_MAP: Record<string, 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw
 };
 
 /**
- * Cartesia TTS provider
- * Low-latency real-time streaming text-to-speech via WebSocket
- * CompositeVoice sends text chunks to this provider and receives audio chunks
+ * Cartesia TTS provider for low-latency real-time streaming text-to-speech via WebSocket.
+ *
+ * @remarks
+ * This provider establishes a WebSocket connection to the Cartesia TTS API (or a proxy).
+ * It uses Cartesia's context-based streaming protocol, where a `context_id` links multiple
+ * text chunks into a single coherent utterance. The `continue` flag indicates whether a
+ * chunk continues an existing context or starts a new one.
+ *
+ * The lifecycle is:
+ * 1. Construct with {@link CartesiaTTSConfig}
+ * 2. Call `initialize()` to validate configuration
+ * 3. Call `connect()` to open the WebSocket and generate a context ID
+ * 4. Call `sendText()` to stream text for synthesis (uses context continuation)
+ * 5. Call `finalize()` to send end-of-input and flush remaining audio
+ * 6. Call `disconnect()` to close the WebSocket
+ * 7. Call `dispose()` to release all resources
+ *
+ * Audio flow: `Text chunks -> WebSocket -> Cartesia -> Audio chunks -> onAudio callback`
+ *
+ * @example
+ * ```typescript
+ * import { CartesiaTTS } from 'composite-voice';
+ *
+ * const tts = new CartesiaTTS({
+ *   apiKey: 'cart-xxxxxxxxxxxx',
+ *   voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+ *   modelId: 'sonic-2',
+ *   outputEncoding: 'pcm_s16le',
+ *   outputSampleRate: 24000,
+ * });
+ *
+ * await tts.initialize();
+ * await tts.connect();
+ *
+ * tts.onAudio((chunk) => {
+ *   // Process audio chunk
+ * });
+ *
+ * tts.sendText('Hello, ');
+ * tts.sendText('world!');
+ * await tts.finalize();
+ * await tts.disconnect();
+ * ```
+ *
+ * @see {@link LiveTTSProvider} - The base class this provider extends.
+ * @see {@link CartesiaTTSConfig} - Configuration options for this provider.
+ * @see {@link WebSocketManager} - The WebSocket manager used for connection handling.
  */
 export class CartesiaTTS extends LiveTTSProvider {
   declare public config: CartesiaTTSConfig;
@@ -121,6 +282,21 @@ export class CartesiaTTS extends LiveTTSProvider {
   private contextId: string | null = null;
   private hasSentFirstChunk = false;
 
+  /**
+   * Creates a new CartesiaTTS provider instance.
+   *
+   * @param config - Configuration for the Cartesia TTS provider.
+   *   The `voiceId` property is required.
+   * @param logger - Optional logger instance for debug and diagnostic output.
+   *
+   * @example
+   * ```typescript
+   * const tts = new CartesiaTTS({
+   *   apiKey: 'cart-xxxxxxxxxxxx',
+   *   voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+   * });
+   * ```
+   */
   constructor(config: CartesiaTTSConfig, logger?: Logger) {
     const finalConfig: CartesiaTTSConfig = {
       modelId: 'sonic-2',
@@ -134,6 +310,12 @@ export class CartesiaTTS extends LiveTTSProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Validates configuration and prepares the provider for connection.
+   *
+   * @throws {@link ProviderInitializationError} if neither `apiKey` nor `proxyUrl` is configured.
+   * @throws {@link ProviderInitializationError} if `voiceId` is not provided.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -158,6 +340,9 @@ export class CartesiaTTS extends LiveTTSProvider {
     });
   }
 
+  /**
+   * Disposes the provider, disconnecting from the WebSocket and releasing resources.
+   */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
@@ -169,7 +354,14 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Build the WebSocket URL for Cartesia streaming TTS
+   * Builds the WebSocket URL for the Cartesia streaming TTS endpoint.
+   *
+   * @remarks
+   * When using a proxy, the HTTP URL is converted to a WebSocket URL.
+   * For direct connections, the URL includes the API key and Cartesia
+   * API version as query parameters.
+   *
+   * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
     if (this.config.proxyUrl) {
@@ -182,7 +374,14 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Generate a random context ID for streaming continuation
+   * Generates a random context ID for streaming continuation.
+   *
+   * @remarks
+   * Cartesia uses context IDs to link multiple text chunks into a single
+   * coherent utterance. A new context ID is generated on each `connect()`
+   * and after each `finalize()`.
+   *
+   * @returns A UUID-like random string (four 8-character hex segments joined by hyphens).
    */
   private generateContextId(): string {
     // Simple UUID-like random ID
@@ -194,7 +393,16 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Connect to Cartesia WebSocket for real-time TTS
+   * Connects to the Cartesia WebSocket for real-time TTS streaming.
+   *
+   * @remarks
+   * Establishes a WebSocket connection and generates a fresh context ID for
+   * the session. Auto-reconnect is disabled for TTS sessions since each
+   * session is typically short-lived.
+   *
+   * This method is idempotent -- calling it when already connected is a no-op.
+   *
+   * @throws {@link ProviderConnectionError} if the WebSocket connection fails.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -256,7 +464,18 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Handle incoming WebSocket messages (audio chunks and metadata)
+   * Handles incoming WebSocket messages containing audio data, timestamps, or errors.
+   *
+   * @remarks
+   * Cartesia may send messages in several forms:
+   * - Binary `ArrayBuffer` -- raw PCM audio data
+   * - `Blob` -- converted to `ArrayBuffer` asynchronously
+   * - JSON string with `type: 'chunk'` and `data` field -- base64-encoded audio
+   * - JSON string with `type: 'timestamps'` -- word-level timing information
+   * - JSON string with `type: 'done'` -- end-of-stream indicator
+   * - JSON string with `type: 'error'` -- error from the Cartesia API
+   *
+   * @param event - The WebSocket `MessageEvent` to process.
    */
   private handleMessage(event: MessageEvent): void {
     try {
@@ -316,7 +535,9 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Process raw audio data and emit as AudioChunk
+   * Processes raw audio data and emits it as a typed {@link AudioChunk}.
+   *
+   * @param data - The raw audio data as an `ArrayBuffer`.
    */
   private processAudioData(data: ArrayBuffer): void {
     const chunk: AudioChunk = {
@@ -334,7 +555,9 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Get SDK audio encoding from Cartesia output encoding
+   * Derives the SDK audio encoding from the Cartesia output encoding configuration.
+   *
+   * @returns The SDK-compatible audio encoding string.
    */
   private getEncoding(): 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw' {
     const encoding = this.config.outputEncoding ?? 'pcm_s16le';
@@ -342,7 +565,9 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Build the output format object for Cartesia API
+   * Builds the output format object required by the Cartesia WebSocket API.
+   *
+   * @returns A {@link CartesiaOutputFormat} object with container, encoding, and sample rate.
    */
   private buildOutputFormat(): CartesiaOutputFormat {
     return {
@@ -353,9 +578,17 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Send text chunk for real-time synthesis.
-   * Uses context_id for streaming continuation across chunks.
-   * @param chunk Text to synthesize
+   * Sends a text chunk to Cartesia for real-time synthesis.
+   *
+   * @remarks
+   * Each message includes the model ID, voice reference, output format, and a
+   * `context_id` for streaming continuation. The `continue` flag is `false` for
+   * the first chunk and `true` for subsequent chunks, allowing Cartesia to
+   * maintain prosody across multiple text segments.
+   *
+   * Optional parameters (`language`, `speed`, `emotion`) are included when configured.
+   *
+   * @param chunk - The text to synthesize into speech.
    */
   sendText(chunk: string): void {
     if (!this.isConnected || !this.wsManager) {
@@ -398,7 +631,14 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Finalize synthesis — send end-of-input signal to flush remaining audio
+   * Finalizes the current synthesis session by sending an end-of-input signal.
+   *
+   * @remarks
+   * Sends an empty transcript with `continue: false` to signal that no more
+   * text will be sent for the current context. Waits up to 2 seconds for any
+   * remaining audio to arrive, then resets the context ID for the next utterance.
+   *
+   * @throws Rethrows any error that occurs during finalization.
    */
   async finalize(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
@@ -447,7 +687,14 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Disconnect from Cartesia WebSocket
+   * Disconnects from the Cartesia WebSocket.
+   *
+   * @remarks
+   * Gracefully closes the WebSocket connection and releases the
+   * {@link WebSocketManager} instance. Also resets the context ID
+   * and chunk tracking state.
+   *
+   * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
@@ -473,7 +720,9 @@ export class CartesiaTTS extends LiveTTSProvider {
   }
 
   /**
-   * Check if currently connected
+   * Checks whether the WebSocket connection to Cartesia is currently active.
+   *
+   * @returns `true` if the WebSocket is connected, `false` otherwise.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

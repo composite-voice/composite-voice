@@ -1,47 +1,101 @@
 /**
- * Next.js App Router route handler adapter.
+ * @packageDocumentation
+ * Next.js App Router route handler adapter for the CompositeVoice proxy.
  *
+ * @remarks
  * Returns a catch-all route handler for `app/api/proxy/[...path]/route.ts`.
- * HTTP-based providers (Anthropic, OpenAI) work out of the box.
+ * HTTP-based providers (Anthropic, OpenAI, Groq, Mistral, Gemini) work out of the box
+ * with the standard Vercel runtime and any Next.js deployment.
  *
- * WebSocket proxying (Deepgram STT/TTS) requires a custom Next.js server
- * because the standard Vercel runtime does not support WebSocket upgrades.
- * When running `next dev` or a self-hosted Node.js deployment you can use
- * `createNodeProxy` with `attachWebSocket` on the underlying server instead.
+ * WebSocket proxying (Deepgram STT/TTS, ElevenLabs, AssemblyAI, Cartesia) requires
+ * a custom Next.js server because the standard Vercel runtime does not support
+ * WebSocket upgrades. When running `next dev` or a self-hosted Node.js deployment
+ * you can use {@link createNodeProxy} with `attachWebSocket` on the underlying
+ * server instead.
  *
- * Server-side only — never imported by browser bundles.
+ * This module is server-side only and must never be imported by browser bundles.
+ * Compatible with Next.js 13+ App Router (including Next.js 15+ with async params).
  *
  * @example
- * ```ts
+ * ```typescript
  * // app/api/proxy/[...path]/route.ts
  * import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
  *
- * const { GET, POST, PUT, DELETE, OPTIONS } = createNextJsProxy({
+ * const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
  *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
  *   openaiApiKey: process.env.OPENAI_API_KEY,
  *   pathPrefix: '/api/proxy',
+ *   cors: { origins: ['http://localhost:3000'] },
  * });
  *
- * export { GET, POST, PUT, DELETE, OPTIONS };
+ * export { GET, POST, PUT, DELETE, PATCH, OPTIONS };
  * ```
+ *
+ * @see {@link createExpressProxy} for Express/Connect usage
+ * @see {@link createNodeProxy} for plain Node.js HTTP server usage
  */
 
 import { buildRoutes, matchHttpRouteByProvider } from '../utils/routing';
 import type { CompositeVoiceProxyConfig } from '../types';
 
-// Minimal types for Next.js App Router — avoids a hard dependency on `next`.
+/**
+ * Minimal Next.js Request type -- avoids a hard dependency on `next`.
+ *
+ * @remarks
+ * Duck-typed to match the subset of `NextRequest` used by the proxy handler.
+ */
 type NextRequest = {
   method: string;
   url: string;
   headers: { get(name: string): string | null; forEach(cb: (v: string, k: string) => void): void };
   body: ReadableStream<Uint8Array> | null;
 };
+
+/**
+ * Route context provided by Next.js App Router catch-all routes.
+ *
+ * @remarks
+ * Supports both Next.js 13/14 (plain object) and Next.js 15+ (async params).
+ */
 type RouteContext = { params: Promise<{ path?: string[] }> | { path?: string[] } };
+
+/**
+ * A Next.js App Router route handler function signature.
+ */
 type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<Response>;
 
 /**
  * Create Next.js App Router route handlers that proxy requests to upstream
- * providers.
+ * AI providers.
+ *
+ * @remarks
+ * Returns an object with HTTP method handlers (`GET`, `POST`, `PUT`, `DELETE`,
+ * `PATCH`, `OPTIONS`) that can be directly exported from a Next.js catch-all
+ * route file. The handler extracts the provider name from the URL path,
+ * matches it against configured routes, and forwards the request upstream
+ * with the appropriate authentication headers.
+ *
+ * @param config - Proxy configuration containing API keys, path prefix, and CORS settings.
+ * @returns An object with route handlers for each HTTP method.
+ *
+ * @throws Returns a 404 JSON response with `{ error: 'unknown_provider' }` when
+ * the requested provider is not configured.
+ *
+ * @example
+ * ```typescript
+ * // app/api/proxy/[...path]/route.ts
+ * import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+ *
+ * const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   openaiApiKey: process.env.OPENAI_API_KEY,
+ *   pathPrefix: '/api/proxy',
+ * });
+ *
+ * export { GET, POST, PUT, DELETE, PATCH, OPTIONS };
+ * ```
+ *
+ * @see {@link CompositeVoiceProxyConfig} for configuration options
  */
 export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
   GET: RouteHandler;
