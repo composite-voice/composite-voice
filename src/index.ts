@@ -115,6 +115,13 @@ export type {
   ElevenLabsTTSModel,
   ElevenLabsOutputFormat,
 } from './providers/tts/elevenlabs/index';
+export { CartesiaTTS } from './providers/tts/cartesia/index';
+export type {
+  CartesiaTTSConfig,
+  CartesiaTTSModel,
+  CartesiaOutputEncoding,
+  CartesiaOutputFormat,
+} from './providers/tts/cartesia/index';
 
 // Utilities
 export {
