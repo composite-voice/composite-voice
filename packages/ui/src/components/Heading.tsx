@@ -84,6 +84,7 @@ export function Heading({
   children,
   ...props
 }: HeadingProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const Element = `h${level}` as const;
   const resolvedSize = size ?? defaultSizeForLevel[level];
 
@@ -99,7 +100,7 @@ export function Heading({
     .join(" ");
 
   return (
-    <Element className={classes} {...props}>
+    <Element className={classes} {...domProps}>
       {children}
     </Element>
   );

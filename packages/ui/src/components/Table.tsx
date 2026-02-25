@@ -44,6 +44,7 @@ export function Table({
   children,
   ...props
 }: TableProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const dataAttributes = {
     "data-striped": striped || undefined,
     "data-hoverable": hoverable || undefined,
@@ -58,7 +59,7 @@ export function Table({
         itemScope
         itemType="https://schema.org/Table"
         {...dataAttributes}
-        {...props}
+        {...domProps}
       >
         {children}
       </table>
@@ -138,11 +139,12 @@ export function TableRow({
   className = "",
   ...props
 }: TableRowProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   return (
     <tr
       className={`transition-colors ${selected ? "bg-primary-50" : ""} ${className}`}
       aria-selected={selected || undefined}
-      {...props}
+      {...domProps}
     >
       {children}
     </tr>
@@ -173,6 +175,7 @@ export function TableHeaderCell({
   scope = "col",
   ...props
 }: TableHeaderCellProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const cellContent = (
     <Text as="span" size="xs" weight="semibold" color="muted" className="uppercase tracking-wider">
       {children}
@@ -188,7 +191,7 @@ export function TableHeaderCell({
         scope={scope}
         className={`${padding} ${className}`}
         aria-sort={sortDirection || undefined}
-        {...props}
+        {...domProps}
       >
         <button
           type="button"
@@ -207,7 +210,7 @@ export function TableHeaderCell({
   }
 
   return (
-    <th scope={scope} className={`${padding} text-left ${className}`} {...props}>
+    <th scope={scope} className={`${padding} text-left ${className}`} {...domProps}>
       {cellContent}
     </th>
   );
@@ -225,10 +228,11 @@ export function TableCell({
   className = "",
   ...props
 }: TableCellProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   return (
     <td
       className={`px-4 py-3 text-sm text-neutral-700 [table[data-compact]_&]:px-3 [table[data-compact]_&]:py-2 [table[data-bordered]_&]:border [table[data-bordered]_&]:border-neutral-200 ${className}`}
-      {...props}
+      {...domProps}
     >
       {children}
     </td>

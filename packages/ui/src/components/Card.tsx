@@ -61,6 +61,8 @@ export function Card({
   children,
   ...props
 }: CardProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
+
   const classes = [
     "rounded-card overflow-hidden transition-all duration-200",
     variantStyles[variant],
@@ -79,7 +81,7 @@ export function Card({
       itemScope={itemType ? true : undefined}
       itemType={itemType}
       tabIndex={interactive ? 0 : undefined}
-      {...props}
+      {...domProps}
     >
       {children}
     </Element>
@@ -145,13 +147,14 @@ export function CardImage({
   itemProp = "image",
   ...props
 }: CardImageProps) {
+  const { key: _k, ...domProps } = props as typeof props & { key?: React.Key };
   return (
     <div className={`card-image overflow-hidden ${aspect}`}>
       <img
         className={`w-full h-full object-cover ${className}`}
         alt={alt}
         itemProp={itemProp}
-        {...props}
+        {...domProps}
       />
     </div>
   );

@@ -36,6 +36,8 @@ export function Icon({
   children,
   ...props
 }: IconProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
+
   const accessibilityProps = label
     ? { role: "img" as const, "aria-label": label }
     : { "aria-hidden": true as const };
@@ -51,7 +53,7 @@ export function Icon({
       strokeLinejoin="round"
       className={`inline-block shrink-0 ${sizeMap[size]} ${className}`}
       {...accessibilityProps}
-      {...props}
+      {...domProps}
     >
       {children}
     </svg>

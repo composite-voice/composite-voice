@@ -93,6 +93,7 @@ export function TabList({
   className = "",
   ...props
 }: TabListProps) {
+  const { key: _, ...domProps } = props as typeof props & { key?: React.Key };
   const tabListRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -157,7 +158,7 @@ export function TabList({
         role="tablist"
         className={`flex overflow-x-auto overflow-y-hidden border-b border-neutral-200 ${className}`}
         onKeyDown={handleKeyDown}
-        {...props}
+        {...domProps}
       >
         {children}
       </div>
