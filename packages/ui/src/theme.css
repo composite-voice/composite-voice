@@ -11,9 +11,9 @@
      Change a base token to re-theme its entire palette.
      ═══════════════════════════════════════════════════ */
 
-  /* ── Base palette tokens ─────────────────────── */
-  --primary: #6366f1;   /* Indigo — trust, technology, voice */
-  --secondary: #64748b; /* Slate — neutral complement */
+  /* ── Base palette tokens (Oceanica theme) ────── */
+  --primary: #41cbbf;   /* Teal — brand, trust, voice */
+  --secondary: #78716c; /* Stone — warm neutral complement */
   --accent: #8b5cf6;    /* Violet — creative, AI */
   --success: #10b981;   /* Emerald */
   --warning: #f59e0b;   /* Amber */
