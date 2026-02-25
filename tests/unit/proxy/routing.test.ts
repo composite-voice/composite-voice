@@ -88,6 +88,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('assemblyai');
     });
+
+    it('includes Groq HTTP route when groqApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        groqApiKey: 'test-groq-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'groq',
+        type: 'http',
+        targetBase: 'https://api.groq.com/openai',
+        authHeaders: {
+          Authorization: 'Bearer test-groq-key',
+        },
+      });
+    });
+
+    it('does not include Groq route when groqApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'groq')).toBe(true);
+    });
+
+    it('includes Groq alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        groqApiKey: 'groq-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('groq');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
@@ -161,6 +204,43 @@ describe('proxy routing', () => {
       const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen', prefix);
       expect(route).not.toBeNull();
       expect(route!.provider).toBe('deepgram');
+    });
+  });
+
+  describe('matchHttpRoute — Groq', () => {
+    const routes = buildRoutes({
+      anthropicApiKey: 'ant-key',
+      groqApiKey: 'groq-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/groq/ path', () => {
+      const route = matchHttpRoute(routes, '/proxy/groq/v1/chat/completions', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('groq');
+      expect(route!.type).toBe('http');
+    });
+
+    it('matches /proxy/groq with subpath', () => {
+      const route = matchHttpRoute(routes, '/proxy/groq/some/path', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('groq');
+    });
+
+    it('does not match WebSocket routes for Groq', () => {
+      const route = matchWsRoute(routes, '/proxy/groq/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchHttpRoute(routes, '/api/groq/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Anthropic HTTP route', () => {
+      const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('anthropic');
     });
   });
 });
