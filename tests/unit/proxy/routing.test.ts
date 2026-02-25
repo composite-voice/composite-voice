@@ -131,6 +131,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('groq');
     });
+
+    it('includes Mistral HTTP route when mistralApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        mistralApiKey: 'test-mistral-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'mistral',
+        type: 'http',
+        targetBase: 'https://api.mistral.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-mistral-key',
+        },
+      });
+    });
+
+    it('does not include Mistral route when mistralApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'mistral')).toBe(true);
+    });
+
+    it('includes Mistral alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        mistralApiKey: 'mistral-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('mistral');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
@@ -234,6 +277,43 @@ describe('proxy routing', () => {
 
     it('does not match when prefix does not match', () => {
       const route = matchHttpRoute(routes, '/api/groq/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Anthropic HTTP route', () => {
+      const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('anthropic');
+    });
+  });
+
+  describe('matchHttpRoute — Mistral', () => {
+    const routes = buildRoutes({
+      anthropicApiKey: 'ant-key',
+      mistralApiKey: 'mistral-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/mistral/ path', () => {
+      const route = matchHttpRoute(routes, '/proxy/mistral/v1/chat/completions', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('mistral');
+      expect(route!.type).toBe('http');
+    });
+
+    it('matches /proxy/mistral with subpath', () => {
+      const route = matchHttpRoute(routes, '/proxy/mistral/some/path', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('mistral');
+    });
+
+    it('does not match WebSocket routes for Mistral', () => {
+      const route = matchWsRoute(routes, '/proxy/mistral/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchHttpRoute(routes, '/api/mistral/v1/chat/completions', prefix);
       expect(route).toBeNull();
     });
 

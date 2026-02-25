@@ -21,6 +21,8 @@ export interface CompositeVoiceProxyConfig {
   assemblyaiApiKey?: string;
   /** Groq API key — used for HTTP LLM proxying */
   groqApiKey?: string;
+  /** Mistral API key — used for HTTP LLM proxying */
+  mistralApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
