@@ -58,21 +58,11 @@ export default function ButtonsShowcase() {
         <Heading level={2}>Icon Buttons</Heading>
         <Text>Icon-only buttons for compact actions. Each requires an aria-label for accessibility.</Text>
         <div className="flex flex-wrap items-center gap-3 mt-4">
-          <IconButton variant="primary" aria-label="Settings">
-            <SettingsIcon size="sm" />
-          </IconButton>
-          <IconButton variant="secondary" aria-label="Add new item">
-            <PlusIcon size="sm" />
-          </IconButton>
-          <IconButton variant="outline" aria-label="Search">
-            <SearchIcon size="sm" />
-          </IconButton>
-          <IconButton variant="ghost" aria-label="Settings" size="lg">
-            <SettingsIcon size="md" />
-          </IconButton>
-          <IconButton variant="danger" aria-label="Add new item" size="xs">
-            <PlusIcon size="xs" />
-          </IconButton>
+          <IconButton variant="primary" icon={<SettingsIcon size="sm" />} aria-label="Settings" />
+          <IconButton variant="secondary" icon={<PlusIcon size="sm" />} aria-label="Add new item" />
+          <IconButton variant="outline" icon={<SearchIcon size="sm" />} aria-label="Search" />
+          <IconButton variant="ghost" icon={<SettingsIcon size="md" />} aria-label="Settings" size="lg" />
+          <IconButton variant="danger" icon={<PlusIcon size="xs" />} aria-label="Add new item" size="xs" />
         </div>
       </section>
 
