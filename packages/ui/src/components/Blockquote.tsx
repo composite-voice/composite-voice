@@ -46,7 +46,7 @@ export function Blockquote({
         {children}
       </div>
       {cite && (
-        <footer className="mt-2 text-sm text-neutral-500 not-italic">
+        <footer className="mt-2 text-sm text-foreground-muted not-italic">
           {"— "}
           {citeUrl ? (
             <a

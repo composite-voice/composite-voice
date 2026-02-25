@@ -37,22 +37,22 @@ export function Prose({
     <div
       className={`
         ${sizeStyles[size]}
-        text-neutral-700
+        text-foreground-muted
 
         [&>*+*]:mt-4
         [&>*:first-child]:mt-0
         [&>*:last-child]:mb-0
 
-        [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-neutral-900 [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:leading-tight
-        [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-neutral-900 [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:leading-tight
-        [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-neutral-800 [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:leading-snug
-        [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-neutral-800 [&_h4]:mt-4 [&_h4]:mb-2
+        [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:leading-tight
+        [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-foreground [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:leading-tight
+        [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:leading-snug
+        [&_h4]:text-base [&_h4]:font-semibold [&_h4]:text-foreground [&_h4]:mt-4 [&_h4]:mb-2
 
         [&_p]:my-4
 
         [&_a]:text-primary-600 [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-primary-700 [&_a]:transition-colors
 
-        [&_strong]:font-semibold [&_strong]:text-neutral-900
+        [&_strong]:font-semibold [&_strong]:text-foreground
         [&_em]:italic
 
         [&_ul]:my-4 [&_ul]:pl-6 [&_ul]:list-disc
@@ -70,7 +70,7 @@ export function Prose({
         [&_img]:rounded-card [&_img]:my-4
 
         [&_table]:w-full [&_table]:my-4 [&_table]:border-collapse
-        [&_th]:text-left [&_th]:font-semibold [&_th]:text-neutral-900 [&_th]:border-b [&_th]:border-neutral-200 [&_th]:py-2 [&_th]:px-3
+        [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:border-b [&_th]:border-neutral-200 [&_th]:py-2 [&_th]:px-3
         [&_td]:border-b [&_td]:border-neutral-100 [&_td]:py-2 [&_td]:px-3
 
         ${className}

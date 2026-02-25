@@ -45,7 +45,7 @@ export function ColorSwatch({
           size="sm"
           weight="semibold"
           color="inherit"
-          className={lightText ? "text-on-filled" : "text-neutral-900"}
+          className={lightText ? "text-on-filled" : "text-foreground"}
         >
           {name}
         </Text>

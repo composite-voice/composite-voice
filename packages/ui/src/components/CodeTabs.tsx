@@ -94,7 +94,7 @@ export function CodeTabs({
             className={`px-4 py-2 text-xs font-medium font-mono transition-colors border-b-2 -mb-px ${
               activeIndex === i
                 ? "border-primary-500 text-primary-700 bg-surface"
-                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
+                : "border-transparent text-foreground-muted hover:text-foreground hover:border-neutral-300"
             }`}
           >
             {tab.label}
