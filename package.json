@@ -119,7 +119,10 @@
     "example:42-openai-tts-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-42-openai-tts-pipeline preview",
     "example:50-webllm-pipeline:dev": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline dev",
     "example:50-webllm-pipeline:build": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline build",
-    "example:50-webllm-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline preview"
+    "example:50-webllm-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-50-webllm-pipeline preview",
+    "example:110-mistral-pipeline:dev": "pnpm --filter @lukeocodes/composite-voice-example-110-mistral-pipeline dev",
+    "example:110-mistral-pipeline:build": "pnpm --filter @lukeocodes/composite-voice-example-110-mistral-pipeline build",
+    "example:110-mistral-pipeline:preview": "pnpm --filter @lukeocodes/composite-voice-example-110-mistral-pipeline preview"
   },
   "keywords": [
     "voice",
