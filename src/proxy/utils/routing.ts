@@ -9,7 +9,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
 export type RouteType = 'http' | 'websocket';
 
 export interface ProxyRoute {
-  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai' | 'groq' | 'mistral' | 'gemini'
+  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai' | 'groq' | 'mistral' | 'gemini' | 'cartesia'
   type: RouteType;
   targetBase: string; // e.g. 'https://api.anthropic.com'
   authHeaders: Record<string, string>;
@@ -107,6 +107,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
       authHeaders: {
         Authorization: `Bearer ${config.geminiApiKey}`,
+      },
+    });
+  }
+
+  if (config.cartesiaApiKey) {
+    routes.push({
+      provider: 'cartesia',
+      type: 'websocket',
+      targetBase: 'wss://api.cartesia.ai',
+      authHeaders: {
+        'X-API-Key': config.cartesiaApiKey,
       },
     });
   }
