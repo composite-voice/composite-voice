@@ -19,6 +19,8 @@ export interface CompositeVoiceProxyConfig {
   elevenlabsApiKey?: string;
   /** AssemblyAI API key — used for WebSocket STT proxying */
   assemblyaiApiKey?: string;
+  /** Groq API key — used for HTTP LLM proxying */
+  groqApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
