@@ -12,6 +12,9 @@ dist/
 build/
 *.tsbuildinfo
 
+# Astro
+.astro/
+
 # Testing
 coverage/
 .nyc_output/
