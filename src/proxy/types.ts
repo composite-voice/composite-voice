@@ -15,6 +15,8 @@ export interface CompositeVoiceProxyConfig {
   anthropicApiKey?: string;
   /** OpenAI API key — used for HTTP LLM proxying */
   openaiApiKey?: string;
+  /** ElevenLabs API key — used for WebSocket TTS proxying */
+  elevenlabsApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
