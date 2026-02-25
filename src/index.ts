@@ -97,6 +97,8 @@ export { GroqLLM } from './providers/llm/groq/index';
 export type { GroqLLMConfig } from './providers/llm/groq/index';
 export { MistralLLM } from './providers/llm/mistral/index';
 export type { MistralLLMConfig } from './providers/llm/mistral/index';
+export { GeminiLLM } from './providers/llm/gemini/index';
+export type { GeminiLLMConfig } from './providers/llm/gemini/index';
 export { WebLLMLLM } from './providers/llm/webllm/index';
 export type { WebLLMLLMConfig, WebLLMLoadProgress } from './providers/llm/webllm/index';
 

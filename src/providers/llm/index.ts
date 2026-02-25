@@ -27,6 +27,10 @@ export type { GroqLLMConfig } from './groq';
 export { MistralLLM } from './mistral';
 export type { MistralLLMConfig } from './mistral';
 
+// Re-export Gemini provider
+export { GeminiLLM } from './gemini';
+export type { GeminiLLMConfig } from './gemini';
+
 // Re-export WebLLM provider
 export { WebLLMLLM } from './webllm';
 export type { WebLLMLLMConfig, WebLLMLoadProgress } from './webllm';
