@@ -29,16 +29,16 @@ Building a voice agent from scratch means solving many hard problems simultaneou
 
 CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 
-| Feature                         | What it means for you                                                                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Provider-agnostic**           | Deepgram, Anthropic, OpenAI, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.     |
-| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.         |
-| **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use.                                           |
-| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, and state transitions. |
-| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                           |
-| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                           |
-| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js.                  |
-| **Extensible**                  | Abstract base classes make it straightforward to add any STT, LLM, or TTS service.                                           |
+| Feature                         | What it means for you                                                                                                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.        |
+| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                     |
+| **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use. Many providers (AssemblyAI, ElevenLabs, Cartesia) need no peer dependency at all.                     |
+| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, and state transitions.                                                             |
+| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                       |
+| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                       |
+| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                     |
+| **Extensible**                  | Abstract base classes make it straightforward to add any STT, LLM, or TTS service. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.             |
 
 ---
 
@@ -81,9 +81,12 @@ Provider SDKs are optional peer dependencies — install only what you use:
 ```bash
 pnpm add @anthropic-ai/sdk    # AnthropicLLM (>=0.67.0)
 pnpm add @deepgram/sdk        # DeepgramSTT + DeepgramTTS (>=4.11.2)
-pnpm add openai               # OpenAILLM (>=6.5.0)
+pnpm add openai               # OpenAILLM, OpenAITTS, GroqLLM, GeminiLLM, MistralLLM (>=6.5.0)
+pnpm add @mlc-ai/web-llm      # WebLLMLLM — in-browser inference (>=0.2.74)
 pnpm add ws                   # server-side proxy WebSocket support, Node.js only (>=8.0.0)
 ```
+
+AssemblyAI, ElevenLabs, and Cartesia providers use raw WebSocket connections and require no peer dependencies.
 
 ---
 
@@ -115,7 +118,7 @@ await agent.initialize();
 await agent.startListening();
 ```
 
-See [Example 00](./examples/00-native-anthropic-native/) for a full runnable demo with UI.
+See [Example 00](./examples/00-minimal-voice-agent/) for a full runnable demo with UI.
 
 ### Production setup — Deepgram + Anthropic
 
@@ -155,7 +158,7 @@ await agent.initialize();
 await agent.startListening();
 ```
 
-See [Example 01](./examples/01-deepgram-anthropic-deepgram/) for the full runnable demo.
+See [Example 20](./examples/20-deepgram-pipeline/) for the full runnable demo.
 
 ---
 
@@ -165,18 +168,18 @@ Every voice agent follows the same pipeline:
 
 ```
 Microphone
-    ↓
-STT provider  (NativeSTT or DeepgramSTT)
-    ↓  transcription.speechFinal — user finished speaking
-LLM provider  (AnthropicLLM or OpenAILLM)
-    ↓  llm.chunk — token by token
-TTS provider  (NativeTTS or DeepgramTTS)
-    ↓
+    |
+STT provider  (NativeSTT, DeepgramSTT, or AssemblyAISTT)
+    |  transcription.speechFinal — user finished speaking
+LLM provider  (AnthropicLLM, OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, or WebLLMLLM)
+    |  llm.chunk — token by token
+TTS provider  (NativeTTS, DeepgramTTS, OpenAITTS, ElevenLabsTTS, or CartesiaTTS)
+    |
 Speakers
-    ↓  returns to listening automatically
+    |  returns to listening automatically
 ```
 
-The agent state machine moves through well-defined states — `idle → ready → listening → thinking → speaking` — emitting events at every transition. Your UI subscribes to these events; the SDK manages the lifecycle.
+The agent state machine moves through well-defined states — `idle -> ready -> listening -> thinking -> speaking` — emitting events at every transition. Your UI subscribes to these events; the SDK manages the lifecycle.
 
 ---
 
@@ -184,10 +187,11 @@ The agent state machine moves through well-defined states — `idle → ready �
 
 ### Speech-to-Text (STT)
 
-| Provider      | Transport      | Browser support     | Peer dependency |
-| ------------- | -------------- | ------------------- | --------------- |
-| `NativeSTT`   | Web Speech API | Chrome, Edge        | None            |
-| `DeepgramSTT` | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| Provider        | Transport      | Browser support     | Peer dependency |
+| --------------- | -------------- | ------------------- | --------------- |
+| `NativeSTT`     | Web Speech API | Chrome, Edge        | None            |
+| `DeepgramSTT`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
 
 **`NativeSTT` options:**
 
@@ -217,12 +221,29 @@ new DeepgramSTT({
 });
 ```
 
+**`AssemblyAISTT` options:**
+
+```typescript
+new AssemblyAISTT({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  language: 'en', // language code
+  sampleRate: 16000, // audio sample rate in Hz
+  wordBoost: ['CompositeVoice'], // boost recognition of specific words
+  interimResults: true, // partial transcripts while speaking
+});
+```
+
 ### Language Models (LLM)
 
-| Provider       | Transport      | Peer dependency     | Notes                              |
-| -------------- | -------------- | ------------------- | ---------------------------------- |
-| `AnthropicLLM` | HTTP streaming | `@anthropic-ai/sdk` | Claude models. Streams by default. |
-| `OpenAILLM`    | HTTP           | `openai`            | GPT models.                        |
+| Provider              | Transport        | Peer dependency     | Notes                                                          |
+| --------------------- | ---------------- | ------------------- | -------------------------------------------------------------- |
+| `AnthropicLLM`        | HTTP streaming   | `@anthropic-ai/sdk` | Claude models. Streams by default.                             |
+| `OpenAILLM`           | HTTP             | `openai`            | GPT models.                                                    |
+| `GroqLLM`             | HTTP             | `openai`            | Groq-hosted models. Ultra-fast inference.                      |
+| `GeminiLLM`           | HTTP             | `openai`            | Google Gemini models via OpenAI-compatible API.                |
+| `MistralLLM`          | HTTP             | `openai`            | Mistral open and commercial models.                            |
+| `WebLLMLLM`           | In-browser WebGPU | `@mlc-ai/web-llm`  | Fully offline. No API keys. Runs entirely client-side.         |
+| `OpenAICompatibleLLM` | HTTP             | `openai`            | Base class — extend for any OpenAI-compatible endpoint.        |
 
 **`AnthropicLLM` options:**
 
@@ -249,12 +270,58 @@ new OpenAILLM({
 });
 ```
 
+**`GroqLLM` options:**
+
+```typescript
+new GroqLLM({
+  apiKey: 'your-key', // or groqApiKey; omit and use proxyUrl for proxy mode
+  model: 'llama-3.3-70b-versatile', // default model
+  systemPrompt: 'You are a helpful voice assistant.',
+  maxTokens: 200,
+});
+```
+
+**`GeminiLLM` options:**
+
+```typescript
+new GeminiLLM({
+  apiKey: 'your-key', // or geminiApiKey; omit and use proxyUrl for proxy mode
+  model: 'gemini-2.0-flash', // default model
+  systemPrompt: 'You are a helpful voice assistant.',
+  maxTokens: 200,
+});
+```
+
+**`MistralLLM` options:**
+
+```typescript
+new MistralLLM({
+  apiKey: 'your-key', // or mistralApiKey; omit and use proxyUrl for proxy mode
+  model: 'mistral-small-latest', // default model
+  systemPrompt: 'You are a helpful voice assistant.',
+  maxTokens: 200,
+});
+```
+
+**`WebLLMLLM` options:**
+
+```typescript
+new WebLLMLLM({
+  model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', // runs entirely in-browser via WebGPU
+  onLoadProgress: (progress) => console.log(progress), // model download progress
+  chatOpts: { context_window_size: 2048 }, // optional model config overrides
+});
+```
+
 ### Text-to-Speech (TTS)
 
-| Provider      | Transport           | Browser support     | Peer dependency |
-| ------------- | ------------------- | ------------------- | --------------- |
-| `NativeTTS`   | SpeechSynthesis API | All modern browsers | None            |
-| `DeepgramTTS` | WebSocket           | All modern browsers | `@deepgram/sdk` |
+| Provider        | Transport           | Browser support     | Peer dependency |
+| --------------- | ------------------- | ------------------- | --------------- |
+| `NativeTTS`     | SpeechSynthesis API | All modern browsers | None            |
+| `DeepgramTTS`   | WebSocket           | All modern browsers | `@deepgram/sdk` |
+| `OpenAITTS`     | HTTP (REST)         | All modern browsers | `openai`        |
+| `ElevenLabsTTS` | WebSocket           | All modern browsers | None            |
+| `CartesiaTTS`   | WebSocket           | All modern browsers | None            |
 
 **`NativeTTS` options:**
 
@@ -277,6 +344,45 @@ new DeepgramTTS({
     encoding: 'linear16',
     sampleRate: 24000,
   },
+});
+```
+
+**`OpenAITTS` options:**
+
+```typescript
+new OpenAITTS({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  model: 'tts-1', // 'tts-1' (fast) or 'tts-1-hd' (quality)
+  voice: 'alloy', // 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
+  responseFormat: 'mp3', // 'mp3' | 'opus' | 'aac' | 'flac' | 'wav'
+  speed: 1.0, // 0.25 – 4.0
+});
+```
+
+**`ElevenLabsTTS` options:**
+
+```typescript
+new ElevenLabsTTS({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  voiceId: 'your-voice-id', // required — ElevenLabs voice ID
+  modelId: 'eleven_turbo_v2_5', // fast low-latency model
+  stability: 0.5, // voice stability (0 – 1)
+  similarityBoost: 0.75, // similarity boost (0 – 1)
+  outputFormat: 'pcm_16000', // 'pcm_16000' | 'pcm_22050' | 'pcm_24000' | 'mp3_44100_128' | ...
+});
+```
+
+**`CartesiaTTS` options:**
+
+```typescript
+new CartesiaTTS({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  voiceId: 'your-voice-id', // required — Cartesia voice ID
+  modelId: 'sonic-2', // 'sonic-2' | 'sonic' | 'sonic-multilingual'
+  language: 'en', // language code
+  outputSampleRate: 16000, // sample rate in Hz
+  speed: 1.0, // speech speed multiplier
+  emotion: ['positivity:high'], // emotion tags for voice expression
 });
 ```
 
@@ -400,9 +506,9 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 The agent moves through a well-defined state machine. Every transition emits an `agent.stateChange` event so your UI can always reflect what the agent is doing.
 
 ```
-idle → ready → listening → thinking → speaking
-                    ^                     |
-                    |_____________________|
+idle -> ready -> listening -> thinking -> speaking
+                    ^                       |
+                    |_______________________|
                               |
                            (error)
 ```
@@ -418,7 +524,7 @@ idle → ready → listening → thinking → speaking
 
 ```typescript
 agent.on('agent.stateChange', ({ state, previousState }) => {
-  console.log(`${previousState} → ${state}`);
+  console.log(`${previousState} -> ${state}`);
 });
 ```
 
@@ -461,7 +567,7 @@ const history = agent.getHistory();
 agent.clearHistory();
 ```
 
-See [Example 02](./examples/02-conversation-history/) for a demo with a full chat-thread UI.
+See [Example 01](./examples/01-conversation-history/) for a demo with a full chat-thread UI.
 
 ---
 
@@ -502,7 +608,7 @@ speech_final arrives
         +---> text changed?    -->  LLM cancelled, restarts with correct text
 ```
 
-The result is noticeably lower perceived latency on natural speech patterns where the end of an utterance is predictable. See [Example 03](./examples/03-eager-pipeline/) for a demo with real-time pipeline timing.
+The result is noticeably lower perceived latency on natural speech patterns where the end of an utterance is predictable. See [Example 21](./examples/21-eager-pipeline/) for a demo with real-time pipeline timing.
 
 ---
 
@@ -532,6 +638,8 @@ const agent = new CompositeVoice({
 
 Keep API keys completely out of the browser. The proxy middleware forwards browser requests to provider APIs and injects credentials server-side. Your deployed client bundle contains zero secrets.
 
+The proxy supports all providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, ElevenLabs, and Cartesia.
+
 ### Express
 
 ```typescript
@@ -545,14 +653,21 @@ const server = createServer(app);
 const proxy = createExpressProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  groqApiKey: process.env.GROQ_API_KEY,
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  mistralApiKey: process.env.MISTRAL_API_KEY,
+  assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
+  elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
+  cartesiaApiKey: process.env.CARTESIA_API_KEY,
   pathPrefix: '/proxy',
 });
 
 app.use(proxy.middleware);
-proxy.attachWebSocket(server); // required for Deepgram WebSocket connections
+proxy.attachWebSocket(server); // required for WebSocket connections
 
 app.use(express.static('dist'));
-server.listen(3004);
+server.listen(3010);
 ```
 
 ### Next.js App Router
@@ -584,7 +699,7 @@ const proxy = createNodeProxy({
 
 const server = createServer(proxy.handler);
 proxy.attachWebSocket(server);
-server.listen(3004);
+server.listen(3010);
 ```
 
 ### Browser side
@@ -612,7 +727,7 @@ const tts = new DeepgramTTS({
 const agent = new CompositeVoice({ stt, llm, tts });
 ```
 
-See [Example 04](./examples/04-proxy-server/) for a complete production-ready setup.
+See [Example 10](./examples/10-proxy-server/) for a complete production-ready setup.
 
 ---
 
@@ -622,15 +737,16 @@ All built-in providers implement abstract base classes. You can plug in any STT,
 
 ### Base classes
 
-| Base class        | Use for                                    |
-| ----------------- | ------------------------------------------ |
-| `BaseSTTProvider` | Any speech-to-text provider                |
-| `LiveSTTProvider` | WebSocket-based real-time STT              |
-| `RestSTTProvider` | Request/response STT (batch transcription) |
-| `BaseLLMProvider` | Any language model                         |
-| `BaseTTSProvider` | Any text-to-speech provider                |
-| `LiveTTSProvider` | WebSocket-based streaming TTS              |
-| `RestTTSProvider` | Request/response TTS                       |
+| Base class              | Use for                                                           |
+| ----------------------- | ----------------------------------------------------------------- |
+| `BaseSTTProvider`       | Any speech-to-text provider                                       |
+| `LiveSTTProvider`       | WebSocket-based real-time STT                                     |
+| `RestSTTProvider`       | Request/response STT (batch transcription)                        |
+| `BaseLLMProvider`       | Any language model                                                |
+| `OpenAICompatibleLLM`   | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
+| `BaseTTSProvider`       | Any text-to-speech provider                                       |
+| `LiveTTSProvider`       | WebSocket-based streaming TTS                                     |
+| `RestTTSProvider`       | Request/response TTS                                              |
 
 ### STT provider skeleton
 
@@ -678,6 +794,26 @@ class MyLLM extends BaseLLMProvider {
 }
 ```
 
+### OpenAI-compatible LLM
+
+The fastest way to add a new LLM provider that has an OpenAI-compatible API:
+
+```typescript
+import { OpenAICompatibleLLM, OpenAICompatibleLLMConfig } from '@lukeocodes/composite-voice';
+
+class MyLLM extends OpenAICompatibleLLM {
+  protected providerName = 'my-provider';
+  protected defaultBaseURL = 'https://api.my-provider.com/v1';
+}
+
+// Use it exactly like any other LLM provider
+const llm = new MyLLM({
+  apiKey: 'your-key',
+  model: 'my-model',
+  systemPrompt: 'You are a helpful voice assistant.',
+});
+```
+
 ### TTS provider skeleton
 
 ```typescript
@@ -703,41 +839,189 @@ For a full implementation guide, see [CONTRIBUTING.md](./CONTRIBUTING.md#adding-
 
 ## Examples
 
-Five standalone Vite apps in [`examples/`](./examples/), each introducing one new concept. They are designed to be read in order — each builds on the previous one.
+27 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
 
-| #                                                | Stack                                 | What it demonstrates                                      | API keys needed      | Port |
-| ------------------------------------------------ | ------------------------------------- | --------------------------------------------------------- | -------------------- | ---- |
-| [00](./examples/00-native-anthropic-native/)     | NativeSTT + Anthropic + NativeTTS     | Minimum viable setup — free STT and TTS, one API key      | Anthropic            | 3000 |
-| [01](./examples/01-deepgram-anthropic-deepgram/) | DeepgramSTT + Anthropic + DeepgramTTS | Production WebSocket pipeline, real-time streaming        | Deepgram + Anthropic | 3001 |
-| [02](./examples/02-conversation-history/)        | + `conversationHistory`               | Multi-turn memory, `getHistory()`, `clearHistory()`       | Anthropic            | 3002 |
-| [03](./examples/03-eager-pipeline/)              | + `eagerLLM`                          | Speculative generation, preflight events, pipeline timing | Deepgram + Anthropic | 3003 |
-| [04](./examples/04-proxy-server/)                | + server proxy                        | API keys stay on the server, `proxyUrl` in the browser    | Server-side only     | 3004 |
+### Getting started (00–05)
 
-Run any example from the repo root:
+Browser-native providers and core SDK patterns. Only an Anthropic API key is required for most examples.
+
+| #                                               | What it demonstrates                        | API keys needed | Port |
+| ----------------------------------------------- | ------------------------------------------- | --------------- | ---- |
+| [00](./examples/00-minimal-voice-agent/)        | Minimum viable voice agent                  | Anthropic       | 3000 |
+| [01](./examples/01-conversation-history/)       | Multi-turn conversation memory              | Anthropic       | 3001 |
+| [02](./examples/02-system-persona/)             | System prompt persona configuration         | Anthropic       | 3002 |
+| [03](./examples/03-event-inspector/)            | Full event timeline and debugging           | Anthropic       | 3003 |
+| [04](./examples/04-error-recovery/)             | Error simulation and automatic recovery     | Anthropic       | 3004 |
+| [05](./examples/05-turn-taking/)                | Turn-taking strategy visualization          | Anthropic       | 3005 |
+
+### Production patterns (10–13)
+
+Proxy servers, custom providers, and deployment-ready configurations.
+
+| #                                               | What it demonstrates                        | API keys needed          | Port |
+| ----------------------------------------------- | ------------------------------------------- | ------------------------ | ---- |
+| [10](./examples/10-proxy-server/)               | Express proxy — API keys stay on the server | Deepgram + Anthropic     | 3010 |
+| [11](./examples/11-nextjs-proxy/)               | Next.js App Router proxy                    | Anthropic                | 3011 |
+| [12](./examples/12-custom-provider/)            | Custom LLM provider (extends base class)    | None                     | 3012 |
+| [13](./examples/13-multi-language/)             | Multi-language support and switching         | Anthropic                | 3013 |
+
+### Deepgram (20–24)
+
+Production-quality STT and TTS with Deepgram-specific features.
+
+| #                                               | What it demonstrates                          | API keys needed          | Port |
+| ----------------------------------------------- | --------------------------------------------- | ------------------------ | ---- |
+| [20](./examples/20-deepgram-pipeline/)          | Full Deepgram STT + TTS pipeline              | Deepgram + Anthropic     | 3020 |
+| [21](./examples/21-eager-pipeline/)             | Eager/preflight speculative generation         | Deepgram + Anthropic     | 3021 |
+| [22](./examples/22-deepgram-options/)           | STT configuration panel (model, VAD, etc.)     | Deepgram + Anthropic     | 3022 |
+| [23](./examples/23-deepgram-voices/)            | TTS voice gallery — preview Aura 2 voices      | Deepgram + Anthropic     | 3023 |
+| [24](./examples/24-deepgram-conversation-history/) | Deepgram pipeline + conversation history    | Deepgram + Anthropic     | 3024 |
+
+### Anthropic (30–31)
+
+Claude model comparison and streaming configuration.
+
+| #                                               | What it demonstrates                          | API keys needed | Port |
+| ----------------------------------------------- | --------------------------------------------- | --------------- | ---- |
+| [30](./examples/30-anthropic-models/)           | Side-by-side model comparison (Haiku/Sonnet)  | Anthropic       | 3030 |
+| [31](./examples/31-anthropic-streaming-config/) | Streaming config (temperature, tokens, topP)  | Anthropic       | 3031 |
+
+### OpenAI (40–42)
+
+GPT models and OpenAI TTS integration.
+
+| #                                               | What it demonstrates                       | API keys needed          | Port |
+| ----------------------------------------------- | ------------------------------------------ | ------------------------ | ---- |
+| [40](./examples/40-openai-pipeline/)            | OpenAI LLM with browser-native STT/TTS    | OpenAI                   | 3040 |
+| [41](./examples/41-openai-deepgram/)            | OpenAI LLM + Deepgram STT/TTS production  | OpenAI + Deepgram        | 3041 |
+| [42](./examples/42-openai-tts-pipeline/)        | OpenAI LLM + OpenAI TTS                   | OpenAI                   | 3042 |
+
+### WebLLM (50)
+
+Fully offline voice agent — no API keys, no server.
+
+| #                                               | What it demonstrates                       | API keys needed | Port |
+| ----------------------------------------------- | ------------------------------------------ | --------------- | ---- |
+| [50](./examples/50-webllm-pipeline/)            | In-browser LLM via WebGPU (100% offline)   | None            | 3050 |
+
+### Groq (60)
+
+Ultra-fast inference with Groq-hosted models.
+
+| #                                               | What it demonstrates                       | API keys needed      | Port |
+| ----------------------------------------------- | ------------------------------------------ | -------------------- | ---- |
+| [60](./examples/60-groq-pipeline/)              | Groq LLM + Deepgram STT/TTS               | Groq + Deepgram      | 3060 |
+
+### AssemblyAI (70)
+
+Real-time transcription with word-level timing.
+
+| #                                               | What it demonstrates                       | API keys needed                    | Port |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
+| [70](./examples/70-assemblyai-pipeline/)        | AssemblyAI STT + Claude + Deepgram TTS    | AssemblyAI + Anthropic + Deepgram  | 3070 |
+
+### ElevenLabs (80)
+
+Ultra-low-latency streaming TTS with natural voices.
+
+| #                                               | What it demonstrates                       | API keys needed                    | Port |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
+| [80](./examples/80-elevenlabs-pipeline/)        | ElevenLabs TTS + Deepgram STT + Claude    | ElevenLabs + Deepgram + Anthropic  | 3080 |
+
+### Cartesia (90)
+
+Low-latency TTS with emotion controls.
+
+| #                                               | What it demonstrates                       | API keys needed             | Port |
+| ----------------------------------------------- | ------------------------------------------ | --------------------------- | ---- |
+| [90](./examples/90-cartesia-pipeline/)          | Cartesia TTS + Deepgram STT + Groq LLM   | Cartesia + Deepgram + Groq  | 3090 |
+
+### Gemini (100)
+
+Google Gemini models via OpenAI-compatible API.
+
+| #                                               | What it demonstrates                       | API keys needed                    | Port |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
+| [100](./examples/100-gemini-pipeline/)          | Gemini LLM + Deepgram STT + ElevenLabs   | Gemini + Deepgram + ElevenLabs     | 3100 |
+
+### Mistral (110)
+
+Mistral open and commercial models.
+
+| #                                               | What it demonstrates                       | API keys needed                    | Port |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
+| [110](./examples/110-mistral-pipeline/)         | Mistral LLM + Deepgram STT + ElevenLabs  | Mistral + Deepgram + ElevenLabs    | 3110 |
+
+### Running examples
 
 ```bash
 pnpm install && pnpm build
 
-pnpm example:00-native-anthropic-native:dev          # http://localhost:3000
-pnpm example:01-deepgram-anthropic-deepgram:dev      # http://localhost:3001
-pnpm example:02-conversation-history:dev             # http://localhost:3002
-pnpm example:03-eager-pipeline:dev                   # http://localhost:3003
-pnpm example:04-proxy-server:dev                     # http://localhost:3004
+# Getting started
+pnpm example:00-minimal-voice-agent:dev          # http://localhost:3000
+pnpm example:01-conversation-history:dev         # http://localhost:3001
+pnpm example:02-system-persona:dev               # http://localhost:3002
+pnpm example:03-event-inspector:dev              # http://localhost:3003
+pnpm example:04-error-recovery:dev               # http://localhost:3004
+pnpm example:05-turn-taking:dev                  # http://localhost:3005
+
+# Production patterns
+pnpm example:10-proxy-server:dev                 # http://localhost:3010
+pnpm example:11-nextjs-proxy:dev                 # http://localhost:3011
+pnpm example:12-custom-provider:dev              # http://localhost:3012
+pnpm example:13-multi-language:dev               # http://localhost:3013
+
+# Deepgram
+pnpm example:20-deepgram-pipeline:dev            # http://localhost:3020
+pnpm example:21-eager-pipeline:dev               # http://localhost:3021
+pnpm example:22-deepgram-options:dev             # http://localhost:3022
+pnpm example:23-deepgram-voices:dev              # http://localhost:3023
+pnpm example:24-deepgram-conversation-history:dev # http://localhost:3024
+
+# Anthropic
+pnpm example:30-anthropic-models:dev             # http://localhost:3030
+pnpm example:31-anthropic-streaming-config:dev   # http://localhost:3031
+
+# OpenAI
+pnpm example:40-openai-pipeline:dev              # http://localhost:3040
+pnpm example:41-openai-deepgram:dev              # http://localhost:3041
+pnpm example:42-openai-tts-pipeline:dev          # http://localhost:3042
+
+# WebLLM (offline)
+pnpm example:50-webllm-pipeline:dev              # http://localhost:3050
+
+# Groq
+pnpm example:60-groq-pipeline:dev               # http://localhost:3060
+
+# AssemblyAI
+pnpm example:70-assemblyai-pipeline:dev          # http://localhost:3070
+
+# ElevenLabs
+pnpm example:80-elevenlabs-pipeline:dev          # http://localhost:3080
+
+# Cartesia
+pnpm example:90-cartesia-pipeline:dev            # http://localhost:3090
+
+# Gemini
+pnpm example:100-gemini-pipeline:dev             # http://localhost:3100
+
+# Mistral
+pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 ```
 
 ---
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | NativeTTS | DeepgramTTS |
-| ------------- | ------------- | ----------- | --------- | ----------- |
-| Chrome / Edge | Full          | Full        | Full      | Full        |
-| Firefox       | Not supported | Full        | Full      | Full        |
-| Safari        | Limited       | Full        | Full      | Full        |
+| Browser       | NativeSTT     | DeepgramSTT | AssemblyAISTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
+| ------------- | ------------- | ----------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
+| Chrome / Edge | Full          | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
+| Firefox       | Not supported | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
+| Safari        | Limited       | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All Deepgram providers use WebSocket connections and work across all modern browsers.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) and REST-based providers (OpenAI) work across all modern browsers.
 
-For cross-browser production deployments, use `DeepgramSTT` and `DeepgramTTS`.
+For cross-browser production deployments, use `DeepgramSTT` or `AssemblyAISTT` for STT, and any cloud TTS provider.
 
 ---
 
