@@ -1,127 +1,144 @@
 @theme {
   /* ═══════════════════════════════════════════════════
-     COLOR SYSTEM — light-dark() tokens
-     Semantic color tokens for the CompositeVoice design system.
-     Each scale runs 50–950 for full utility generation.
-     Dark values use scale inversion: dark[N] = light[1000-N].
+     COLOR SYSTEM — derived from base tokens
+     ═══════════════════════════════════════════════════
+
+     Each palette is generated from a single base color
+     via color-mix() in oklch perceptual space. The full
+     50–950 scale uses calibrated tint/shade percentages.
+
+     Dark mode is automatic: dark[N] = light[1000-N].
+     Change a base token to re-theme its entire palette.
      ═══════════════════════════════════════════════════ */
 
-  /* Primary — Indigo Blue (trust, technology, voice) */
-  --color-primary-50: light-dark(#eef2ff, #1e1b4b);
-  --color-primary-100: light-dark(#e0e7ff, #312e81);
-  --color-primary-200: light-dark(#c7d2fe, #3730a3);
-  --color-primary-300: light-dark(#a5b4fc, #4338ca);
-  --color-primary-400: light-dark(#818cf8, #4f46e5);
-  --color-primary-500: light-dark(#6366f1, #6366f1);
-  --color-primary-600: light-dark(#4f46e5, #818cf8);
-  --color-primary-700: light-dark(#4338ca, #a5b4fc);
-  --color-primary-800: light-dark(#3730a3, #c7d2fe);
-  --color-primary-900: light-dark(#312e81, #e0e7ff);
-  --color-primary-950: light-dark(#1e1b4b, #eef2ff);
+  /* ── Base palette tokens ─────────────────────── */
+  --primary: red;   /* Indigo — trust, technology, voice */
+  --secondary: #64748b; /* Slate — neutral complement */
+  --accent: #8b5cf6;    /* Violet — creative, AI */
+  --success: #10b981;   /* Emerald */
+  --warning: #f59e0b;   /* Amber */
+  --danger: #f43f5e;    /* Rose */
+  --info: #0ea5e9;      /* Sky */
+  --neutral: #71717a;   /* Zinc */
 
-  /* Secondary — Slate (neutral complement) */
-  --color-secondary-50: light-dark(#f8fafc, #020617);
-  --color-secondary-100: light-dark(#f1f5f9, #0f172a);
-  --color-secondary-200: light-dark(#e2e8f0, #1e293b);
-  --color-secondary-300: light-dark(#cbd5e1, #334155);
-  --color-secondary-400: light-dark(#94a3b8, #475569);
-  --color-secondary-500: light-dark(#64748b, #64748b);
-  --color-secondary-600: light-dark(#475569, #94a3b8);
-  --color-secondary-700: light-dark(#334155, #cbd5e1);
-  --color-secondary-800: light-dark(#1e293b, #e2e8f0);
-  --color-secondary-900: light-dark(#0f172a, #f1f5f9);
-  --color-secondary-950: light-dark(#020617, #f8fafc);
+  /* ── Primary (9/17/31/52/77 · 87/78/68/61/44) ─ */
+  --color-primary-50: light-dark(color-mix(in oklch, var(--primary) 9%, white), color-mix(in oklch, var(--primary) 44%, black));
+  --color-primary-100: light-dark(color-mix(in oklch, var(--primary) 17%, white), color-mix(in oklch, var(--primary) 61%, black));
+  --color-primary-200: light-dark(color-mix(in oklch, var(--primary) 31%, white), color-mix(in oklch, var(--primary) 68%, black));
+  --color-primary-300: light-dark(color-mix(in oklch, var(--primary) 52%, white), color-mix(in oklch, var(--primary) 78%, black));
+  --color-primary-400: light-dark(color-mix(in oklch, var(--primary) 77%, white), color-mix(in oklch, var(--primary) 87%, black));
+  --color-primary-500: var(--primary);
+  --color-primary-600: light-dark(color-mix(in oklch, var(--primary) 87%, black), color-mix(in oklch, var(--primary) 77%, white));
+  --color-primary-700: light-dark(color-mix(in oklch, var(--primary) 78%, black), color-mix(in oklch, var(--primary) 52%, white));
+  --color-primary-800: light-dark(color-mix(in oklch, var(--primary) 68%, black), color-mix(in oklch, var(--primary) 31%, white));
+  --color-primary-900: light-dark(color-mix(in oklch, var(--primary) 61%, black), color-mix(in oklch, var(--primary) 17%, white));
+  --color-primary-950: light-dark(color-mix(in oklch, var(--primary) 44%, black), color-mix(in oklch, var(--primary) 9%, white));
 
-  /* Accent — Violet (creative, AI) */
-  --color-accent-50: light-dark(#f5f3ff, #2e1065);
-  --color-accent-100: light-dark(#ede9fe, #4c1d95);
-  --color-accent-200: light-dark(#ddd6fe, #5b21b6);
-  --color-accent-300: light-dark(#c4b5fd, #6d28d9);
-  --color-accent-400: light-dark(#a78bfa, #7c3aed);
-  --color-accent-500: light-dark(#8b5cf6, #8b5cf6);
-  --color-accent-600: light-dark(#7c3aed, #a78bfa);
-  --color-accent-700: light-dark(#6d28d9, #c4b5fd);
-  --color-accent-800: light-dark(#5b21b6, #ddd6fe);
-  --color-accent-900: light-dark(#4c1d95, #ede9fe);
-  --color-accent-950: light-dark(#2e1065, #f5f3ff);
+  /* ── Secondary (4/7/16/29/65 · 80/67/50/38/23) ─ */
+  --color-secondary-50: light-dark(color-mix(in oklch, var(--secondary) 4%, white), color-mix(in oklch, var(--secondary) 23%, black));
+  --color-secondary-100: light-dark(color-mix(in oklch, var(--secondary) 7%, white), color-mix(in oklch, var(--secondary) 38%, black));
+  --color-secondary-200: light-dark(color-mix(in oklch, var(--secondary) 16%, white), color-mix(in oklch, var(--secondary) 50%, black));
+  --color-secondary-300: light-dark(color-mix(in oklch, var(--secondary) 29%, white), color-mix(in oklch, var(--secondary) 67%, black));
+  --color-secondary-400: light-dark(color-mix(in oklch, var(--secondary) 65%, white), color-mix(in oklch, var(--secondary) 80%, black));
+  --color-secondary-500: var(--secondary);
+  --color-secondary-600: light-dark(color-mix(in oklch, var(--secondary) 80%, black), color-mix(in oklch, var(--secondary) 65%, white));
+  --color-secondary-700: light-dark(color-mix(in oklch, var(--secondary) 67%, black), color-mix(in oklch, var(--secondary) 29%, white));
+  --color-secondary-800: light-dark(color-mix(in oklch, var(--secondary) 50%, black), color-mix(in oklch, var(--secondary) 16%, white));
+  --color-secondary-900: light-dark(color-mix(in oklch, var(--secondary) 38%, black), color-mix(in oklch, var(--secondary) 7%, white));
+  --color-secondary-950: light-dark(color-mix(in oklch, var(--secondary) 23%, black), color-mix(in oklch, var(--secondary) 4%, white));
 
-  /* Success — Emerald */
-  --color-success-50: light-dark(#ecfdf5, #022c22);
-  --color-success-100: light-dark(#d1fae5, #064e3b);
-  --color-success-200: light-dark(#a7f3d0, #065f46);
-  --color-success-300: light-dark(#6ee7b7, #047857);
-  --color-success-400: light-dark(#34d399, #059669);
-  --color-success-500: light-dark(#10b981, #10b981);
-  --color-success-600: light-dark(#059669, #34d399);
-  --color-success-700: light-dark(#047857, #6ee7b7);
-  --color-success-800: light-dark(#065f46, #a7f3d0);
-  --color-success-900: light-dark(#064e3b, #d1fae5);
-  --color-success-950: light-dark(#022c22, #ecfdf5);
+  /* ── Accent (8/14/27/48/74 · 89/81/71/63/47) ── */
+  --color-accent-50: light-dark(color-mix(in oklch, var(--accent) 8%, white), color-mix(in oklch, var(--accent) 47%, black));
+  --color-accent-100: light-dark(color-mix(in oklch, var(--accent) 14%, white), color-mix(in oklch, var(--accent) 63%, black));
+  --color-accent-200: light-dark(color-mix(in oklch, var(--accent) 27%, white), color-mix(in oklch, var(--accent) 71%, black));
+  --color-accent-300: light-dark(color-mix(in oklch, var(--accent) 48%, white), color-mix(in oklch, var(--accent) 81%, black));
+  --color-accent-400: light-dark(color-mix(in oklch, var(--accent) 74%, white), color-mix(in oklch, var(--accent) 89%, black));
+  --color-accent-500: var(--accent);
+  --color-accent-600: light-dark(color-mix(in oklch, var(--accent) 89%, black), color-mix(in oklch, var(--accent) 74%, white));
+  --color-accent-700: light-dark(color-mix(in oklch, var(--accent) 81%, black), color-mix(in oklch, var(--accent) 48%, white));
+  --color-accent-800: light-dark(color-mix(in oklch, var(--accent) 71%, black), color-mix(in oklch, var(--accent) 27%, white));
+  --color-accent-900: light-dark(color-mix(in oklch, var(--accent) 63%, black), color-mix(in oklch, var(--accent) 14%, white));
+  --color-accent-950: light-dark(color-mix(in oklch, var(--accent) 47%, black), color-mix(in oklch, var(--accent) 8%, white));
 
-  /* Warning — Amber */
-  --color-warning-50: light-dark(#fffbeb, #451a03);
-  --color-warning-100: light-dark(#fef3c7, #78350f);
-  --color-warning-200: light-dark(#fde68a, #92400e);
-  --color-warning-300: light-dark(#fcd34d, #b45309);
-  --color-warning-400: light-dark(#fbbf24, #d97706);
-  --color-warning-500: light-dark(#f59e0b, #f59e0b);
-  --color-warning-600: light-dark(#d97706, #fbbf24);
-  --color-warning-700: light-dark(#b45309, #fcd34d);
-  --color-warning-800: light-dark(#92400e, #fde68a);
-  --color-warning-900: light-dark(#78350f, #fef3c7);
-  --color-warning-950: light-dark(#451a03, #fffbeb);
+  /* ── Success (7/16/31/51/75 · 86/73/62/54/38) ─ */
+  --color-success-50: light-dark(color-mix(in oklch, var(--success) 7%, white), color-mix(in oklch, var(--success) 38%, black));
+  --color-success-100: light-dark(color-mix(in oklch, var(--success) 16%, white), color-mix(in oklch, var(--success) 54%, black));
+  --color-success-200: light-dark(color-mix(in oklch, var(--success) 31%, white), color-mix(in oklch, var(--success) 62%, black));
+  --color-success-300: light-dark(color-mix(in oklch, var(--success) 51%, white), color-mix(in oklch, var(--success) 73%, black));
+  --color-success-400: light-dark(color-mix(in oklch, var(--success) 75%, white), color-mix(in oklch, var(--success) 86%, black));
+  --color-success-500: var(--success);
+  --color-success-600: light-dark(color-mix(in oklch, var(--success) 86%, black), color-mix(in oklch, var(--success) 75%, white));
+  --color-success-700: light-dark(color-mix(in oklch, var(--success) 73%, black), color-mix(in oklch, var(--success) 51%, white));
+  --color-success-800: light-dark(color-mix(in oklch, var(--success) 62%, black), color-mix(in oklch, var(--success) 31%, white));
+  --color-success-900: light-dark(color-mix(in oklch, var(--success) 54%, black), color-mix(in oklch, var(--success) 16%, white));
+  --color-success-950: light-dark(color-mix(in oklch, var(--success) 38%, black), color-mix(in oklch, var(--success) 7%, white));
 
-  /* Danger — Rose */
-  --color-danger-50: light-dark(#fff1f2, #4c0519);
-  --color-danger-100: light-dark(#ffe4e6, #881337);
-  --color-danger-200: light-dark(#fecdd3, #9f1239);
-  --color-danger-300: light-dark(#fda4af, #be123c);
-  --color-danger-400: light-dark(#fb7185, #e11d48);
-  --color-danger-500: light-dark(#f43f5e, #f43f5e);
-  --color-danger-600: light-dark(#e11d48, #fb7185);
-  --color-danger-700: light-dark(#be123c, #fda4af);
-  --color-danger-800: light-dark(#9f1239, #fecdd3);
-  --color-danger-900: light-dark(#881337, #ffe4e6);
-  --color-danger-950: light-dark(#4c0519, #fff1f2);
+  /* ── Warning (6/16/33/52/70 · 87/72/62/54/36) ─ */
+  --color-warning-50: light-dark(color-mix(in oklch, var(--warning) 6%, white), color-mix(in oklch, var(--warning) 36%, black));
+  --color-warning-100: light-dark(color-mix(in oklch, var(--warning) 16%, white), color-mix(in oklch, var(--warning) 54%, black));
+  --color-warning-200: light-dark(color-mix(in oklch, var(--warning) 33%, white), color-mix(in oklch, var(--warning) 62%, black));
+  --color-warning-300: light-dark(color-mix(in oklch, var(--warning) 52%, white), color-mix(in oklch, var(--warning) 72%, black));
+  --color-warning-400: light-dark(color-mix(in oklch, var(--warning) 70%, white), color-mix(in oklch, var(--warning) 87%, black));
+  --color-warning-500: var(--warning);
+  --color-warning-600: light-dark(color-mix(in oklch, var(--warning) 87%, black), color-mix(in oklch, var(--warning) 70%, white));
+  --color-warning-700: light-dark(color-mix(in oklch, var(--warning) 72%, black), color-mix(in oklch, var(--warning) 52%, white));
+  --color-warning-800: light-dark(color-mix(in oklch, var(--warning) 62%, black), color-mix(in oklch, var(--warning) 33%, white));
+  --color-warning-900: light-dark(color-mix(in oklch, var(--warning) 54%, black), color-mix(in oklch, var(--warning) 16%, white));
+  --color-warning-950: light-dark(color-mix(in oklch, var(--warning) 36%, black), color-mix(in oklch, var(--warning) 6%, white));
 
-  /* Info — Sky */
-  --color-info-50: light-dark(#f0f9ff, #082f49);
-  --color-info-100: light-dark(#e0f2fe, #0c4a6e);
-  --color-info-200: light-dark(#bae6fd, #075985);
-  --color-info-300: light-dark(#7dd3fc, #0369a1);
-  --color-info-400: light-dark(#38bdf8, #0284c7);
-  --color-info-500: light-dark(#0ea5e9, #0ea5e9);
-  --color-info-600: light-dark(#0284c7, #38bdf8);
-  --color-info-700: light-dark(#0369a1, #7dd3fc);
-  --color-info-800: light-dark(#075985, #bae6fd);
-  --color-info-900: light-dark(#0c4a6e, #e0f2fe);
-  --color-info-950: light-dark(#082f49, #f0f9ff);
+  /* ── Danger (9/17/30/54/79 · 91/80/70/64/42) ── */
+  --color-danger-50: light-dark(color-mix(in oklch, var(--danger) 9%, white), color-mix(in oklch, var(--danger) 42%, black));
+  --color-danger-100: light-dark(color-mix(in oklch, var(--danger) 17%, white), color-mix(in oklch, var(--danger) 64%, black));
+  --color-danger-200: light-dark(color-mix(in oklch, var(--danger) 30%, white), color-mix(in oklch, var(--danger) 70%, black));
+  --color-danger-300: light-dark(color-mix(in oklch, var(--danger) 54%, white), color-mix(in oklch, var(--danger) 80%, black));
+  --color-danger-400: light-dark(color-mix(in oklch, var(--danger) 79%, white), color-mix(in oklch, var(--danger) 91%, black));
+  --color-danger-500: var(--danger);
+  --color-danger-600: light-dark(color-mix(in oklch, var(--danger) 91%, black), color-mix(in oklch, var(--danger) 79%, white));
+  --color-danger-700: light-dark(color-mix(in oklch, var(--danger) 80%, black), color-mix(in oklch, var(--danger) 54%, white));
+  --color-danger-800: light-dark(color-mix(in oklch, var(--danger) 70%, black), color-mix(in oklch, var(--danger) 30%, white));
+  --color-danger-900: light-dark(color-mix(in oklch, var(--danger) 64%, black), color-mix(in oklch, var(--danger) 17%, white));
+  --color-danger-950: light-dark(color-mix(in oklch, var(--danger) 42%, black), color-mix(in oklch, var(--danger) 9%, white));
 
-  /* Neutral — Zinc */
-  --color-neutral-50: light-dark(#fafafa, #09090b);
-  --color-neutral-100: light-dark(#f4f4f5, #18181b);
-  --color-neutral-200: light-dark(#e4e4e7, #27272a);
-  --color-neutral-300: light-dark(#d4d4d8, #3f3f46);
-  --color-neutral-400: light-dark(#a1a1aa, #52525b);
-  --color-neutral-500: light-dark(#71717a, #71717a);
-  --color-neutral-600: light-dark(#52525b, #a1a1aa);
-  --color-neutral-700: light-dark(#3f3f46, #d4d4d8);
-  --color-neutral-800: light-dark(#27272a, #e4e4e7);
-  --color-neutral-900: light-dark(#18181b, #f4f4f5);
-  --color-neutral-950: light-dark(#09090b, #fafafa);
+  /* ── Info (7/15/31/55/78 · 86/73/65/57/43) ──── */
+  --color-info-50: light-dark(color-mix(in oklch, var(--info) 7%, white), color-mix(in oklch, var(--info) 43%, black));
+  --color-info-100: light-dark(color-mix(in oklch, var(--info) 15%, white), color-mix(in oklch, var(--info) 57%, black));
+  --color-info-200: light-dark(color-mix(in oklch, var(--info) 31%, white), color-mix(in oklch, var(--info) 65%, black));
+  --color-info-300: light-dark(color-mix(in oklch, var(--info) 55%, white), color-mix(in oklch, var(--info) 73%, black));
+  --color-info-400: light-dark(color-mix(in oklch, var(--info) 78%, white), color-mix(in oklch, var(--info) 86%, black));
+  --color-info-500: var(--info);
+  --color-info-600: light-dark(color-mix(in oklch, var(--info) 86%, black), color-mix(in oklch, var(--info) 78%, white));
+  --color-info-700: light-dark(color-mix(in oklch, var(--info) 73%, black), color-mix(in oklch, var(--info) 55%, white));
+  --color-info-800: light-dark(color-mix(in oklch, var(--info) 65%, black), color-mix(in oklch, var(--info) 31%, white));
+  --color-info-900: light-dark(color-mix(in oklch, var(--info) 57%, black), color-mix(in oklch, var(--info) 15%, white));
+  --color-info-950: light-dark(color-mix(in oklch, var(--info) 43%, black), color-mix(in oklch, var(--info) 7%, white));
 
-  /* Surface — semantic background tokens */
-  --color-surface: light-dark(#ffffff, #09090b);
-  --color-surface-raised: light-dark(#fafafa, #18181b);
-  --color-surface-sunken: light-dark(#f4f4f5, #27272a);
+  /* ── Neutral (3/7/18/29/64 · 80/67/50/38/26) ── */
+  --color-neutral-50: light-dark(color-mix(in oklch, var(--neutral) 3%, white), color-mix(in oklch, var(--neutral) 26%, black));
+  --color-neutral-100: light-dark(color-mix(in oklch, var(--neutral) 7%, white), color-mix(in oklch, var(--neutral) 38%, black));
+  --color-neutral-200: light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+  --color-neutral-300: light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --color-neutral-400: light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+  --color-neutral-500: var(--neutral);
+  --color-neutral-600: light-dark(color-mix(in oklch, var(--neutral) 80%, black), color-mix(in oklch, var(--neutral) 64%, white));
+  --color-neutral-700: light-dark(color-mix(in oklch, var(--neutral) 67%, black), color-mix(in oklch, var(--neutral) 29%, white));
+  --color-neutral-800: light-dark(color-mix(in oklch, var(--neutral) 50%, black), color-mix(in oklch, var(--neutral) 18%, white));
+  --color-neutral-900: light-dark(color-mix(in oklch, var(--neutral) 38%, black), color-mix(in oklch, var(--neutral) 7%, white));
+  --color-neutral-950: light-dark(color-mix(in oklch, var(--neutral) 26%, black), color-mix(in oklch, var(--neutral) 3%, white));
+
+  /* ── Surface — semantic background tokens ────── */
+  --color-surface: light-dark(white, color-mix(in oklch, var(--neutral) 26%, black));
+  --color-surface-raised: light-dark(color-mix(in oklch, var(--neutral) 3%, white), color-mix(in oklch, var(--neutral) 38%, black));
+  --color-surface-sunken: light-dark(color-mix(in oklch, var(--neutral) 7%, white), color-mix(in oklch, var(--neutral) 50%, black));
   --color-surface-overlay: light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
 
-  /* Foreground — semantic text color tokens with WCAG-safe dark mode values */
-  --color-foreground: light-dark(#18181b, #f4f4f5);
-  --color-foreground-muted: light-dark(#71717a, #a1a1aa);
+  /* ── Foreground — semantic text tokens ─────────
+     Uses un-inverted neutral generation formulas so
+     light mode gets dark text, dark mode gets light. */
+  --color-foreground: light-dark(color-mix(in oklch, var(--neutral) 38%, black), color-mix(in oklch, var(--neutral) 7%, white));
+  --color-foreground-muted: light-dark(var(--neutral), color-mix(in oklch, var(--neutral) 64%, white));
 
-  /* On-filled — text color for solid colored backgrounds (buttons, banners) */
-  --color-on-filled: light-dark(#ffffff, #09090b);
+  /* ── On-filled — text on solid backgrounds ──── */
+  --color-on-filled: light-dark(white, color-mix(in oklch, var(--neutral) 26%, black));
 
   /* ═══════════════════════════════════════════════════
      TYPOGRAPHY
@@ -140,9 +157,9 @@
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   --shadow-tooltip: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   --shadow-banner: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.4);
-  --shadow-focus-danger: 0 0 0 3px rgba(244, 63, 94, 0.4);
-  --shadow-focus-success: 0 0 0 3px rgba(16, 185, 129, 0.4);
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--primary) 40%, transparent);
+  --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 40%, transparent);
+  --shadow-focus-success: 0 0 0 3px color-mix(in srgb, var(--success) 40%, transparent);
 
   /* ═══════════════════════════════════════════════════
      BORDER RADIUS
@@ -193,34 +210,35 @@
    CONTRAST PREFERENCE
    High contrast: stronger borders, bolder focus rings,
    more opaque overlays, visible boundaries.
+   Bumps neutral-200 → 300 and neutral-300 → 400.
    ═══════════════════════════════════════════════════ */
 
 @media (prefers-contrast: more) {
   :root:not([data-contrast="normal"]) {
-    --shadow-card: 0 0 0 1px light-dark(#d4d4d8, #3f3f46);
-    --shadow-card-hover: 0 0 0 2px light-dark(#a1a1aa, #52525b);
-    --shadow-tooltip: 0 0 0 1px light-dark(#a1a1aa, #52525b);
-    --shadow-banner: 0 0 0 1px light-dark(#d4d4d8, #3f3f46);
-    --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.8);
-    --shadow-focus-danger: 0 0 0 3px rgba(244, 63, 94, 0.8);
-    --shadow-focus-success: 0 0 0 3px rgba(16, 185, 129, 0.8);
+    --color-neutral-200: light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+    --color-neutral-300: light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+    --shadow-card: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+    --shadow-card-hover: 0 0 0 2px light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+    --shadow-tooltip: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+    --shadow-banner: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+    --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--primary) 80%, transparent);
+    --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 80%, transparent);
+    --shadow-focus-success: 0 0 0 3px color-mix(in srgb, var(--success) 80%, transparent);
     --color-surface-overlay: light-dark(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85));
-    --color-neutral-200: light-dark(#d4d4d8, #3f3f46);
-    --color-neutral-300: light-dark(#a1a1aa, #52525b);
   }
 }
 
 :root[data-contrast="more"] {
-  --shadow-card: 0 0 0 1px light-dark(#d4d4d8, #3f3f46);
-  --shadow-card-hover: 0 0 0 2px light-dark(#a1a1aa, #52525b);
-  --shadow-tooltip: 0 0 0 1px light-dark(#a1a1aa, #52525b);
-  --shadow-banner: 0 0 0 1px light-dark(#d4d4d8, #3f3f46);
-  --shadow-focus: 0 0 0 3px rgba(99, 102, 241, 0.8);
-  --shadow-focus-danger: 0 0 0 3px rgba(244, 63, 94, 0.8);
-  --shadow-focus-success: 0 0 0 3px rgba(16, 185, 129, 0.8);
+  --color-neutral-200: light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --color-neutral-300: light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+  --shadow-card: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --shadow-card-hover: 0 0 0 2px light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+  --shadow-tooltip: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 64%, white), color-mix(in oklch, var(--neutral) 80%, black));
+  --shadow-banner: 0 0 0 1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--primary) 80%, transparent);
+  --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 80%, transparent);
+  --shadow-focus-success: 0 0 0 3px color-mix(in srgb, var(--success) 80%, transparent);
   --color-surface-overlay: light-dark(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85));
-  --color-neutral-200: light-dark(#d4d4d8, #3f3f46);
-  --color-neutral-300: light-dark(#a1a1aa, #52525b);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -253,33 +271,34 @@
 /* ═══════════════════════════════════════════════════
    REDUCED TRANSPARENCY PREFERENCE
    Replaces semi-transparent shadows and overlays
-   with opaque solid equivalents.
+   with opaque solid equivalents derived from the
+   neutral and palette base tokens.
    ═══════════════════════════════════════════════════ */
 
 @media (prefers-reduced-transparency: reduce) {
   :root:not([data-transparency="normal"]) {
     --color-surface-overlay: light-dark(#1f1f1f, #0a0a0a);
-    --shadow-card: 0 1px 3px 0 light-dark(#e4e4e7, #27272a);
-    --shadow-card-hover: 0 10px 15px -3px light-dark(#e4e4e7, #27272a);
-    --shadow-modal: 0 20px 25px -5px light-dark(#d4d4d8, #3f3f46);
-    --shadow-tooltip: 0 4px 6px -1px light-dark(#d4d4d8, #3f3f46);
-    --shadow-banner: 0 1px 2px 0 light-dark(#e4e4e7, #27272a);
-    --shadow-focus: 0 0 0 3px light-dark(#a5b4fc, #4338ca);
-    --shadow-focus-danger: 0 0 0 3px light-dark(#fda4af, #be123c);
-    --shadow-focus-success: 0 0 0 3px light-dark(#6ee7b7, #047857);
+    --shadow-card: 0 1px 3px 0 light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+    --shadow-card-hover: 0 10px 15px -3px light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+    --shadow-modal: 0 20px 25px -5px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+    --shadow-tooltip: 0 4px 6px -1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+    --shadow-banner: 0 1px 2px 0 light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+    --shadow-focus: 0 0 0 3px var(--color-primary-300);
+    --shadow-focus-danger: 0 0 0 3px var(--color-danger-300);
+    --shadow-focus-success: 0 0 0 3px var(--color-success-300);
   }
 }
 
 :root[data-transparency="reduce"] {
   --color-surface-overlay: light-dark(#1f1f1f, #0a0a0a);
-  --shadow-card: 0 1px 3px 0 light-dark(#e4e4e7, #27272a);
-  --shadow-card-hover: 0 10px 15px -3px light-dark(#e4e4e7, #27272a);
-  --shadow-modal: 0 20px 25px -5px light-dark(#d4d4d8, #3f3f46);
-  --shadow-tooltip: 0 4px 6px -1px light-dark(#d4d4d8, #3f3f46);
-  --shadow-banner: 0 1px 2px 0 light-dark(#e4e4e7, #27272a);
-  --shadow-focus: 0 0 0 3px light-dark(#a5b4fc, #4338ca);
-  --shadow-focus-danger: 0 0 0 3px light-dark(#fda4af, #be123c);
-  --shadow-focus-success: 0 0 0 3px light-dark(#6ee7b7, #047857);
+  --shadow-card: 0 1px 3px 0 light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+  --shadow-card-hover: 0 10px 15px -3px light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+  --shadow-modal: 0 20px 25px -5px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --shadow-tooltip: 0 4px 6px -1px light-dark(color-mix(in oklch, var(--neutral) 29%, white), color-mix(in oklch, var(--neutral) 67%, black));
+  --shadow-banner: 0 1px 2px 0 light-dark(color-mix(in oklch, var(--neutral) 18%, white), color-mix(in oklch, var(--neutral) 50%, black));
+  --shadow-focus: 0 0 0 3px var(--color-primary-300);
+  --shadow-focus-danger: 0 0 0 3px var(--color-danger-300);
+  --shadow-focus-success: 0 0 0 3px var(--color-success-300);
 }
 
 /* ═══════════════════════════════════════════════════
