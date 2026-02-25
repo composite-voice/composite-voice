@@ -93,6 +93,8 @@ export { OpenAILLM } from './providers/llm/openai/index';
 export type { OpenAILLMConfig } from './providers/llm/openai/index';
 export { AnthropicLLM } from './providers/llm/anthropic/index';
 export type { AnthropicLLMConfig } from './providers/llm/anthropic/index';
+export { GroqLLM } from './providers/llm/groq/index';
+export type { GroqLLMConfig } from './providers/llm/groq/index';
 export { WebLLMLLM } from './providers/llm/webllm/index';
 export type { WebLLMLLMConfig, WebLLMLoadProgress } from './providers/llm/webllm/index';
 
