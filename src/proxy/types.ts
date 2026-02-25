@@ -17,6 +17,8 @@ export interface CompositeVoiceProxyConfig {
   openaiApiKey?: string;
   /** ElevenLabs API key — used for WebSocket TTS proxying */
   elevenlabsApiKey?: string;
+  /** AssemblyAI API key — used for WebSocket STT proxying */
+  assemblyaiApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
