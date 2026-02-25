@@ -42,16 +42,56 @@ const sites = [
     <script is:inline>
       (function() {
         var el = document.documentElement;
+        var CK = 'cv-preferences';
         var p = {};
+
+        // Cookie domain for cross-subdomain sharing on custom domains
+        function ckd() {
+          var h = location.hostname;
+          if (h === 'localhost' || h === '127.0.0.1') return '';
+          if (/\.(netlify\.dev|netlify\.app|vercel\.app|pages\.dev|github\.io)$/.test(h)) return '';
+          var s = h.split('.'); return s.length >= 2 ? ';domain=.' + s.slice(-2).join('.') : '';
+        }
+        function save(v) {
+          document.cookie = CK + '=' + encodeURIComponent(JSON.stringify(v)) + ';path=/;max-age=31536000;samesite=lax' + ckd();
+        }
+
+        // Read: URL param (cross-site transfer) → cookie
         try {
-          var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
-          if (m) p = JSON.parse(decodeURIComponent(m[2]));
+          var sp = new URLSearchParams(location.search);
+          var cvp = sp.get('cvp');
+          if (cvp) {
+            p = JSON.parse(cvp);
+            save(p);
+            sp.delete('cvp');
+            history.replaceState(null, '', location.pathname + (sp.toString() ? '?' + sp : '') + location.hash);
+          } else {
+            var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+            if (m) p = JSON.parse(decodeURIComponent(m[2]));
+          }
         } catch(e) {}
+
+        // Apply
         el.style.colorScheme = (p.theme && p.theme !== 'system') ? p.theme : 'light dark';
         if (p.contrast && p.contrast !== 'system') el.dataset.contrast = p.contrast;
         if (p.motion && p.motion !== 'system') el.dataset.motion = p.motion;
         if (p.transparency && p.transparency !== 'system') el.dataset.transparency = p.transparency;
         if (p.fontSize && p.fontSize !== 'base') el.dataset.fontSize = p.fontSize;
+
+        // Transfer prefs via URL param when navigating to a different hostname
+        document.addEventListener('click', function(e) {
+          var a = e.target.closest ? e.target.closest('a[href]') : null;
+          if (!a || a.target === '_blank') return;
+          try {
+            var u = new URL(a.href, location.href);
+            if (u.hostname === location.hostname) return;
+            var cm = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+            if (!cm) return;
+            e.preventDefault();
+            u.searchParams.set('cvp', decodeURIComponent(cm[2]));
+            location.href = u.toString();
+          } catch(x) {}
+        });
       })();
     </script>
   </head>

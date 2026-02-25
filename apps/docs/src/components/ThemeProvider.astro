@@ -2,16 +2,39 @@
 /**
  * ThemeProvider override — bridges cv-preferences cookie with Starlight's data-theme.
  * Prevents FOUC by running inline before first paint.
+ * Also handles cross-site preference transfer via URL param.
  */
 ---
 
 <script is:inline>
   (function() {
     var el = document.documentElement;
+    var CK = 'cv-preferences';
     var p = {};
+
+    function ckd() {
+      var h = location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1') return '';
+      if (/\.(netlify\.dev|netlify\.app|vercel\.app|pages\.dev|github\.io)$/.test(h)) return '';
+      var s = h.split('.'); return s.length >= 2 ? ';domain=.' + s.slice(-2).join('.') : '';
+    }
+    function save(v) {
+      document.cookie = CK + '=' + encodeURIComponent(JSON.stringify(v)) + ';path=/;max-age=31536000;samesite=lax' + ckd();
+    }
+
+    // Read: URL param (cross-site transfer) → cookie
     try {
-      var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
-      if (m) p = JSON.parse(decodeURIComponent(m[2]));
+      var sp = new URLSearchParams(location.search);
+      var cvp = sp.get('cvp');
+      if (cvp) {
+        p = JSON.parse(cvp);
+        save(p);
+        sp.delete('cvp');
+        history.replaceState(null, '', location.pathname + (sp.toString() ? '?' + sp : '') + location.hash);
+      } else {
+        var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+        if (m) p = JSON.parse(decodeURIComponent(m[2]));
+      }
     } catch(e) {}
 
     var theme = p.theme || 'system';
@@ -42,6 +65,21 @@
           el.dataset.theme = e.matches ? 'light' : 'dark';
         }
       } catch(err) {}
+    });
+
+    // Transfer prefs via URL param when navigating to a different hostname
+    document.addEventListener('click', function(e) {
+      var a = e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a || a.target === '_blank') return;
+      try {
+        var u = new URL(a.href, location.href);
+        if (u.hostname === location.hostname) return;
+        var cm = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+        if (!cm) return;
+        e.preventDefault();
+        u.searchParams.set('cvp', decodeURIComponent(cm[2]));
+        location.href = u.toString();
+      } catch(x) {}
     });
 
     // Expose for Starlight compat (some components call this)
