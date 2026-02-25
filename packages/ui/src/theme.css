@@ -12,7 +12,7 @@
      ═══════════════════════════════════════════════════ */
 
   /* ── Base palette tokens ─────────────────────── */
-  --primary: red;   /* Indigo — trust, technology, voice */
+  --primary: #6366f1;   /* Indigo — trust, technology, voice */
   --secondary: #64748b; /* Slate — neutral complement */
   --accent: #8b5cf6;    /* Violet — creative, AI */
   --success: #10b981;   /* Emerald */
