@@ -57,13 +57,22 @@ const currentPath = Astro.url.pathname;
     <title>{title} — CompositeVoice Design System</title>
     <script is:inline>
       // Apply saved preferences before first paint to prevent FOUC.
-      // Reads from unified cv-preferences object, with legacy key migration.
+      // Reads from localStorage first, then cookie (cross-port sync).
       (function() {
         var el = document.documentElement;
+        var KEY = 'cv-preferences';
         var p = {};
         try {
-          var raw = localStorage.getItem('cv-preferences');
-          if (raw) p = JSON.parse(raw);
+          var raw = localStorage.getItem(KEY);
+          if (raw) { p = JSON.parse(raw); }
+          else {
+            // Fallback: read from cookie (shared across ports)
+            var m = document.cookie.match(new RegExp('(?:^|; )' + KEY + '=([^;]*)'));
+            if (m) {
+              p = JSON.parse(decodeURIComponent(m[1]));
+              localStorage.setItem(KEY, JSON.stringify(p));
+            }
+          }
 
           // Migrate legacy per-key storage
           var legacy = { 'cv-theme': 'theme', 'cv-contrast': 'contrast', 'cv-motion': 'motion', 'cv-transparency': 'transparency', 'cv-font-size': 'fontSize' };
@@ -72,7 +81,7 @@ const currentPath = Astro.url.pathname;
             var v = localStorage.getItem(k);
             if (v !== null) { p[legacy[k]] = v; localStorage.removeItem(k); migrated = true; }
           }
-          if (migrated) localStorage.setItem('cv-preferences', JSON.stringify(p));
+          if (migrated) localStorage.setItem(KEY, JSON.stringify(p));
         } catch(e) {}
 
         // Apply
