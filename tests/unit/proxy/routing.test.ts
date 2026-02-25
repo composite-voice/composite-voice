@@ -45,6 +45,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('elevenlabs');
     });
+
+    it('includes AssemblyAI WebSocket route when assemblyaiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        assemblyaiApiKey: 'test-aai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'assemblyai',
+        type: 'websocket',
+        targetBase: 'wss://api.assemblyai.com',
+        authHeaders: {
+          Authorization: 'test-aai-key',
+        },
+      });
+    });
+
+    it('does not include AssemblyAI route when assemblyaiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'assemblyai')).toBe(true);
+    });
+
+    it('includes AssemblyAI alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        assemblyaiApiKey: 'aai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('assemblyai');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
@@ -74,6 +117,43 @@ describe('proxy routing', () => {
 
     it('does not match when prefix does not match', () => {
       const route = matchWsRoute(routes, '/api/elevenlabs/v1/tts', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Deepgram WebSocket route', () => {
+      const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('deepgram');
+    });
+  });
+
+  describe('matchWsRoute — AssemblyAI', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      assemblyaiApiKey: 'aai-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/assemblyai/ path', () => {
+      const route = matchWsRoute(routes, '/proxy/assemblyai/v2/realtime/ws', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('assemblyai');
+      expect(route!.type).toBe('websocket');
+    });
+
+    it('matches /proxy/assemblyai with subpath', () => {
+      const route = matchWsRoute(routes, '/proxy/assemblyai/some/path', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('assemblyai');
+    });
+
+    it('does not match HTTP routes for AssemblyAI', () => {
+      const route = matchHttpRoute(routes, '/proxy/assemblyai/v2/realtime', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchWsRoute(routes, '/api/assemblyai/v2/realtime/ws', prefix);
       expect(route).toBeNull();
     });
 

@@ -9,7 +9,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
 export type RouteType = 'http' | 'websocket';
 
 export interface ProxyRoute {
-  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs'
+  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai'
   type: RouteType;
   targetBase: string; // e.g. 'https://api.anthropic.com'
   authHeaders: Record<string, string>;
@@ -63,6 +63,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'wss://api.elevenlabs.io',
       authHeaders: {
         'xi-api-key': config.elevenlabsApiKey,
+      },
+    });
+  }
+
+  if (config.assemblyaiApiKey) {
+    routes.push({
+      provider: 'assemblyai',
+      type: 'websocket',
+      targetBase: 'wss://api.assemblyai.com',
+      authHeaders: {
+        Authorization: config.assemblyaiApiKey,
       },
     });
   }
