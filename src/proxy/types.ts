@@ -23,6 +23,8 @@ export interface CompositeVoiceProxyConfig {
   groqApiKey?: string;
   /** Mistral API key — used for HTTP LLM proxying */
   mistralApiKey?: string;
+  /** Gemini API key — used for HTTP LLM proxying */
+  geminiApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
