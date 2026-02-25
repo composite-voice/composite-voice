@@ -82,6 +82,8 @@ export type {
   DeepgramSTTConfig,
   DeepgramTranscriptionOptions,
 } from './providers/stt/deepgram/index';
+export { AssemblyAISTT } from './providers/stt/assemblyai/index';
+export type { AssemblyAISTTConfig } from './providers/stt/assemblyai/index';
 
 // Built-in providers - LLM
 export { OpenAILLM } from './providers/llm/openai/index';
