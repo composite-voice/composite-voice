@@ -57,36 +57,15 @@ const currentPath = Astro.url.pathname;
     <title>{title} — CompositeVoice Design System</title>
     <script is:inline>
       // Apply saved preferences before first paint to prevent FOUC.
-      // Reads from localStorage first, then cookie (cross-port sync).
+      // Reads from cookie (shared across ports on same hostname).
       (function() {
         var el = document.documentElement;
-        var KEY = 'cv-preferences';
         var p = {};
         try {
-          var raw = localStorage.getItem(KEY);
-          if (raw) { p = JSON.parse(raw); }
-          else {
-            // Fallback: read from cookie (shared across ports)
-            var m = document.cookie.match(new RegExp('(?:^|; )' + KEY + '=([^;]*)'));
-            if (m) {
-              p = JSON.parse(decodeURIComponent(m[1]));
-              localStorage.setItem(KEY, JSON.stringify(p));
-            }
-          }
-
-          // Migrate legacy per-key storage
-          var legacy = { 'cv-theme': 'theme', 'cv-contrast': 'contrast', 'cv-motion': 'motion', 'cv-transparency': 'transparency', 'cv-font-size': 'fontSize' };
-          var migrated = false;
-          for (var k in legacy) {
-            var v = localStorage.getItem(k);
-            if (v !== null) { p[legacy[k]] = v; localStorage.removeItem(k); migrated = true; }
-          }
-          if (migrated) localStorage.setItem(KEY, JSON.stringify(p));
+          var m = document.cookie.match(/(^|; )cv-preferences=([^;]*)/);
+          if (m) p = JSON.parse(decodeURIComponent(m[2]));
         } catch(e) {}
-
-        // Apply
-        var theme = p.theme || 'system';
-        el.style.colorScheme = theme === 'system' ? 'light dark' : theme;
+        el.style.colorScheme = (p.theme && p.theme !== 'system') ? p.theme : 'light dark';
         if (p.contrast && p.contrast !== 'system') el.dataset.contrast = p.contrast;
         if (p.motion && p.motion !== 'system') el.dataset.motion = p.motion;
         if (p.transparency && p.transparency !== 'system') el.dataset.transparency = p.transparency;
