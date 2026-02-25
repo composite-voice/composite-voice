@@ -7,6 +7,10 @@
 // import { OpenAILLM } from '@lukeocodes/composite-voice/providers/llm/openai';
 // import { AnthropicLLM } from '@lukeocodes/composite-voice/providers/llm/anthropic';
 
+// Re-export OpenAI-compatible base class (for custom providers)
+export { OpenAICompatibleLLM } from './openai-compatible';
+export type { OpenAICompatibleLLMConfig } from './openai-compatible';
+
 // Re-export OpenAI provider
 export { OpenAILLM } from './openai';
 export type { OpenAILLMConfig } from './openai';

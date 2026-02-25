@@ -1,273 +1,44 @@
 /**
  * OpenAI LLM provider using the official OpenAI SDK
+ *
+ * Thin subclass of OpenAICompatibleLLM that adds OpenAI-specific options
+ * (organizationId) and defaults baseURL to OpenAI's endpoint.
  */
 
-import { BaseLLMProvider } from '../../base/BaseLLMProvider';
-import type {
-  LLMProviderConfig,
-  LLMGenerationOptions,
-  LLMMessage,
-} from '../../../core/types/providers';
+import { OpenAICompatibleLLM } from '../openai-compatible/OpenAICompatibleLLM';
+import type { OpenAICompatibleLLMConfig } from '../openai-compatible/OpenAICompatibleLLM';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError } from '../../../utils/errors';
-
-// Type-safe imports for optional peer dependency
-type OpenAI = typeof import('openai').default;
-type OpenAIInstance = InstanceType<OpenAI>;
-type ChatCompletionMessageParam =
-  import('openai/resources/chat/completions').ChatCompletionMessageParam;
 
 /**
  * OpenAI LLM provider configuration.
  * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
  * At least one must be set; if both are provided `proxyUrl` takes precedence.
  */
-export interface OpenAILLMConfig extends LLMProviderConfig {
-  /**
-   * OpenAI API key.
-   * Required when connecting directly to OpenAI.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
-   */
-  apiKey?: string;
-  /**
-   * URL of the CompositeVoice proxy server's OpenAI endpoint.
-   * Example: `'http://localhost:3000/api/proxy/openai'`
-   */
-  proxyUrl?: string;
-  /** Model to use (e.g., 'gpt-4', 'gpt-3.5-turbo') */
-  model: string;
+export interface OpenAILLMConfig extends OpenAICompatibleLLMConfig {
   /** Organization ID (optional) */
   organizationId?: string;
-  /** Base URL for API (optional, for custom endpoints — use `proxyUrl` for proxy) */
-  baseURL?: string;
-  /** Maximum retries for failed requests */
-  maxRetries?: number;
 }
 
 /**
  * OpenAI LLM provider
  * Uses the official OpenAI SDK for chat completions
  */
-export class OpenAILLM extends BaseLLMProvider {
+export class OpenAILLM extends OpenAICompatibleLLM {
   declare public config: OpenAILLMConfig;
-  private client: OpenAIInstance | null = null;
+  protected override readonly providerName = 'OpenAILLM';
 
   constructor(config: OpenAILLMConfig, logger?: Logger) {
     super(config, logger);
   }
 
-  protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'OpenAILLM',
-        new Error('OpenAILLM requires either "apiKey" or "proxyUrl" to be configured.')
-      );
-    }
-
-    try {
-      // Dynamically import OpenAI SDK (peer dependency)
-      const OpenAIModule = await import('openai');
-      const OpenAI = OpenAIModule.default;
-
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
-
-      // Initialize OpenAI client
-      this.client = new OpenAI({
-        apiKey,
-        organization: this.config.organizationId,
-        baseURL,
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-      });
-
-      this.logger.info('OpenAI LLM initialized', {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'OpenAILLM',
-          new Error(
-            'OpenAI SDK not found. Install with: npm install openai\n' +
-              'The OpenAI SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('OpenAILLM', error as Error);
-    }
-  }
-
-  protected async onDispose(): Promise<void> {
-    this.client = null;
-    this.logger.info('OpenAI LLM disposed');
-  }
-
   /**
-   * Generate a response from a prompt
+   * Add OpenAI-specific options (organization) to the SDK client.
    */
-  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
-    const messages = this.promptToMessages(prompt);
-    return this.generateFromMessages(messages, options);
-  }
-
-  /**
-   * Generate a response from a conversation
-   */
-  async generateFromMessages(
-    messages: LLMMessage[],
-    options?: LLMGenerationOptions
-  ): Promise<AsyncIterable<string>> {
-    this.assertReady();
-
-    if (!this.client) {
-      throw new Error('OpenAI client not initialized');
+  protected override buildClientOptions(): Record<string, unknown> {
+    const options: Record<string, unknown> = {};
+    if (this.config.organizationId) {
+      options.organization = this.config.organizationId;
     }
-
-    const mergedOptions = this.mergeOptions(options);
-    const shouldStream = this.config.stream ?? true;
-
-    // Convert messages to OpenAI format
-    const openaiMessages: ChatCompletionMessageParam[] = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
-
-    if (shouldStream) {
-      return this.streamResponse(openaiMessages, mergedOptions);
-    } else {
-      return this.nonStreamResponse(openaiMessages, mergedOptions);
-    }
-  }
-
-  /**
-   * Stream response from OpenAI
-   */
-  private async streamResponse(
-    messages: ChatCompletionMessageParam[],
-    options: LLMGenerationOptions
-  ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error('OpenAI client not initialized');
-    }
-
-    const client = this.client;
-    const config = this.config;
-    const logger = this.logger;
-    const signal = options.signal;
-
-    return {
-      async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
-
-        try {
-          logger.debug('Starting OpenAI streaming request', {
-            model: config.model,
-            messageCount: messages.length,
-          });
-
-          const streamParams = {
-            model: config.model,
-            messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
-            stream: true as const,
-            ...options.extra,
-          };
-          const stream = signal
-            ? await client.chat.completions.create(streamParams, { signal })
-            : await client.chat.completions.create(streamParams);
-
-          for await (const chunk of stream) {
-            if (signal?.aborted) break;
-            const delta = chunk.choices[0]?.delta?.content;
-            if (delta) {
-              yield delta;
-            }
-          }
-
-          logger.debug('OpenAI streaming request completed');
-        } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
-          logger.error('OpenAI streaming request failed', error);
-          throw error;
-        }
-      },
-    };
-  }
-
-  /**
-   * Non-streaming response from OpenAI
-   */
-  private async nonStreamResponse(
-    messages: ChatCompletionMessageParam[],
-    options: LLMGenerationOptions
-  ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error('OpenAI client not initialized');
-    }
-
-    const client = this.client;
-    const config = this.config;
-    const logger = this.logger;
-    const signal = options.signal;
-
-    return {
-      async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
-
-        try {
-          logger.debug('Starting OpenAI non-streaming request', {
-            model: config.model,
-            messageCount: messages.length,
-          });
-
-          const createParams = {
-            model: config.model,
-            messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
-            stream: false as const,
-            ...options.extra,
-          };
-          const response = signal
-            ? await client.chat.completions.create(createParams, { signal })
-            : await client.chat.completions.create(createParams);
-
-          const content = response.choices[0]?.message?.content ?? '';
-          yield content;
-
-          logger.debug('OpenAI non-streaming request completed', {
-            tokensUsed: response.usage?.total_tokens,
-          });
-        } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
-          logger.error('OpenAI non-streaming request failed', error);
-          throw error;
-        }
-      },
-    };
+    return options;
   }
 }
