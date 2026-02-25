@@ -7,6 +7,17 @@
    Accent:    Violet  #8b5cf6  ≈ hsl(265, 90%, 66%)
    ═══════════════════════════════════════════════════ */
 
+/* ── Layout — match design site dimensions ─────── */
+
+:root {
+  --sl-nav-height: 3.5rem;        /* 56px — matches design h-14 */
+  --sl-sidebar-width: 16rem;      /* 256px — matches design w-64 */
+  --sl-content-width: 72rem;
+  --sl-nav-pad-x: 1rem;
+  --sl-text-base: 1rem;
+  line-height: 1.5;               /* 24px at 16px — matches design */
+}
+
 /* ── Typography ────────────────────────────────── */
 
 :root {
@@ -15,6 +26,7 @@
     sans-serif;
   --sl-font-mono: "JetBrains Mono", ui-monospace, "Fira Code",
     "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-family: var(--sl-font);    /* Prevent Tailwind appending its default stack */
 }
 
 /* ── Accent — Teal (dark mode) ─────────────────── */
@@ -31,6 +43,15 @@
   --sl-color-accent-high: hsl(175, 60%, 22%);
   --sl-color-accent: hsl(175, 70%, 40%);
   --sl-color-accent-low: hsl(175, 60%, 92%);
+}
+
+/* ── Nav background — pure white like design ───── */
+
+:root {
+  --sl-color-bg-nav: hsl(0, 0%, 100%);
+}
+:root[data-theme="light"] {
+  --sl-color-bg-nav: hsl(0, 0%, 100%);
 }
 
 /* ── Gray Palette — warm stone tones (dark mode) ─ */
@@ -77,4 +98,28 @@
 }
 :root[data-theme="light"] {
   --sl-color-backdrop-overlay: hsla(30, 5%, 36%, 0.66);
+}
+
+/* ── Body — override Tailwind preflight ────────── */
+
+body {
+  font-family: var(--sl-font);
+  line-height: 1.5;
+}
+
+/* ── Sidebar — match design site active/inactive ── */
+
+nav[aria-label="Main"] a[aria-current="page"] {
+  background-color: var(--sl-color-accent-low) !important;
+  color: var(--sl-color-accent-high) !important;
+  font-weight: 500 !important;
+  border-radius: 0.5rem !important;
+}
+:root[data-theme="light"] nav[aria-label="Main"] a[aria-current="page"] {
+  background-color: hsl(175, 60%, 92%) !important;
+  color: hsl(175, 60%, 22%) !important;
+}
+nav[aria-label="Main"] a:not([aria-current="page"]) {
+  color: var(--color-neutral-500);
+  font-weight: 500;
 }
