@@ -18,7 +18,7 @@ export default function CardsShowcase() {
       <section>
         <Heading level={2}>Variants</Heading>
         <Text>Cards come in four variants: default, outlined, elevated, and filled.</Text>
-        <div className="grid grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           <Card variant="default">
             <CardBody>
               <CardTitle>Default</CardTitle>
@@ -129,7 +129,7 @@ export default function CardsShowcase() {
       <section>
         <Heading level={2}>Card Layouts</Heading>
         <Text>Cards work well in grid layouts for presenting collections of content.</Text>
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           <Card>
             <CardImage src="https://picsum.photos/seed/cv2/600/300" alt="Placeholder" />
             <CardBody>

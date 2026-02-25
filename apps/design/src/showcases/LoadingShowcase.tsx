@@ -17,14 +17,14 @@ export default function LoadingShowcase() {
       <section>
         <Heading level={2}>Spinners</Heading>
         <Text>Available in multiple sizes and colors.</Text>
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4">
           <Spinner size="xs" />
           <Spinner size="sm" />
           <Spinner size="md" />
           <Spinner size="lg" />
           <Spinner size="xl" />
         </div>
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4">
           <Spinner color="primary" />
           <Spinner color="secondary" />
           <div className="bg-neutral-800 p-4 rounded-lg inline-flex">
@@ -60,7 +60,7 @@ export default function LoadingShowcase() {
       <section>
         <Heading level={2}>Skeleton — Shapes</Heading>
         <Text>Circular, rectangular, and rounded skeleton placeholders.</Text>
-        <div className="mt-4 flex items-center gap-6">
+        <div className="mt-4 flex flex-wrap items-center gap-3 sm:gap-6">
           <Skeleton variant="circular" width={64} height={64} />
           <Skeleton variant="rectangular" width={200} height={100} />
           <Skeleton variant="rounded" width={200} height={100} />

@@ -50,10 +50,10 @@ const variantStyles: Record<AlertVariant, string> = {
 };
 
 const variantIconColor: Record<AlertVariant, string> = {
-  info: "text-info-500",
-  success: "text-success-500",
-  warning: "text-warning-500",
-  danger: "text-danger-500",
+  info: "text-info-600",
+  success: "text-success-600",
+  warning: "text-warning-600",
+  danger: "text-danger-600",
 };
 
 const defaultIcons: Record<AlertVariant, React.ReactNode> = {

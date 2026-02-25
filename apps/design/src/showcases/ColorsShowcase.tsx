@@ -215,7 +215,7 @@ export default function ColorsShowcase() {
             recessed areas like input fields.
           </Text>
         </div>
-        <div className="grid grid-cols-3 gap-4 max-w-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg">
           {surfaceTokens.map((token) => (
             <ColorSwatch
               key={token.name}

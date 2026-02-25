@@ -271,9 +271,9 @@ const categories = [...new Set(icons.map((i) => i.category))];
 function IconCard({ entry }: { entry: IconEntry }) {
   const Comp = entry.component;
   return (
-    <div className="flex flex-col items-center gap-2 p-4 rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-card-hover transition-all group">
+    <div className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg border border-neutral-200 hover:border-primary-300 hover:shadow-card-hover transition-all group min-w-0">
       <Comp size="lg" className="text-neutral-700 group-hover:text-primary-600 transition-colors" />
-      <Text as="span" size="xs" color="muted" className="font-mono text-center leading-tight">
+      <Text as="span" size="xs" color="muted" className="font-mono text-center leading-tight w-full truncate">
         {entry.name}
       </Text>
     </div>
@@ -319,7 +319,7 @@ export default function IconsShowcase() {
         <Text>
           All icons support five sizes via the <Code>size</Code> prop: xs, sm, md, lg, xl.
         </Text>
-        <div className="flex items-end gap-6 mt-4">
+        <div className="flex flex-wrap items-end gap-3 sm:gap-6 mt-4">
           {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
             <div key={size} className="flex flex-col items-center gap-2">
               <StarIcon size={size} className="text-neutral-700" />
@@ -335,7 +335,7 @@ export default function IconsShowcase() {
         <Text>
           Icons inherit <Code>currentColor</Code> for stroke color. Use Tailwind text color utilities via <Code>className</Code>.
         </Text>
-        <div className="flex items-center gap-6 mt-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6 mt-4">
           <HeartIcon size="lg" className="text-danger-500" />
           <StarIcon size="lg" className="text-warning-500" />
           <CheckCircleIcon size="lg" className="text-success-500" />
@@ -349,7 +349,7 @@ export default function IconsShowcase() {
       {filteredCategories.map((cat) => (
         <section key={cat}>
           <Heading level={2}>{cat}</Heading>
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 mt-4">
             {filtered
               .filter((i) => i.category === cat)
               .map((entry) => (
