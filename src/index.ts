@@ -85,6 +85,9 @@ export type {
 export { AssemblyAISTT } from './providers/stt/assemblyai/index';
 export type { AssemblyAISTTConfig } from './providers/stt/assemblyai/index';
 
+// Built-in providers - LLM (OpenAI-compatible base class for custom providers)
+export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
+export type { OpenAICompatibleLLMConfig } from './providers/llm/openai-compatible/index';
 // Built-in providers - LLM
 export { OpenAILLM } from './providers/llm/openai/index';
 export type { OpenAILLMConfig } from './providers/llm/openai/index';
