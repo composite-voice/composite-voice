@@ -8,10 +8,19 @@
 <script is:inline>
   (function() {
     var el = document.documentElement;
+    var KEY = 'cv-preferences';
     var p = {};
     try {
-      var raw = localStorage.getItem('cv-preferences');
-      if (raw) p = JSON.parse(raw);
+      var raw = localStorage.getItem(KEY);
+      if (raw) { p = JSON.parse(raw); }
+      else {
+        // Fallback: read from cookie (shared across ports)
+        var m = document.cookie.match(new RegExp('(?:^|; )' + KEY + '=([^;]*)'));
+        if (m) {
+          p = JSON.parse(decodeURIComponent(m[1]));
+          localStorage.setItem(KEY, JSON.stringify(p));
+        }
+      }
       // Migrate legacy per-key storage
       var legacy = { 'cv-theme': 'theme', 'cv-contrast': 'contrast', 'cv-motion': 'motion', 'cv-transparency': 'transparency', 'cv-font-size': 'fontSize' };
       var migrated = false;
@@ -19,12 +28,12 @@
         var v = localStorage.getItem(k);
         if (v !== null) { p[legacy[k]] = v; localStorage.removeItem(k); migrated = true; }
       }
-      if (migrated) localStorage.setItem('cv-preferences', JSON.stringify(p));
+      if (migrated) localStorage.setItem(KEY, JSON.stringify(p));
       // Migrate starlight-theme to our system
       var slTheme = localStorage.getItem('starlight-theme');
       if (slTheme && !p.theme) {
         p.theme = slTheme === 'auto' ? 'system' : slTheme;
-        localStorage.setItem('cv-preferences', JSON.stringify(p));
+        localStorage.setItem(KEY, JSON.stringify(p));
         localStorage.removeItem('starlight-theme');
       }
     } catch(e) {}
@@ -51,7 +60,7 @@
     // Listen for system theme changes when in "system" mode
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function(e) {
       try {
-        var prefs = JSON.parse(localStorage.getItem('cv-preferences') || '{}');
+        var prefs = JSON.parse(localStorage.getItem(KEY) || '{}');
         if (!prefs.theme || prefs.theme === 'system') {
           el.dataset.theme = e.matches ? 'light' : 'dark';
         }

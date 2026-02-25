@@ -15,6 +15,14 @@ type Theme = "light" | "dark" | "system";
 function applyTheme(theme: Theme) {
   const el = document.documentElement;
   el.style.colorScheme = theme === "system" ? "light dark" : theme;
+
+  // Set data-theme for Starlight CSS compatibility (harmless on non-Starlight sites)
+  if (theme === "system") {
+    const preferLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    el.dataset.theme = preferLight ? "light" : "dark";
+  } else {
+    el.dataset.theme = theme;
+  }
 }
 
 const options: { value: Theme; label: string; icon: React.ReactNode }[] = [
