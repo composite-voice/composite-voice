@@ -1,5 +1,43 @@
 /**
- * WebSocket utilities and connection manager
+ * WebSocket connection manager with automatic reconnection.
+ *
+ * @remarks
+ * This module provides a managed WebSocket connection layer used by the SDK's
+ * WebSocket-based providers (e.g., {@link DeepgramTTS}, {@link ElevenLabsTTS},
+ * {@link CartesiaTTS}). It handles connection lifecycle, automatic reconnection
+ * with exponential backoff, timeout management, and event dispatching.
+ *
+ * The {@link WebSocketManager} wraps the browser's native `WebSocket` API and
+ * adds reliability features that are essential for real-time voice applications.
+ *
+ * @example
+ * ```typescript
+ * import { WebSocketManager, WebSocketState } from 'composite-voice';
+ *
+ * const ws = new WebSocketManager({
+ *   url: 'wss://api.example.com/stream',
+ *   connectionTimeout: 5000,
+ *   reconnection: {
+ *     enabled: true,
+ *     maxAttempts: 5,
+ *     initialDelay: 1000,
+ *     maxDelay: 30000,
+ *     backoffMultiplier: 2,
+ *   },
+ * });
+ *
+ * ws.setHandlers({
+ *   onMessage: (event) => console.log('Received:', event.data),
+ *   onClose: () => console.log('Connection closed'),
+ *   onError: (error) => console.error('Error:', error),
+ * });
+ *
+ * await ws.connect();
+ * ws.send('Hello, server!');
+ * await ws.disconnect();
+ * ```
+ *
+ * @packageDocumentation
  */
 
 import { WebSocketError, TimeoutError } from './errors';
@@ -7,45 +45,163 @@ import type { ReconnectionConfig } from '../core/types/config';
 import { Logger } from './logger';
 
 /**
- * WebSocket connection state
+ * Enumeration of WebSocket connection states.
+ *
+ * @remarks
+ * These states track the full lifecycle of a managed WebSocket connection,
+ * including reconnection phases. The state machine transitions are:
+ *
+ * ```
+ * DISCONNECTED -> CONNECTING -> CONNECTED -> CLOSING -> CLOSED
+ *                                    |
+ *                                    v
+ *                              RECONNECTING -> CONNECTING -> ...
+ * ```
  */
 export enum WebSocketState {
+  /** No active connection. Initial state and state after unexpected disconnection. */
   DISCONNECTED = 'disconnected',
+  /** Connection attempt is in progress. */
   CONNECTING = 'connecting',
+  /** WebSocket is open and ready to send/receive data. */
   CONNECTED = 'connected',
+  /** Automatic reconnection is in progress after an unexpected disconnection. */
   RECONNECTING = 'reconnecting',
+  /** A graceful close has been initiated and is in progress. */
   CLOSING = 'closing',
+  /** The connection has been gracefully closed. Terminal state. */
   CLOSED = 'closed',
 }
 
 /**
- * WebSocket manager options
+ * Configuration options for the {@link WebSocketManager}.
+ *
+ * @example
+ * ```typescript
+ * const options: WebSocketManagerOptions = {
+ *   url: 'wss://api.example.com/stream',
+ *   protocols: 'graphql-ws',
+ *   connectionTimeout: 10000,
+ *   reconnection: {
+ *     enabled: true,
+ *     maxAttempts: 3,
+ *     initialDelay: 500,
+ *     maxDelay: 10000,
+ *     backoffMultiplier: 2,
+ *   },
+ * };
+ * ```
  */
 export interface WebSocketManagerOptions {
-  /** URL to connect to */
+  /**
+   * The WebSocket URL to connect to (must use `ws://` or `wss://` protocol).
+   */
   url: string;
-  /** Protocols */
+
+  /**
+   * WebSocket sub-protocol(s) to request during the handshake.
+   *
+   * @defaultValue `undefined`
+   */
   protocols?: string | string[] | undefined;
-  /** Reconnection configuration */
+
+  /**
+   * Configuration for automatic reconnection behavior.
+   *
+   * @see {@link ReconnectionConfig}
+   */
   reconnection?: ReconnectionConfig;
-  /** Connection timeout in ms */
+
+  /**
+   * Maximum time in milliseconds to wait for the initial connection to open.
+   *
+   * @defaultValue `10000`
+   */
   connectionTimeout?: number;
-  /** Logger instance */
+
+  /**
+   * Logger instance for diagnostic output.
+   *
+   * @defaultValue `undefined` (no logging)
+   */
   logger?: Logger | undefined;
 }
 
 /**
- * WebSocket event handlers
+ * Event handler callbacks for WebSocket lifecycle events.
+ *
+ * @remarks
+ * All handlers are optional. They are invoked by the {@link WebSocketManager}
+ * when the corresponding WebSocket events occur.
  */
 export interface WebSocketHandlers {
+  /**
+   * Called when the WebSocket connection is successfully opened.
+   */
   onOpen?: () => void;
+
+  /**
+   * Called when a message is received from the WebSocket server.
+   *
+   * @param event - The `MessageEvent` containing the received data.
+   */
   onMessage?: (event: MessageEvent) => void;
+
+  /**
+   * Called when the WebSocket connection is closed.
+   *
+   * @param event - The `CloseEvent` with close code and reason.
+   */
   onClose?: (event: CloseEvent) => void;
+
+  /**
+   * Called when a WebSocket error occurs.
+   *
+   * @param error - The error that occurred.
+   */
   onError?: (error: Error) => void;
 }
 
 /**
- * Managed WebSocket connection with auto-reconnect
+ * Managed WebSocket connection with automatic reconnection and exponential backoff.
+ *
+ * @remarks
+ * This class wraps the browser's native `WebSocket` API and adds:
+ *
+ * - **Connection timeout**: Rejects the connection promise if the socket doesn't
+ *   open within the configured timeout period.
+ * - **Automatic reconnection**: When enabled, automatically attempts to reconnect
+ *   after unexpected disconnections using exponential backoff.
+ * - **State management**: Tracks the connection state through a well-defined
+ *   state machine ({@link WebSocketState}).
+ * - **Event dispatching**: Routes WebSocket events to registered handlers.
+ * - **Clean shutdown**: Provides a graceful `disconnect()` method that waits
+ *   for the close handshake to complete.
+ *
+ * Reconnection uses exponential backoff with the formula:
+ * `delay = min(initialDelay * backoffMultiplier^(attempt-1), maxDelay)`
+ *
+ * @example
+ * ```typescript
+ * const ws = new WebSocketManager({
+ *   url: 'wss://api.deepgram.com/v1/speak',
+ *   connectionTimeout: 10000,
+ *   reconnection: { enabled: false },
+ * });
+ *
+ * ws.setHandlers({
+ *   onMessage: (event) => processAudio(event.data),
+ *   onError: (error) => console.error(error),
+ * });
+ *
+ * await ws.connect();
+ * ws.send(JSON.stringify({ text: 'Hello' }));
+ * await ws.disconnect();
+ * ```
+ *
+ * @see {@link WebSocketState} - Connection state enumeration.
+ * @see {@link WebSocketManagerOptions} - Configuration options.
+ * @see {@link WebSocketHandlers} - Event handler interface.
  */
 export class WebSocketManager {
   private ws: WebSocket | null = null;
@@ -60,6 +216,21 @@ export class WebSocketManager {
   private shouldReconnect = false;
   private logger?: Logger | undefined;
 
+  /**
+   * Creates a new WebSocketManager instance.
+   *
+   * @param options - Configuration options for the WebSocket connection.
+   *   Default reconnection settings are applied if not provided.
+   *
+   * @example
+   * ```typescript
+   * const ws = new WebSocketManager({
+   *   url: 'wss://api.example.com/stream',
+   *   connectionTimeout: 5000,
+   *   reconnection: { enabled: true, maxAttempts: 3 },
+   * });
+   * ```
+   */
   constructor(options: WebSocketManagerOptions) {
     this.options = {
       url: options.url,
@@ -78,28 +249,64 @@ export class WebSocketManager {
   }
 
   /**
-   * Get current connection state
+   * Returns the current connection state.
+   *
+   * @returns The current {@link WebSocketState}.
    */
   getState(): WebSocketState {
     return this.state;
   }
 
   /**
-   * Check if connected
+   * Checks whether the WebSocket is currently connected and ready.
+   *
+   * @remarks
+   * Returns `true` only when both the internal state is `CONNECTED` and
+   * the underlying `WebSocket.readyState` is `OPEN`.
+   *
+   * @returns `true` if connected and ready, `false` otherwise.
    */
   isConnected(): boolean {
     return this.state === WebSocketState.CONNECTED && this.ws?.readyState === WebSocket.OPEN;
   }
 
   /**
-   * Register event handlers
+   * Registers event handlers for WebSocket lifecycle events.
+   *
+   * @remarks
+   * Merges the provided handlers with any previously registered handlers.
+   * Calling this method multiple times will overwrite handlers for the
+   * same event type.
+   *
+   * @param handlers - The event handler callbacks to register.
+   *
+   * @example
+   * ```typescript
+   * ws.setHandlers({
+   *   onMessage: (event) => handleMessage(event),
+   *   onError: (error) => handleError(error),
+   * });
+   * ```
    */
   setHandlers(handlers: WebSocketHandlers): void {
     this.handlers = { ...this.handlers, ...handlers };
   }
 
   /**
-   * Connect to WebSocket
+   * Opens a WebSocket connection to the configured URL.
+   *
+   * @remarks
+   * Returns a promise that resolves when the connection is successfully
+   * opened, or rejects if the connection times out or fails. If already
+   * connected or a connection attempt is in progress, the call is a no-op.
+   *
+   * After a successful connection, the reconnect attempt counter is reset
+   * and the `onOpen` handler is called.
+   *
+   * @returns A promise that resolves when the WebSocket is open.
+   *
+   * @throws {@link TimeoutError} if the connection does not open within the configured timeout.
+   * @throws {@link WebSocketError} if the WebSocket constructor or connection fails.
    */
   async connect(): Promise<void> {
     if (this.isConnected()) {
@@ -158,7 +365,14 @@ export class WebSocketManager {
   }
 
   /**
-   * Handle connection close
+   * Handles the WebSocket `close` event and triggers reconnection if appropriate.
+   *
+   * @remarks
+   * If the close was initiated by the user (state is `CLOSING`), transitions
+   * to `CLOSED` without attempting reconnection. Otherwise, transitions to
+   * `DISCONNECTED` and attempts reconnection if enabled.
+   *
+   * @param event - The `CloseEvent` from the WebSocket.
    */
   private handleClose(event: CloseEvent): void {
     this.ws = null;
@@ -180,7 +394,14 @@ export class WebSocketManager {
   }
 
   /**
-   * Attempt to reconnect
+   * Attempts to reconnect to the WebSocket after an unexpected disconnection.
+   *
+   * @remarks
+   * Uses exponential backoff with the formula:
+   * `delay = min(initialDelay * backoffMultiplier^(attempt-1), maxDelay)`
+   *
+   * If the maximum number of reconnection attempts has been reached, emits
+   * an error via the `onError` handler and stops attempting.
    */
   private attemptReconnect(): void {
     const { maxAttempts, initialDelay, maxDelay, backoffMultiplier } = this.options.reconnection;
@@ -210,7 +431,21 @@ export class WebSocketManager {
   }
 
   /**
-   * Send data through the WebSocket
+   * Sends data through the open WebSocket connection.
+   *
+   * @param data - The data to send. Accepts strings (for JSON messages),
+   *   `ArrayBuffer` (for binary audio data), or `Blob`.
+   *
+   * @throws {@link WebSocketError} if the WebSocket is not connected.
+   *
+   * @example
+   * ```typescript
+   * // Send JSON message
+   * ws.send(JSON.stringify({ text: 'Hello, world!' }));
+   *
+   * // Send binary audio data
+   * ws.send(audioArrayBuffer);
+   * ```
    */
   send(data: string | ArrayBuffer | Blob): void {
     if (!this.isConnected() || !this.ws) {
@@ -220,7 +455,22 @@ export class WebSocketManager {
   }
 
   /**
-   * Close the WebSocket connection
+   * Gracefully closes the WebSocket connection.
+   *
+   * @remarks
+   * Disables automatic reconnection, cancels any pending reconnection timer,
+   * and initiates a clean WebSocket close handshake. Waits up to 5 seconds
+   * for the close handshake to complete before force-cleaning resources.
+   *
+   * If the WebSocket is already closed or disconnected, this is a no-op.
+   *
+   * @param code - The WebSocket close code.
+   * @param reason - A human-readable reason for closing.
+   *
+   * @defaultValue code: `1000`
+   * @defaultValue reason: `'Normal closure'`
+   *
+   * @returns A promise that resolves when the connection has been closed.
    */
   async disconnect(code = 1000, reason = 'Normal closure'): Promise<void> {
     this.shouldReconnect = false;
@@ -270,7 +520,12 @@ export class WebSocketManager {
   }
 
   /**
-   * Clean up resources
+   * Cleans up internal resources by removing event handlers and releasing
+   * the WebSocket reference.
+   *
+   * @remarks
+   * Sets the state to `CLOSED` and nullifies all WebSocket event handlers
+   * to prevent memory leaks and stale callbacks.
    */
   private cleanup(): void {
     if (this.ws) {

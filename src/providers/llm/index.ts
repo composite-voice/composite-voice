@@ -1,11 +1,33 @@
 /**
- * LLM providers export
+ * @packageDocumentation
+ * Large Language Model (LLM) providers for the CompositeVoice SDK.
+ *
+ * @remarks
+ * Re-exports all built-in LLM provider implementations:
+ *
+ * - **OpenAICompatibleLLM** -- Base class for any OpenAI-compatible API. Extend this
+ *   to create custom providers for self-hosted or third-party OpenAI-compatible endpoints.
+ * - **OpenAILLM** -- Connects to the OpenAI Chat Completions API with streaming support.
+ * - **AnthropicLLM** -- Connects to the Anthropic Messages API with SSE streaming.
+ * - **GroqLLM** -- Connects to the Groq API (OpenAI-compatible) for ultra-fast inference.
+ * - **MistralLLM** -- Connects to the Mistral AI API (OpenAI-compatible).
+ * - **GeminiLLM** -- Connects to Google Gemini via the OpenAI-compatible endpoint.
+ * - **WebLLMLLM** -- Runs LLMs entirely in the browser using WebLLM (WebGPU). No API key required.
+ *
+ * @example
+ * ```typescript
+ * import { AnthropicLLM, OpenAILLM, GroqLLM } from '@lukeocodes/composite-voice/providers/llm';
+ *
+ * const llm = new AnthropicLLM({
+ *   proxyUrl: '/api/proxy/anthropic',
+ *   model: 'claude-haiku-4-6',
+ *   systemPrompt: 'You are a helpful voice assistant.',
+ * });
+ * ```
+ *
+ * @see {@link OpenAICompatibleLLM} for creating custom OpenAI-compatible providers
+ * @see {@link WebLLMLLM} for fully in-browser LLM inference
  */
-
-// Note: LLM providers are available when peer dependencies are installed
-// Import them directly:
-// import { OpenAILLM } from '@lukeocodes/composite-voice/providers/llm/openai';
-// import { AnthropicLLM } from '@lukeocodes/composite-voice/providers/llm/anthropic';
 
 // Re-export OpenAI-compatible base class (for custom providers)
 export { OpenAICompatibleLLM } from './openai-compatible';

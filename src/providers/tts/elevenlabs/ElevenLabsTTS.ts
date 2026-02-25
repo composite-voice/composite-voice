@@ -1,6 +1,17 @@
 /**
- * ElevenLabs TTS provider using WebSocket streaming API
- * Real-time streaming text-to-speech via WebSocket
+ * ElevenLabs TTS provider using WebSocket streaming API.
+ *
+ * @remarks
+ * This module provides a WebSocket-based real-time streaming text-to-speech provider
+ * powered by ElevenLabs voice models. Text chunks are sent over a persistent WebSocket
+ * connection and audio chunks (PCM, MP3, or mu-law) are received incrementally for
+ * low-latency speech output.
+ *
+ * Transport: WebSocket (direct to ElevenLabs or via proxy)
+ * Audio format: Configurable (PCM 16-bit at various sample rates, MP3, mu-law);
+ * default is `pcm_16000` (16-bit PCM at 16 kHz)
+ *
+ * @packageDocumentation
  */
 
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
@@ -13,7 +24,16 @@ import {
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
- * ElevenLabs voice model IDs
+ * ElevenLabs voice model identifiers.
+ *
+ * @remarks
+ * ElevenLabs offers several model tiers with different quality and latency characteristics:
+ * - `eleven_turbo_v2_5` -- Latest turbo model, optimized for low latency
+ * - `eleven_turbo_v2` -- Previous-generation turbo model
+ * - `eleven_multilingual_v2` -- Supports multiple languages with high quality
+ * - `eleven_monolingual_v1` -- English-only, legacy model
+ *
+ * Custom model IDs are also accepted via the `string & {}` type widening.
  */
 export type ElevenLabsTTSModel =
   | 'eleven_turbo_v2_5'
@@ -23,7 +43,18 @@ export type ElevenLabsTTSModel =
   | (string & {});
 
 /**
- * ElevenLabs output format options
+ * ElevenLabs output format identifiers.
+ *
+ * @remarks
+ * The format string encodes both the encoding type and sample rate:
+ * - `pcm_16000` -- 16-bit PCM at 16 kHz
+ * - `pcm_22050` -- 16-bit PCM at 22.05 kHz
+ * - `pcm_24000` -- 16-bit PCM at 24 kHz
+ * - `pcm_44100` -- 16-bit PCM at 44.1 kHz
+ * - `mp3_44100_128` -- MP3 at 44.1 kHz, 128 kbps
+ * - `ulaw_8000` -- mu-law at 8 kHz (telephony)
+ *
+ * Custom format strings are also accepted via the `string & {}` type widening.
  */
 export type ElevenLabsOutputFormat =
   | 'pcm_16000'
@@ -35,50 +66,110 @@ export type ElevenLabsOutputFormat =
   | (string & {});
 
 /**
- * ElevenLabs TTS provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration for the {@link ElevenLabsTTS} provider.
+ *
+ * @remarks
+ * Provide either `apiKey` (for direct API access) or `proxyUrl` (for server-side proxy).
+ * At least one must be set. If both are provided, `proxyUrl` takes precedence and the
+ * API key is not sent to the client. The `voiceId` is always required.
+ *
+ * @example
+ * ```typescript
+ * // Direct API access
+ * const config: ElevenLabsTTSConfig = {
+ *   apiKey: 'el-xxxxxxxxxxxx',
+ *   voiceId: '21m00Tcm4TlvDq8ikWAM',
+ *   modelId: 'eleven_turbo_v2_5',
+ *   stability: 0.5,
+ *   similarityBoost: 0.75,
+ *   outputFormat: 'pcm_24000',
+ * };
+ *
+ * // Via proxy server
+ * const proxyConfig: ElevenLabsTTSConfig = {
+ *   proxyUrl: 'http://localhost:3001/api/proxy/elevenlabs',
+ *   voiceId: '21m00Tcm4TlvDq8ikWAM',
+ * };
+ * ```
+ *
+ * @see {@link ElevenLabsTTSModel} - Available model options.
+ * @see {@link ElevenLabsOutputFormat} - Available output format options.
  */
 export interface ElevenLabsTTSConfig extends TTSProviderConfig {
   /**
-   * ElevenLabs API key.
-   * Required when connecting directly to ElevenLabs.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   * ElevenLabs API key for direct authentication.
+   *
+   * @remarks
+   * Required when connecting directly to ElevenLabs (no proxy).
+   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
    */
   apiKey?: string;
+
   /**
    * URL of the CompositeVoice proxy server's ElevenLabs endpoint.
-   * Example: `'http://localhost:3000/api/proxy/elevenlabs'`
+   *
+   * @remarks
+   * When set, the WebSocket connection is routed through the proxy and the
+   * `apiKey` is not required on the client side. The HTTP URL is automatically
+   * converted to a WebSocket URL (`ws://` or `wss://`).
+   *
+   * @example `'http://localhost:3001/api/proxy/elevenlabs'`
    */
   proxyUrl?: string;
+
   /**
    * ElevenLabs voice ID (required).
-   * Find voice IDs via the ElevenLabs voice library.
+   *
+   * @remarks
+   * Find voice IDs via the {@link https://elevenlabs.io/voice-library | ElevenLabs Voice Library}
+   * or the API's list voices endpoint.
    */
   voiceId: string;
+
   /**
    * Model ID to use for synthesis.
-   * @default 'eleven_turbo_v2_5'
+   *
+   * @defaultValue `'eleven_turbo_v2_5'`
+   * @see {@link ElevenLabsTTSModel}
    */
   modelId?: ElevenLabsTTSModel;
+
   /**
-   * Voice stability (0-1). Higher values produce more consistent output.
-   * @default 0.5
+   * Voice stability (0 to 1).
+   *
+   * @remarks
+   * Higher values produce more consistent, predictable output.
+   * Lower values introduce more variation and expressiveness.
+   *
+   * @defaultValue `0.5`
    */
   stability?: number;
+
   /**
-   * Similarity boost (0-1). Higher values make the voice more closely match the original.
-   * @default 0.75
+   * Similarity boost (0 to 1).
+   *
+   * @remarks
+   * Higher values make the synthesized voice more closely match the
+   * original voice sample. Lower values allow more creative variation.
+   *
+   * @defaultValue `0.75`
    */
   similarityBoost?: number;
+
   /**
-   * Output audio format.
-   * @default 'pcm_16000'
+   * Output audio format string that encodes both encoding and sample rate.
+   *
+   * @defaultValue `'pcm_16000'`
+   * @see {@link ElevenLabsOutputFormat}
    */
   outputFormat?: ElevenLabsOutputFormat;
 }
 
-/** Sample rates derived from output format strings */
+/**
+ * Maps ElevenLabs output format strings to their corresponding sample rates in Hz.
+ *
+ * @internal
+ */
 const FORMAT_SAMPLE_RATES: Record<string, number> = {
   pcm_16000: 16000,
   pcm_22050: 22050,
@@ -88,7 +179,11 @@ const FORMAT_SAMPLE_RATES: Record<string, number> = {
   ulaw_8000: 8000,
 };
 
-/** Encoding types derived from output format strings */
+/**
+ * Maps ElevenLabs output format strings to their corresponding SDK encoding types.
+ *
+ * @internal
+ */
 const FORMAT_ENCODINGS: Record<string, string> = {
   pcm_16000: 'linear16',
   pcm_22050: 'linear16',
@@ -99,15 +194,73 @@ const FORMAT_ENCODINGS: Record<string, string> = {
 };
 
 /**
- * ElevenLabs TTS provider
- * Real-time streaming text-to-speech via WebSocket
- * CompositeVoice sends text chunks to this provider and receives audio chunks
+ * ElevenLabs TTS provider for real-time streaming text-to-speech via WebSocket.
+ *
+ * @remarks
+ * This provider establishes a WebSocket connection to the ElevenLabs streaming
+ * TTS API (or a proxy server). Text chunks are sent as JSON messages and audio
+ * is received either as base64-encoded JSON or raw binary data. The provider
+ * uses the ElevenLabs stream-input protocol with BOS (Beginning of Stream) and
+ * EOS (End of Stream) messages.
+ *
+ * The lifecycle is:
+ * 1. Construct with {@link ElevenLabsTTSConfig}
+ * 2. Call `initialize()` to validate configuration
+ * 3. Call `connect()` to open the WebSocket and send the BOS message
+ * 4. Call `sendText()` to stream text for synthesis
+ * 5. Call `finalize()` to send the EOS message and flush remaining audio
+ * 6. Call `disconnect()` to close the WebSocket
+ * 7. Call `dispose()` to release all resources
+ *
+ * Audio flow: `Text chunks -> WebSocket -> ElevenLabs -> Audio chunks -> onAudio callback`
+ *
+ * @example
+ * ```typescript
+ * import { ElevenLabsTTS } from 'composite-voice';
+ *
+ * const tts = new ElevenLabsTTS({
+ *   apiKey: 'el-xxxxxxxxxxxx',
+ *   voiceId: '21m00Tcm4TlvDq8ikWAM',
+ *   modelId: 'eleven_turbo_v2_5',
+ *   outputFormat: 'pcm_24000',
+ * });
+ *
+ * await tts.initialize();
+ * await tts.connect();
+ *
+ * tts.onAudio((chunk) => {
+ *   // Process audio chunk
+ * });
+ *
+ * tts.sendText('Hello, world!');
+ * await tts.finalize();
+ * await tts.disconnect();
+ * ```
+ *
+ * @see {@link LiveTTSProvider} - The base class this provider extends.
+ * @see {@link ElevenLabsTTSConfig} - Configuration options for this provider.
+ * @see {@link WebSocketManager} - The WebSocket manager used for connection handling.
  */
 export class ElevenLabsTTS extends LiveTTSProvider {
   declare public config: ElevenLabsTTSConfig;
   private wsManager: WebSocketManager | null = null;
   private isConnected = false;
 
+  /**
+   * Creates a new ElevenLabsTTS provider instance.
+   *
+   * @param config - Configuration for the ElevenLabs TTS provider.
+   *   The `voiceId` property is required.
+   * @param logger - Optional logger instance for debug and diagnostic output.
+   *
+   * @example
+   * ```typescript
+   * const tts = new ElevenLabsTTS({
+   *   apiKey: 'el-xxxxxxxxxxxx',
+   *   voiceId: '21m00Tcm4TlvDq8ikWAM',
+   * });
+   * ```
+   */
   constructor(config: ElevenLabsTTSConfig, logger?: Logger) {
     const outputFormat = config.outputFormat ?? 'pcm_16000';
     const finalConfig: ElevenLabsTTSConfig = {
@@ -121,6 +274,12 @@ export class ElevenLabsTTS extends LiveTTSProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Validates configuration and prepares the provider for connection.
+   *
+   * @throws {@link ProviderInitializationError} if neither `apiKey` nor `proxyUrl` is configured.
+   * @throws {@link ProviderInitializationError} if `voiceId` is not provided.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -144,6 +303,9 @@ export class ElevenLabsTTS extends LiveTTSProvider {
     });
   }
 
+  /**
+   * Disposes the provider, disconnecting from the WebSocket and releasing resources.
+   */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
@@ -153,7 +315,14 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Build the WebSocket URL for ElevenLabs streaming TTS
+   * Builds the WebSocket URL for the ElevenLabs streaming TTS endpoint.
+   *
+   * @remarks
+   * When using a proxy, the HTTP URL is converted to a WebSocket URL.
+   * For direct connections, the URL includes the voice ID, model ID,
+   * and output format as query parameters.
+   *
+   * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
     if (this.config.proxyUrl) {
@@ -169,7 +338,17 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Connect to ElevenLabs WebSocket for real-time TTS
+   * Connects to the ElevenLabs WebSocket for real-time TTS streaming.
+   *
+   * @remarks
+   * Establishes a WebSocket connection and sends the BOS (Beginning of Stream)
+   * message, which includes voice settings (stability and similarity boost)
+   * and the API key (when not using a proxy). Auto-reconnect is disabled for
+   * TTS sessions since each session is typically short-lived.
+   *
+   * This method is idempotent -- calling it when already connected is a no-op.
+   *
+   * @throws {@link ProviderConnectionError} if the WebSocket connection fails.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -237,7 +416,17 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Handle incoming WebSocket messages (audio chunks and metadata)
+   * Handles incoming WebSocket messages containing audio data or metadata.
+   *
+   * @remarks
+   * ElevenLabs may send audio in several forms:
+   * - Binary `ArrayBuffer` -- raw audio data
+   * - `Blob` -- converted to `ArrayBuffer` asynchronously
+   * - JSON string with `audio` field -- base64-encoded audio
+   * - JSON string with `alignment` field -- metadata/timing information
+   * - JSON string with `isFinal` field -- end-of-stream indicator
+   *
+   * @param event - The WebSocket `MessageEvent` to process.
    */
   private handleMessage(event: MessageEvent): void {
     try {
@@ -291,7 +480,9 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Process raw audio data and emit as AudioChunk
+   * Processes raw audio data and emits it as a typed {@link AudioChunk}.
+   *
+   * @param data - The raw audio data as an `ArrayBuffer`.
    */
   private processAudioData(data: ArrayBuffer): void {
     const chunk: AudioChunk = {
@@ -309,7 +500,9 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Get sample rate from output format
+   * Derives the sample rate from the configured output format.
+   *
+   * @returns The sample rate in Hz corresponding to the output format.
    */
   private getSampleRate(): number {
     const format = this.config.outputFormat ?? 'pcm_16000';
@@ -317,7 +510,9 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Get audio encoding from output format
+   * Derives the audio encoding type from the configured output format.
+   *
+   * @returns The SDK-compatible audio encoding string.
    */
   private getEncoding(): 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw' {
     const format = this.config.outputFormat ?? 'pcm_16000';
@@ -325,9 +520,15 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Send text chunk for real-time synthesis
-   * CompositeVoice sends text TO this provider
-   * @param chunk Text to synthesize
+   * Sends a text chunk to ElevenLabs for real-time synthesis.
+   *
+   * @remarks
+   * The text is wrapped in a JSON message with `try_trigger_generation: true`,
+   * which instructs ElevenLabs to begin generating audio as soon as enough
+   * text has been buffered. If not connected, the call is silently ignored
+   * with a warning log.
+   *
+   * @param chunk - The text to synthesize into speech.
    */
   sendText(chunk: string): void {
     if (!this.isConnected || !this.wsManager) {
@@ -348,7 +549,14 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Finalize synthesis — send empty text with flush to trigger remaining audio
+   * Finalizes the current synthesis session by sending the EOS (End of Stream) message.
+   *
+   * @remarks
+   * Sends an empty text message with `flush: true` to signal the end of input
+   * and trigger generation of any remaining buffered audio. Waits up to 2 seconds
+   * for final audio to arrive before resolving.
+   *
+   * @throws Rethrows any error that occurs during finalization.
    */
   async finalize(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
@@ -400,7 +608,13 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Disconnect from ElevenLabs WebSocket
+   * Disconnects from the ElevenLabs WebSocket.
+   *
+   * @remarks
+   * Gracefully closes the WebSocket connection and releases the
+   * {@link WebSocketManager} instance.
+   *
+   * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
@@ -424,7 +638,9 @@ export class ElevenLabsTTS extends LiveTTSProvider {
   }
 
   /**
-   * Check if currently connected
+   * Checks whether the WebSocket connection to ElevenLabs is currently active.
+   *
+   * @returns `true` if the WebSocket is connected, `false` otherwise.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

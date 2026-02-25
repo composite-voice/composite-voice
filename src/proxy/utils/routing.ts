@@ -1,23 +1,95 @@
 /**
+ * @packageDocumentation
  * Internal routing utilities shared across all proxy adapters.
- * Server-side only — never imported by browser bundles.
+ *
+ * @remarks
+ * Provides functions to build route tables from proxy configuration, match
+ * incoming HTTP and WebSocket requests to provider routes, and set CORS headers.
+ * These utilities are used internally by the Express, Next.js, and Node.js
+ * adapters and are also exported for custom integrations.
+ *
+ * This module is server-side only and must never be imported by browser bundles.
+ *
+ * @see {@link buildRoutes} for constructing route tables
+ * @see {@link matchHttpRoute} and {@link matchWsRoute} for URL-based route matching
+ * @see {@link setCorsHeaders} for CORS header injection
  */
 
 import type { ServerResponse } from 'http';
 import type { CompositeVoiceProxyConfig } from '../types';
 
+/**
+ * The transport type for a proxy route.
+ *
+ * @remarks
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs, AssemblyAI, Cartesia).
+ */
 export type RouteType = 'http' | 'websocket';
 
+/**
+ * A single proxy route definition mapping a provider name to its upstream target.
+ *
+ * @remarks
+ * Each route specifies the provider identifier (used in URL matching), the
+ * transport type, the upstream base URL, and the authentication headers
+ * to inject into upstream requests.
+ */
 export interface ProxyRoute {
-  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai' | 'groq' | 'mistral' | 'gemini' | 'cartesia'
+  /**
+   * The provider identifier used in URL path matching.
+   *
+   * @remarks
+   * For example, `'anthropic'` matches URLs like `/proxy/anthropic/v1/messages`.
+   */
+  provider: string;
+
+  /** The transport type for this route -- either `'http'` or `'websocket'`. */
   type: RouteType;
-  targetBase: string; // e.g. 'https://api.anthropic.com'
+
+  /**
+   * The upstream base URL to forward requests to.
+   *
+   * @remarks
+   * For example, `'https://api.anthropic.com'` or `'wss://api.deepgram.com'`.
+   */
+  targetBase: string;
+
+  /**
+   * Authentication headers to inject into upstream requests.
+   *
+   * @remarks
+   * These replace any client-provided auth headers. For example,
+   * `{ 'x-api-key': '...' }` for Anthropic or `{ Authorization: 'Bearer ...' }` for OpenAI.
+   */
   authHeaders: Record<string, string>;
 }
 
 /**
- * Build the set of active routes for the given configuration.
- * Only routes with a configured API key (or explicit proxy target) are included.
+ * Build the set of active proxy routes from the given configuration.
+ *
+ * @remarks
+ * Iterates through all supported providers and creates a {@link ProxyRoute} for
+ * each one that has a configured API key. Providers without keys are silently
+ * skipped. The resulting route array is used by the adapters to match incoming
+ * requests to upstream targets.
+ *
+ * @param config - The proxy configuration containing API keys for each provider.
+ * @returns An array of {@link ProxyRoute} objects for all configured providers.
+ *
+ * @example
+ * ```typescript
+ * import { buildRoutes } from '@lukeocodes/composite-voice/proxy';
+ *
+ * const routes = buildRoutes({
+ *   anthropicApiKey: 'sk-...',
+ *   deepgramApiKey: 'dg-...',
+ * });
+ * // routes = [
+ * //   { provider: 'anthropic', type: 'http', targetBase: 'https://api.anthropic.com', ... },
+ * //   { provider: 'deepgram', type: 'websocket', targetBase: 'wss://api.deepgram.com', ... },
+ * // ]
+ * ```
  */
 export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
   const routes: ProxyRoute[] = [];
@@ -127,9 +199,23 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
 
 /**
  * Find an HTTP route whose provider prefix matches the request URL.
- * Returns `null` if the URL is not a proxy path.
  *
- * Example: `/proxy/anthropic/v1/messages` with prefix `/proxy` → anthropic route
+ * @remarks
+ * Parses the URL to extract the provider name after the prefix, then looks up
+ * the corresponding HTTP route. Returns `null` if the URL does not start with
+ * the prefix or no matching HTTP route exists.
+ *
+ * @param routes - The array of configured proxy routes to search.
+ * @param url - The request URL to match (e.g., `/proxy/anthropic/v1/messages`).
+ * @param prefix - The path prefix to strip (e.g., `/proxy`).
+ * @returns The matched {@link ProxyRoute} or `null` if no match is found.
+ *
+ * @example
+ * ```typescript
+ * const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', '/proxy');
+ * // route.provider === 'anthropic'
+ * // route.targetBase === 'https://api.anthropic.com'
+ * ```
  */
 export function matchHttpRoute(
   routes: ProxyRoute[],
@@ -148,7 +234,17 @@ export function matchHttpRoute(
   return routes.find((r) => r.type === 'http' && r.provider === provider) ?? null;
 }
 
-/** Find an HTTP route by provider name directly. */
+/**
+ * Find an HTTP route by provider name directly, without URL parsing.
+ *
+ * @remarks
+ * Used by the Next.js adapter where the provider name has already been extracted
+ * from the catch-all route parameters.
+ *
+ * @param routes - The array of configured proxy routes to search.
+ * @param provider - The provider name to match (e.g., `'anthropic'`).
+ * @returns The matched {@link ProxyRoute} or `null` if no match is found.
+ */
 export function matchHttpRouteByProvider(
   routes: ProxyRoute[],
   provider: string
@@ -158,6 +254,22 @@ export function matchHttpRouteByProvider(
 
 /**
  * Find a WebSocket route whose provider prefix matches the upgrade request URL.
+ *
+ * @remarks
+ * Works identically to {@link matchHttpRoute} but filters for routes with
+ * `type: 'websocket'` instead of `type: 'http'`.
+ *
+ * @param routes - The array of configured proxy routes to search.
+ * @param url - The upgrade request URL to match (e.g., `/proxy/deepgram/v1/listen`).
+ * @param prefix - The path prefix to strip (e.g., `/proxy`).
+ * @returns The matched WebSocket {@link ProxyRoute} or `null` if no match is found.
+ *
+ * @example
+ * ```typescript
+ * const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen?model=nova-3', '/proxy');
+ * // route.provider === 'deepgram'
+ * // route.targetBase === 'wss://api.deepgram.com'
+ * ```
  */
 export function matchWsRoute(routes: ProxyRoute[], url: string, prefix: string): ProxyRoute | null {
   if (!url.startsWith(prefix)) return null;
@@ -174,6 +286,17 @@ export function matchWsRoute(routes: ProxyRoute[], url: string, prefix: string):
 
 /**
  * Set CORS headers on a Node.js `ServerResponse`.
+ *
+ * @remarks
+ * Applies `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`,
+ * `Access-Control-Allow-Headers`, and `Access-Control-Allow-Credentials`
+ * headers based on the configured allowed origins. When `origins` includes
+ * `'*'`, the wildcard origin is used. Otherwise, the request's `Origin`
+ * header is checked against the allow list and echoed back if it matches.
+ *
+ * @param res - The server response to set headers on.
+ * @param origins - The list of allowed origins from the proxy configuration.
+ * @param requestOrigin - The `Origin` header from the incoming request, if present.
  */
 export function setCorsHeaders(
   res: ServerResponse,

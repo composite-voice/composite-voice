@@ -1,6 +1,8 @@
 /**
- * AssemblyAI STT provider using WebSocket real-time transcription API
- * Real-time streaming speech-to-text via WebSocket
+ * AssemblyAI real-time speech-to-text provider using the WebSocket
+ * transcription API.
+ *
+ * @packageDocumentation
  */
 
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
@@ -13,9 +15,32 @@ import {
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
- * AssemblyAI STT provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration options for the {@link AssemblyAISTT} provider.
+ *
+ * @remarks
+ * Extends {@link STTProviderConfig} with AssemblyAI-specific settings.
+ * You must provide **either** `apiKey` (for direct browser-to-AssemblyAI
+ * connections) or `proxyUrl` (for a server-side proxy that injects the
+ * API key). If both are provided, `proxyUrl` takes precedence.
+ *
+ * @example
+ * ```ts
+ * // Direct connection (API key exposed to browser -- development only)
+ * const config: AssemblyAISTTConfig = {
+ *   apiKey: 'aai_abc123...',
+ *   sampleRate: 16000,
+ *   language: 'en',
+ * };
+ *
+ * // Proxy connection (recommended for production)
+ * const config: AssemblyAISTTConfig = {
+ *   proxyUrl: 'http://localhost:3001/api/proxy/assemblyai',
+ *   sampleRate: 16000,
+ *   wordBoost: ['CompositeVoice', 'Deepgram'],
+ * };
+ * ```
+ *
+ * @see {@link AssemblyAISTT} for the provider class
  */
 export interface AssemblyAISTTConfig extends STTProviderConfig {
   /**
@@ -47,7 +72,8 @@ export interface AssemblyAISTTConfig extends STTProviderConfig {
 }
 
 /**
- * AssemblyAI real-time message types
+ * Internal message types received from the AssemblyAI real-time WebSocket.
+ * @internal
  */
 interface AssemblyAISessionBeginsMessage {
   message_type: 'SessionBegins';
@@ -91,15 +117,92 @@ type AssemblyAIMessage =
   | AssemblyAIErrorMessage;
 
 /**
- * AssemblyAI STT provider
- * Real-time streaming transcription via WebSocket
- * CompositeVoice manages audio capture and sends chunks to this provider
+ * AssemblyAI real-time STT provider using a raw WebSocket connection.
+ *
+ * @remarks
+ * `AssemblyAISTT` extends {@link LiveSTTProvider} and connects to
+ * AssemblyAI's real-time transcription WebSocket API. Audio is sent as
+ * base64-encoded JSON messages and transcription results are received as
+ * `PartialTranscript` and `FinalTranscript` messages.
+ *
+ * Key features:
+ *
+ * - Interim (partial) and final transcription results
+ * - Word-level timestamps and confidence scores
+ * - Word boost for domain-specific vocabulary
+ * - Automatic WebSocket reconnection with exponential backoff (via
+ *   {@link WebSocketManager})
+ * - Proxy mode via {@link AssemblyAISTTConfig.proxyUrl} (recommended for
+ *   production so the API key stays server-side)
+ *
+ * **Transport:** WebSocket (via {@link WebSocketManager})
+ *
+ * **Browser support:** All modern browsers (Chrome, Firefox, Safari, Edge).
+ * No peer dependencies required -- the provider uses a raw WebSocket
+ * connection managed by the SDK's built-in {@link WebSocketManager}.
+ *
+ * **Data flow:**
+ *
+ * ```
+ * Microphone -> AudioCapture -> sendAudio(chunk) -> base64 JSON -> AssemblyAI WS
+ *                                                                       |
+ * CompositeVoice <- onTranscription(result) <--------------------------+
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { AssemblyAISTT } from 'composite-voice';
+ *
+ * const stt = new AssemblyAISTT({
+ *   proxyUrl: 'http://localhost:3001/api/proxy/assemblyai',
+ *   sampleRate: 16000,
+ *   language: 'en',
+ *   wordBoost: ['CompositeVoice'],
+ * });
+ *
+ * await stt.initialize();
+ *
+ * stt.onTranscription((result) => {
+ *   if (result.isFinal) {
+ *     console.log('Final:', result.text);
+ *   } else {
+ *     console.log('Interim:', result.text);
+ *   }
+ * });
+ *
+ * await stt.connect();
+ * // ... send audio chunks via stt.sendAudio(chunk) ...
+ * await stt.disconnect();
+ * ```
+ *
+ * @see {@link LiveSTTProvider} for the base WebSocket STT class
+ * @see {@link AssemblyAISTTConfig} for configuration options
+ * @see {@link DeepgramSTT} for an alternative real-time STT provider
  */
 export class AssemblyAISTT extends LiveSTTProvider {
   declare public config: AssemblyAISTTConfig;
+
+  /** The WebSocket connection manager. */
   private wsManager: WebSocketManager | null = null;
+
+  /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /**
+   * Create a new AssemblyAISTT provider.
+   *
+   * @param config - AssemblyAI STT configuration. Must include either
+   *   `apiKey` or `proxyUrl`.
+   * @param logger - Optional parent logger; a child will be derived.
+   *
+   * @example
+   * ```ts
+   * const stt = new AssemblyAISTT({
+   *   apiKey: 'aai_abc123...',
+   *   sampleRate: 16000,
+   * });
+   * ```
+   */
   constructor(config: AssemblyAISTTConfig, logger?: Logger) {
     const finalConfig: AssemblyAISTTConfig = {
       sampleRate: 16000,
@@ -110,6 +213,12 @@ export class AssemblyAISTT extends LiveSTTProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Validate that either `apiKey` or `proxyUrl` is configured.
+   *
+   * @throws {@link ProviderInitializationError}
+   * Thrown when neither `apiKey` nor `proxyUrl` is set.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -126,6 +235,7 @@ export class AssemblyAISTT extends LiveSTTProvider {
     });
   }
 
+  /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
@@ -135,7 +245,14 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Build the WebSocket URL for AssemblyAI real-time transcription
+   * Build the WebSocket URL for AssemblyAI real-time transcription.
+   *
+   * @remarks
+   * When {@link AssemblyAISTTConfig.proxyUrl | proxyUrl} is set, converts
+   * `http(s)` to `ws(s)`. Otherwise builds the direct AssemblyAI URL with
+   * `sample_rate`, optional `word_boost`, and `token` query parameters.
+   *
+   * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
     if (this.config.proxyUrl) {
@@ -158,7 +275,16 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Connect to AssemblyAI WebSocket for real-time transcription
+   * Open a WebSocket connection to AssemblyAI for real-time transcription.
+   *
+   * @remarks
+   * Creates a {@link WebSocketManager} with reconnection enabled, sets up
+   * message handlers, and waits for the connection to open. The connection
+   * timeout defaults to {@link AssemblyAISTTConfig.timeout | config.timeout}
+   * (10 000 ms).
+   *
+   * @throws {@link ProviderConnectionError}
+   * Thrown when the provider is not initialized or the connection fails.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -218,7 +344,14 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Handle incoming WebSocket messages from AssemblyAI
+   * Parse and dispatch incoming WebSocket messages from AssemblyAI.
+   *
+   * @remarks
+   * Handles `SessionBegins`, `PartialTranscript`, `FinalTranscript`,
+   * `SessionTerminated`, and error messages. Transcription results are
+   * forwarded via {@link emitTranscription}.
+   *
+   * @param event - The raw WebSocket `MessageEvent`.
    */
   private handleMessage(event: MessageEvent): void {
     try {
@@ -298,9 +431,15 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Send audio chunk for real-time transcription
-   * Audio is sent as base64-encoded data in JSON format
-   * @param chunk Audio data chunk (ArrayBuffer)
+   * Send a raw audio chunk to AssemblyAI for real-time transcription.
+   *
+   * @remarks
+   * The `ArrayBuffer` is converted to a base64-encoded string and wrapped
+   * in a JSON `{ audio_data: "..." }` message, which is the format
+   * required by AssemblyAI's real-time API. If the connection is not
+   * open, the chunk is silently dropped and a warning is logged.
+   *
+   * @param chunk - Raw audio data captured from the microphone.
    */
   sendAudio(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.wsManager) {
@@ -328,7 +467,14 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Disconnect from AssemblyAI WebSocket
+   * Gracefully close the AssemblyAI WebSocket connection.
+   *
+   * @remarks
+   * Sends a `{ terminate_session: true }` message to AssemblyAI, waits
+   * briefly for the `SessionTerminated` response, then disconnects the
+   * underlying {@link WebSocketManager}.
+   *
+   * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
@@ -369,7 +515,9 @@ export class AssemblyAISTT extends LiveSTTProvider {
   }
 
   /**
-   * Check if currently connected
+   * Check whether the AssemblyAI WebSocket connection is currently open.
+   *
+   * @returns `true` when connected and ready to receive audio.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

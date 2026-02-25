@@ -1,5 +1,50 @@
 /**
- * CompositeVoice SDK - Main entry point
+ * @packageDocumentation
+ * Main entry point for the CompositeVoice SDK.
+ *
+ * @remarks
+ * Re-exports all public classes, interfaces, types, and utilities from the SDK.
+ * This is the primary module consumers import from when using the SDK.
+ *
+ * The SDK provides a composable voice AI pipeline with pluggable providers for
+ * Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS).
+ * It features an event-driven architecture, conversation history management,
+ * eager LLM pipeline support, configurable turn-taking strategies, and
+ * WebSocket reconnection with exponential backoff.
+ *
+ * @example Basic usage with Deepgram STT, Anthropic LLM, and Deepgram TTS
+ * ```typescript
+ * import {
+ *   CompositeVoice,
+ *   DeepgramSTT,
+ *   AnthropicLLM,
+ *   DeepgramTTS,
+ * } from '@lukeocodes/composite-voice';
+ *
+ * const voice = new CompositeVoice({
+ *   stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+ *   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-6' }),
+ *   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+ * });
+ *
+ * voice.on('agent:stateChange', ({ state }) => console.log('State:', state));
+ * voice.on('transcription:speechFinal', ({ text }) => console.log('User:', text));
+ * voice.on('tts:audio', ({ audio }) => console.log('Audio chunk received'));
+ *
+ * await voice.start();
+ * ```
+ *
+ * @example Creating a custom provider
+ * ```typescript
+ * import { BaseLLMProvider } from '@lukeocodes/composite-voice';
+ *
+ * class MyCustomLLM extends BaseLLMProvider {
+ *   // ... implement abstract methods
+ * }
+ * ```
+ *
+ * @see {@link CompositeVoice} for the main orchestrator class
+ * @see {@link https://github.com/lukeocodes/composite-voice | GitHub repository} for full documentation
  */
 
 // Main SDK class

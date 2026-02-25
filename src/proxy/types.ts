@@ -1,44 +1,188 @@
 /**
- * Types for the CompositeVoice proxy middleware.
- * This module is server-side only and must never be imported by browser bundles.
+ * @packageDocumentation
+ * Proxy configuration types for the CompositeVoice server-side proxy middleware.
+ *
+ * @remarks
+ * This module defines the configuration interface used by all proxy adapters
+ * (Express, Next.js, Node.js). It is server-side only and must never be imported
+ * by browser bundles. API keys are stored in this configuration and injected into
+ * upstream requests by the proxy — browsers never see the real credentials.
+ *
+ * @example
+ * ```typescript
+ * import type { CompositeVoiceProxyConfig } from '@lukeocodes/composite-voice/proxy';
+ *
+ * const config: CompositeVoiceProxyConfig = {
+ *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   openaiApiKey: process.env.OPENAI_API_KEY,
+ *   pathPrefix: '/api/proxy',
+ *   cors: { origins: ['http://localhost:5173'] },
+ * };
+ * ```
+ *
+ * @see {@link createExpressProxy} for Express/Connect usage
+ * @see {@link createNextJsProxy} for Next.js App Router usage
+ * @see {@link createNodeProxy} for plain Node.js usage
  */
 
 /**
  * Configuration for the CompositeVoice proxy server.
- * API keys live here (server-side only).  Browsers connect to the proxy
+ *
+ * @remarks
+ * API keys live here (server-side only). Browsers connect to the proxy
  * using provider-level `proxyUrl` options and never see the real keys.
+ * Only providers with a configured API key will have routes registered;
+ * unconfigured providers are silently skipped.
+ *
+ * @example
+ * ```typescript
+ * const config: CompositeVoiceProxyConfig = {
+ *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   pathPrefix: '/api/proxy',
+ *   cors: { origins: ['*'] },
+ * };
+ * ```
  */
 export interface CompositeVoiceProxyConfig {
-  /** Deepgram API key — used for WebSocket STT and TTS proxying */
+  /**
+   * Deepgram API key -- used for WebSocket STT and TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/deepgram`
+   * that forwards connections to `wss://api.deepgram.com`.
+   *
+   * @defaultValue `undefined` (Deepgram proxying disabled)
+   */
   deepgramApiKey?: string;
-  /** Anthropic API key — used for HTTP LLM proxying */
+
+  /**
+   * Anthropic API key -- used for HTTP LLM proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/anthropic`
+   * that forwards requests to `https://api.anthropic.com`.
+   *
+   * @defaultValue `undefined` (Anthropic proxying disabled)
+   */
   anthropicApiKey?: string;
-  /** OpenAI API key — used for HTTP LLM proxying */
+
+  /**
+   * OpenAI API key -- used for HTTP LLM and TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/openai`
+   * that forwards requests to `https://api.openai.com`.
+   *
+   * @defaultValue `undefined` (OpenAI proxying disabled)
+   */
   openaiApiKey?: string;
-  /** ElevenLabs API key — used for WebSocket TTS proxying */
+
+  /**
+   * ElevenLabs API key -- used for WebSocket TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/elevenlabs`
+   * that forwards connections to `wss://api.elevenlabs.io`.
+   *
+   * @defaultValue `undefined` (ElevenLabs proxying disabled)
+   */
   elevenlabsApiKey?: string;
-  /** AssemblyAI API key — used for WebSocket STT proxying */
+
+  /**
+   * AssemblyAI API key -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/assemblyai`
+   * that forwards connections to `wss://api.assemblyai.com`.
+   *
+   * @defaultValue `undefined` (AssemblyAI proxying disabled)
+   */
   assemblyaiApiKey?: string;
-  /** Groq API key — used for HTTP LLM proxying */
+
+  /**
+   * Groq API key -- used for HTTP LLM proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/groq`
+   * that forwards requests to `https://api.groq.com/openai`.
+   *
+   * @defaultValue `undefined` (Groq proxying disabled)
+   */
   groqApiKey?: string;
-  /** Mistral API key — used for HTTP LLM proxying */
+
+  /**
+   * Mistral API key -- used for HTTP LLM proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/mistral`
+   * that forwards requests to `https://api.mistral.ai`.
+   *
+   * @defaultValue `undefined` (Mistral proxying disabled)
+   */
   mistralApiKey?: string;
-  /** Gemini API key — used for HTTP LLM proxying */
+
+  /**
+   * Gemini API key -- used for HTTP LLM proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/gemini`
+   * that forwards requests to `https://generativelanguage.googleapis.com/v1beta/openai`.
+   *
+   * @defaultValue `undefined` (Gemini proxying disabled)
+   */
   geminiApiKey?: string;
-  /** Cartesia API key — used for WebSocket TTS proxying */
+
+  /**
+   * Cartesia API key -- used for WebSocket TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/cartesia`
+   * that forwards connections to `wss://api.cartesia.ai`.
+   *
+   * @defaultValue `undefined` (Cartesia proxying disabled)
+   */
   cartesiaApiKey?: string;
+
   /**
    * URL path prefix for all proxy routes.
-   * @default '/proxy'
+   *
+   * @remarks
+   * All proxy routes are mounted under this prefix. For example, with a prefix
+   * of `'/api/proxy'`, the Anthropic provider route becomes `/api/proxy/anthropic/...`.
+   *
+   * @defaultValue `'/proxy'`
    */
   pathPrefix?: string;
+
   /**
-   * CORS configuration.  When the proxy and the app share the same origin
-   * you typically do not need this.  Set `origins: ['*']` for dev convenience
-   * or list specific origins in production.
+   * CORS configuration for cross-origin requests.
+   *
+   * @remarks
+   * When the proxy and the app share the same origin you typically do not need this.
+   * Set `origins: ['*']` for development convenience or list specific origins in production.
+   * Omitting this property or leaving `origins` empty skips CORS header injection entirely.
+   *
+   * @example
+   * ```typescript
+   * // Allow all origins (development)
+   * cors: { origins: ['*'] }
+   *
+   * // Allow specific origins (production)
+   * cors: { origins: ['https://myapp.com', 'https://staging.myapp.com'] }
+   * ```
    */
   cors?: {
-    /** Allowed origins.  Omit or leave empty to skip CORS headers entirely. */
+    /**
+     * Allowed origins for CORS.
+     *
+     * @remarks
+     * Omit or leave empty to skip CORS headers entirely. Use `['*']` to allow
+     * any origin, or list specific origins for tighter security.
+     *
+     * @defaultValue `undefined` (no CORS headers)
+     */
     origins?: string[];
   };
 }

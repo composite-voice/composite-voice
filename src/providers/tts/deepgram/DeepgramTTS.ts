@@ -1,6 +1,17 @@
 /**
- * Deepgram TTS provider using the official Deepgram SDK
- * WebSocket-only provider for real-time streaming text-to-speech
+ * Deepgram TTS provider using the official Deepgram SDK.
+ *
+ * @remarks
+ * This module provides a WebSocket-based real-time streaming text-to-speech provider
+ * powered by Deepgram's Aura voice models. Text chunks are sent over a persistent
+ * WebSocket connection and audio chunks are received as raw PCM or encoded audio.
+ *
+ * Transport: WebSocket (via `@deepgram/sdk`)
+ * Audio format: Configurable (linear16, mulaw, alaw); default is `linear16` at 24 kHz
+ *
+ * The `@deepgram/sdk` package is a peer dependency and must be installed separately.
+ *
+ * @packageDocumentation
  */
 
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
@@ -15,51 +26,169 @@ type DeepgramClient = typeof import('@deepgram/sdk').createClient;
 type LiveTTSClient = any;
 
 /**
- * Deepgram-specific TTS options
+ * Deepgram-specific TTS synthesis options.
+ *
+ * @remarks
+ * These options map to the Deepgram TTS WebSocket API parameters. They are
+ * passed as connection options when establishing the live TTS session.
+ *
+ * @see {@link https://developers.deepgram.com/docs/tts-websocket | Deepgram TTS WebSocket Docs}
  */
 export interface DeepgramTTSOptions {
   /**
-   * Model to use.
-   * Aura 2 (default): 'aura-2-thalia-en', 'aura-2-andromeda-en', 'aura-2-janus-en',
-   *   'aura-2-proteus-en', 'aura-2-orion-en', 'aura-2-luna-en', 'aura-2-arcas-en'
-   * Aura 1 (legacy): 'aura-asteria-en', 'aura-luna-en', 'aura-stella-en'
+   * The Deepgram voice model to use for synthesis.
+   *
+   * @remarks
+   * Aura 2 models (recommended): `'aura-2-thalia-en'`, `'aura-2-andromeda-en'`,
+   * `'aura-2-janus-en'`, `'aura-2-proteus-en'`, `'aura-2-orion-en'`,
+   * `'aura-2-luna-en'`, `'aura-2-arcas-en'`.
+   *
+   * Aura 1 models (legacy): `'aura-asteria-en'`, `'aura-luna-en'`, `'aura-stella-en'`.
+   *
+   * @defaultValue Falls back to `config.voice` or `'aura-2-thalia-en'`
    */
   model?: string;
-  /** Audio encoding format (e.g., 'linear16', 'mulaw', 'alaw') */
+
+  /**
+   * Audio encoding format for the output audio.
+   *
+   * @defaultValue Falls back to `config.outputFormat` or `'linear16'`
+   */
   encoding?: string;
-  /** Sample rate for output audio (e.g., 8000, 16000, 24000, 48000) */
+
+  /**
+   * Sample rate for the output audio in Hz.
+   *
+   * @defaultValue Falls back to `config.sampleRate` or `24000`
+   */
   sampleRate?: number;
-  /** Container format (e.g., 'none', 'wav') */
+
+  /**
+   * Container format for the output audio.
+   *
+   * @remarks
+   * Use `'none'` for raw audio (typical for WebSocket streaming) or `'wav'`
+   * for WAV-wrapped output.
+   *
+   * @defaultValue `'none'`
+   */
   container?: string;
-  /** Bit rate for encoded output */
+
+  /**
+   * Bit rate for the encoded output audio, in bits per second.
+   *
+   * @remarks
+   * Only applicable for certain encoding formats. Omit for PCM formats.
+   *
+   * @defaultValue `undefined`
+   */
   bitRate?: number;
 }
 
 /**
- * Deepgram TTS provider configuration.
- * Provide either `apiKey` (direct API access) or `proxyUrl` (server-side proxy).
- * At least one must be set; if both are provided `proxyUrl` takes precedence.
+ * Configuration for the {@link DeepgramTTS} provider.
+ *
+ * @remarks
+ * Provide either `apiKey` (for direct API access) or `proxyUrl` (for server-side proxy).
+ * At least one must be set. If both are provided, `proxyUrl` takes precedence and the
+ * API key is not sent to the client.
+ *
+ * @example
+ * ```typescript
+ * // Direct API access
+ * const config: DeepgramTTSConfig = {
+ *   apiKey: 'dg-xxxxxxxxxxxx',
+ *   voice: 'aura-2-thalia-en',
+ *   sampleRate: 24000,
+ *   outputFormat: 'linear16',
+ * };
+ *
+ * // Via proxy server
+ * const proxyConfig: DeepgramTTSConfig = {
+ *   proxyUrl: 'http://localhost:3001/api/proxy/deepgram',
+ *   voice: 'aura-2-andromeda-en',
+ * };
+ * ```
+ *
+ * @see {@link DeepgramTTSOptions} - Additional Deepgram-specific synthesis options.
  */
 export interface DeepgramTTSConfig extends TTSProviderConfig {
   /**
-   * Deepgram API key.
-   * Required when connecting directly to Deepgram.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
+   * Deepgram API key for direct authentication.
+   *
+   * @remarks
+   * Required when connecting directly to Deepgram (no proxy).
+   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
    */
   apiKey?: string;
+
   /**
    * URL of the CompositeVoice proxy server's Deepgram endpoint.
-   * Example: `'http://localhost:3000/api/proxy/deepgram'`
+   *
+   * @remarks
+   * When set, the WebSocket connection is routed through the proxy and the
+   * `apiKey` is not required on the client side.
+   *
+   * @example `'http://localhost:3001/api/proxy/deepgram'`
    */
   proxyUrl?: string;
-  /** Deepgram TTS options */
+
+  /**
+   * Additional Deepgram-specific TTS options.
+   *
+   * @remarks
+   * Options here override the top-level `voice`, `sampleRate`, and `outputFormat`
+   * values when both are provided.
+   *
+   * @see {@link DeepgramTTSOptions}
+   */
   options?: DeepgramTTSOptions;
 }
 
 /**
- * Deepgram TTS provider
- * Real-time streaming text-to-speech via WebSocket
- * CompositeVoice sends text chunks to this provider and receives audio chunks
+ * Deepgram TTS provider for real-time streaming text-to-speech via WebSocket.
+ *
+ * @remarks
+ * This provider uses the official `@deepgram/sdk` to establish a persistent WebSocket
+ * connection to Deepgram's TTS service. Text chunks are sent incrementally and audio
+ * chunks are emitted as they arrive, enabling low-latency speech output.
+ *
+ * The lifecycle is:
+ * 1. Construct with {@link DeepgramTTSConfig}
+ * 2. Call `initialize()` to load the Deepgram SDK and create the client
+ * 3. Call `connect()` to open the WebSocket connection
+ * 4. Call `sendText()` to stream text for synthesis
+ * 5. Call `finalize()` to flush remaining audio
+ * 6. Call `disconnect()` to close the WebSocket
+ * 7. Call `dispose()` to release all resources
+ *
+ * Audio flow: `Text chunks -> WebSocket -> Deepgram -> Audio chunks -> onAudio callback`
+ *
+ * @example
+ * ```typescript
+ * import { DeepgramTTS } from 'composite-voice';
+ *
+ * const tts = new DeepgramTTS({
+ *   apiKey: 'dg-xxxxxxxxxxxx',
+ *   voice: 'aura-2-thalia-en',
+ *   sampleRate: 24000,
+ *   outputFormat: 'linear16',
+ * });
+ *
+ * await tts.initialize();
+ * await tts.connect();
+ *
+ * tts.onAudio((chunk) => {
+ *   // Process audio chunk (e.g., feed to AudioPlayer)
+ * });
+ *
+ * tts.sendText('Hello, world!');
+ * await tts.finalize();
+ * await tts.disconnect();
+ * ```
+ *
+ * @see {@link LiveTTSProvider} - The base class this provider extends.
+ * @see {@link DeepgramTTSConfig} - Configuration options for this provider.
  */
 export class DeepgramTTS extends LiveTTSProvider {
   declare public config: DeepgramTTSConfig;
@@ -67,6 +196,20 @@ export class DeepgramTTS extends LiveTTSProvider {
   private liveClient: LiveTTSClient | null = null;
   private isConnected = false;
 
+  /**
+   * Creates a new DeepgramTTS provider instance.
+   *
+   * @param config - Configuration for the Deepgram TTS provider.
+   * @param logger - Optional logger instance for debug and diagnostic output.
+   *
+   * @example
+   * ```typescript
+   * const tts = new DeepgramTTS({
+   *   apiKey: 'dg-xxxxxxxxxxxx',
+   *   voice: 'aura-2-thalia-en',
+   * });
+   * ```
+   */
   constructor(config: DeepgramTTSConfig, logger?: Logger) {
     const finalConfig = {
       voice: config.voice ?? 'aura-2-thalia-en',
@@ -77,6 +220,18 @@ export class DeepgramTTS extends LiveTTSProvider {
     super(finalConfig, logger);
   }
 
+  /**
+   * Initializes the Deepgram client by dynamically importing the SDK.
+   *
+   * @remarks
+   * The `@deepgram/sdk` is loaded dynamically as a peer dependency. If using
+   * `proxyUrl`, the client is configured to route WebSocket traffic through
+   * the proxy server. Otherwise, it connects directly using the `apiKey`.
+   *
+   * @throws {@link ProviderInitializationError} if neither `apiKey` nor `proxyUrl` is configured.
+   * @throws {@link ProviderInitializationError} if the `@deepgram/sdk` package is not installed.
+   * @throws {@link ProviderInitializationError} if any other initialization error occurs.
+   */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
@@ -116,6 +271,9 @@ export class DeepgramTTS extends LiveTTSProvider {
     }
   }
 
+  /**
+   * Disposes the provider, disconnecting from the WebSocket and releasing resources.
+   */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
@@ -126,7 +284,17 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Connect to Deepgram WebSocket for real-time TTS
+   * Connects to the Deepgram WebSocket for real-time TTS streaming.
+   *
+   * @remarks
+   * Establishes a live TTS connection using the configured model, encoding,
+   * sample rate, and container format. The connection emits audio chunks
+   * as Deepgram processes incoming text.
+   *
+   * This method is idempotent -- calling it when already connected is a no-op.
+   *
+   * @throws {@link ProviderConnectionError} if the Deepgram client is not initialized.
+   * @throws {@link ProviderConnectionError} if the WebSocket connection fails or times out.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -193,7 +361,8 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Setup event handlers for live TTS
+   * Sets up event handlers on the live TTS client for audio data, metadata,
+   * flush events, errors, warnings, and connection close.
    */
   private setupEventHandlers(): void {
     if (!this.liveClient) return;
@@ -293,9 +462,14 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Send text chunk for real-time synthesis
-   * CompositeVoice sends text TO this provider
-   * @param text Text to synthesize
+   * Sends a text chunk to Deepgram for real-time synthesis.
+   *
+   * @remarks
+   * Text is sent over the open WebSocket connection. Deepgram processes the
+   * text incrementally and emits audio chunks via the `onAudio` callback.
+   * If not connected, the call is silently ignored with a warning log.
+   *
+   * @param text - The text to synthesize into speech.
    */
   sendText(text: string): void {
     if (!this.isConnected || !this.liveClient) {
@@ -312,7 +486,14 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Finalize synthesis and process remaining text
+   * Finalizes the current synthesis session by flushing remaining audio.
+   *
+   * @remarks
+   * Sends a flush command to Deepgram to ensure all buffered text has been
+   * processed and all resulting audio has been emitted. Waits for the
+   * `Flushed` event or a 1-second timeout before resolving.
+   *
+   * @throws Rethrows any error that occurs during finalization.
    */
   async finalize(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
@@ -344,7 +525,14 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Disconnect from Deepgram WebSocket
+   * Disconnects from the Deepgram WebSocket.
+   *
+   * @remarks
+   * Flushes any remaining audio, sends a finish signal, and waits for
+   * the WebSocket to close (with a 1-second timeout). After disconnection,
+   * the live client reference is released.
+   *
+   * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected || !this.liveClient) {
@@ -380,7 +568,9 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Check if currently connected (WebSocket mode)
+   * Checks whether the WebSocket connection to Deepgram is currently active.
+   *
+   * @returns `true` if the WebSocket is connected, `false` otherwise.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

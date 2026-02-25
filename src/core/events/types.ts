@@ -1,72 +1,277 @@
 /**
- * Event type definitions for the CompositeVoice SDK
+ * Event type definitions for the CompositeVoice SDK.
+ *
+ * @remarks
+ * This module defines all events emitted by the CompositeVoice agent during its
+ * lifecycle. Events are organized into five categories:
+ *
+ * - **Transcription events** (`transcription.*`) - STT pipeline status and results
+ * - **LLM events** (`llm.*`) - Language model generation progress
+ * - **TTS events** (`tts.*`) - Text-to-speech synthesis progress
+ * - **Agent events** (`agent.*`) - Agent lifecycle and state changes
+ * - **Audio events** (`audio.*`) - Microphone capture and audio playback status
+ *
+ * Subscribe to events using the `on()` method on a CompositeVoice instance.
+ * All event listeners receive a typed event object extending {@link BaseEvent}.
+ *
+ * @example
+ * ```typescript
+ * import { CompositeVoice } from 'composite-voice';
+ *
+ * const agent = new CompositeVoice({ stt, llm, tts });
+ *
+ * agent.on('transcription.final', (event) => {
+ *   console.log('User said:', event.text);
+ * });
+ *
+ * agent.on('llm.chunk', (event) => {
+ *   process.stdout.write(event.chunk);
+ * });
+ *
+ * agent.on('agent.stateChange', (event) => {
+ *   console.log(`State: ${event.previousState} -> ${event.state}`);
+ * });
+ * ```
+ *
+ * @packageDocumentation
  */
 
 import type { AudioChunk, AudioMetadata } from '../types/audio';
 
 /**
- * Agent state
+ * The possible states of the CompositeVoice agent.
+ *
+ * @remarks
+ * Represents the high-level state of the voice pipeline. The agent transitions
+ * between these states as it processes user speech:
+ *
+ * `idle` -\> `ready` -\> `listening` -\> `thinking` -\> `speaking` -\> `listening` ...
+ *
+ * - `'idle'` - Agent is created but not yet initialized
+ * - `'ready'` - Agent is initialized and waiting to start
+ * - `'listening'` - Agent is actively capturing and transcribing user speech
+ * - `'thinking'` - Agent is processing the transcription through the LLM
+ * - `'speaking'` - Agent is synthesizing and playing back the response
+ * - `'error'` - Agent has encountered an unrecoverable error
+ *
+ * @see {@link AgentStateChangeEvent} for the event emitted on state transitions
  */
 export type AgentState = 'idle' | 'ready' | 'listening' | 'thinking' | 'speaking' | 'error';
 
 /**
- * Base event interface
+ * Base interface for all CompositeVoice events.
+ *
+ * @remarks
+ * Every event emitted by the SDK includes a timestamp and an optional metadata
+ * record. Specific event interfaces extend this base with additional fields
+ * relevant to their event type.
+ *
+ * @see {@link CompositeVoiceEvent} for the union of all event types
+ * @see {@link EventListenerMap} for the typed listener map
  */
 export interface BaseEvent {
-  /** Timestamp when the event occurred */
+  /**
+   * Unix timestamp (in milliseconds) when the event occurred.
+   *
+   * @remarks
+   * Useful for latency measurements and debugging the pipeline timing.
+   */
   timestamp: number;
-  /** Optional event metadata */
+
+  /**
+   * Optional metadata associated with the event.
+   *
+   * @remarks
+   * May contain provider-specific data or debugging information.
+   */
   metadata?: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Transcription events
+// ---------------------------------------------------------------------------
+
 /**
- * Transcription events
+ * Emitted when the STT provider begins listening for speech.
+ *
+ * @remarks
+ * Indicates that the speech-to-text pipeline is active and ready to receive
+ * audio input. This event fires after the microphone is initialized and the
+ * STT provider connection is established.
+ *
+ * @see {@link TranscriptionEvent} for all transcription event types
  */
 export interface TranscriptionStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'transcription.start';
 }
 
+/**
+ * Emitted when the STT provider produces an interim (partial) transcription.
+ *
+ * @remarks
+ * Interim results represent the provider's current best guess for what the user
+ * is saying. They are updated frequently and replaced by subsequent interim or
+ * final results. Useful for showing real-time "typing" feedback in the UI.
+ *
+ * @example
+ * ```typescript
+ * agent.on('transcription.interim', (event) => {
+ *   updateLiveCaption(event.text);
+ * });
+ * ```
+ *
+ * @see {@link TranscriptionFinalEvent} for committed transcription segments
+ * @see {@link TranscriptionEvent} for all transcription event types
+ */
 export interface TranscriptionInterimEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'transcription.interim';
-  text: string;
-  confidence?: number;
-}
 
-export interface TranscriptionFinalEvent extends BaseEvent {
-  type: 'transcription.final';
+  /** The interim transcription text. */
   text: string;
+
+  /** Confidence score (0-1) for this interim result, if available. */
   confidence?: number;
 }
 
 /**
- * Emitted when an utterance is fully complete (speech_final from Deepgram,
- * or isFinal from providers that emit one result per utterance).
- * This is the canonical trigger for LLM processing.
+ * Emitted when the STT provider commits a final transcription segment.
+ *
+ * @remarks
+ * A final segment is a committed portion of the transcription that will not
+ * change. For multi-segment providers like Deepgram, multiple `transcription.final`
+ * events may be emitted for a single utterance. Use {@link TranscriptionSpeechFinalEvent}
+ * to detect when the complete utterance is finished.
+ *
+ * @example
+ * ```typescript
+ * agent.on('transcription.final', (event) => {
+ *   appendToTranscript(event.text);
+ * });
+ * ```
+ *
+ * @see {@link TranscriptionSpeechFinalEvent} for complete utterance detection
+ * @see {@link TranscriptionInterimEvent} for partial results
+ * @see {@link TranscriptionEvent} for all transcription event types
+ */
+export interface TranscriptionFinalEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'transcription.final';
+
+  /** The final transcription text for this segment. */
+  text: string;
+
+  /** Confidence score (0-1) for this final result, if available. */
+  confidence?: number;
+}
+
+/**
+ * Emitted when an utterance is fully complete.
+ *
+ * @remarks
+ * This is the canonical trigger for LLM processing. For Deepgram, this fires
+ * when `speech_final=true` (the speaker has stopped talking). For NativeSTT
+ * and other providers that emit one result per utterance, this equals
+ * `transcription.final`.
+ *
+ * Multi-segment providers (Deepgram) may emit several `transcription.final`
+ * events for a single utterance. Only the last one is followed by
+ * `transcription.speechFinal`.
+ *
+ * @example
+ * ```typescript
+ * agent.on('transcription.speechFinal', (event) => {
+ *   console.log('Complete utterance:', event.text);
+ * });
+ * ```
+ *
+ * @see {@link TranscriptionFinalEvent} for individual segments
+ * @see {@link TranscriptionPreflightEvent} for early/speculative triggers
+ * @see {@link TranscriptionEvent} for all transcription event types
  */
 export interface TranscriptionSpeechFinalEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'transcription.speechFinal';
+
+  /** The complete transcribed text for the entire utterance. */
   text: string;
+
+  /** Confidence score (0-1) for this result, if available. */
   confidence?: number;
 }
 
 /**
- * Emitted when a provider sends a preflight / eager-end-of-turn signal.
- * Deepgram v2 models (e.g. flux-general-en) emit this before speech_final
- * to allow downstream stages to start speculatively.
+ * Emitted when a provider sends a preflight/eager-end-of-turn signal.
+ *
+ * @remarks
+ * Deepgram v2 models (e.g., `flux-general-en`) emit this before `speech_final`
+ * to allow downstream stages (LLM) to start generating speculatively. The text
+ * may change slightly when the confirmed `speech_final` arrives.
+ *
+ * This event is only relevant when {@link EagerLLMConfig} is enabled.
+ *
+ * @example
+ * ```typescript
+ * agent.on('transcription.preflight', (event) => {
+ *   console.log('Preflight transcript:', event.text);
+ * });
+ * ```
+ *
+ * @see {@link EagerLLMConfig} for enabling the eager LLM pipeline
+ * @see {@link TranscriptionSpeechFinalEvent} for the confirmed result
+ * @see {@link TranscriptionEvent} for all transcription event types
  */
 export interface TranscriptionPreflightEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'transcription.preflight';
-  /** Provisional transcript — may change slightly when speech_final arrives */
+
+  /**
+   * Provisional transcript text.
+   *
+   * @remarks
+   * May change slightly when the confirmed `speech_final` arrives.
+   */
   text: string;
+
+  /** Confidence score (0-1) for this preflight result, if available. */
   confidence?: number;
 }
 
+/**
+ * Emitted when the STT provider encounters an error.
+ *
+ * @remarks
+ * The {@link TranscriptionErrorEvent.recoverable | recoverable} flag indicates
+ * whether the SDK can attempt to recover automatically (e.g., by reconnecting).
+ *
+ * @see {@link TranscriptionEvent} for all transcription event types
+ */
 export interface TranscriptionErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'transcription.error';
+
+  /** The error that occurred. */
   error: Error;
+
+  /** Whether the error is recoverable (e.g., temporary network issue). */
   recoverable: boolean;
 }
 
+/**
+ * Union of all transcription-related events.
+ *
+ * @remarks
+ * Use this type to handle any transcription event generically, or subscribe
+ * to specific event types via the {@link EventListenerMap}.
+ *
+ * @see {@link TranscriptionStartEvent}
+ * @see {@link TranscriptionInterimEvent}
+ * @see {@link TranscriptionFinalEvent}
+ * @see {@link TranscriptionSpeechFinalEvent}
+ * @see {@link TranscriptionPreflightEvent}
+ * @see {@link TranscriptionErrorEvent}
+ */
 export type TranscriptionEvent =
   | TranscriptionStartEvent
   | TranscriptionInterimEvent
@@ -75,63 +280,271 @@ export type TranscriptionEvent =
   | TranscriptionPreflightEvent
   | TranscriptionErrorEvent;
 
+// ---------------------------------------------------------------------------
+// LLM events
+// ---------------------------------------------------------------------------
+
 /**
- * LLM events
+ * Emitted when the LLM begins generating a response.
+ *
+ * @remarks
+ * Contains the prompt text that was sent to the LLM. For multi-turn
+ * conversations, this is the latest user message (the full history
+ * is sent internally via {@link LLMProvider.generateFromMessages}).
+ *
+ * @example
+ * ```typescript
+ * agent.on('llm.start', (event) => {
+ *   console.log('Generating response for:', event.prompt);
+ * });
+ * ```
+ *
+ * @see {@link LLMEvent} for all LLM event types
  */
 export interface LLMStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'llm.start';
+
+  /** The prompt text sent to the LLM. */
   prompt: string;
 }
 
+/**
+ * Emitted for each token/chunk received from the LLM during streaming.
+ *
+ * @remarks
+ * When the LLM provider streams its response, this event fires for each
+ * text chunk received. The {@link LLMChunkEvent.accumulated | accumulated} field
+ * contains the full response text generated so far.
+ *
+ * @example
+ * ```typescript
+ * agent.on('llm.chunk', (event) => {
+ *   // Show streaming response
+ *   updateResponseDisplay(event.accumulated);
+ * });
+ * ```
+ *
+ * @see {@link LLMCompleteEvent} for the final complete response
+ * @see {@link LLMEvent} for all LLM event types
+ */
 export interface LLMChunkEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'llm.chunk';
+
+  /** The individual text chunk received in this streaming update. */
   chunk: string;
+
+  /** The full response text accumulated so far (all chunks concatenated). */
   accumulated: string;
 }
 
+/**
+ * Emitted when the LLM has finished generating the complete response.
+ *
+ * @remarks
+ * Contains the full response text. For streaming providers, this fires after
+ * the last {@link LLMChunkEvent}. The optional {@link LLMCompleteEvent.tokensUsed | tokensUsed}
+ * field reports token consumption when available from the provider.
+ *
+ * @example
+ * ```typescript
+ * agent.on('llm.complete', (event) => {
+ *   console.log('Full response:', event.text);
+ *   if (event.tokensUsed) {
+ *     console.log('Tokens used:', event.tokensUsed);
+ *   }
+ * });
+ * ```
+ *
+ * @see {@link LLMStartEvent} for the generation start
+ * @see {@link LLMChunkEvent} for streaming chunks
+ * @see {@link LLMEvent} for all LLM event types
+ */
 export interface LLMCompleteEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'llm.complete';
+
+  /** The complete response text from the LLM. */
   text: string;
+
+  /**
+   * Number of tokens consumed by this generation, if reported by the provider.
+   *
+   * @remarks
+   * May include input and output tokens combined, depending on the provider.
+   */
   tokensUsed?: number;
 }
 
+/**
+ * Emitted when the LLM provider encounters an error during generation.
+ *
+ * @remarks
+ * The {@link LLMErrorEvent.recoverable | recoverable} flag indicates whether
+ * the SDK can attempt to recover (e.g., by retrying the request).
+ *
+ * @see {@link LLMEvent} for all LLM event types
+ */
 export interface LLMErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'llm.error';
+
+  /** The error that occurred during generation. */
   error: Error;
+
+  /** Whether the error is recoverable (e.g., rate limit, temporary failure). */
   recoverable: boolean;
 }
 
+/**
+ * Union of all LLM-related events.
+ *
+ * @remarks
+ * Use this type to handle any LLM event generically, or subscribe to specific
+ * event types via the {@link EventListenerMap}.
+ *
+ * @see {@link LLMStartEvent}
+ * @see {@link LLMChunkEvent}
+ * @see {@link LLMCompleteEvent}
+ * @see {@link LLMErrorEvent}
+ */
 export type LLMEvent = LLMStartEvent | LLMChunkEvent | LLMCompleteEvent | LLMErrorEvent;
 
+// ---------------------------------------------------------------------------
+// TTS events
+// ---------------------------------------------------------------------------
+
 /**
- * TTS events
+ * Emitted when the TTS provider begins synthesizing speech.
+ *
+ * @remarks
+ * Contains the text that will be synthesized. For streaming TTS, this
+ * may be the first chunk of text sent to the provider.
+ *
+ * @example
+ * ```typescript
+ * agent.on('tts.start', (event) => {
+ *   console.log('Synthesizing:', event.text);
+ * });
+ * ```
+ *
+ * @see {@link TTSEvent} for all TTS event types
  */
 export interface TTSStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'tts.start';
+
+  /** The text being synthesized into speech. */
   text: string;
 }
 
+/**
+ * Emitted when a chunk of synthesized audio is received from the TTS provider.
+ *
+ * @remarks
+ * For streaming TTS providers, multiple audio events are emitted as audio
+ * data arrives. Each event contains an {@link AudioChunk} with raw audio
+ * bytes that are queued for playback.
+ *
+ * @example
+ * ```typescript
+ * agent.on('tts.audio', (event) => {
+ *   console.log(`Audio chunk: ${event.chunk.data.byteLength} bytes`);
+ * });
+ * ```
+ *
+ * @see {@link AudioChunk} for the audio data structure
+ * @see {@link TTSEvent} for all TTS event types
+ */
 export interface TTSAudioEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'tts.audio';
+
+  /**
+   * The audio chunk received from the TTS provider.
+   *
+   * @see {@link AudioChunk}
+   */
   chunk: AudioChunk;
 }
 
+/**
+ * Emitted when audio format metadata is received from the TTS provider.
+ *
+ * @remarks
+ * Contains information about the audio format (sample rate, encoding, channels)
+ * that helps the AudioPlayer configure playback correctly. Typically emitted
+ * once at the start of a synthesis session.
+ *
+ * Note: This event does not extend {@link BaseEvent} but includes its own
+ * `timestamp` field for consistency.
+ *
+ * @see {@link AudioMetadata} for the metadata structure
+ * @see {@link TTSEvent} for all TTS event types
+ */
 export interface TTSMetadataEvent {
+  /** Discriminant for this event type. */
   type: 'tts.metadata';
+
+  /** Unix timestamp (in milliseconds) when the metadata was received. */
   timestamp: number;
+
+  /**
+   * Audio format metadata from the TTS provider.
+   *
+   * @see {@link AudioMetadata}
+   */
   metadata: AudioMetadata;
 }
 
+/**
+ * Emitted when the TTS provider has finished synthesizing all audio.
+ *
+ * @remarks
+ * Indicates that no more audio chunks will be emitted for the current
+ * synthesis request. Playback may still be in progress when this event fires.
+ *
+ * @see {@link TTSEvent} for all TTS event types
+ */
 export interface TTSCompleteEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'tts.complete';
 }
 
+/**
+ * Emitted when the TTS provider encounters an error during synthesis.
+ *
+ * @remarks
+ * The {@link TTSErrorEvent.recoverable | recoverable} flag indicates whether
+ * the SDK can attempt to recover (e.g., by retrying the synthesis).
+ *
+ * @see {@link TTSEvent} for all TTS event types
+ */
 export interface TTSErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'tts.error';
+
+  /** The error that occurred during synthesis. */
   error: Error;
+
+  /** Whether the error is recoverable (e.g., temporary network issue). */
   recoverable: boolean;
 }
 
+/**
+ * Union of all TTS-related events.
+ *
+ * @remarks
+ * Use this type to handle any TTS event generically, or subscribe to specific
+ * event types via the {@link EventListenerMap}.
+ *
+ * @see {@link TTSStartEvent}
+ * @see {@link TTSAudioEvent}
+ * @see {@link TTSMetadataEvent}
+ * @see {@link TTSCompleteEvent}
+ * @see {@link TTSErrorEvent}
+ */
 export type TTSEvent =
   | TTSStartEvent
   | TTSAudioEvent
@@ -139,57 +552,234 @@ export type TTSEvent =
   | TTSCompleteEvent
   | TTSErrorEvent;
 
+// ---------------------------------------------------------------------------
+// Agent lifecycle events
+// ---------------------------------------------------------------------------
+
 /**
- * Agent lifecycle events
+ * Emitted when the agent has been initialized and is ready to start.
+ *
+ * @remarks
+ * All providers have been initialized and the agent is waiting for the
+ * user to begin speaking. This is a good place to update UI to indicate
+ * the agent is ready.
+ *
+ * @example
+ * ```typescript
+ * agent.on('agent.ready', () => {
+ *   showStatus('Agent is ready. Start speaking!');
+ * });
+ * ```
+ *
+ * @see {@link AgentEvent} for all agent event types
  */
 export interface AgentReadyEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'agent.ready';
 }
 
+/**
+ * Emitted when the agent transitions between states.
+ *
+ * @remarks
+ * Provides both the new state and the previous state, enabling UI updates
+ * that reflect the current pipeline stage (listening, thinking, speaking).
+ *
+ * @example
+ * ```typescript
+ * agent.on('agent.stateChange', (event) => {
+ *   console.log(`${event.previousState} -> ${event.state}`);
+ *   updateStatusIndicator(event.state);
+ * });
+ * ```
+ *
+ * @see {@link AgentState} for the possible state values
+ * @see {@link AgentEvent} for all agent event types
+ */
 export interface AgentStateChangeEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'agent.stateChange';
+
+  /**
+   * The new state the agent has transitioned to.
+   *
+   * @see {@link AgentState}
+   */
   state: AgentState;
+
+  /**
+   * The state the agent was in before this transition.
+   *
+   * @see {@link AgentState}
+   */
   previousState: AgentState;
 }
 
+/**
+ * Emitted when the agent encounters a top-level error.
+ *
+ * @remarks
+ * This event covers errors not specific to a single provider (those have their
+ * own error events like `transcription.error`, `llm.error`, `tts.error`).
+ * The {@link AgentErrorEvent.context | context} field provides additional
+ * information about where the error occurred.
+ *
+ * @example
+ * ```typescript
+ * agent.on('agent.error', (event) => {
+ *   console.error(`Agent error in ${event.context}:`, event.error);
+ *   if (!event.recoverable) {
+ *     showFatalError(event.error.message);
+ *   }
+ * });
+ * ```
+ *
+ * @see {@link AgentEvent} for all agent event types
+ */
 export interface AgentErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'agent.error';
+
+  /** The error that occurred. */
   error: Error;
+
+  /** Whether the error is recoverable. */
   recoverable: boolean;
+
+  /**
+   * Additional context about where the error occurred.
+   *
+   * @remarks
+   * May contain the name of the operation or subsystem that failed
+   * (e.g., `'initialization'`, `'pipeline'`, `'audio-capture'`).
+   */
   context?: string;
 }
 
+/**
+ * Union of all agent lifecycle events.
+ *
+ * @remarks
+ * Use this type to handle any agent event generically, or subscribe to
+ * specific event types via the {@link EventListenerMap}.
+ *
+ * @see {@link AgentReadyEvent}
+ * @see {@link AgentStateChangeEvent}
+ * @see {@link AgentErrorEvent}
+ */
 export type AgentEvent = AgentReadyEvent | AgentStateChangeEvent | AgentErrorEvent;
 
+// ---------------------------------------------------------------------------
+// Audio events
+// ---------------------------------------------------------------------------
+
 /**
- * Audio events
+ * Emitted when microphone audio capture begins.
+ *
+ * @remarks
+ * Indicates that the SDK has successfully obtained microphone access and
+ * is sending audio data to the STT provider.
+ *
+ * @see {@link AudioEvent} for all audio event types
  */
 export interface AudioCaptureStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.capture.start';
 }
 
+/**
+ * Emitted when microphone audio capture stops.
+ *
+ * @remarks
+ * Indicates that the SDK has stopped capturing audio from the microphone.
+ * This may occur during turn-taking (when the agent is speaking) or when
+ * the agent is shut down.
+ *
+ * @see {@link AudioEvent} for all audio event types
+ */
 export interface AudioCaptureStopEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.capture.stop';
 }
 
+/**
+ * Emitted when an error occurs during audio capture.
+ *
+ * @remarks
+ * Common causes include microphone permission denial, device disconnection,
+ * or AudioContext failures.
+ *
+ * @see {@link AudioEvent} for all audio event types
+ */
 export interface AudioCaptureErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.capture.error';
+
+  /** The error that occurred during capture. */
   error: Error;
 }
 
+/**
+ * Emitted when audio playback of the agent's response begins.
+ *
+ * @remarks
+ * Indicates that synthesized audio from the TTS provider is being played
+ * through the speakers. During playback, microphone capture may be paused
+ * depending on the {@link TurnTakingConfig}.
+ *
+ * @see {@link AudioEvent} for all audio event types
+ * @see {@link TurnTakingConfig} for turn-taking behavior
+ */
 export interface AudioPlaybackStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.playback.start';
 }
 
+/**
+ * Emitted when audio playback of the agent's response ends.
+ *
+ * @remarks
+ * All queued audio has been played. If turn-taking paused capture, it will
+ * be resumed after this event.
+ *
+ * @see {@link AudioEvent} for all audio event types
+ */
 export interface AudioPlaybackEndEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.playback.end';
 }
 
+/**
+ * Emitted when an error occurs during audio playback.
+ *
+ * @remarks
+ * Common causes include AudioContext suspension, decoding errors, or
+ * browser autoplay policy violations.
+ *
+ * @see {@link AudioEvent} for all audio event types
+ */
 export interface AudioPlaybackErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
   type: 'audio.playback.error';
+
+  /** The error that occurred during playback. */
   error: Error;
 }
 
+/**
+ * Union of all audio-related events.
+ *
+ * @remarks
+ * Use this type to handle any audio event generically, or subscribe to
+ * specific event types via the {@link EventListenerMap}.
+ *
+ * @see {@link AudioCaptureStartEvent}
+ * @see {@link AudioCaptureStopEvent}
+ * @see {@link AudioCaptureErrorEvent}
+ * @see {@link AudioPlaybackStartEvent}
+ * @see {@link AudioPlaybackEndEvent}
+ * @see {@link AudioPlaybackErrorEvent}
+ */
 export type AudioEvent =
   | AudioCaptureStartEvent
   | AudioCaptureStopEvent
@@ -198,8 +788,40 @@ export type AudioEvent =
   | AudioPlaybackEndEvent
   | AudioPlaybackErrorEvent;
 
+// ---------------------------------------------------------------------------
+// Composite types
+// ---------------------------------------------------------------------------
+
 /**
- * All possible events
+ * Union of all events that can be emitted by a CompositeVoice agent.
+ *
+ * @remarks
+ * This is the top-level event type encompassing every category:
+ * transcription, LLM, TTS, agent lifecycle, and audio events.
+ * Use the discriminated `type` field to narrow to a specific event interface.
+ *
+ * @example
+ * ```typescript
+ * function handleEvent(event: CompositeVoiceEvent) {
+ *   switch (event.type) {
+ *     case 'transcription.final':
+ *       console.log('Transcript:', event.text);
+ *       break;
+ *     case 'llm.complete':
+ *       console.log('Response:', event.text);
+ *       break;
+ *     case 'agent.stateChange':
+ *       console.log('State:', event.state);
+ *       break;
+ *   }
+ * }
+ * ```
+ *
+ * @see {@link TranscriptionEvent}
+ * @see {@link LLMEvent}
+ * @see {@link TTSEvent}
+ * @see {@link AgentEvent}
+ * @see {@link AudioEvent}
  */
 export type CompositeVoiceEvent =
   | TranscriptionEvent
@@ -209,47 +831,140 @@ export type CompositeVoiceEvent =
   | AudioEvent;
 
 /**
- * Event type string union
+ * String union of all possible event type identifiers.
+ *
+ * @remarks
+ * Derived from the `type` discriminant field of {@link CompositeVoiceEvent}.
+ * Use this type when you need to reference event type strings without
+ * importing each individual event interface.
+ *
+ * @example
+ * ```typescript
+ * const eventTypes: EventType[] = [
+ *   'transcription.final',
+ *   'llm.complete',
+ *   'tts.complete',
+ * ];
+ * ```
+ *
+ * @see {@link CompositeVoiceEvent} for the full event union
  */
 export type EventType = CompositeVoiceEvent['type'];
 
 /**
- * Event listener function type
+ * Generic event listener function type.
+ *
+ * @remarks
+ * A function that receives a typed event and optionally returns a Promise
+ * for asynchronous handling. The SDK awaits async listeners before proceeding.
+ *
+ * @typeParam T - The specific event type this listener handles, defaults to
+ * {@link CompositeVoiceEvent} (any event)
+ *
+ * @see {@link EventListenerMap} for typed event subscriptions
  */
 export type EventListener<T extends CompositeVoiceEvent = CompositeVoiceEvent> = (
   event: T
 ) => void | Promise<void>;
 
 /**
- * Event listener map for typed event subscriptions
+ * Typed mapping from event type strings to their corresponding listener signatures.
+ *
+ * @remarks
+ * This interface enables fully type-safe event subscriptions. When you call
+ * `agent.on('transcription.final', callback)`, TypeScript infers that the
+ * callback receives a {@link TranscriptionFinalEvent} -- no manual type
+ * assertions needed.
+ *
+ * @example
+ * ```typescript
+ * // The callback parameter is automatically typed as TranscriptionFinalEvent
+ * agent.on('transcription.final', (event) => {
+ *   console.log(event.text);       // string -- type-safe
+ *   console.log(event.confidence); // number | undefined -- type-safe
+ * });
+ *
+ * // The callback parameter is automatically typed as AgentStateChangeEvent
+ * agent.on('agent.stateChange', (event) => {
+ *   console.log(event.state);         // AgentState -- type-safe
+ *   console.log(event.previousState); // AgentState -- type-safe
+ * });
+ * ```
+ *
+ * @see {@link EventListener} for the listener function type
+ * @see {@link EventType} for valid event type strings
+ * @see {@link CompositeVoiceEvent} for the full event union
  */
 export interface EventListenerMap {
+  /** Listener for {@link TranscriptionStartEvent}. */
   'transcription.start': EventListener<TranscriptionStartEvent>;
+
+  /** Listener for {@link TranscriptionInterimEvent}. */
   'transcription.interim': EventListener<TranscriptionInterimEvent>;
+
+  /** Listener for {@link TranscriptionFinalEvent}. */
   'transcription.final': EventListener<TranscriptionFinalEvent>;
+
+  /** Listener for {@link TranscriptionSpeechFinalEvent}. */
   'transcription.speechFinal': EventListener<TranscriptionSpeechFinalEvent>;
+
+  /** Listener for {@link TranscriptionPreflightEvent}. */
   'transcription.preflight': EventListener<TranscriptionPreflightEvent>;
+
+  /** Listener for {@link TranscriptionErrorEvent}. */
   'transcription.error': EventListener<TranscriptionErrorEvent>;
 
+  /** Listener for {@link LLMStartEvent}. */
   'llm.start': EventListener<LLMStartEvent>;
+
+  /** Listener for {@link LLMChunkEvent}. */
   'llm.chunk': EventListener<LLMChunkEvent>;
+
+  /** Listener for {@link LLMCompleteEvent}. */
   'llm.complete': EventListener<LLMCompleteEvent>;
+
+  /** Listener for {@link LLMErrorEvent}. */
   'llm.error': EventListener<LLMErrorEvent>;
 
+  /** Listener for {@link TTSStartEvent}. */
   'tts.start': EventListener<TTSStartEvent>;
+
+  /** Listener for {@link TTSAudioEvent}. */
   'tts.audio': EventListener<TTSAudioEvent>;
+
+  /** Listener for {@link TTSMetadataEvent}. */
   'tts.metadata': EventListener<TTSMetadataEvent>;
+
+  /** Listener for {@link TTSCompleteEvent}. */
   'tts.complete': EventListener<TTSCompleteEvent>;
+
+  /** Listener for {@link TTSErrorEvent}. */
   'tts.error': EventListener<TTSErrorEvent>;
 
+  /** Listener for {@link AgentReadyEvent}. */
   'agent.ready': EventListener<AgentReadyEvent>;
+
+  /** Listener for {@link AgentStateChangeEvent}. */
   'agent.stateChange': EventListener<AgentStateChangeEvent>;
+
+  /** Listener for {@link AgentErrorEvent}. */
   'agent.error': EventListener<AgentErrorEvent>;
 
+  /** Listener for {@link AudioCaptureStartEvent}. */
   'audio.capture.start': EventListener<AudioCaptureStartEvent>;
+
+  /** Listener for {@link AudioCaptureStopEvent}. */
   'audio.capture.stop': EventListener<AudioCaptureStopEvent>;
+
+  /** Listener for {@link AudioCaptureErrorEvent}. */
   'audio.capture.error': EventListener<AudioCaptureErrorEvent>;
+
+  /** Listener for {@link AudioPlaybackStartEvent}. */
   'audio.playback.start': EventListener<AudioPlaybackStartEvent>;
+
+  /** Listener for {@link AudioPlaybackEndEvent}. */
   'audio.playback.end': EventListener<AudioPlaybackEndEvent>;
+
+  /** Listener for {@link AudioPlaybackErrorEvent}. */
   'audio.playback.error': EventListener<AudioPlaybackErrorEvent>;
 }

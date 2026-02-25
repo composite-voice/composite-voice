@@ -1,21 +1,38 @@
 /**
- * Generic Node.js HTTP server adapter.
+ * @packageDocumentation
+ * Generic Node.js HTTP server adapter for the CompositeVoice proxy.
  *
+ * @remarks
  * Works with any framework that exposes the raw Node.js `http.Server`,
- * including Express, Fastify (raw mode), Koa, and plain `http.createServer`.
+ * including Express, Fastify (raw mode), Koa, Hapi, and plain `http.createServer`.
+ * This is the most flexible adapter and can be used when the Express or Next.js
+ * adapters are not suitable.
  *
- * Server-side only — never imported by browser bundles.
+ * Provides both an HTTP request handler for REST/SSE proxying and a WebSocket
+ * upgrade attachment method for streaming providers (Deepgram, ElevenLabs,
+ * AssemblyAI, Cartesia).
+ *
+ * This module is server-side only and must never be imported by browser bundles.
  *
  * @example
- * ```ts
+ * ```typescript
  * import http from 'http';
  * import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
  *
- * const proxy = createNodeProxy({ deepgramApiKey: '...', anthropicApiKey: '...' });
+ * const proxy = createNodeProxy({
+ *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   pathPrefix: '/api/proxy',
+ *   cors: { origins: ['http://localhost:5173'] },
+ * });
+ *
  * const server = http.createServer(proxy.handleRequest);
  * proxy.attachWebSocket(server);
  * server.listen(3000);
  * ```
+ *
+ * @see {@link createExpressProxy} for Express/Connect usage
+ * @see {@link createNextJsProxy} for Next.js App Router usage
  */
 
 import type { IncomingMessage, ServerResponse, Server } from 'http';
@@ -25,22 +42,71 @@ import { proxyWebSocket } from '../core/ws';
 import type { CompositeVoiceProxyConfig } from '../types';
 import { buildRoutes, matchHttpRoute, matchWsRoute, setCorsHeaders } from '../utils/routing';
 
+/**
+ * Handlers returned by {@link createNodeProxy}.
+ *
+ * @remarks
+ * Provides both an HTTP request handler and a WebSocket upgrade attachment method.
+ * The request handler can be passed directly to `http.createServer()` or used
+ * as a raw handler in any Node.js framework. The WebSocket attachment enables
+ * bidirectional relay for streaming providers.
+ */
 export interface NodeProxyHandlers {
   /**
-   * Node.js-compatible request handler.  Pass directly to `http.createServer`
-   * or use as Express/Koa/Fastify middleware.
+   * Node.js-compatible request handler.
+   *
+   * @remarks
+   * Pass directly to `http.createServer` or use as a raw handler in
+   * Express/Koa/Fastify. Returns silently for URLs that do not match
+   * the configured path prefix (the caller is responsible for handling
+   * non-proxy requests).
+   *
+   * @param req - The incoming HTTP request.
+   * @param res - The server response to write to.
+   * @returns A promise that resolves when the proxied response has been fully streamed.
    */
   handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void>;
 
   /**
    * Attach WebSocket upgrade handling to an existing HTTP server.
-   * Call this after `server.listen(...)`.
+   *
+   * @remarks
+   * Listens for the `'upgrade'` event on the server and proxies WebSocket
+   * connections to the appropriate upstream provider. Should be called after
+   * `server.listen(...)`.
+   *
+   * @param server - The HTTP server to attach WebSocket upgrade handling to.
    */
   attachWebSocket(server: Server): void;
 }
 
 /**
  * Create a Node.js proxy handler pair for the given config.
+ *
+ * @remarks
+ * Builds route configuration from the provided API keys, then returns a request
+ * handler and a WebSocket upgrade handler. Only providers with configured API keys
+ * will have routes registered.
+ *
+ * @param config - Proxy configuration containing API keys, path prefix, and CORS settings.
+ * @returns A {@link NodeProxyHandlers} object with `handleRequest` and `attachWebSocket`.
+ *
+ * @example
+ * ```typescript
+ * import http from 'http';
+ * import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+ *
+ * const proxy = createNodeProxy({
+ *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+ *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ * });
+ *
+ * const server = http.createServer(proxy.handleRequest);
+ * proxy.attachWebSocket(server);
+ * server.listen(3000);
+ * ```
+ *
+ * @see {@link CompositeVoiceProxyConfig} for configuration options
  */
 export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHandlers {
   const routes = buildRoutes(config);
