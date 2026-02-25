@@ -9,7 +9,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
 export type RouteType = 'http' | 'websocket';
 
 export interface ProxyRoute {
-  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai' | 'groq'
+  provider: string; // 'anthropic' | 'openai' | 'deepgram' | 'elevenlabs' | 'assemblyai' | 'groq' | 'mistral'
   type: RouteType;
   targetBase: string; // e.g. 'https://api.anthropic.com'
   authHeaders: Record<string, string>;
@@ -85,6 +85,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://api.groq.com/openai',
       authHeaders: {
         Authorization: `Bearer ${config.groqApiKey}`,
+      },
+    });
+  }
+
+  if (config.mistralApiKey) {
+    routes.push({
+      provider: 'mistral',
+      type: 'http',
+      targetBase: 'https://api.mistral.ai',
+      authHeaders: {
+        Authorization: `Bearer ${config.mistralApiKey}`,
       },
     });
   }
