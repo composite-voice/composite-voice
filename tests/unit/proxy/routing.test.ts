@@ -175,6 +175,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('mistral');
     });
 
+    it('includes Cartesia WebSocket route when cartesiaApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        cartesiaApiKey: 'test-cartesia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'cartesia',
+        type: 'websocket',
+        targetBase: 'wss://api.cartesia.ai',
+        authHeaders: {
+          'X-API-Key': 'test-cartesia-key',
+        },
+      });
+    });
+
+    it('does not include Cartesia route when cartesiaApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'cartesia')).toBe(true);
+    });
+
+    it('includes Cartesia alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        cartesiaApiKey: 'cartesia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('cartesia');
+    });
+
     it('includes Gemini HTTP route when geminiApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         geminiApiKey: 'test-gemini-key',
@@ -364,6 +407,43 @@ describe('proxy routing', () => {
       const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
       expect(route).not.toBeNull();
       expect(route!.provider).toBe('anthropic');
+    });
+  });
+
+  describe('matchWsRoute — Cartesia', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      cartesiaApiKey: 'cartesia-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/cartesia/ path', () => {
+      const route = matchWsRoute(routes, '/proxy/cartesia/tts/websocket', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('cartesia');
+      expect(route!.type).toBe('websocket');
+    });
+
+    it('matches /proxy/cartesia with subpath', () => {
+      const route = matchWsRoute(routes, '/proxy/cartesia/some/path', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('cartesia');
+    });
+
+    it('does not match HTTP routes for Cartesia', () => {
+      const route = matchHttpRoute(routes, '/proxy/cartesia/tts/websocket', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchWsRoute(routes, '/api/cartesia/tts/websocket', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Deepgram WebSocket route', () => {
+      const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('deepgram');
     });
   });
 

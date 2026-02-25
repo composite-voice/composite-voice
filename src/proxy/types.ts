@@ -25,6 +25,8 @@ export interface CompositeVoiceProxyConfig {
   mistralApiKey?: string;
   /** Gemini API key — used for HTTP LLM proxying */
   geminiApiKey?: string;
+  /** Cartesia API key — used for WebSocket TTS proxying */
+  cartesiaApiKey?: string;
   /**
    * URL path prefix for all proxy routes.
    * @default '/proxy'
