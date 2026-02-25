@@ -11,9 +11,9 @@ import { Text } from "./Text";
 interface ColorSwatchProps {
   /** Display name (e.g., "Primary 600") */
   name: string;
-  /** Hex or CSS color value */
-  value: string;
-  /** CSS custom property name */
+  /** Hex or CSS color value (optional when token is provided) */
+  value?: string;
+  /** CSS custom property name — used for background color and label */
   token?: string;
   /** Tailwind utility class name */
   utilityClass?: string;
@@ -38,7 +38,7 @@ export function ColorSwatch({
     >
       <div
         className="h-20 w-full flex items-end p-3"
-        style={{ backgroundColor: value }}
+        style={{ backgroundColor: token ? `var(${token})` : value }}
       >
         <Text
           as="span"
@@ -52,13 +52,8 @@ export function ColorSwatch({
       </div>
       <div className="px-3 py-2 bg-surface">
         <Text as="p" size="xs" color="default" weight="medium" className="font-mono">
-          {value}
+          {token || value}
         </Text>
-        {token && (
-          <Text as="p" size="xs" color="muted" className="font-mono">
-            {token}
-          </Text>
-        )}
       </div>
     </div>
   );
@@ -68,7 +63,7 @@ export function ColorSwatch({
 
 interface ColorShade {
   shade: string;
-  value: string;
+  value?: string;
   lightText?: boolean;
 }
 
@@ -99,8 +94,8 @@ export function ColorPalette({
           <div
             key={shade.shade}
             className="flex-1 h-14 relative group cursor-default"
-            style={{ backgroundColor: shade.value }}
-            title={`${shade.value}\n${tokenPrefix}-${shade.shade}\nbg-${classPrefix}-${shade.shade}`}
+            style={{ backgroundColor: shade.value || `var(${tokenPrefix}-${shade.shade})` }}
+            title={`${tokenPrefix}-${shade.shade}\nbg-${classPrefix}-${shade.shade}`}
           />
         ))}
       </div>
@@ -113,7 +108,7 @@ export function ColorPalette({
               {shade.shade}
             </Text>
             <Text as="p" size="xs" color="muted" className="font-mono text-center truncate hidden sm:block">
-              {shade.value}
+              {shade.value || `${tokenPrefix}-${shade.shade}`}
             </Text>
           </div>
         ))}
