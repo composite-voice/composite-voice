@@ -174,6 +174,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('mistral');
     });
+
+    it('includes Gemini HTTP route when geminiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        geminiApiKey: 'test-gemini-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'gemini',
+        type: 'http',
+        targetBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        authHeaders: {
+          Authorization: 'Bearer test-gemini-key',
+        },
+      });
+    });
+
+    it('does not include Gemini route when geminiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'gemini')).toBe(true);
+    });
+
+    it('includes Gemini alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        geminiApiKey: 'gemini-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('gemini');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
@@ -314,6 +357,43 @@ describe('proxy routing', () => {
 
     it('does not match when prefix does not match', () => {
       const route = matchHttpRoute(routes, '/api/mistral/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Anthropic HTTP route', () => {
+      const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('anthropic');
+    });
+  });
+
+  describe('matchHttpRoute — Gemini', () => {
+    const routes = buildRoutes({
+      anthropicApiKey: 'ant-key',
+      geminiApiKey: 'gemini-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/gemini/ path', () => {
+      const route = matchHttpRoute(routes, '/proxy/gemini/v1/chat/completions', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('gemini');
+      expect(route!.type).toBe('http');
+    });
+
+    it('matches /proxy/gemini with subpath', () => {
+      const route = matchHttpRoute(routes, '/proxy/gemini/some/path', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('gemini');
+    });
+
+    it('does not match WebSocket routes for Gemini', () => {
+      const route = matchWsRoute(routes, '/proxy/gemini/v1/chat/completions', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchHttpRoute(routes, '/api/gemini/v1/chat/completions', prefix);
       expect(route).toBeNull();
     });
 
