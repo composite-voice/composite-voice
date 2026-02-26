@@ -134,6 +134,12 @@ export type {
   DeepgramFluxConfig,
   DeepgramFluxOptions,
 } from './providers/stt/deepgram-flux/index';
+export { ElevenLabsSTT } from './providers/stt/elevenlabs/index';
+export type {
+  ElevenLabsSTTConfig,
+  ElevenLabsSTTModel,
+  ElevenLabsSTTAudioFormat,
+} from './providers/stt/elevenlabs/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
