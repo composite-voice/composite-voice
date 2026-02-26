@@ -1,20 +1,21 @@
 /**
- * Generate brand SVG assets from the CV lettermark using satori.
+ * Generate brand SVG assets using satori + Inter Bold.
  *
- * Renders "CV" with Inter Bold via satori to produce real typographic
- * SVG paths, then assembles clean, adaptive SVGs with CSS color-scheme
- * support for light/dark mode.
+ * Renders the lettermark ("CV") and wordmark ("CompositeVoice") via satori,
+ * extracts the typographic paths, and assembles clean adaptive SVGs with
+ * CSS color-scheme support for automatic light/dark mode.
  *
  * Outputs:
- *  - packages/ui/src/brand-lettermark.svg     — bare adaptive lettermark
- *  - packages/ui/src/brand-icon.svg           — iconmark with rounded background
+ *  - packages/ui/src/brand-lettermark.svg      — bare adaptive lettermark
+ *  - packages/ui/src/brand-icon.svg            — iconmark with rounded background
+ *  - packages/ui/src/brand-wordmark.svg        — full "CompositeVoice" wordmark
  *  - apps/{docs,design,web}/public/favicon.svg — iconmark for browser favicons
  *
  * Usage: node scripts/generate-lettermark.mjs
  */
 
 import satori from "satori";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -29,141 +30,133 @@ const BASE_DARK = "#ffffff"; // letterform color in dark mode
 const BG_LIGHT = "#ffffff"; // icon background in light mode
 const BG_DARK = "#1a1a1a"; // icon background in dark mode
 
-/* ── 1. Render via satori ─────────────────────── */
+/* ── Font ─────────────────────────────────────── */
 
 const interBold = readFileSync(
   join(root, "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff")
 );
 
-const rawSvg = await satori(
-  {
-    type: "div",
-    props: {
-      children: [
-        {
-          type: "span",
-          props: { children: "C", style: { color: BASE_LIGHT } },
+const fonts = [{ name: "Inter", data: interBold, weight: 700, style: "normal" }];
+
+/* ── Helpers ──────────────────────────────────── */
+
+async function render(baseText, accentText, width, height, fontSize, letterSpacing) {
+  return satori(
+    {
+      type: "div",
+      props: {
+        children: [
+          {
+            type: "span",
+            props: { children: baseText, style: { color: BASE_LIGHT } },
+          },
+          {
+            type: "span",
+            props: { children: accentText, style: { color: ACCENT } },
+          },
+        ],
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Inter",
+          fontWeight: 700,
+          fontSize,
+          lineHeight: 1,
+          letterSpacing: letterSpacing || "-0.02em",
+          width: "100%",
+          height: "100%",
         },
-        {
-          type: "span",
-          props: { children: "V", style: { color: ACCENT } },
-        },
-      ],
-      style: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Inter",
-        fontWeight: 700,
-        fontSize: 80,
-        lineHeight: 1,
-        letterSpacing: "-0.02em",
-        width: "100%",
-        height: "100%",
       },
     },
-  },
-  {
-    width: 128,
-    height: 128,
-    fonts: [
-      { name: "Inter", data: interBold, weight: 700, style: "normal" },
-    ],
+    { width, height, fonts }
+  );
+}
+
+function extractPaths(rawSvg) {
+  const regex = /fill="([^"]+)"[^>]*?\bd="([^"]+)"/g;
+  const base = [];
+  const accent = [];
+  let m;
+  while ((m = regex.exec(rawSvg)) !== null) {
+    if (m[1] === ACCENT) accent.push(m[2]);
+    else if (m[1] === BASE_LIGHT) base.push(m[2]);
   }
-);
-
-/* ── 2. Extract path data ─────────────────────── */
-
-// Satori wraps paths in <g> with masks — extract the raw path `d` attributes
-const pathRegex = /fill="([^"]+)"[^>]*?\bd="([^"]+)"/g;
-const paths = [];
-let m;
-while ((m = pathRegex.exec(rawSvg)) !== null) {
-  paths.push({ fill: m[1], d: m[2] });
+  return { base, accent };
 }
 
-const basePath = paths.find((p) => p.fill === BASE_LIGHT);
-const accentPath = paths.find((p) => p.fill === ACCENT);
+function buildSvg(width, height, { base, accent }, { background } = {}) {
+  const bgRule = background
+    ? `\n    .bg { fill: ${BG_LIGHT}; }`
+    : "";
+  const bgDarkRule = background
+    ? `\n      .bg { fill: ${BG_DARK}; }`
+    : "";
+  const bgRect = background
+    ? `\n  <rect class="bg" width="${width}" height="${height}" rx="${background.rx}"/>`
+    : "";
 
-if (!basePath || !accentPath) {
-  console.error("Failed to extract path data from satori output.");
-  console.error("Raw SVG:", rawSvg);
-  process.exit(1);
+  const basePaths = base.map((d) => `\n  <path class="base" d="${d}"/>`).join("");
+  const accentPaths = accent.map((d) => `\n  <path class="accent" d="${d}"/>`).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">
+  <style>${bgRule}
+    .base { fill: ${BASE_LIGHT}; }
+    .accent { fill: ${ACCENT}; }
+    @media (prefers-color-scheme: dark) {${bgDarkRule}
+      .base { fill: ${BASE_DARK}; }
+    }
+  </style>${bgRect}${basePaths}${accentPaths}
+</svg>
+`;
 }
-
-console.log("Extracted paths:");
-console.log(`  C (base):   ${basePath.d.slice(0, 60)}…`);
-console.log(`  V (accent): ${accentPath.d.slice(0, 60)}…`);
-
-/* ── 3. Build adaptive lettermark SVG ─────────── */
-
-const lettermarkSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <style>
-    .base { fill: ${BASE_LIGHT}; }
-    .accent { fill: ${ACCENT}; }
-    @media (prefers-color-scheme: dark) {
-      .base { fill: ${BASE_DARK}; }
-    }
-  </style>
-  <path class="base" d="${basePath.d}"/>
-  <path class="accent" d="${accentPath.d}"/>
-</svg>
-`;
-
-/* ── 4. Build adaptive iconmark SVG ───────────── */
-
-const ICON_RADIUS = 28; // ~22% of 128 — modern app-icon feel
-
-const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <style>
-    .bg { fill: ${BG_LIGHT}; }
-    .base { fill: ${BASE_LIGHT}; }
-    .accent { fill: ${ACCENT}; }
-    @media (prefers-color-scheme: dark) {
-      .bg { fill: ${BG_DARK}; }
-      .base { fill: ${BASE_DARK}; }
-    }
-  </style>
-  <rect class="bg" width="128" height="128" rx="${ICON_RADIUS}"/>
-  <path class="base" d="${basePath.d}"/>
-  <path class="accent" d="${accentPath.d}"/>
-</svg>
-`;
-
-/* ── 5. Write files ───────────────────────────── */
 
 function write(filePath, content) {
   writeFileSync(filePath, content, "utf-8");
   console.log(`  ✓ ${filePath.replace(root + "/", "")}`);
 }
 
+/* ── 1. Render lettermark ("CV") ──────────────── */
+
+console.log("Rendering lettermark…");
+const lettermarkRaw = await render("C", "V", 128, 128, 80, "-0.02em");
+const lettermarkPaths = extractPaths(lettermarkRaw);
+console.log(`  ${lettermarkPaths.base.length} base path(s), ${lettermarkPaths.accent.length} accent path(s)`);
+
+/* ── 2. Render wordmark ("CompositeVoice") ────── */
+
+console.log("Rendering wordmark…");
+const wordmarkRaw = await render("Composite", "Voice", 640, 96, 64, "-0.03em");
+const wordmarkPaths = extractPaths(wordmarkRaw);
+console.log(`  ${wordmarkPaths.base.length} base path(s), ${wordmarkPaths.accent.length} accent path(s)`);
+
+/* ── 3. Build SVGs ────────────────────────────── */
+
+const lettermarkSvg = buildSvg(128, 128, lettermarkPaths);
+const iconSvg = buildSvg(128, 128, lettermarkPaths, { background: { rx: 28 } });
+const wordmarkSvg = buildSvg(640, 96, wordmarkPaths);
+
+/* ── 4. Write files ───────────────────────────── */
+
 console.log("\nWriting SVGs:");
 
 // Reference SVGs in UI package
 write(join(root, "packages/ui/src/brand-lettermark.svg"), lettermarkSvg);
 write(join(root, "packages/ui/src/brand-icon.svg"), iconSvg);
+write(join(root, "packages/ui/src/brand-wordmark.svg"), wordmarkSvg);
 
 // Favicons (all sites use the iconmark variant)
-const faviconTargets = [
-  "apps/docs/public/favicon.svg",
-  "apps/design/public/favicon.svg",
-  "apps/web/public/favicon.svg",
-];
-for (const rel of faviconTargets) {
-  write(join(root, rel), iconSvg);
+for (const app of ["docs", "design", "web"]) {
+  write(join(root, `apps/${app}/public/favicon.svg`), iconSvg);
 }
 
-// Clean up old light variant (replaced by adaptive approach)
-import { existsSync, unlinkSync } from "fs";
-const oldLight = join(root, "packages/ui/src/brand-lettermark-light.svg");
-if (existsSync(oldLight)) {
-  unlinkSync(oldLight);
-  console.log(`  ✗ Removed old: packages/ui/src/brand-lettermark-light.svg`);
+// Clean up legacy files
+for (const old of ["brand-lettermark-light.svg"]) {
+  const p = join(root, "packages/ui/src", old);
+  if (existsSync(p)) {
+    unlinkSync(p);
+    console.log(`  ✗ Removed old: packages/ui/src/${old}`);
+  }
 }
 
-/* ── 6. Print path data for BrandIcon ─────────── */
-
-console.log("\n— Path data (for BrandIcon in icons.tsx) —");
-console.log(`C (base): ${basePath.d}`);
-console.log(`V (accent): ${accentPath.d}`);
 console.log("\nDone.");
