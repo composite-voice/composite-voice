@@ -241,6 +241,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
   private isConnected = false;
   private wsUrl = '';
   private sentFirstChunk = false;
+  private sessionId: string | null = null;
 
   /**
    * Creates a new ElevenLabsSTT provider instance.
@@ -405,8 +406,12 @@ export class ElevenLabsSTT extends LiveSTTProvider {
 
               if (message.message_type === 'session_started') {
                 clearTimeout(timeout);
+                this.sessionId = message.session_id ?? null;
                 this.logger.info('ElevenLabs STT session started', {
-                  sessionId: message.session_id,
+                  sessionId: this.sessionId,
+                  model: this.config.model,
+                  commitStrategy: this.config.commitStrategy,
+                  audioFormat: this.config.audioFormat,
                 });
 
                 // Switch to normal message handling after handshake
@@ -476,12 +481,17 @@ export class ElevenLabsSTT extends LiveSTTProvider {
       const message = JSON.parse(event.data as string);
 
       switch (message.message_type) {
-        case 'partial_transcript':
+        case 'partial_transcript': {
+          const text: string = message.text ?? '';
+          // Do not emit empty partial transcripts
+          if (!text) break;
           this.emitTranscription({
-            text: message.text ?? '',
+            text,
             isFinal: false,
+            speechFinal: false,
           });
           break;
+        }
 
         case 'committed_transcript':
           this.emitTranscription({
@@ -491,14 +501,27 @@ export class ElevenLabsSTT extends LiveSTTProvider {
           });
           break;
 
-        case 'committed_transcript_with_timestamps':
+        case 'committed_transcript_with_timestamps': {
+          const words: Array<{ word: string; logprob?: number }> = message.words ?? [];
+          const text = words.map((w) => w.word).join(' ');
+          // Compute average confidence from word-level logprobs
+          const wordsWithLogprob = words.filter(
+            (w): w is { word: string; logprob: number } => typeof w.logprob === 'number'
+          );
+          const confidence =
+            wordsWithLogprob.length > 0
+              ? wordsWithLogprob.reduce((sum, w) => sum + Math.exp(w.logprob), 0) /
+                wordsWithLogprob.length
+              : undefined;
           this.emitTranscription({
-            text: (message.words ?? []).map((w: { word: string }) => w.word).join(' '),
+            text,
             isFinal: true,
             speechFinal: true,
+            ...(confidence !== undefined && { confidence }),
             metadata: { words: message.words },
           });
           break;
+        }
 
         case 'input_error':
           this.logger.error('ElevenLabs STT input error', {
@@ -509,7 +532,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
             text: '',
             isFinal: true,
             confidence: 0,
-            metadata: { error: message.message, errorCode: message.code },
+            metadata: { errorType: message.code, error: message.message },
           });
           break;
 
@@ -618,6 +641,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
 
       this.isConnected = false;
       this.sentFirstChunk = false;
+      this.sessionId = null;
       this.wsManager = null;
 
       this.logger.info('Disconnected from ElevenLabs STT');
