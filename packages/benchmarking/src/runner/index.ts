@@ -16,6 +16,7 @@ import { buildResultPath, writeResult, commitAndPush } from '../results/writer.j
 import { runSTTBenchmark } from './stt-bench.js';
 import { runLLMBenchmark } from './llm-bench.js';
 import { runTTSBenchmark } from './tts-bench.js';
+import { runFullStackBenchmark } from './full-stack-bench.js';
 
 /**
  * Execute a benchmark run on this machine.
@@ -68,8 +69,11 @@ export async function run(config: RunnerConfig): Promise<ResultFile> {
       break;
     }
     case 'full-stack': {
-      // TODO: Implement full-stack benchmark
-      throw new Error('Full-stack benchmark not yet implemented');
+      const result = await runFullStackBenchmark(config, log, runId);
+      metrics = result.metrics;
+      trialCount = result.trialCount;
+      errorCount = result.errorCount;
+      break;
     }
     default:
       throw new Error(`Unknown layer: ${config.assignment.layer}`);

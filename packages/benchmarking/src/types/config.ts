@@ -101,7 +101,17 @@ export interface TTSAlignmentConfig {
   speed: number;
 }
 
-export type AlignmentConfig = STTAlignmentConfig | LLMAlignmentConfig | TTSAlignmentConfig;
+export interface FullStackAlignmentConfig {
+  stt: STTAlignmentConfig;
+  llm: LLMAlignmentConfig;
+  tts: TTSAlignmentConfig;
+}
+
+export type AlignmentConfig =
+  | STTAlignmentConfig
+  | LLMAlignmentConfig
+  | TTSAlignmentConfig
+  | FullStackAlignmentConfig;
 
 // --- Orchestrator config ---
 
@@ -137,6 +147,8 @@ export interface RunnerConfig {
   apiKey: string;
   /** Additional provider-specific config (e.g., voiceId for TTS) */
   providerConfig: Record<string, unknown>;
+  /** API keys for full-stack tests (provider name -> key) */
+  apiKeys?: Record<string, string>;
   /** Git branch to commit results to */
   branch: string;
   /** Git repo URL */

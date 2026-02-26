@@ -15,6 +15,7 @@ import type {
   STTAlignmentConfig,
   LLMAlignmentConfig,
   TTSAlignmentConfig,
+  FullStackAlignmentConfig,
 } from '../types/config.js';
 
 // --- Feature alignment defaults (Section 3 of METHODOLOGY.md) ---
@@ -56,6 +57,12 @@ const TTS_ALIGNMENT: TTSAlignmentConfig = {
   speed: 1.0,
 };
 
+const FULL_STACK_ALIGNMENT: FullStackAlignmentConfig = {
+  stt: STT_ALIGNMENT,
+  llm: LLM_ALIGNMENT,
+  tts: TTS_ALIGNMENT,
+};
+
 function getAlignment(layer: string): AlignmentConfig {
   switch (layer) {
     case 'stt':
@@ -65,8 +72,7 @@ function getAlignment(layer: string): AlignmentConfig {
     case 'tts':
       return TTS_ALIGNMENT;
     case 'full-stack':
-      // Full-stack uses all three; the runner handles composition
-      return LLM_ALIGNMENT;
+      return FULL_STACK_ALIGNMENT;
     default:
       throw new Error(`Unknown layer: ${layer}`);
   }
@@ -78,9 +84,9 @@ function getAlignment(layer: string): AlignmentConfig {
  * resolving individual provider keys from environment variables).
  */
 function resolveApiKey(assignment: TestAssignment, apiKeys: Record<string, string>): string {
-  if (assignment.layer === 'full-stack' && assignment.providerTriple) {
-    // For full-stack, the machine needs all three keys — pass via env vars
-    return 'FULL_STACK';
+  if (assignment.layer === 'full-stack') {
+    // For full-stack, the primary key field is unused; keys passed via apiKeys map
+    return '';
   }
   return apiKeys[assignment.provider] || '';
 }
@@ -97,7 +103,7 @@ export function buildRunnerConfig(
     orchestratorConfig.branch ||
     `bench/${orchestratorConfig.dataset.name}-${orchestratorConfig.dataset.subset}/${today}`;
 
-  return {
+  const runnerConfig: RunnerConfig = {
     assignment,
     dataset: orchestratorConfig.dataset,
     alignment: getAlignment(assignment.layer),
@@ -107,8 +113,19 @@ export function buildRunnerConfig(
     repoUrl: `https://github.com/${orchestratorConfig.repo}.git`,
     warmUpTrials: 3,
     cooldownMs: 2000,
-    timeoutMs: assignment.layer === 'llm' ? 60_000 : 30_000,
+    timeoutMs: assignment.layer === 'llm' || assignment.layer === 'full-stack' ? 60_000 : 30_000,
   };
+
+  // Full-stack tests need API keys for all three providers in the triple
+  if (assignment.layer === 'full-stack' && assignment.providerTriple) {
+    runnerConfig.apiKeys = {
+      [assignment.providerTriple.stt.provider]: orchestratorConfig.apiKeys[assignment.providerTriple.stt.provider] || '',
+      [assignment.providerTriple.llm.provider]: orchestratorConfig.apiKeys[assignment.providerTriple.llm.provider] || '',
+      [assignment.providerTriple.tts.provider]: orchestratorConfig.apiKeys[assignment.providerTriple.tts.provider] || '',
+    };
+  }
+
+  return runnerConfig;
 }
 
 /**
