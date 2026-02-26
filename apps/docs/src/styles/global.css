@@ -2,3 +2,10 @@
 @import "@lukeocodes/composite-voice-ui/theme.css";
 
 @source "../../../../packages/ui/src";
+
+/* Progress bar indeterminate animation (used by ProgressBar component) */
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(-100%); }
+}

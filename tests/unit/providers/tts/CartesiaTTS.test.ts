@@ -4,10 +4,7 @@
 
 import { CartesiaTTS } from '../../../../src/providers/tts/cartesia/CartesiaTTS';
 import { Logger } from '../../../../src/utils/logger';
-import {
-  ProviderInitializationError,
-  ProviderConnectionError,
-} from '../../../../src/utils/errors';
+import { ProviderInitializationError, ProviderConnectionError } from '../../../../src/utils/errors';
 
 // Mock WebSocketManager
 const mockWsManager = {
@@ -115,7 +112,7 @@ describe('CartesiaTTS', () => {
         {
           apiKey: 'test-key',
           voiceId: '',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
         logger
       );

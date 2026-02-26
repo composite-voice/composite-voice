@@ -10,10 +10,20 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@4hse/astro-llms-txt": "^1.0.4",
     "@astrojs/react": "^4.2.1",
+    "@astrojs/sitemap": "^3.7.0",
     "@lukeocodes/composite-voice-ui": "workspace:*",
+    "@playform/compress": "^0.2.1",
+    "@playform/inline": "^0.1.2",
     "@tailwindcss/vite": "^4.1.8",
+    "@unpic/astro": "^1.0.2",
     "astro": "^5.17.1",
+    "astro-capo": "^0.0.1",
+    "astro-og-canvas": "^0.10.1",
+    "astro-robots-txt": "^1.0.0",
+    "astro-seo": "^1.1.0",
+    "canvaskit-wasm": "^0.40.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.8"

@@ -73,7 +73,7 @@ export function installNativeSTTMock(): void {
       if (this._running) {
         throw new DOMException(
           "Failed to execute 'start' on 'SpeechRecognition': recognition has already started.",
-          'InvalidStateError',
+          'InvalidStateError'
         );
       }
       this._running = true;
@@ -148,9 +148,15 @@ export function installNativeSTTMock(): void {
     }
 
     // EventTarget stubs (NativeSTT uses direct handler properties, not addEventListener)
-    addEventListener(): void { /* stub */ }
-    removeEventListener(): void { /* stub */ }
-    dispatchEvent(): boolean { return false; }
+    addEventListener(): void {
+      /* stub */
+    }
+    removeEventListener(): void {
+      /* stub */
+    }
+    dispatchEvent(): boolean {
+      return false;
+    }
   }
 
   // Replace both browser-prefixed globals

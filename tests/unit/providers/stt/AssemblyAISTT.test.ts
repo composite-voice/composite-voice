@@ -4,10 +4,7 @@
 
 import { AssemblyAISTT } from '../../../../src/providers/stt/assemblyai/AssemblyAISTT';
 import { Logger } from '../../../../src/utils/logger';
-import {
-  ProviderInitializationError,
-  ProviderConnectionError,
-} from '../../../../src/utils/errors';
+import { ProviderInitializationError, ProviderConnectionError } from '../../../../src/utils/errors';
 
 // Mock WebSocketManager
 const mockWsManager = {
@@ -262,9 +259,7 @@ describe('AssemblyAISTT', () => {
 
       provider.sendAudio(audioChunk);
 
-      expect(mockWsManager.send).toHaveBeenCalledWith(
-        JSON.stringify({ audio_data: btoa('ABCD') })
-      );
+      expect(mockWsManager.send).toHaveBeenCalledWith(JSON.stringify({ audio_data: btoa('ABCD') }));
     });
 
     it('should send multiple audio chunks', () => {
@@ -512,9 +507,7 @@ describe('AssemblyAISTT', () => {
       await provider.disconnect();
 
       // Should send terminate_session message
-      expect(mockWsManager.send).toHaveBeenCalledWith(
-        JSON.stringify({ terminate_session: true })
-      );
+      expect(mockWsManager.send).toHaveBeenCalledWith(JSON.stringify({ terminate_session: true }));
       expect(mockWsManager.disconnect).toHaveBeenCalled();
       expect(provider.isWebSocketConnected()).toBe(false);
     });

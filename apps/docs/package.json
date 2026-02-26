@@ -5,24 +5,37 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
+    "build": "pnpm run typedoc && astro build",
+    "build:astro": "astro build",
+    "typedoc": "rm -rf src/content/docs/api && typedoc && node scripts/typedoc-frontmatter.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
+    "@4hse/astro-llms-txt": "^1.0.4",
     "@astrojs/react": "^4.2.1",
-    "@astrojs/starlight": "^0.37.6",
+    "@astrojs/sitemap": "^3.7.0",
     "@lukeocodes/composite-voice-ui": "workspace:*",
+    "@playform/compress": "^0.2.1",
+    "@playform/inline": "^0.1.2",
     "@tailwindcss/vite": "^4.1.8",
-    "astro": "^5.6.1",
+    "@unpic/astro": "^1.0.2",
+    "astro": "^5.17.1",
+    "astro-breadcrumbs": "^3.3.3",
+    "astro-capo": "^0.0.1",
+    "astro-og-canvas": "^0.10.1",
+    "astro-pagefind": "^1.8.5",
+    "astro-robots-txt": "^1.0.0",
+    "astro-seo": "^1.1.0",
+    "canvaskit-wasm": "^0.40.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "sharp": "^0.34.2",
     "tailwindcss": "^4.1.8"
   },
   "devDependencies": {
     "@types/react": "^19.1.6",
-    "@types/react-dom": "^19.1.6"
+    "@types/react-dom": "^19.1.6",
+    "typedoc": "^0.28.17",
+    "typedoc-plugin-markdown": "^4.10.0"
   }
 }

@@ -1,30 +1,49 @@
 ---
 import "../styles/global.css";
+import { getCollection } from "astro:content";
 import { Head } from "astro-capo";
 import { SEO } from "astro-seo";
-import { Navbar, Footer } from "@lukeocodes/composite-voice-ui";
-
-import pkg from "../../../../package.json";
+import { Breadcrumbs } from "astro-breadcrumbs";
+import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
+import type { SidebarItem } from "@lukeocodes/composite-voice-ui";
+import { nav, isNavFolder } from "../lib/nav";
 
 interface Props {
-  title?: string;
+  title: string;
   description?: string;
 }
 
-const { title = "CompositeVoice", description = "Build voice interfaces for the web. An open-source SDK for composable speech-to-text, LLM, and text-to-speech pipelines." } = Astro.props;
-
-const version = pkg.version;
+const { title, description } = Astro.props;
+const pageTitle = title === "Overview" ? "CompositeVoice Docs" : `${title} — CompositeVoice Docs`;
+const pageDescription = description || `CompositeVoice Docs — ${title}`;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
 
+/* Cross-site URLs from Netlify org-level env vars */
 const CV_WEB_URL = import.meta.env.CV_WEB_URL || "/";
 const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
 const CV_DESIGN_URL = import.meta.env.CV_DESIGN_URL || "/";
 
 const sites = [
-  { href: CV_WEB_URL, label: "Home", current: true },
-  { href: CV_DOCS_URL, label: "Docs" },
+  { href: CV_WEB_URL, label: "Home" },
+  { href: CV_DOCS_URL, label: "Docs", current: true },
   { href: CV_DESIGN_URL, label: "Design" },
 ];
+
+/* Build sidebar from nav config + content collection */
+const entries = await getCollection("docs");
+
+const sections: SidebarItem[] = nav.map((item) => {
+  if (isNavFolder(item)) {
+    const children = entries
+      .filter((e) => e.id.startsWith(`${item.folder}/`))
+      .sort((a, b) => (a.data.order ?? Infinity) - (b.data.order ?? Infinity))
+      .map((e) => ({ href: `/${e.id}`, label: e.data.title }));
+    return { label: item.label, children };
+  }
+  return item;
+});
+
+const currentPath = Astro.url.pathname;
 ---
 
 <html lang="en">
@@ -32,30 +51,27 @@ const sites = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <SEO
-      title={title}
-      description={description}
+      title={pageTitle}
+      description={pageDescription}
       canonical={canonicalUrl}
       openGraph={{
         basic: {
-          title,
+          title: pageTitle,
           type: "website",
           image: `${Astro.site}og-default.png`,
           url: canonicalUrl,
         },
-        optional: { description, siteName: "CompositeVoice" },
+        optional: { description: pageDescription, siteName: "CompositeVoice Docs" },
       }}
       twitter={{ card: "summary_large_image" }}
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta name="generator" content={Astro.generator} />
     <script is:inline>
       (function() {
         var el = document.documentElement;
         var CK = 'cv-preferences';
         var p = {};
 
-        // Cookie domain for cross-subdomain sharing on custom domains
         function ckd() {
           var h = location.hostname;
           if (h === 'localhost' || h === '127.0.0.1') return '';
@@ -66,7 +82,6 @@ const sites = [
           document.cookie = CK + '=' + encodeURIComponent(JSON.stringify(v)) + ';path=/;max-age=31536000;samesite=lax' + ckd();
         }
 
-        // Read: URL param (cross-site transfer) → cookie
         try {
           var sp = new URLSearchParams(location.search);
           var cvp = sp.get('cvp');
@@ -81,14 +96,12 @@ const sites = [
           }
         } catch(e) {}
 
-        // Apply
         el.style.colorScheme = (p.theme && p.theme !== 'system') ? p.theme : 'light dark';
         if (p.contrast && p.contrast !== 'system') el.dataset.contrast = p.contrast;
         if (p.motion && p.motion !== 'system') el.dataset.motion = p.motion;
         if (p.transparency && p.transparency !== 'system') el.dataset.transparency = p.transparency;
         if (p.fontSize && p.fontSize !== 'base') el.dataset.fontSize = p.fontSize;
 
-        // Transfer prefs via URL param when navigating to a different hostname
         document.addEventListener('click', function(e) {
           var a = e.target.closest ? e.target.closest('a[href]') : null;
           if (!a || a.target === '_blank') return;
@@ -113,12 +126,34 @@ const sites = [
       Skip to content
     </a>
 
-    <Navbar client:load sites={sites} version={version} />
+    <Navbar client:load sites={sites} hasSidebar />
 
-    <main id="main-content" class="pt-14">
-      <slot />
-    </main>
+    <div class="flex min-h-screen pt-14">
+      <Sidebar client:load sections={sections} currentPath={currentPath} ariaLabel="Documentation sections" />
 
-    <Footer client:load sites={sites} />
+      <main id="main-content" class="flex-1 min-w-0 md:ml-64">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <Breadcrumbs indexText="Docs">
+            <style slot="separator">.separator { margin: 0 0.25rem; color: var(--color-foreground-muted); }</style>
+            <span slot="separator" class="separator">/</span>
+          </Breadcrumbs>
+
+          <header class="mb-8 sm:mb-10">
+            <h1 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+              {title}
+            </h1>
+            {description && (
+              <p class="mt-2 text-base sm:text-lg text-foreground-muted">
+                {description}
+              </p>
+            )}
+          </header>
+
+          <slot />
+        </div>
+
+        <Footer client:load sites={sites} className="mt-auto" />
+      </main>
+    </div>
   </body>
 </html>

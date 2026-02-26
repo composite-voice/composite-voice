@@ -2,6 +2,10 @@
    CompositeVoice UI — Design System Components
    ═══════════════════════════════════════════════════ */
 
+/* ── Brand ────────────────────────────────────── */
+export { BrandName } from "./components/BrandName";
+export type { BrandNameProps } from "./components/BrandName";
+
 /* ── Primitives ───────────────────────────────── */
 export { VisuallyHidden } from "./components/VisuallyHidden";
 export { Text } from "./components/Text";
@@ -10,6 +14,8 @@ export { Icon } from "./components/Icon";
 
 /* ── Icons ────────────────────────────────────── */
 export {
+  /* Brand */
+  BrandIcon,
   /* Informational */
   InfoIcon,
   CheckCircleIcon,
@@ -135,6 +141,8 @@ export {
   MoreHorizontalIcon,
   MoreVerticalIcon,
   PrintIcon,
+  /* Social / Brand */
+  GitHubIcon,
 } from "./icons";
 
 /* ── Buttons ──────────────────────────────────── */
@@ -202,6 +210,21 @@ export { MotionToggle } from "./components/MotionToggle";
 export { TransparencyToggle } from "./components/TransparencyToggle";
 export { FontSizeToggle } from "./components/FontSizeToggle";
 export { PreferencesPanel } from "./components/PreferencesPanel";
+
+/* ── Layout ──────────────────────────────────── */
+export { Navbar } from "./components/Navbar";
+export type { NavbarProps, NavbarSite } from "./components/Navbar";
+export { Sidebar } from "./components/Sidebar";
+export type {
+  SidebarProps,
+  SidebarItem,
+  SidebarLink,
+  SidebarGroup,
+  /** @deprecated Use `SidebarLink` or `SidebarItem` instead. */
+  SidebarSection,
+} from "./components/Sidebar";
+export { Footer } from "./components/Footer";
+export type { FooterProps, FooterSite } from "./components/Footer";
 
 /* ── Code & Prose ────────────────────────────── */
 export { CopyCommand } from "./components/CopyCommand";

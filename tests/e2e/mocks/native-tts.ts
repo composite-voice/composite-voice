@@ -33,15 +33,57 @@ export function installNativeTTSMock(): void {
 
   // Realistic voice list matching common Chrome/macOS voices
   const MOCK_VOICES = [
-    { name: 'Google US English', lang: 'en-US', localService: false, default: true, voiceURI: 'Google US English' },
-    { name: 'Google UK English Female', lang: 'en-GB', localService: false, default: false, voiceURI: 'Google UK English Female' },
-    { name: 'Google UK English Male', lang: 'en-GB', localService: false, default: false, voiceURI: 'Google UK English Male' },
+    {
+      name: 'Google US English',
+      lang: 'en-US',
+      localService: false,
+      default: true,
+      voiceURI: 'Google US English',
+    },
+    {
+      name: 'Google UK English Female',
+      lang: 'en-GB',
+      localService: false,
+      default: false,
+      voiceURI: 'Google UK English Female',
+    },
+    {
+      name: 'Google UK English Male',
+      lang: 'en-GB',
+      localService: false,
+      default: false,
+      voiceURI: 'Google UK English Male',
+    },
     { name: 'Alex', lang: 'en-US', localService: true, default: false, voiceURI: 'Alex' },
     { name: 'Samantha', lang: 'en-US', localService: true, default: false, voiceURI: 'Samantha' },
-    { name: 'Google Deutsch', lang: 'de-DE', localService: false, default: false, voiceURI: 'Google Deutsch' },
-    { name: 'Google Espanol', lang: 'es-ES', localService: false, default: false, voiceURI: 'Google Espanol' },
-    { name: 'Google Francais', lang: 'fr-FR', localService: false, default: false, voiceURI: 'Google Francais' },
-    { name: 'Google Japanese', lang: 'ja-JP', localService: false, default: false, voiceURI: 'Google Japanese' },
+    {
+      name: 'Google Deutsch',
+      lang: 'de-DE',
+      localService: false,
+      default: false,
+      voiceURI: 'Google Deutsch',
+    },
+    {
+      name: 'Google Espanol',
+      lang: 'es-ES',
+      localService: false,
+      default: false,
+      voiceURI: 'Google Espanol',
+    },
+    {
+      name: 'Google Francais',
+      lang: 'fr-FR',
+      localService: false,
+      default: false,
+      voiceURI: 'Google Francais',
+    },
+    {
+      name: 'Google Japanese',
+      lang: 'ja-JP',
+      localService: false,
+      default: false,
+      voiceURI: 'Google Japanese',
+    },
   ];
 
   // Read config (may have been set by a prior addInitScript call)
@@ -153,7 +195,7 @@ export function installNativeTTSMock(): void {
     if (mockSynthesis.onvoiceschanged) {
       mockSynthesis.onvoiceschanged.call(
         mockSynthesis as unknown as SpeechSynthesis,
-        new Event('voiceschanged'),
+        new Event('voiceschanged')
       );
     }
   }, 0);

@@ -1,12 +1,9 @@
 ---
 import "../styles/global.css";
-import {
-  ThemeToggle,
-  ContrastToggle,
-  MotionToggle,
-  TransparencyToggle,
-  FontSizeToggle,
-} from "@lukeocodes/composite-voice-ui";
+import { Head } from "astro-capo";
+import { SEO } from "astro-seo";
+import { Breadcrumbs } from "astro-breadcrumbs";
+import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
 
 interface Props {
   title: string;
@@ -14,6 +11,9 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const pageTitle = `${title} — CompositeVoice Design System`;
+const pageDescription = description || `CompositeVoice Design System — ${title}`;
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
 
 /* Cross-site URLs from Netlify org-level env vars */
 const CV_WEB_URL = import.meta.env.CV_WEB_URL || "/";
@@ -27,6 +27,7 @@ const sites = [
 ];
 
 const sections = [
+  { href: "/", label: "Overview" },
   { href: "/colors", label: "Colors" },
   { href: "/typography", label: "Typography" },
   { href: "/icons", label: "Icons" },
@@ -49,12 +50,25 @@ const currentPath = Astro.url.pathname;
 ---
 
 <html lang="en">
-  <head>
+  <Head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description || `CompositeVoice Design System — ${title}`} />
+    <SEO
+      title={pageTitle}
+      description={pageDescription}
+      canonical={canonicalUrl}
+      openGraph={{
+        basic: {
+          title: pageTitle,
+          type: "website",
+          image: `${Astro.site}og-default.png`,
+          url: canonicalUrl,
+        },
+        optional: { description: pageDescription, siteName: "CompositeVoice Design System" },
+      }}
+      twitter={{ card: "summary_large_image" }}
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title} — CompositeVoice Design System</title>
     <script is:inline>
       (function() {
         var el = document.documentElement;
@@ -106,9 +120,8 @@ const currentPath = Astro.url.pathname;
         });
       })();
     </script>
-  </head>
-  <body class="bg-neutral-50 text-foreground font-sans antialiased" itemscope itemtype="https://schema.org/WebPage">
-    <!-- Skip to content link -->
+  </Head>
+  <body class="bg-neutral-50 text-foreground font-sans antialiased">
     <a
       href="#main-content"
       class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-primary-600 focus:text-on-filled focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-focus focus:text-sm focus:font-medium"
@@ -116,121 +129,24 @@ const currentPath = Astro.url.pathname;
       Skip to content
     </a>
 
-    <!-- Top navbar — cross-site navigation -->
-    <header class="fixed top-0 left-0 right-0 h-14 z-50 bg-surface border-b border-neutral-200">
-      <div class="flex items-center h-full px-4">
-        <!-- Mobile sidebar toggle -->
-        <button
-          type="button"
-          id="mobile-menu-btn"
-          class="md:hidden mr-3 p-1.5 -ml-1.5 rounded-md text-foreground-muted hover:text-foreground hover:bg-neutral-100 transition-colors"
-          aria-label="Open navigation menu"
-          aria-expanded="false"
-          aria-controls="sidebar-nav"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-
-        <!-- Site title -->
-        <a href="/" class="flex items-center gap-2 mr-6 shrink-0">
-          <span class="text-base font-bold text-primary-600 tracking-tight">CompositeVoice</span>
-        </a>
-
-        <!-- Cross-site nav links -->
-        <nav class="flex items-center gap-1" aria-label="Sites">
-          {sites.map(({ href, label, current }) => (
-            <a
-              href={href}
-              class:list={[
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                current
-                  ? "text-foreground bg-neutral-100"
-                  : "text-foreground-muted hover:text-foreground hover:bg-neutral-100",
-              ]}
-              aria-current={current ? "true" : undefined}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-
-        <!-- Spacer -->
-        <div class="flex-1"></div>
-
-        <!-- GitHub link -->
-        <a
-          href="https://github.com/lukeocodes/composite-voice"
-          class="p-2 rounded-md text-foreground-muted hover:text-foreground hover:bg-neutral-100 transition-colors"
-          aria-label="GitHub repository"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-        </a>
-
-        <!-- Theme toggle -->
-        <div class="hidden md:flex items-center ml-2!">
-          <ThemeToggle client:load />
-        </div>
-      </div>
-    </header>
+    <Navbar client:load sites={sites} hasSidebar />
 
     <div class="flex min-h-screen pt-14">
-      <!-- Sidebar overlay (mobile) -->
-      <div
-        id="sidebar-overlay"
-        class="fixed inset-0 top-14 z-30 bg-surface-overlay hidden md:hidden"
-        aria-hidden="true"
-      ></div>
+      <Sidebar client:load sections={sections} currentPath={currentPath} ariaLabel="Design system sections" />
 
-      <!-- Sidebar Navigation -->
-      <nav
-        id="sidebar-nav"
-        class="fixed top-14 left-0 w-64 h-[calc(100vh-3.5rem)] bg-surface border-r border-neutral-200 overflow-y-auto flex flex-col z-40 -translate-x-full md:translate-x-0 transition-transform"
-        aria-label="Design system sections"
-        itemscope
-        itemtype="https://schema.org/SiteNavigationElement"
-      >
-        <ul class="px-3 py-4 space-y-0.5" role="list">
-          {sections.map(({ href, label }) => {
-            const isActive = currentPath === href || currentPath === `${href}/`;
-            return (
-              <li>
-                <a
-                  href={href}
-                  class:list={[
-                    "block px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                    isActive
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-foreground-muted hover:bg-neutral-50 hover:text-foreground",
-                  ]}
-                  aria-current={isActive ? "page" : undefined}
-                  itemprop="url"
-                >
-                  {label}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-
-      </nav>
-
-      <!-- Main Content -->
-      <main id="main-content" class="flex-1 min-w-0 md:ml-64" itemprop="mainContentOfPage">
+      <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <Breadcrumbs indexText="Design">
+            <style slot="separator">.separator { margin: 0 0.25rem; color: var(--color-foreground-muted); }</style>
+            <span slot="separator" class="separator">/</span>
+          </Breadcrumbs>
+
           <header class="mb-8 sm:mb-10">
-            <h1 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight" itemprop="name">
+            <h1 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               {title}
             </h1>
             {description && (
-              <p class="mt-2 text-base sm:text-lg text-foreground-muted" itemprop="description">
+              <p class="mt-2 text-base sm:text-lg text-foreground-muted">
                 {description}
               </p>
             )}
@@ -239,81 +155,8 @@ const currentPath = Astro.url.pathname;
           <slot />
         </div>
 
-        <!-- Footer -->
-        <footer class="border-t border-neutral-200 mt-auto">
-          <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-            <!-- Copyright & site links -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-8">
-              <p class="text-xs text-foreground-muted">
-                &copy; {new Date().getFullYear()} CompositeVoice. All rights reserved.
-              </p>
-              <nav class="flex items-center gap-4" aria-label="Footer navigation">
-                <a href={CV_WEB_URL} class="text-xs text-foreground-muted hover:text-foreground transition-colors">Home</a>
-                <a href={CV_DOCS_URL} class="text-xs text-foreground-muted hover:text-foreground transition-colors">Docs</a>
-                <a href={CV_DESIGN_URL} class="text-xs text-foreground-muted hover:text-foreground transition-colors">Design</a>
-                <a href="https://github.com/lukeocodes/composite-voice" class="text-xs text-foreground-muted hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>
-              </nav>
-            </div>
-
-            <!-- Display preferences -->
-            <div
-              role="group"
-              aria-label="Display preferences"
-              class="grid grid-cols-2 sm:grid-cols-4 gap-4"
-            >
-              <div class="flex flex-col gap-1">
-                <span class="text-[0.65rem] font-medium text-foreground-muted uppercase tracking-wider">Font size</span>
-                <FontSizeToggle client:load />
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-[0.65rem] font-medium text-foreground-muted uppercase tracking-wider">Contrast</span>
-                <ContrastToggle client:load />
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-[0.65rem] font-medium text-foreground-muted uppercase tracking-wider">Motion</span>
-                <MotionToggle client:load />
-              </div>
-              <div class="flex flex-col gap-1">
-                <span class="text-[0.65rem] font-medium text-foreground-muted uppercase tracking-wider">Transparency</span>
-                <TransparencyToggle client:load />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <Footer client:load sites={sites} className="mt-auto" />
       </main>
     </div>
-
-    <!-- Mobile sidebar toggle script -->
-    <script is:inline>
-      (function() {
-        var btn = document.getElementById('mobile-menu-btn');
-        var sidebar = document.getElementById('sidebar-nav');
-        var overlay = document.getElementById('sidebar-overlay');
-        if (!btn || !sidebar || !overlay) return;
-
-        function open() {
-          sidebar.classList.remove('-translate-x-full');
-          overlay.classList.remove('hidden');
-          btn.setAttribute('aria-expanded', 'true');
-        }
-        function close() {
-          sidebar.classList.add('-translate-x-full');
-          overlay.classList.add('hidden');
-          btn.setAttribute('aria-expanded', 'false');
-        }
-
-        btn.addEventListener('click', function() {
-          var isOpen = !sidebar.classList.contains('-translate-x-full');
-          if (isOpen) close(); else open();
-        });
-        overlay.addEventListener('click', close);
-
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) {
-            close();
-          }
-        });
-      })();
-    </script>
   </body>
 </html>

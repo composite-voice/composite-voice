@@ -75,3 +75,6 @@ prompt-log/
 playwright-report/
 test-results/
 
+# Generated API docs (typedoc output, regenerated at build)
+apps/docs/src/content/docs/api/
+

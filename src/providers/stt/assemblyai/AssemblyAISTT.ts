@@ -8,10 +8,7 @@
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
-import {
-  WebSocketManager,
-  type WebSocketManagerOptions,
-} from '../../../utils/websocket';
+import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**

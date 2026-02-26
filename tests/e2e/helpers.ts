@@ -58,7 +58,7 @@ export async function launchBrowser(): Promise<Browser> {
  */
 export async function createContext(
   browser: Browser,
-  options: { baseURL?: string } = {},
+  options: { baseURL?: string } = {}
 ): Promise<BrowserContext> {
   return browser.newContext({
     permissions: ['microphone'],
@@ -90,7 +90,7 @@ export interface DevServer {
 export async function startDevServer(
   exampleDir: string,
   port: number,
-  timeoutMs = 30_000,
+  timeoutMs = 30_000
 ): Promise<DevServer> {
   // Next.js examples have the port hardcoded in their dev script (-p PORT)
   // and already fail on port conflicts. Vite examples need --strictPort to
@@ -100,9 +100,7 @@ export async function startDevServer(
     existsSync(path.join(exampleDir, 'next.config.js')) ||
     existsSync(path.join(exampleDir, 'next.config.ts'));
 
-  const args = isNextJs
-    ? ['dev']
-    : ['dev', '--', '--port', String(port), '--strictPort'];
+  const args = isNextJs ? ['dev'] : ['dev', '--', '--port', String(port), '--strictPort'];
 
   const child = spawn('pnpm', args, {
     cwd: exampleDir,
@@ -119,7 +117,7 @@ export async function startDevServer(
   await waitForPort(port, timeoutMs).catch((err) => {
     child.kill('SIGTERM');
     throw new Error(
-      `Dev server in ${exampleDir} did not start on port ${port} within ${timeoutMs}ms.\nStderr: ${stderr}\n${String(err)}`,
+      `Dev server in ${exampleDir} did not start on port ${port} within ${timeoutMs}ms.\nStderr: ${stderr}\n${String(err)}`
     );
   });
 
@@ -246,7 +244,7 @@ const BENIGN_PATTERNS = ['favicon', '404', 'net::ERR_'];
  */
 export function getJsErrors(
   diagnostics: PageDiagnostics,
-  extraExcludes: string[] = [],
+  extraExcludes: string[] = []
 ): Array<{ level: string; text: string }> {
   return diagnostics.consoleErrors.filter((e) => {
     for (const pattern of BENIGN_PATTERNS) {
@@ -276,7 +274,7 @@ export function getJsErrors(
  */
 export async function withRetry<T>(
   fn: (attempt: number, timeoutMs: number) => Promise<T>,
-  label: string,
+  label: string
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -285,7 +283,10 @@ export async function withRetry<T>(
     try {
       const result = await Promise.race([
         fn(i, tier),
-        rejectAfter(tier, `${label} timed out after ${tier}ms (attempt ${i + 1}/${TIMEOUT_TIERS.length})`),
+        rejectAfter(
+          tier,
+          `${label} timed out after ${tier}ms (attempt ${i + 1}/${TIMEOUT_TIERS.length})`
+        ),
       ]);
       return result;
     } catch (err) {
@@ -364,7 +365,7 @@ export function createGitHubIssue(data: IssueData): string | undefined {
   try {
     const result = execSync(
       `gh issue create --title ${escapeShell(data.title)} --body ${escapeShell(body.join('\n'))} --label ${escapeShell(labels.join(','))}`,
-      { encoding: 'utf-8', timeout: 15_000 },
+      { encoding: 'utf-8', timeout: 15_000 }
     );
     return result.trim();
   } catch {
