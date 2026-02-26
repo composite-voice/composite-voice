@@ -44,7 +44,7 @@ await voice.start();
 | `apiKey` | `string` | -- | Deepgram API key (direct mode) |
 | `proxyUrl` | `string` | -- | Proxy server URL (recommended for production) |
 | `voice` | `string` | `'aura-2-thalia-en'` | Voice model identifier |
-| `sampleRate` | `number` | `24000` | Output sample rate in Hz |
+| `sampleRate` | `number` | `24000` | Output sample rate: `8000`, `16000`, `24000`, `32000`, or `48000` Hz |
 | `outputFormat` | `string` | `'linear16'` | Audio encoding: `linear16`, `mulaw`, or `alaw` |
 | `options.model` | `string` | Falls back to `voice` | Overrides the voice model |
 | `options.encoding` | `string` | Falls back to `outputFormat` | Overrides the encoding |
@@ -53,9 +53,15 @@ await voice.start();
 
 ### Available voices
 
-**Aura 2 (recommended):** `aura-2-thalia-en`, `aura-2-andromeda-en`, `aura-2-janus-en`, `aura-2-proteus-en`, `aura-2-orion-en`, `aura-2-luna-en`, `aura-2-arcas-en`
+**Aura 2 (recommended) — 40 English voices + 10 Spanish voices:**
 
-**Aura 1 (legacy):** `aura-asteria-en`, `aura-luna-en`, `aura-stella-en`
+Popular English voices: `aura-2-thalia-en`, `aura-2-andromeda-en`, `aura-2-janus-en`, `aura-2-proteus-en`, `aura-2-orion-en`, `aura-2-luna-en`, `aura-2-arcas-en`, `aura-2-athena-en`, `aura-2-helios-en`, `aura-2-zeus-en`, and 30 more.
+
+Spanish voices: `aura-2-sirio-es`, `aura-2-nestor-es`, `aura-2-carina-es`, `aura-2-celeste-es`, `aura-2-alvaro-es`, `aura-2-diana-es`, `aura-2-aquila-es`, `aura-2-selena-es`, `aura-2-estrella-es`, `aura-2-javier-es`.
+
+**Aura 1 (legacy) — 12 English voices:**
+
+`aura-asteria-en`, `aura-luna-en`, `aura-stella-en`, `aura-athena-en`, `aura-hera-en`, `aura-orion-en`, `aura-arcas-en`, `aura-perseus-en`, `aura-angus-en`, `aura-orpheus-en`, `aura-helios-en`, `aura-zeus-en`. Use Aura 1 only if you need a specific voice that did not carry over to Aura 2.
 
 ## Complete example
 

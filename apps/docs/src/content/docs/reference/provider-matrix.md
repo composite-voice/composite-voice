@@ -16,11 +16,15 @@ CompositeVoice supports 11 provider companies across 15 provider classes. This p
 | **Peer dependency** | `@deepgram/sdk` >=4.11.2 | `@deepgram/sdk` >=4.11.2 |
 | **Proxy support** | Yes | Yes |
 | **Browser support** | All modern browsers | All modern browsers |
-| **Default model** | nova-3 | aura-2-thalia-en |
+| **Default model** | nova-3 (V1) / flux-general-en (V2) | aura-2-thalia-en |
 
-**STT features:** Interim results, preflight/eager end-of-turn signals, smart formatting, auto-punctuation, speaker diarization, keyword boosting, profanity filter, VAD events, word-level timestamps, configurable endpointing (ms), utterance buffering across `is_final` segments.
+**STT V1 (Nova) features:** Interim results, smart formatting, auto-punctuation, speaker diarization, entity detection, keyword boosting, profanity filter, redaction (PCI/SSN), numerals conversion, VAD events, word-level timestamps, configurable endpointing, utterance buffering, multichannel transcription. Models: nova-3 (recommended), nova-3-medical, nova-2 (+ domain variants), nova (legacy).
 
-**TTS features:** Real-time streaming synthesis, 7 Aura 2 voices (thalia, andromeda, janus, proteus, orion, luna, arcas), word-level timing metadata, linear16/mulaw/alaw encoding, configurable sample rate.
+**STT V2 (Flux) features:** Turn-based conversation model, eager end-of-turn detection (configurable thresholds: `eot_threshold` 0.5–0.9, `eager_eot_threshold` 0.3–0.9), end-of-turn timeout (`eot_timeout_ms`), keyterm support, word confidence scores. Events: `StartOfTurn`, `EagerEndOfTurn`, `TurnResumed`, `EndOfTurn`, `Update`. Models: flux-general-en.
+
+**TTS features:** Real-time streaming synthesis, linear16/mulaw/alaw encoding, configurable sample rate (8–48 kHz), word-level timing metadata.
+
+**TTS models:** Aura 2 (recommended — 40 English voices + 10 Spanish voices), Aura 1 (legacy — 12 English voices).
 
 **Guides:** [DeepgramSTT](/guides/stt/deepgram-stt) · [DeepgramTTS](/guides/tts/deepgram-tts) · **Examples:** [20](https://github.com/lukeocodes/composite-voice/tree/main/examples/20-deepgram-pipeline), [21](https://github.com/lukeocodes/composite-voice/tree/main/examples/21-eager-pipeline), [22](https://github.com/lukeocodes/composite-voice/tree/main/examples/22-deepgram-options), [23](https://github.com/lukeocodes/composite-voice/tree/main/examples/23-deepgram-voices), [24](https://github.com/lukeocodes/composite-voice/tree/main/examples/24-deepgram-conversation-history)
 
@@ -233,7 +237,7 @@ CompositeVoice supports 11 provider companies across 15 provider classes. This p
 | Capability | Providers that support it |
 |---|---|
 | **WebSocket streaming** | DeepgramSTT, DeepgramTTS, AssemblyAISTT, ElevenLabsTTS, CartesiaTTS |
-| **Preflight / eager LLM** | DeepgramSTT (nova-3) |
+| **Preflight / eager LLM** | DeepgramSTT (Flux / STT V2 only) |
 | **Server proxy** | All except NativeSTT, NativeTTS, WebLLMLLM |
 | **No API key needed** | NativeSTT, NativeTTS, WebLLMLLM |
 | **No peer dependency** | NativeSTT, NativeTTS, AssemblyAISTT, ElevenLabsTTS, CartesiaTTS |

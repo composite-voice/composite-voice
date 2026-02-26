@@ -122,7 +122,7 @@ voice.clearHistory();
 
 The eager LLM pipeline reduces perceived latency by 100-300ms through speculative generation.
 
-Available only with Deepgram STT models that emit preflight signals (e.g., `nova-3`). When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
+Available only with Deepgram STT V2 (Flux) models that emit preflight signals (e.g., `flux-general-en`). Nova models (V1) do not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
 
 If new speech arrives and `cancelOnTextChange` is `true`, the speculative generation is cancelled via `AbortSignal` and restarted with the updated text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 
@@ -130,7 +130,7 @@ If new speech arrives and `cancelOnTextChange` is `true`, the speculative genera
 const voice = new CompositeVoice({
   stt: new DeepgramSTT({
     proxyUrl: '/api/proxy/deepgram',
-    model: 'nova-3',
+    model: 'flux-general-en',  // preflight requires Flux (STT V2)
   }),
   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),

@@ -11,7 +11,7 @@ CompositeVoice uses three provider slots — **STT** (speech-to-text), **LLM** (
 | Provider | Transport | Models | Interim Results | Preflight |
 |---|---|---|---|---|
 | NativeSTT | Browser API | Browser default | Yes | No |
-| DeepgramSTT | WebSocket | nova-3, nova-2, nova-1 | Yes | Yes (nova-3) |
+| DeepgramSTT | WebSocket | V1: nova-3, nova-2; V2: flux-general-en | Yes | Yes (Flux / V2 only) |
 | AssemblyAISTT | WebSocket | Default model | Yes | No |
 
 ### NativeSTT
@@ -38,7 +38,7 @@ const stt = new NativeSTT({
 
 ### DeepgramSTT
 
-Production-grade real-time speech recognition via WebSocket. Supports multiple models, word-level timestamps, and preflight signals for the eager LLM pipeline.
+Production-grade real-time speech recognition via WebSocket. Supports V1 (Nova) and V2 (Flux) model families, word-level timestamps, and — with Flux models — preflight signals for the eager LLM pipeline.
 
 ```typescript
 import { DeepgramSTT } from '@lukeocodes/composite-voice';
@@ -49,7 +49,7 @@ const stt = new DeepgramSTT({
   language: 'en',
   interimResults: true,
   options: {
-    model: 'nova-3',          // nova-3 (latest), nova-2, nova-1
+    model: 'nova-3',          // V1: nova-3, nova-2 | V2: flux-general-en
     smart_format: true,        // auto-punctuation and formatting
     punctuate: true,
     profanity_filter: false,
@@ -60,9 +60,10 @@ const stt = new DeepgramSTT({
 });
 ```
 
-- nova-3 model delivers highest accuracy
+- STT V1: nova-3 (highest accuracy, recommended default), nova-2 (wider language support)
+- STT V2: flux-general-en (lowest latency, preflight/eager end-of-turn signals)
 - Word-level confidence and timestamps
-- Preflight/eager end-of-turn signals for the eager pipeline
+- Preflight/eager end-of-turn signals for the eager pipeline (Flux / V2 only)
 - Smart formatting and auto-punctuation
 - Profanity filtering
 - Speaker diarization
@@ -366,4 +367,4 @@ const tts = new CartesiaTTS({
 
 **For privacy:** NativeSTT + WebLLMLLM + NativeTTS -- everything runs in the browser. No data leaves the device.
 
-**For lowest latency:** DeepgramSTT (with preflight) + GroqLLM + CartesiaTTS -- fast STT, fastest LLM inference, low-latency streaming TTS.
+**For lowest latency:** DeepgramSTT with Flux model (V2 preflight) + GroqLLM + CartesiaTTS -- fast STT with eager end-of-turn, fastest LLM inference, low-latency streaming TTS.

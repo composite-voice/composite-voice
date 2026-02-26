@@ -62,7 +62,7 @@ Audio playback: ░░░░░░░░░░░░░░░░░░███�
 The eager pipeline reduces latency further by starting LLM generation before the final transcript arrives.
 
 **How it works:**
-1. Deepgram's nova-3 model detects likely end-of-speech and fires a `transcription:preflight` event
+1. Deepgram's Flux model (STT V2) detects likely end-of-speech and fires a `transcription:preflight` event
 2. The SDK immediately sends the current transcript to the LLM
 3. If the user keeps speaking, the SDK cancels the in-flight LLM request and restarts with the updated text
 4. If the preflight was correct (user stopped speaking), the LLM response is already 100-300ms ahead
@@ -103,7 +103,7 @@ The preflight signal fires before `speechFinal` is confirmed. The LLM starts gen
 const voice = new CompositeVoice({
   stt: new DeepgramSTT({
     proxyUrl: '/api/proxy/deepgram',
-    options: { model: 'nova-3' },  // preflight requires nova-3
+    options: { model: 'flux-general-en' },  // preflight requires Flux (STT V2)
   }),
   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
@@ -114,7 +114,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-**Requirements:** Deepgram STT with a model that supports preflight signals (nova-3, flux-general-en). Other STT providers do not emit preflight events.
+**Requirements:** Deepgram STT with a Flux model (STT V2), e.g. `flux-general-en`. Nova models (STT V1) do not emit preflight signals. Other STT providers do not emit preflight events.
 
 ### Custom providers
 Extend the base classes to add your own STT, LLM, or TTS provider.
