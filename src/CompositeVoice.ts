@@ -530,10 +530,12 @@ export class CompositeVoice {
 
       if (similarity >= threshold) {
         // Similar enough — eager generation is already running; let it complete.
-        this.logger.debug(
-          'speech_final similar to preflight — using eager generation',
-          { similarity, threshold, preflight: eagerText, final: text }
-        );
+        this.logger.debug('speech_final similar to preflight — using eager generation', {
+          similarity,
+          threshold,
+          preflight: eagerText,
+          final: text,
+        });
         this.eagerAbortController = null;
         this.eagerText = null;
         return;

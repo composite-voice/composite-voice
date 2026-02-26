@@ -37,6 +37,7 @@ export type ElevenLabsTTSModel =
   | 'eleven_turbo_v2'
   | 'eleven_multilingual_v2'
   | 'eleven_monolingual_v1'
+  // eslint-disable-next-line @typescript-eslint/ban-types
   | (string & {});
 
 /**
@@ -60,6 +61,7 @@ export type ElevenLabsOutputFormat =
   | 'pcm_44100'
   | 'mp3_44100_128'
   | 'ulaw_8000'
+  // eslint-disable-next-line @typescript-eslint/ban-types
   | (string & {});
 
 /**

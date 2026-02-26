@@ -224,7 +224,6 @@ export interface DeepgramTranscriptionOptions {
 
   /** Arbitrary key:value metadata passed through to the API (V1 only). */
   extra?: string[];
-
 }
 
 /**

@@ -30,6 +30,7 @@ import { ProviderInitializationError, ProviderConnectionError } from '../../../u
  *
  * Custom model IDs are also accepted via the `string & {}` type widening.
  */
+// eslint-disable-next-line @typescript-eslint/ban-types
 export type CartesiaTTSModel = 'sonic-2' | 'sonic' | 'sonic-multilingual' | (string & {});
 
 /**
@@ -48,6 +49,7 @@ export type CartesiaOutputEncoding =
   | 'pcm_f32le'
   | 'pcm_mulaw'
   | 'pcm_alaw'
+  // eslint-disable-next-line @typescript-eslint/ban-types
   | (string & {});
 
 /**

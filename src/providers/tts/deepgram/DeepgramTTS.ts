@@ -311,13 +311,9 @@ export class DeepgramTTS extends LiveTTSProvider {
     try {
       this.logger.debug('Connecting to Deepgram TTS WebSocket');
 
-      const model =
-        this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en';
-      const encoding =
-        this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16';
-      const sampleRate = String(
-        this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000
-      );
+      const model = this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en';
+      const encoding = this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16';
+      const sampleRate = String(this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000);
 
       // V5 connect args are all strings
       const connectOptions: Record<string, unknown> = {
@@ -373,7 +369,17 @@ export class DeepgramTTS extends LiveTTSProvider {
     // Handle JSON messages via the V5 typed 'message' event
     this.speakSocket.on(
       'message',
-      (msg: { type?: string; request_id?: string; model_name?: string; model_version?: string; model_uuid?: string } | string) => {
+      (
+        msg:
+          | {
+              type?: string;
+              request_id?: string;
+              model_name?: string;
+              model_version?: string;
+              model_uuid?: string;
+            }
+          | string
+      ) => {
         try {
           // String messages are unrecognized text; skip them
           if (typeof msg === 'string') {
@@ -387,12 +393,9 @@ export class DeepgramTTS extends LiveTTSProvider {
               this.logger.debug('Metadata received', msg);
               this.emitMetadata({
                 sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
-                encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
-                  | 'linear16'
-                  | 'opus'
-                  | 'mp3'
-                  | 'mulaw'
-                  | 'alaw',
+                encoding: (this.config.options?.encoding ??
+                  this.config.outputFormat ??
+                  'linear16') as 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw',
                 channels: 1,
                 bitDepth: 16,
                 mimeType: `audio/${this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16'}`,
@@ -439,10 +442,7 @@ export class DeepgramTTS extends LiveTTSProvider {
             data.arrayBuffer().then((arrayBuffer: ArrayBuffer) => {
               this.handleBinaryAudio(arrayBuffer);
             });
-          } else if (
-            typeof Buffer !== 'undefined' &&
-            Buffer.isBuffer(data)
-          ) {
+          } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) {
             // Handle Node.js Buffer
             const arrayBuffer = new ArrayBuffer(data.byteLength);
             const view = new Uint8Array(arrayBuffer);
@@ -545,15 +545,12 @@ export class DeepgramTTS extends LiveTTSProvider {
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(resolve, 1000); // Force resolve after 1 second
 
-        this.speakSocket?.on(
-          'message',
-          (msg: { type?: string } | string) => {
-            if (typeof msg !== 'string' && msg.type === 'Flushed') {
-              clearTimeout(timeout);
-              resolve();
-            }
+        this.speakSocket?.on('message', (msg: { type?: string } | string) => {
+          if (typeof msg !== 'string' && msg.type === 'Flushed') {
+            clearTimeout(timeout);
+            resolve();
           }
-        );
+        });
       });
 
       this.logger.info('Deepgram TTS finalized');
