@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { BrandName } from "./BrandName";
+import { VersionPill } from "./VersionPill";
 import { ThemeToggle } from "./ThemeToggle";
 import { MenuIcon, GitHubIcon } from "../icons";
 
@@ -70,11 +71,7 @@ export function Navbar({
 
         <a href="/" className="flex items-center gap-2 mr-6 shrink-0">
           <BrandName className="text-base font-bold text-foreground tracking-tight" />
-          {version && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-badge text-[0.65rem] font-medium bg-primary-100 text-primary-700">
-              v{version}
-            </span>
-          )}
+          {version && <VersionPill version={version} />}
         </a>
 
         <nav className="flex items-center gap-1" aria-label="Sites">

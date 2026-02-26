@@ -7,6 +7,7 @@ import { Breadcrumbs } from "astro-breadcrumbs";
 import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
 import type { SidebarItem } from "@lukeocodes/composite-voice-ui";
 import { nav, isNavFolder } from "../lib/nav";
+import pkg from "../../../../package.json";
 
 interface Props {
   title: string;
@@ -130,16 +131,15 @@ const currentPath = Astro.url.pathname;
       Skip to content
     </a>
 
-    <Navbar client:load sites={sites} hasSidebar />
+    <Navbar client:load sites={sites} version={pkg.version} hasSidebar />
 
     <div class="flex min-h-screen pt-14">
       <Sidebar client:load sections={sections} currentPath={currentPath} ariaLabel="Documentation sections" />
 
       <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <Breadcrumbs indexText="Docs">
-            <style slot="separator">.separator { margin: 0 0.25rem; color: var(--color-foreground-muted); }</style>
-            <span slot="separator" class="separator">/</span>
+          <Breadcrumbs indexText="Design" linkTextFormat="capitalized">
+            <span slot="separator">/</span>
           </Breadcrumbs>
 
           <header class="mb-8 sm:mb-10">

@@ -5,6 +5,8 @@
 /* ── Brand ────────────────────────────────────── */
 export { BrandName } from "./components/BrandName";
 export type { BrandNameProps } from "./components/BrandName";
+export { VersionPill } from "./components/VersionPill";
+export type { VersionPillProps } from "./components/VersionPill";
 
 /* ── Primitives ───────────────────────────────── */
 export { VisuallyHidden } from "./components/VisuallyHidden";
