@@ -17,10 +17,7 @@
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
 import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
-import {
-  WebSocketManager,
-  type WebSocketManagerOptions,
-} from '../../../utils/websocket';
+import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
@@ -33,11 +30,7 @@ import { ProviderInitializationError, ProviderConnectionError } from '../../../u
  *
  * Custom model IDs are also accepted via the `string & {}` type widening.
  */
-export type CartesiaTTSModel =
-  | 'sonic-2'
-  | 'sonic'
-  | 'sonic-multilingual'
-  | (string & {});
+export type CartesiaTTSModel = 'sonic-2' | 'sonic' | 'sonic-multilingual' | (string & {});
 
 /**
  * Cartesia output audio encoding types.

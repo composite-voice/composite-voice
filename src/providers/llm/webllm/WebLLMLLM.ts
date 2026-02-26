@@ -33,10 +33,8 @@ import { ProviderInitializationError } from '../../../utils/errors';
 
 // Type-safe imports for optional peer dependency
 type MLCEngine = import('@mlc-ai/web-llm').MLCEngine;
-type ChatCompletionMessageParam =
-  import('@mlc-ai/web-llm').ChatCompletionMessageParam;
-type InitProgressReport =
-  import('@mlc-ai/web-llm').InitProgressReport;
+type ChatCompletionMessageParam = import('@mlc-ai/web-llm').ChatCompletionMessageParam;
+type InitProgressReport = import('@mlc-ai/web-llm').InitProgressReport;
 
 /**
  * Progress information emitted during model download and WebGPU shader compilation.

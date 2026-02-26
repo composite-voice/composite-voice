@@ -238,9 +238,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
     if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
         this.providerName,
-        new Error(
-          `${this.providerName} requires either "apiKey" or "proxyUrl" to be configured.`
-        )
+        new Error(`${this.providerName} requires either "apiKey" or "proxyUrl" to be configured.`)
       );
     }
 

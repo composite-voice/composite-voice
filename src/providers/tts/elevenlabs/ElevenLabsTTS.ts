@@ -17,10 +17,7 @@
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
 import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
-import {
-  WebSocketManager,
-  type WebSocketManagerOptions,
-} from '../../../utils/websocket';
+import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
@@ -516,7 +513,12 @@ export class ElevenLabsTTS extends LiveTTSProvider {
    */
   private getEncoding(): 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw' {
     const format = this.config.outputFormat ?? 'pcm_16000';
-    return (FORMAT_ENCODINGS[format] ?? 'linear16') as 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw';
+    return (FORMAT_ENCODINGS[format] ?? 'linear16') as
+      | 'linear16'
+      | 'opus'
+      | 'mp3'
+      | 'mulaw'
+      | 'alaw';
   }
 
   /**

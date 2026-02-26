@@ -4,10 +4,7 @@
 
 import { ElevenLabsTTS } from '../../../../src/providers/tts/elevenlabs/ElevenLabsTTS';
 import { Logger } from '../../../../src/utils/logger';
-import {
-  ProviderInitializationError,
-  ProviderConnectionError,
-} from '../../../../src/utils/errors';
+import { ProviderInitializationError, ProviderConnectionError } from '../../../../src/utils/errors';
 
 // Mock WebSocketManager
 const mockWsManager = {
@@ -210,7 +207,9 @@ describe('ElevenLabsTTS', () => {
       expect(provider.isWebSocketConnected()).toBe(true);
       expect(MockWebSocketManager).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: expect.stringContaining('wss://api.elevenlabs.io/v1/text-to-speech/test-voice-id/stream-input'),
+          url: expect.stringContaining(
+            'wss://api.elevenlabs.io/v1/text-to-speech/test-voice-id/stream-input'
+          ),
         })
       );
       expect(mockWsManager.connect).toHaveBeenCalled();
@@ -220,9 +219,7 @@ describe('ElevenLabsTTS', () => {
       await provider.connect();
 
       // The first send call should be the BOS message
-      expect(mockWsManager.send).toHaveBeenCalledWith(
-        expect.stringContaining('"voice_settings"')
-      );
+      expect(mockWsManager.send).toHaveBeenCalledWith(expect.stringContaining('"voice_settings"'));
 
       const bosMessage = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       expect(bosMessage.text).toBe(' ');

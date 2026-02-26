@@ -29,16 +29,16 @@ Building a voice agent from scratch means solving many hard problems simultaneou
 
 CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 
-| Feature                         | What it means for you                                                                                                                                                                    |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.        |
-| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                     |
-| **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use. Many providers (AssemblyAI, ElevenLabs, Cartesia) need no peer dependency at all.                     |
-| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, and state transitions.                                                             |
-| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                       |
-| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                       |
-| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                     |
-| **Extensible**                  | Abstract base classes make it straightforward to add any STT, LLM, or TTS service. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.             |
+| Feature                         | What it means for you                                                                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change. |
+| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                              |
+| **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use. Many providers (AssemblyAI, ElevenLabs, Cartesia) need no peer dependency at all.              |
+| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, and state transitions.                                                      |
+| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                |
+| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                |
+| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                              |
+| **Extensible**                  | Abstract base classes make it straightforward to add any STT, LLM, or TTS service. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.     |
 
 ---
 
@@ -235,15 +235,15 @@ new AssemblyAISTT({
 
 ### Language Models (LLM)
 
-| Provider              | Transport        | Peer dependency     | Notes                                                          |
-| --------------------- | ---------------- | ------------------- | -------------------------------------------------------------- |
-| `AnthropicLLM`        | HTTP streaming   | `@anthropic-ai/sdk` | Claude models. Streams by default.                             |
-| `OpenAILLM`           | HTTP             | `openai`            | GPT models.                                                    |
-| `GroqLLM`             | HTTP             | `openai`            | Groq-hosted models. Ultra-fast inference.                      |
-| `GeminiLLM`           | HTTP             | `openai`            | Google Gemini models via OpenAI-compatible API.                |
-| `MistralLLM`          | HTTP             | `openai`            | Mistral open and commercial models.                            |
-| `WebLLMLLM`           | In-browser WebGPU | `@mlc-ai/web-llm`  | Fully offline. No API keys. Runs entirely client-side.         |
-| `OpenAICompatibleLLM` | HTTP             | `openai`            | Base class — extend for any OpenAI-compatible endpoint.        |
+| Provider              | Transport         | Peer dependency     | Notes                                                   |
+| --------------------- | ----------------- | ------------------- | ------------------------------------------------------- |
+| `AnthropicLLM`        | HTTP streaming    | `@anthropic-ai/sdk` | Claude models. Streams by default.                      |
+| `OpenAILLM`           | HTTP              | `openai`            | GPT models.                                             |
+| `GroqLLM`             | HTTP              | `openai`            | Groq-hosted models. Ultra-fast inference.               |
+| `GeminiLLM`           | HTTP              | `openai`            | Google Gemini models via OpenAI-compatible API.         |
+| `MistralLLM`          | HTTP              | `openai`            | Mistral open and commercial models.                     |
+| `WebLLMLLM`           | In-browser WebGPU | `@mlc-ai/web-llm`   | Fully offline. No API keys. Runs entirely client-side.  |
+| `OpenAICompatibleLLM` | HTTP              | `openai`            | Base class — extend for any OpenAI-compatible endpoint. |
 
 **`AnthropicLLM` options:**
 
@@ -737,16 +737,16 @@ All built-in providers implement abstract base classes. You can plug in any STT,
 
 ### Base classes
 
-| Base class              | Use for                                                           |
-| ----------------------- | ----------------------------------------------------------------- |
-| `BaseSTTProvider`       | Any speech-to-text provider                                       |
-| `LiveSTTProvider`       | WebSocket-based real-time STT                                     |
-| `RestSTTProvider`       | Request/response STT (batch transcription)                        |
-| `BaseLLMProvider`       | Any language model                                                |
-| `OpenAICompatibleLLM`   | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
-| `BaseTTSProvider`       | Any text-to-speech provider                                       |
-| `LiveTTSProvider`       | WebSocket-based streaming TTS                                     |
-| `RestTTSProvider`       | Request/response TTS                                              |
+| Base class            | Use for                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `BaseSTTProvider`     | Any speech-to-text provider                                      |
+| `LiveSTTProvider`     | WebSocket-based real-time STT                                    |
+| `RestSTTProvider`     | Request/response STT (batch transcription)                       |
+| `BaseLLMProvider`     | Any language model                                               |
+| `OpenAICompatibleLLM` | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
+| `BaseTTSProvider`     | Any text-to-speech provider                                      |
+| `LiveTTSProvider`     | WebSocket-based streaming TTS                                    |
+| `RestTTSProvider`     | Request/response TTS                                             |
 
 ### STT provider skeleton
 
@@ -845,112 +845,112 @@ For a full implementation guide, see [CONTRIBUTING.md](./CONTRIBUTING.md#adding-
 
 Browser-native providers and core SDK patterns. Only an Anthropic API key is required for most examples.
 
-| #                                               | What it demonstrates                        | API keys needed | Port |
-| ----------------------------------------------- | ------------------------------------------- | --------------- | ---- |
-| [00](./examples/00-minimal-voice-agent/)        | Minimum viable voice agent                  | Anthropic       | 3000 |
-| [01](./examples/01-conversation-history/)       | Multi-turn conversation memory              | Anthropic       | 3001 |
-| [02](./examples/02-system-persona/)             | System prompt persona configuration         | Anthropic       | 3002 |
-| [03](./examples/03-event-inspector/)            | Full event timeline and debugging           | Anthropic       | 3003 |
-| [04](./examples/04-error-recovery/)             | Error simulation and automatic recovery     | Anthropic       | 3004 |
-| [05](./examples/05-turn-taking/)                | Turn-taking strategy visualization          | Anthropic       | 3005 |
+| #                                         | What it demonstrates                    | API keys needed | Port |
+| ----------------------------------------- | --------------------------------------- | --------------- | ---- |
+| [00](./examples/00-minimal-voice-agent/)  | Minimum viable voice agent              | Anthropic       | 3000 |
+| [01](./examples/01-conversation-history/) | Multi-turn conversation memory          | Anthropic       | 3001 |
+| [02](./examples/02-system-persona/)       | System prompt persona configuration     | Anthropic       | 3002 |
+| [03](./examples/03-event-inspector/)      | Full event timeline and debugging       | Anthropic       | 3003 |
+| [04](./examples/04-error-recovery/)       | Error simulation and automatic recovery | Anthropic       | 3004 |
+| [05](./examples/05-turn-taking/)          | Turn-taking strategy visualization      | Anthropic       | 3005 |
 
 ### Production patterns (10–13)
 
 Proxy servers, custom providers, and deployment-ready configurations.
 
-| #                                               | What it demonstrates                        | API keys needed          | Port |
-| ----------------------------------------------- | ------------------------------------------- | ------------------------ | ---- |
-| [10](./examples/10-proxy-server/)               | Express proxy — API keys stay on the server | Deepgram + Anthropic     | 3010 |
-| [11](./examples/11-nextjs-proxy/)               | Next.js App Router proxy                    | Anthropic                | 3011 |
-| [12](./examples/12-custom-provider/)            | Custom LLM provider (extends base class)    | None                     | 3012 |
-| [13](./examples/13-multi-language/)             | Multi-language support and switching         | Anthropic                | 3013 |
+| #                                    | What it demonstrates                        | API keys needed      | Port |
+| ------------------------------------ | ------------------------------------------- | -------------------- | ---- |
+| [10](./examples/10-proxy-server/)    | Express proxy — API keys stay on the server | Deepgram + Anthropic | 3010 |
+| [11](./examples/11-nextjs-proxy/)    | Next.js App Router proxy                    | Anthropic            | 3011 |
+| [12](./examples/12-custom-provider/) | Custom LLM provider (extends base class)    | None                 | 3012 |
+| [13](./examples/13-multi-language/)  | Multi-language support and switching        | Anthropic            | 3013 |
 
 ### Deepgram (20–24)
 
 Production-quality STT and TTS with Deepgram-specific features.
 
-| #                                               | What it demonstrates                          | API keys needed          | Port |
-| ----------------------------------------------- | --------------------------------------------- | ------------------------ | ---- |
-| [20](./examples/20-deepgram-pipeline/)          | Full Deepgram STT + TTS pipeline              | Deepgram + Anthropic     | 3020 |
-| [21](./examples/21-eager-pipeline/)             | Eager/preflight speculative generation         | Deepgram + Anthropic     | 3021 |
-| [22](./examples/22-deepgram-options/)           | STT configuration panel (model, VAD, etc.)     | Deepgram + Anthropic     | 3022 |
-| [23](./examples/23-deepgram-voices/)            | TTS voice gallery — preview Aura 2 voices      | Deepgram + Anthropic     | 3023 |
-| [24](./examples/24-deepgram-conversation-history/) | Deepgram pipeline + conversation history    | Deepgram + Anthropic     | 3024 |
+| #                                                  | What it demonstrates                       | API keys needed      | Port |
+| -------------------------------------------------- | ------------------------------------------ | -------------------- | ---- |
+| [20](./examples/20-deepgram-pipeline/)             | Full Deepgram STT + TTS pipeline           | Deepgram + Anthropic | 3020 |
+| [21](./examples/21-eager-pipeline/)                | Eager/preflight speculative generation     | Deepgram + Anthropic | 3021 |
+| [22](./examples/22-deepgram-options/)              | STT configuration panel (model, VAD, etc.) | Deepgram + Anthropic | 3022 |
+| [23](./examples/23-deepgram-voices/)               | TTS voice gallery — preview Aura 2 voices  | Deepgram + Anthropic | 3023 |
+| [24](./examples/24-deepgram-conversation-history/) | Deepgram pipeline + conversation history   | Deepgram + Anthropic | 3024 |
 
 ### Anthropic (30–31)
 
 Claude model comparison and streaming configuration.
 
-| #                                               | What it demonstrates                          | API keys needed | Port |
-| ----------------------------------------------- | --------------------------------------------- | --------------- | ---- |
-| [30](./examples/30-anthropic-models/)           | Side-by-side model comparison (Haiku/Sonnet)  | Anthropic       | 3030 |
-| [31](./examples/31-anthropic-streaming-config/) | Streaming config (temperature, tokens, topP)  | Anthropic       | 3031 |
+| #                                               | What it demonstrates                         | API keys needed | Port |
+| ----------------------------------------------- | -------------------------------------------- | --------------- | ---- |
+| [30](./examples/30-anthropic-models/)           | Side-by-side model comparison (Haiku/Sonnet) | Anthropic       | 3030 |
+| [31](./examples/31-anthropic-streaming-config/) | Streaming config (temperature, tokens, topP) | Anthropic       | 3031 |
 
 ### OpenAI (40–42)
 
 GPT models and OpenAI TTS integration.
 
-| #                                               | What it demonstrates                       | API keys needed          | Port |
-| ----------------------------------------------- | ------------------------------------------ | ------------------------ | ---- |
-| [40](./examples/40-openai-pipeline/)            | OpenAI LLM with browser-native STT/TTS    | OpenAI                   | 3040 |
-| [41](./examples/41-openai-deepgram/)            | OpenAI LLM + Deepgram STT/TTS production  | OpenAI + Deepgram        | 3041 |
-| [42](./examples/42-openai-tts-pipeline/)        | OpenAI LLM + OpenAI TTS                   | OpenAI                   | 3042 |
+| #                                        | What it demonstrates                     | API keys needed   | Port |
+| ---------------------------------------- | ---------------------------------------- | ----------------- | ---- |
+| [40](./examples/40-openai-pipeline/)     | OpenAI LLM with browser-native STT/TTS   | OpenAI            | 3040 |
+| [41](./examples/41-openai-deepgram/)     | OpenAI LLM + Deepgram STT/TTS production | OpenAI + Deepgram | 3041 |
+| [42](./examples/42-openai-tts-pipeline/) | OpenAI LLM + OpenAI TTS                  | OpenAI            | 3042 |
 
 ### WebLLM (50)
 
 Fully offline voice agent — no API keys, no server.
 
-| #                                               | What it demonstrates                       | API keys needed | Port |
-| ----------------------------------------------- | ------------------------------------------ | --------------- | ---- |
-| [50](./examples/50-webllm-pipeline/)            | In-browser LLM via WebGPU (100% offline)   | None            | 3050 |
+| #                                    | What it demonstrates                     | API keys needed | Port |
+| ------------------------------------ | ---------------------------------------- | --------------- | ---- |
+| [50](./examples/50-webllm-pipeline/) | In-browser LLM via WebGPU (100% offline) | None            | 3050 |
 
 ### Groq (60)
 
 Ultra-fast inference with Groq-hosted models.
 
-| #                                               | What it demonstrates                       | API keys needed      | Port |
-| ----------------------------------------------- | ------------------------------------------ | -------------------- | ---- |
-| [60](./examples/60-groq-pipeline/)              | Groq LLM + Deepgram STT/TTS               | Groq + Deepgram      | 3060 |
+| #                                  | What it demonstrates        | API keys needed | Port |
+| ---------------------------------- | --------------------------- | --------------- | ---- |
+| [60](./examples/60-groq-pipeline/) | Groq LLM + Deepgram STT/TTS | Groq + Deepgram | 3060 |
 
 ### AssemblyAI (70)
 
 Real-time transcription with word-level timing.
 
-| #                                               | What it demonstrates                       | API keys needed                    | Port |
-| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
-| [70](./examples/70-assemblyai-pipeline/)        | AssemblyAI STT + Claude + Deepgram TTS    | AssemblyAI + Anthropic + Deepgram  | 3070 |
+| #                                        | What it demonstrates                   | API keys needed                   | Port |
+| ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
+| [70](./examples/70-assemblyai-pipeline/) | AssemblyAI STT + Claude + Deepgram TTS | AssemblyAI + Anthropic + Deepgram | 3070 |
 
 ### ElevenLabs (80)
 
 Ultra-low-latency streaming TTS with natural voices.
 
-| #                                               | What it demonstrates                       | API keys needed                    | Port |
-| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
-| [80](./examples/80-elevenlabs-pipeline/)        | ElevenLabs TTS + Deepgram STT + Claude    | ElevenLabs + Deepgram + Anthropic  | 3080 |
+| #                                        | What it demonstrates                   | API keys needed                   | Port |
+| ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
+| [80](./examples/80-elevenlabs-pipeline/) | ElevenLabs TTS + Deepgram STT + Claude | ElevenLabs + Deepgram + Anthropic | 3080 |
 
 ### Cartesia (90)
 
 Low-latency TTS with emotion controls.
 
-| #                                               | What it demonstrates                       | API keys needed             | Port |
-| ----------------------------------------------- | ------------------------------------------ | --------------------------- | ---- |
-| [90](./examples/90-cartesia-pipeline/)          | Cartesia TTS + Deepgram STT + Groq LLM   | Cartesia + Deepgram + Groq  | 3090 |
+| #                                      | What it demonstrates                   | API keys needed            | Port |
+| -------------------------------------- | -------------------------------------- | -------------------------- | ---- |
+| [90](./examples/90-cartesia-pipeline/) | Cartesia TTS + Deepgram STT + Groq LLM | Cartesia + Deepgram + Groq | 3090 |
 
 ### Gemini (100)
 
 Google Gemini models via OpenAI-compatible API.
 
-| #                                               | What it demonstrates                       | API keys needed                    | Port |
-| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
-| [100](./examples/100-gemini-pipeline/)          | Gemini LLM + Deepgram STT + ElevenLabs   | Gemini + Deepgram + ElevenLabs     | 3100 |
+| #                                      | What it demonstrates                   | API keys needed                | Port |
+| -------------------------------------- | -------------------------------------- | ------------------------------ | ---- |
+| [100](./examples/100-gemini-pipeline/) | Gemini LLM + Deepgram STT + ElevenLabs | Gemini + Deepgram + ElevenLabs | 3100 |
 
 ### Mistral (110)
 
 Mistral open and commercial models.
 
-| #                                               | What it demonstrates                       | API keys needed                    | Port |
-| ----------------------------------------------- | ------------------------------------------ | ---------------------------------- | ---- |
-| [110](./examples/110-mistral-pipeline/)         | Mistral LLM + Deepgram STT + ElevenLabs  | Mistral + Deepgram + ElevenLabs    | 3110 |
+| #                                       | What it demonstrates                    | API keys needed                 | Port |
+| --------------------------------------- | --------------------------------------- | ------------------------------- | ---- |
+| [110](./examples/110-mistral-pipeline/) | Mistral LLM + Deepgram STT + ElevenLabs | Mistral + Deepgram + ElevenLabs | 3110 |
 
 ### Running examples
 

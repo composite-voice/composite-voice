@@ -86,7 +86,7 @@ export async function injectNativeTTSMock(page: Page, options?: TTSMockOptions):
  */
 export async function injectNativeMocks(
   page: Page,
-  options?: { stt?: STTMockOptions; tts?: TTSMockOptions },
+  options?: { stt?: STTMockOptions; tts?: TTSMockOptions }
 ): Promise<void> {
   await injectNativeSTTMock(page, options?.stt);
   await injectNativeTTSMock(page, options?.tts);
