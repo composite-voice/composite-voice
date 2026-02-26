@@ -1,0 +1,23 @@
+{
+  "name": "@lukeocodes/composite-voice-benchmarking",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "bench": "tsx src/cli.ts",
+    "bench:stt": "tsx src/cli.ts --layer stt",
+    "bench:llm": "tsx src/cli.ts --layer llm",
+    "bench:tts": "tsx src/cli.ts --layer tts",
+    "bench:full-stack": "tsx src/cli.ts --layer full-stack"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.3"
+  }
+}
