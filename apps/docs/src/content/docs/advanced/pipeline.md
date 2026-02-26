@@ -75,7 +75,7 @@ Time ─────────────────────────
 
 User speaks:    ████████████░░░░░░░░░░░░░░░░░░░░░░░
 STT interim:    ░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░
-STT final:      ░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░
+STT final:      ░░░░░░░░████░░░░░░░░░░░░░░░░░░░░░░░
                            ↑ speechFinal triggers LLM
 LLM streaming:  ░░░░░░░░░░░░████████░░░░░░░░░░░░░░░
 TTS streaming:  ░░░░░░░░░░░░░░░████████░░░░░░░░░░░░
@@ -88,14 +88,13 @@ Time ─────────────────────────
 
 User speaks:    ████████████░░░░░░░░░░░░░░░░░░░░░░░
 STT interim:    ░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░
-STT preflight:  ░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░░░
-                        ↑ preflight triggers LLM early
-STT final:      ░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░
-LLM streaming:  ░░░░░░░░░░████████░░░░░░░░░░░░░░░░░
-TTS streaming:  ░░░░░░░░░░░░░████████░░░░░░░░░░░░░░
+STT preflight:  ░░░░░░░░█░░░░░░░░░░░░░░░░░░░░░░░░░░
+                        ↑ preflight triggers LLM
+STT final:      ░░░░░░░░████░░░░░░░░░░░░░░░░░░░░░░░
+LLM streaming:  ░░░░░░░░░████████░░░░░░░░░░░░░░░░░░
+TTS streaming:  ░░░░░░░░░░░░████████░░░░░░░░░░░░░░░
 Audio playback: ░░░░░░░░░░░░░░░████████░░░░░░░░░░░░
-                ↑────────────↑
-                  ~200ms saved
+                        ↑──↑ ~200ms saved
 ```
 
 The preflight signal fires before `speechFinal` is confirmed. The LLM starts generating immediately — by the time `speechFinal` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs from the preflight, the SDK cancels the speculative response and restarts.
