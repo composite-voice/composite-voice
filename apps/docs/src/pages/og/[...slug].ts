@@ -25,6 +25,10 @@ export const { getStaticPaths, GET } = await OGImageRoute({
     description: page.description,
     bgGradient: [[24, 24, 27]],
     border: { color: [99, 102, 241], width: 4, side: "inline-start" },
+    logo: {
+      path: "./src/assets/brand-wordmark-light.png",
+      size: [300],
+    },
     font: {
       title: { weight: "Bold", size: 48, color: [255, 255, 255] },
       description: { size: 24, color: [161, 161, 170] },
