@@ -380,8 +380,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       vite:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.0.3)(lightningcss@1.31.1)(terser@5.44.1)
@@ -389,8 +389,8 @@ importers:
   examples/100-gemini-pipeline:
     dependencies:
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -423,8 +423,8 @@ importers:
   examples/110-mistral-pipeline:
     dependencies:
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -465,8 +465,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -481,8 +481,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -497,8 +497,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -513,8 +513,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -529,8 +529,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -581,8 +581,8 @@ importers:
   examples/41-openai-deepgram:
     dependencies:
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -623,8 +623,8 @@ importers:
   examples/60-groq-pipeline:
     dependencies:
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -642,8 +642,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -658,8 +658,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -671,8 +671,8 @@ importers:
   examples/90-cartesia-pipeline:
     dependencies:
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -1066,14 +1066,6 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
-
-  '@deepgram/captions@1.2.0':
-    resolution: {integrity: sha512-8B1C/oTxTxyHlSFubAhNRgCbQ2SQ5wwvtlByn8sDYZvdDtdn/VE2yEPZ4BvUnrKWmsbTQY6/ooLV+9Ka2qmDSQ==}
-    engines: {node: '>=18.0.0'}
-
-  '@deepgram/sdk@4.11.2':
-    resolution: {integrity: sha512-lKGxuXxlSixC8bB0BnzmIpbVjUSgYtz17cqvrgv0ZjmazgUPkuUj9egQPj6k+fbPX8wRzWEqlhrL/DXlXqeDXA==}
-    engines: {node: '>=18.0.0'}
 
   '@deepgram/sdk@5.0.0-beta.4':
     resolution: {integrity: sha512-i1Vb5h9W06UHlYVsGaOMIC4kQIil5z/SfzrsUQVUU0UYAuyf5QbcCgtdf+mkElb+aVYokP0Qt0avWYFTfVVmAw==}
@@ -2407,9 +2399,6 @@ packages:
   '@types/node@17.0.45':
     resolution: {integrity: sha512-w+tIMs3rq2afQdsPJlODhoUEKzFP1ayaoyl1CcnwtIlsVe7K7bA1NGm4s3PraqTLlXnbIN84zuBlxBWo1u9BLw==}
 
-  '@types/node@18.19.130':
-    resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
-
   '@types/node@20.19.22':
     resolution: {integrity: sha512-hRnu+5qggKDSyWHlnmThnUqg62l29Aj/6vcYgUaSFL9oc7DVjeWEQN3PRgdSc6F8d9QRMWkf36CLMch1Do/+RQ==}
 
@@ -3024,9 +3013,6 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     hasBin: true
 
-  cross-fetch@3.2.0:
-    resolution: {integrity: sha512-Q+xVJLoGOeIMXZmbUK4HYk+69cQH6LudR0Vu/pRm2YlU/hDV9CiS0gKUMaWY5f2NeUH9C1nV3bsTlCo0FsTV1Q==}
-
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -3106,9 +3092,6 @@ packages:
   data-urls@5.0.0:
     resolution: {integrity: sha512-ZYP5VBHshaDAiVZxjbRVcFJpc+4xGgT0bK3vzy1HLN8jTO975HEbuYzZJcHoQEY5K1a0z8YayJkyVETa08eNTg==}
     engines: {node: '>=18'}
-
-  dayjs@1.11.18:
-    resolution: {integrity: sha512-zFBQ7WFRvVRhKcWoUh+ZA1g2HVgUbsZm9sbddh8EC5iv93sui8DVVz1Npvz+r6meo9VKfa8NyLWBsQK1VvIKPA==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -3434,10 +3417,6 @@ packages:
 
   eventemitter3@5.0.4:
     resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
-
-  events@3.3.0:
-    resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
-    engines: {node: '>=0.8.x'}
 
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
@@ -4699,15 +4678,6 @@ packages:
   node-fetch-native@1.6.7:
     resolution: {integrity: sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q==}
 
-  node-fetch@2.7.0:
-    resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
-    engines: {node: 4.x || >=6.0.0}
-    peerDependencies:
-      encoding: ^0.1.0
-    peerDependenciesMeta:
-      encoding:
-        optional: true
-
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
@@ -5445,9 +5415,6 @@ packages:
     resolution: {integrity: sha512-FVDYdxtnj0G6Qm/DhNPSb8Ju59ULcup3tuJxkFb5K8Bv2pUXILbf0xZWU8PX8Ov19OXljbUyveOFwRMwkXzO+A==}
     engines: {node: '>=16'}
 
-  tr46@0.0.3:
-    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
-
   tr46@1.0.1:
     resolution: {integrity: sha512-dTpowEjclQ7Kgx5SdBkqRzVhERQXov8/l9Ft9dVM9fmg0W0KQSVaXX9T4i6twCPNtYiZM53lpSSUAwJbFPOHxA==}
 
@@ -5606,9 +5573,6 @@ packages:
 
   uncrypto@0.1.3:
     resolution: {integrity: sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==}
-
-  undici-types@5.26.5:
-    resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
   undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
@@ -5948,9 +5912,6 @@ packages:
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
 
-  webidl-conversions@3.0.1:
-    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
@@ -5982,9 +5943,6 @@ packages:
   whatwg-url@14.2.0:
     resolution: {integrity: sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==}
     engines: {node: '>=18'}
-
-  whatwg-url@5.0.0:
-    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
   whatwg-url@7.1.0:
     resolution: {integrity: sha512-WUu7Rg1DroM7oQvGWfOiAK21n74Gg+T4elXEQYkOhtyLeWiJFoOGLXPKI/9gzIie9CtwVLm8wtw6YJdKyxSjeg==}
@@ -6706,23 +6664,6 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
 
   '@csstools/css-tokenizer@3.0.4': {}
-
-  '@deepgram/captions@1.2.0':
-    dependencies:
-      dayjs: 1.11.18
-
-  '@deepgram/sdk@4.11.2':
-    dependencies:
-      '@deepgram/captions': 1.2.0
-      '@types/node': 18.19.130
-      cross-fetch: 3.2.0
-      deepmerge: 4.3.1
-      events: 3.3.0
-      ws: 8.18.3
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
 
   '@deepgram/sdk@5.0.0-beta.4':
     dependencies:
@@ -7934,10 +7875,6 @@ snapshots:
 
   '@types/node@17.0.45': {}
 
-  '@types/node@18.19.130':
-    dependencies:
-      undici-types: 5.26.5
-
   '@types/node@20.19.22':
     dependencies:
       undici-types: 6.21.0
@@ -8948,12 +8885,6 @@ snapshots:
       - supports-color
       - ts-node
 
-  cross-fetch@3.2.0:
-    dependencies:
-      node-fetch: 2.7.0
-    transitivePeerDependencies:
-      - encoding
-
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
@@ -9033,8 +8964,6 @@ snapshots:
     dependencies:
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-
-  dayjs@1.11.18: {}
 
   debug@4.4.3:
     dependencies:
@@ -9423,8 +9352,6 @@ snapshots:
   esutils@2.0.3: {}
 
   eventemitter3@5.0.4: {}
-
-  events@3.3.0: {}
 
   execa@5.1.1:
     dependencies:
@@ -11254,10 +11181,6 @@ snapshots:
 
   node-fetch-native@1.6.7: {}
 
-  node-fetch@2.7.0:
-    dependencies:
-      whatwg-url: 5.0.0
-
   node-int64@0.4.0: {}
 
   node-mock-http@1.0.4: {}
@@ -12074,8 +11997,6 @@ snapshots:
     dependencies:
       tldts: 6.1.86
 
-  tr46@0.0.3: {}
-
   tr46@1.0.1:
     dependencies:
       punycode: 2.3.1
@@ -12204,8 +12125,6 @@ snapshots:
   ultrahtml@1.6.0: {}
 
   uncrypto@0.1.3: {}
-
-  undici-types@5.26.5: {}
 
   undici-types@6.20.0: {}
 
@@ -12505,8 +12424,6 @@ snapshots:
 
   web-namespaces@2.0.1: {}
 
-  webidl-conversions@3.0.1: {}
-
   webidl-conversions@4.0.2: {}
 
   webidl-conversions@7.0.0: {}
@@ -12532,11 +12449,6 @@ snapshots:
     dependencies:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
-
-  whatwg-url@5.0.0:
-    dependencies:
-      tr46: 0.0.3
-      webidl-conversions: 3.0.1
 
   whatwg-url@7.1.0:
     dependencies:

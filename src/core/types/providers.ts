@@ -242,7 +242,7 @@ export interface TranscriptionResult {
    * Whether this is a preflight/eager-end-of-turn signal.
    *
    * @remarks
-   * Deepgram v2 models such as `flux-general-en` can emit this before
+   * DeepgramFlux (e.g., `flux-general-en`) can emit this before
    * `speech_final` to allow the next pipeline stage (LLM) to start
    * generating speculatively. The text may still change slightly when the
    * confirmed `speech_final` arrives.

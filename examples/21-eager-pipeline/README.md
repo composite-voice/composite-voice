@@ -1,10 +1,10 @@
 # Example 21 — Eager Pipeline
 
-Demonstrates speculative LLM generation: the SDK starts generating a response before the user finishes speaking. The result is noticeably lower perceived latency.
+Demonstrates speculative LLM generation: the SDK starts generating a response before the user finishes speaking. The result is noticeably lower perceived latency — 100-300ms saved per turn.
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
-| **STT** | `DeepgramSTT` — nova-3 or flux-general-en | WebSocket, real-time | All modern browsers |
+| **STT** | `DeepgramFlux` — flux-general-en | WebSocket (V2 API), real-time | All modern browsers |
 | **LLM** | `AnthropicLLM` with `eagerLLM` | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
 
@@ -13,48 +13,59 @@ Demonstrates speculative LLM generation: the SDK starts generating a response be
 ## What you'll learn
 
 - Where latency accumulates in the standard sequential STT → LLM → TTS pipeline
-- What a `preflight` event is and how Deepgram v2 models emit it
+- What a `preflight` event is and how `DeepgramFlux` emits it via Deepgram's V2 API
 - How `eagerLLM.enabled` uses the preflight signal to start LLM generation speculatively
-- What `cancelOnTextChange` does and when it matters
+- What `cancelOnTextChange` and `similarityThreshold` do and when they matter
 - How to measure real pipeline timing using the SDK's event system
 
 ---
 
 ## What this adds over Example 20
 
-The standard pipeline is strictly sequential — each step waits for the previous to complete:
+The standard pipeline (Example 20, using `DeepgramSTT`) is strictly sequential — each step waits for the previous to complete:
 
 ```
 Standard:   user stops → speech_final → LLM starts → first token → TTS begins
 ```
 
-With Deepgram v2 models (like `flux-general-en`), the SDK overlaps the first two steps. Deepgram fires a `preflight` event slightly before `speech_final` — an early prediction of what the user said. The SDK uses it to start the LLM speculatively:
+This example uses `DeepgramFlux` — a separate provider that connects to Deepgram's V2 API. DeepgramFlux emits a `preflight` event (via `EagerEndOfTurn` signals) slightly before `speech_final` — an early prediction of what the user said. The SDK uses it to start the LLM speculatively:
 
 ```
 Eager:    preflight fires → LLM starts (speculative)
                             speech_final arrives
                                    ↓
-                      text unchanged? → LLM continues uninterrupted
-                      text changed?   → LLM cancelled, restarts correctly
+                      text similar? → LLM continues uninterrupted
+                      text changed? → LLM cancelled, restarts correctly
 ```
 
 By the time `speech_final` confirms the transcript, the LLM may already have tokens ready — TTS starts sooner, and the user hears a response faster.
 
-Enable it with two config options:
+Enable it with three config options:
 
 ```javascript
+import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  stt: new DeepgramFlux({
+    proxyUrl: '/api/proxy/deepgram',
+    options: {
+      model: 'flux-general-en',
+      eagerEotThreshold: 0.5,  // fire preflight at 50% end-of-turn confidence
+      eotThreshold: 0.7,       // fire speechFinal at 70% confidence
+    },
+  }),
+  llm, tts,
   eagerLLM: {
     enabled: true,
-    cancelOnTextChange: true, // restart if the preflight text was wrong
+    cancelOnTextChange: true,      // restart if the preflight text was wrong
+    similarityThreshold: 0.8,      // accept if >=80% word overlap
   },
 });
 ```
 
-The UI visualizes all pipeline stages in real time — you can see exactly when each event fires and compare timing with and without eager mode enabled.
+The UI visualizes all pipeline stages in real time — you can see exactly when each event fires and measure the latency savings.
 
-> **Note on model availability:** Preflight events require a Deepgram v2 model such as `flux-general-en`. The example defaults to `nova-3` (no preflight) so you can see baseline timing first. To enable the eager path, change the model to `flux-general-en` in `index.html` if your Deepgram account has access.
+> **Important:** The eager pipeline requires `DeepgramFlux` — it is the only STT provider that emits preflight signals. `DeepgramSTT` (V1/Nova) does not support preflight events. See [Example 20](../20-deepgram-pipeline/) for the standard pipeline with `DeepgramSTT`.
 
 ---
 
@@ -102,9 +113,9 @@ Open [http://localhost:3021](http://localhost:3021) in Chrome or Edge.
 ```
 Microphone
     ↓
-DeepgramSTT (nova-3 or flux-general-en, WebSocket)
-    ├── [transcription.preflight] ──▶ LLM starts speculatively (if eagerLLM.enabled)
-    └── [transcription.speechFinal] ─▶ LLM: text same? continue | different? cancel + restart
+DeepgramFlux (flux-general-en, V2 WebSocket)
+    ├── [transcription.preflight] ──▶ LLM starts speculatively (eagerLLM.enabled)
+    └── [transcription.speechFinal] ─▶ text similar? continue | different? cancel + restart
                                                   ↓
                                      DeepgramTTS (aura-2, WebSocket, 24 kHz)
                                                   ↓
@@ -115,17 +126,16 @@ DeepgramSTT (nova-3 or flux-general-en, WebSocket)
 
 | Event | When it fires |
 |-------|---------------|
-| `transcription.interim` | Each partial transcript segment, word by word |
-| `transcription.final` | Deepgram confirms a segment as final |
-| `transcription.preflight` | Early end-of-turn prediction from Deepgram v2 |
-| `transcription.speechFinal` | Deepgram confirms the full utterance has ended |
-| `llm.start` | LLM generation begins (eagerly or after `speechFinal`) |
+| `transcription.interim` | Each partial transcript update as the user speaks |
+| `transcription.preflight` | Early end-of-turn prediction from DeepgramFlux — triggers eager LLM |
+| `transcription.speechFinal` | DeepgramFlux confirms the full utterance has ended |
+| `llm.start` | LLM generation begins (eagerly from preflight, or after `speechFinal`) |
 | `llm.chunk` | Each token as it streams in |
 | `llm.complete` | Full response assembled |
 | `tts.start` | Deepgram TTS synthesis begins |
 | `tts.complete` | Audio playback finished |
 
-The UI timestamps each event so you can measure real latency with and without eager mode.
+The UI timestamps each event so you can measure real latency savings from the eager pipeline.
 
 ---
 
@@ -133,23 +143,28 @@ The UI timestamps each event so you can measure real latency with and without ea
 
 ### `cancelOnTextChange: true` (recommended)
 
-When the `preflight` text differs from the final `speechFinal` text, the in-flight LLM generation is cancelled and restarted with the correct transcript. Prevents the AI from responding to a mishear.
+When the `preflight` text differs from the final `speechFinal` text beyond the `similarityThreshold`, the in-flight LLM generation is cancelled and restarted with the correct transcript. Prevents the AI from responding to a mishear.
+
+### `similarityThreshold: 0.8` (default)
+
+Controls how different the preflight and final transcripts can be before cancelling. The SDK uses an order-aware word-overlap score from 0 to 1. At `0.8`, the preflight must match 80% of the final words to be accepted.
 
 ### `cancelOnTextChange: false`
 
 The LLM continues even if the transcript changed — faster (no restart overhead) but risks responding to incorrect text. Only suitable with highly accurate models and clean audio environments.
 
-### Adjusting `endpointing`
+### Adjusting end-of-turn thresholds
 
 ```javascript
-new DeepgramSTT({
+new DeepgramFlux({
   options: {
-    endpointing: 300,   // ms of silence before speech_final fires
-  }
+    eagerEotThreshold: 0.5,  // lower = more frequent preflights, higher = more conservative
+    eotThreshold: 0.7,       // controls when speechFinal fires
+  },
 })
 ```
 
-Lower values feel more responsive; higher values prevent splitting long utterances.
+Lower `eagerEotThreshold` values fire preflights more aggressively (more speculative but potentially more restarts). Higher values wait longer, reducing restarts but also reducing the latency benefit.
 
 ---
 
@@ -157,18 +172,16 @@ Lower values feel more responsive; higher values prevent splitting long utteranc
 
 **No `preflight` events in the UI**
 
-Preflight requires a Deepgram v2 model. The example defaults to `nova-3`. To enable preflight:
-
-1. Open `index.html`
-2. Change `model: 'nova-3'` to `model: 'flux-general-en'`
-3. Verify your Deepgram account has access to v2 models at [console.deepgram.com](https://console.deepgram.com/)
+- Confirm you are using `DeepgramFlux` (not `DeepgramSTT`) — only DeepgramFlux emits preflight signals
+- Verify your Deepgram account has access to V2 Flux models at [console.deepgram.com](https://console.deepgram.com/)
+- Check the browser console for WebSocket connection errors
 
 **LLM restarts too frequently**
 
-With `cancelOnTextChange: true`, the LLM restarts whenever the final transcript differs from the preflight. If this is happening often:
+With `cancelOnTextChange: true`, the LLM restarts whenever the final transcript differs significantly from the preflight. If this is happening often:
 
 - Speak clearly with natural pauses
-- Use `flux-general-en` for more accurate preflight predictions
+- Raise `similarityThreshold` (e.g., `0.9`) to tolerate more minor differences
 - Set `cancelOnTextChange: false` if minor text differences are acceptable
 
 **WebSocket connection fails**
@@ -194,8 +207,10 @@ pnpm build
 
 ## Browser support
 
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome / Edge | Recommended | WebSocket and AudioWorklet fully supported |
-| Firefox | Works | Deepgram WebSocket providers don't require Web Speech API |
-| Safari | Limited | WebSocket AudioWorklet support varies by Safari version |
+DeepgramFlux and DeepgramTTS use WebSocket connections — they do not depend on the Web Speech API. Audio capture uses the MediaStream API (microphone) and audio playback uses the Web Audio API (AudioWorklet).
+
+| Browser | Microphone capture | Audio playback | Notes |
+|---------|-------------------|----------------|-------|
+| Chrome / Edge | Full support | Full support (AudioWorklet) | Recommended |
+| Firefox | Full support | Full support (AudioWorklet) | Works — no Web Speech API needed |
+| Safari | Full support | Varies by version | AudioWorklet support depends on Safari version |

@@ -80,7 +80,7 @@ Provider SDKs are optional peer dependencies — install only what you use:
 
 ```bash
 pnpm add @anthropic-ai/sdk    # AnthropicLLM (>=0.67.0)
-pnpm add @deepgram/sdk        # DeepgramSTT + DeepgramTTS (>=4.11.2)
+pnpm add @deepgram/sdk        # DeepgramSTT, DeepgramFlux, DeepgramTTS (>=5.0.0-beta.1)
 pnpm add openai               # OpenAILLM, OpenAITTS, GroqLLM, GeminiLLM, MistralLLM (>=6.5.0)
 pnpm add @mlc-ai/web-llm      # WebLLMLLM — in-browser inference (>=0.2.74)
 pnpm add ws                   # server-side proxy WebSocket support, Node.js only (>=8.0.0)
@@ -191,6 +191,7 @@ The agent state machine moves through well-defined states — `idle -> ready -> 
 | --------------- | -------------- | ------------------- | --------------- |
 | `NativeSTT`     | Web Speech API | Chrome, Edge        | None            |
 | `DeepgramSTT`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `DeepgramFlux`  | WebSocket      | All modern browsers | `@deepgram/sdk` |
 | `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
 
 **`NativeSTT` options:**
@@ -204,19 +205,32 @@ new NativeSTT({
 });
 ```
 
-**`DeepgramSTT` options:**
+**`DeepgramSTT` options (V1/Nova):**
 
 ```typescript
 new DeepgramSTT({
   apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
   language: 'en-US',
   options: {
-    model: 'nova-3', // nova-3 = best accuracy; flux-general-en = enables preflight/eager LLM
+    model: 'nova-3', // nova-3 = best accuracy
     smartFormat: true,
     punctuation: true,
     interimResults: true,
     endpointing: 300, // ms of silence before speech_final fires
     vadEvents: true,
+  },
+});
+```
+
+**`DeepgramFlux` options (V2/Flux — supports eager LLM):**
+
+```typescript
+new DeepgramFlux({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  options: {
+    model: 'flux-general-en',
+    eagerEotThreshold: 0.5, // enables eager end-of-turn signals
+    eotThreshold: 0.7,
   },
 });
 ```
@@ -405,10 +419,11 @@ const agent = new CompositeVoice({
     maxTurns: 10, // 0 = unlimited; each turn = one user + assistant exchange
   },
 
-  // Eager/speculative LLM generation (requires Deepgram v2 STT)
+  // Eager/speculative LLM generation (requires DeepgramFlux)
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true, // restart generation if the preflight transcript was wrong
+    similarityThreshold: 0.8, // word-overlap threshold for accepting speculative response
   },
 
   // Turn-taking: whether to pause the mic during TTS playback
@@ -466,7 +481,7 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `transcription.interim`     | `{ text, isFinal }`     | Partial transcript — updates word by word while the user is speaking |
 | `transcription.final`       | `{ text, isFinal }`     | Confirmed transcript segment                                         |
 | `transcription.speechFinal` | `{ text, speechFinal }` | Full utterance ended — triggers the LLM                              |
-| `transcription.preflight`   | `{ text, isPreflight }` | Early end-of-turn signal (Deepgram v2 models only)                   |
+| `transcription.preflight`   | `{ text, isPreflight }` | Early end-of-turn signal (DeepgramFlux only)                         |
 | `transcription.error`       | `{ error }`             | Transcription error                                                  |
 
 ### LLM events
@@ -573,21 +588,22 @@ See [Example 01](./examples/01-conversation-history/) for a demo with a full cha
 
 ## Eager LLM pipeline
 
-With Deepgram v2 models (e.g. `flux-general-en`), the SDK can begin LLM generation before the user finishes speaking. Deepgram emits a `preflight` event — an early end-of-turn prediction — which the SDK uses to speculatively start the LLM. If the final transcript matches the preflight, the response continues uninterrupted. If it differs, generation restarts with the correct text.
+With the [DeepgramFlux](./apps/docs/src/content/docs/guides/stt/deepgram-flux.md) provider, the SDK can begin LLM generation before the user finishes speaking. DeepgramFlux emits a `preflight` event — an early end-of-turn prediction — which the SDK uses to speculatively start the LLM. If the final transcript is sufficiently similar to the preflight (based on `similarityThreshold`), the response continues uninterrupted. If it differs significantly, generation restarts with the correct text.
 
 **Enabling eager LLM:**
 
 ```typescript
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
+  stt: new DeepgramFlux({
     apiKey: 'your-key',
-    options: { model: 'flux-general-en', interimResults: true, endpointing: 300 },
+    options: { model: 'flux-general-en', eagerEotThreshold: 0.5 },
   }),
   llm,
   tts,
   eagerLLM: {
     enabled: true,
-    cancelOnTextChange: true, // restart if the preflight text was wrong
+    cancelOnTextChange: true, // restart if the preflight text diverged
+    similarityThreshold: 0.8, // 80% word overlap required to keep response
   },
 });
 ```
@@ -1013,11 +1029,11 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | AssemblyAISTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
-| ------------- | ------------- | ----------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
-| Chrome / Edge | Full          | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
-| Firefox       | Not supported | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
-| Safari        | Limited       | Full        | Full          | Full      | Full        | Full      | Full          | Full        |
+| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
+| ------------- | ------------- | ----------- | ------------ | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
+| Chrome / Edge | Full          | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
+| Firefox       | Not supported | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
+| Safari        | Limited       | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
 
 `NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) and REST-based providers (OpenAI) work across all modern browsers.
 

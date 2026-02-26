@@ -84,7 +84,7 @@ Adds multi-turn memory so the agent remembers what was said earlier in the sessi
 
 ### 03 — Eager Pipeline
 
-Demonstrates speculative LLM generation. With Deepgram v2 models, the SDK fires a `preflight` event slightly before `speech_final`. The SDK uses this to start the LLM early — if the final transcript matches, the response continues uninterrupted; if it differs, generation restarts correctly.
+Demonstrates speculative LLM generation using `DeepgramFlux` (V2 API). DeepgramFlux emits a `preflight` event slightly before `speech_final`. The SDK uses this to start the LLM early — if the final transcript is similar enough (controlled by `similarityThreshold`), the response continues uninterrupted; if it differs, generation restarts correctly.
 
 A real-time event timeline in the UI makes the pipeline timing visible.
 

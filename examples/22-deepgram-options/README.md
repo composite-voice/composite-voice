@@ -1,12 +1,14 @@
 # Example 22 — Deepgram Options
 
-Interactive configuration panel for tuning Deepgram STT settings. Change model, language, endpointing, and more — then hear the difference in real time.
+Interactive configuration panel for tuning `DeepgramSTT` (V1/Nova) settings. Change model, language, endpointing, and more — then hear the difference in real time.
 
-| | Provider | Transport | Browser support |
-|-|----------|-----------|-----------------|
-| **STT** | `DeepgramSTT` — configurable | WebSocket, real-time | All modern browsers |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 | HTTP streaming | All |
-| **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
+| | Provider | Transport |
+|-|----------|-----------|
+| **STT** | `DeepgramSTT` — configurable V1 models | WebSocket |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-6 | HTTP streaming |
+| **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket |
+
+> This example tunes `DeepgramSTT` (V1/Nova) options. For the V2 eager pipeline with preflight signals, see [Example 21 — Eager Pipeline](../21-eager-pipeline/) which uses `DeepgramFlux`.
 
 ---
 
@@ -52,4 +54,4 @@ Open [http://localhost:3022](http://localhost:3022).
 |---------|-------------|
 | [23 — Deepgram Voices](../23-deepgram-voices/) | TTS voice gallery |
 | [24 — Deepgram Conversation History](../24-deepgram-conversation-history/) | Multi-turn with Deepgram |
-| [21 — Eager Pipeline](../21-eager-pipeline/) | Speculative LLM |
+| [21 — Eager Pipeline](../21-eager-pipeline/) | Speculative LLM with DeepgramFlux |

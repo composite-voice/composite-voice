@@ -170,8 +170,10 @@ pnpm build
 
 ## Browser support
 
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome / Edge | Recommended | Web Speech API fully supported |
-| Firefox | NativeSTT unavailable | Use Example 01's stack with `conversationHistory` enabled |
-| Safari | Unreliable | Use Example 01's stack instead |
+NativeSTT and NativeTTS use the browser's Web Speech API. Microphone capture is handled directly by the browser — no AudioWorklet needed.
+
+| Browser | Web Speech API (STT) | SpeechSynthesis (TTS) | Notes |
+|---------|---------------------|----------------------|-------|
+| Chrome / Edge | Full support | Full support | Recommended |
+| Firefox | Not available | Limited | Use WebSocket providers (DeepgramSTT / DeepgramFlux) instead |
+| Safari | Unreliable | Works | Behaviour varies by version — use WebSocket providers instead |

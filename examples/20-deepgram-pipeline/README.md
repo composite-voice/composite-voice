@@ -141,7 +141,7 @@ await agent.startListening();
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `model` | `'nova-3'` | Transcription model. `nova-3` = best accuracy. `flux-general-en` = enables preflight signals (see Example 03). |
+| `model` | `'nova-3'` | Transcription model. `nova-3` = best accuracy (recommended). `nova-2` = wider language support. |
 | `smartFormat` | `false` | Automatically format numbers, dates, and currency |
 | `interimResults` | `false` | Emit partial transcripts while speaking |
 | `endpointing` | `300` | ms of silence before `speechFinal` fires — lower = more responsive, higher = fewer split utterances |
@@ -192,15 +192,17 @@ pnpm build
 | Example | What it adds |
 |---------|-------------|
 | [01 — Conversation History](../01-conversation-history/) | Multi-turn memory — the AI remembers earlier exchanges |
-| [21 — Eager Pipeline](../21-eager-pipeline/) | Lower latency with Deepgram v2 preflight signals |
+| [21 — Eager Pipeline](../21-eager-pipeline/) | Lower latency with DeepgramFlux preflight signals |
 | [10 — Proxy Server](../10-proxy-server/) | Keep API keys completely out of the browser bundle |
 
 ---
 
 ## Browser support
 
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome / Edge | Recommended | WebSocket and AudioWorklet fully supported |
-| Firefox | Works | Deepgram WebSocket providers don't require Web Speech API |
-| Safari | Limited | WebSocket AudioWorklet support varies by Safari version |
+DeepgramSTT and DeepgramTTS use WebSocket connections — they do not depend on the Web Speech API. Audio capture uses the MediaStream API (microphone) and audio playback uses the Web Audio API (AudioWorklet).
+
+| Browser | Microphone capture | Audio playback | Notes |
+|---------|-------------------|----------------|-------|
+| Chrome / Edge | Full support | Full support (AudioWorklet) | Recommended |
+| Firefox | Full support | Full support (AudioWorklet) | Works — no Web Speech API needed |
+| Safari | Full support | Varies by version | AudioWorklet support depends on Safari version |

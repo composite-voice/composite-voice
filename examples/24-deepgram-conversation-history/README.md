@@ -50,6 +50,6 @@ Open [http://localhost:3024](http://localhost:3024).
 
 | Example | What it adds |
 |---------|-------------|
-| [21 — Eager Pipeline](../21-eager-pipeline/) | Lower latency with speculative LLM |
+| [21 — Eager Pipeline](../21-eager-pipeline/) | Lower latency with DeepgramFlux + speculative LLM |
 | [10 — Proxy Server](../10-proxy-server/) | Production deployment |
 | [22 — Deepgram Options](../22-deepgram-options/) | STT tuning panel |

@@ -217,8 +217,10 @@ See the [proxy security documentation](../../SECURITY.md) for the complete secur
 
 ## Browser support
 
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome / Edge | Recommended | WebSocket and AudioWorklet fully supported |
-| Firefox | Works | Deepgram WebSocket providers don't require Web Speech API |
-| Safari | Limited | WebSocket AudioWorklet support varies by Safari version |
+Deepgram providers use WebSocket connections — they do not depend on the Web Speech API. Audio capture uses the MediaStream API (microphone) and audio playback uses the Web Audio API (AudioWorklet).
+
+| Browser | Microphone capture | Audio playback | Notes |
+|---------|-------------------|----------------|-------|
+| Chrome / Edge | Full support | Full support (AudioWorklet) | Recommended |
+| Firefox | Full support | Full support (AudioWorklet) | Works — no Web Speech API needed |
+| Safari | Full support | Varies by version | AudioWorklet support depends on Safari version |

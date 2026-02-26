@@ -2,7 +2,7 @@
   "name": "@lukeocodes/composite-voice-example-21-eager-pipeline",
   "version": "0.1.0",
   "private": true,
-  "description": "Deepgram v2 eager/preflight pipeline — start LLM before speech ends",
+  "description": "DeepgramFlux eager/preflight pipeline — start LLM before speech ends",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,6 @@
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.67.0",
-    "@deepgram/sdk": ">=4.11.2"
+    "@deepgram/sdk": ">=5.0.0-beta.1"
   }
 }

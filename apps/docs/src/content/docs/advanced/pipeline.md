@@ -62,7 +62,7 @@ Audio playback: ░░░░░░░░░░░░░░░░░░███�
 The eager pipeline reduces latency further by starting LLM generation before the final transcript arrives.
 
 **How it works:**
-1. Deepgram's Flux model (STT V2) detects likely end-of-speech and fires a `transcription:preflight` event
+1. The [DeepgramFlux](/guides/stt/deepgram-flux) provider detects likely end-of-speech and fires a `transcription:preflight` event
 2. The SDK immediately sends the current transcript to the LLM
 3. If the user keeps speaking, the SDK cancels the in-flight LLM request and restarts with the updated text
 4. If the preflight was correct (user stopped speaking), the LLM response is already 100-300ms ahead
@@ -97,24 +97,30 @@ Audio playback: ░░░░░░░░░░░░░░░██████�
                         ↑──↑ ~200ms saved
 ```
 
-The preflight signal fires before `speechFinal` is confirmed. The LLM starts generating immediately — by the time `speechFinal` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs from the preflight, the SDK cancels the speculative response and restarts.
+The preflight signal fires before `speechFinal` is confirmed. The LLM starts generating immediately — by the time `speechFinal` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs significantly from the preflight (below `similarityThreshold`), the SDK cancels the speculative response and restarts.
+
+The SDK uses [textSimilarity](/api/functions/textsimilarity) to compare preflight and final transcripts — an order-aware word-overlap score from 0 to 1. If the score meets the `similarityThreshold` (default: 0.8), the response is kept.
 
 ```typescript
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({
+  stt: new DeepgramFlux({
     proxyUrl: '/api/proxy/deepgram',
-    options: { model: 'flux-general-en' },  // preflight requires Flux (STT V2)
+    options: {
+      model: 'flux-general-en',
+      eagerEotThreshold: 0.5,
+    },
   }),
   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
+    similarityThreshold: 0.8,  // accept if >=80% word overlap
   },
 });
 ```
 
-**Requirements:** Deepgram STT with a Flux model (STT V2), e.g. `flux-general-en`. Nova models (STT V1) do not emit preflight signals. Other STT providers do not emit preflight events.
+**Requirements:** [DeepgramFlux](/guides/stt/deepgram-flux) with a Flux model (e.g. `flux-general-en`). DeepgramSTT (V1/Nova) does not emit preflight signals. Other STT providers do not emit preflight events.
 
 ### Custom providers
 Extend the base classes to add your own STT, LLM, or TTS provider.

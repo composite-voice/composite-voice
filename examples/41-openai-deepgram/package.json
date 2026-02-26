@@ -17,6 +17,6 @@
   },
   "peerDependencies": {
     "openai": ">=6.5.0",
-    "@deepgram/sdk": ">=4.11.2"
+    "@deepgram/sdk": ">=5.0.0-beta.1"
   }
 }

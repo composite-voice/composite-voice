@@ -56,7 +56,7 @@ idle → ready → listening → thinking → speaking → listening → ...
 | `transcription.interim` | `{ text, confidence? }` | Partial recognition result (updates as user speaks) |
 | `transcription.final` | `{ text, confidence? }` | Confirmed recognition segment |
 | `transcription.speechFinal` | `{ text, confidence? }` | End-of-utterance detected — triggers LLM generation |
-| `transcription.preflight` | `{ text, confidence? }` | Early end-of-speech signal (Deepgram Flux / STT V2 only) — triggers eager LLM |
+| `transcription.preflight` | `{ text, confidence? }` | Early end-of-speech signal ([DeepgramFlux](/guides/stt/deepgram-flux) only) — triggers eager LLM |
 | `transcription.error` | `{ error: Error, recoverable: boolean }` | STT provider error |
 
 The pipeline sends `speechFinal` text to the LLM. `interim` events update in real time as the user speaks. Multi-segment providers (Deepgram) may emit several `transcription.final` events for a single utterance; only the last one is followed by `transcription.speechFinal`.

@@ -225,13 +225,13 @@
         <h1>CompositeVoice</h1>
         <p class="subtitle">21 — Eager Pipeline</p>
         <p class="description">
-            Deepgram v2 models (e.g. <code>flux-general-en</code>) emit <strong>preflight</strong> signals
-            before speech ends, letting the LLM start generating eagerly — reducing perceived response latency.
+            <code>DeepgramFlux</code> (V2 API) emits <strong>preflight</strong> signals before speech ends,
+            letting the LLM start generating eagerly — reducing perceived response latency by 100-300ms.
             This example visualises all three pipeline stages in real time.
         </p>
 
         <div class="stack-badges">
-            <span class="badge stt">STT: Deepgram nova-3</span>
+            <span class="badge stt">STT: DeepgramFlux</span>
             <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
             <span class="badge tts">TTS: Deepgram aura-2</span>
             <span class="badge eager">Eager: eagerLLM enabled</span>
@@ -254,7 +254,7 @@
 
         <div class="pipeline">
             <div class="stage stt-stage">
-                <h4><span class="stage-dot"></span> STT — Deepgram nova-3</h4>
+                <h4><span class="stage-dot"></span> STT — DeepgramFlux</h4>
                 <div class="stage-content" id="stt-log">
                     <span style="font-style:italic;color:#475569">Waiting for speech...</span>
                 </div>
@@ -299,7 +299,7 @@
     <script type="module">
         import {
             CompositeVoice,
-            DeepgramSTT,
+            DeepgramFlux,
             DeepgramTTS,
             AnthropicLLM,
         } from '@lukeocodes/composite-voice';
@@ -370,18 +370,12 @@
             initBtn.disabled = true;
 
             try {
-                const stt = new DeepgramSTT({
+                const stt = new DeepgramFlux({
                     proxyUrl: `${window.location.origin}/proxy/deepgram`,
-                    language: 'en-US',
                     options: {
-                        // Use nova-3 with endpointing so speech_final fires reliably
-                        // Switch to 'flux-general-en' when your account has access to get preflight events
-                        model: 'nova-3',
-                        smartFormat: true,
-                        punctuation: true,
-                        interimResults: true,
-                        endpointing: 300,
-                        vadEvents: true,
+                        model: 'flux-general-en',
+                        eagerEotThreshold: 0.5,   // fire preflight at 50% end-of-turn confidence
+                        eotThreshold: 0.7,         // fire speechFinal at 70% confidence
                     },
                 });
 
@@ -411,6 +405,7 @@
                     eagerLLM: {
                         enabled: true,
                         cancelOnTextChange: true,
+                        similarityThreshold: 0.8,  // accept if >=80% word overlap
                     },
                     logging: { enabled: true, level: 'debug' },
                 });

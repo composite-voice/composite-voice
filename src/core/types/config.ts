@@ -297,7 +297,7 @@ export interface TurnTakingConfig {
  * When enabled, CompositeVoice starts LLM generation speculatively the moment
  * the STT provider emits a preflight/eager-end-of-turn signal -- before
  * `speech_final` is confirmed. This reduces speech-to-first-token latency
- * significantly for Deepgram v2 models (e.g., `flux-general-en`).
+ * significantly for DeepgramFlux (e.g., `flux-general-en`).
  *
  * If `speech_final` arrives with different text than the preflight, the SDK
  * can cancel the speculative generation and restart with the confirmed text

@@ -54,8 +54,9 @@ const voice = new CompositeVoice({
 
   // Eager LLM -- speculative generation from preflight signals
   eagerLLM: {
-    enabled: false,             // requires Deepgram STT with preflight support
-    cancelOnTextChange: true,   // cancel and restart on new STT input (default: true)
+    enabled: false,             // requires DeepgramFlux provider
+    cancelOnTextChange: true,   // cancel and restart if text diverges (default: true)
+    similarityThreshold: 0.8,   // 0-1 word-overlap threshold (default: 0.8)
   },
 
   // Error recovery
@@ -122,21 +123,27 @@ voice.clearHistory();
 
 The eager LLM pipeline reduces perceived latency by 100-300ms through speculative generation.
 
-Available only with Deepgram STT V2 (Flux) models that emit preflight signals (e.g., `flux-general-en`). Nova models (V1) do not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
+Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, which connects to Deepgram's V2 API and emits preflight/eager end-of-turn signals. DeepgramSTT (V1/Nova) does not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
 
-If new speech arrives and `cancelOnTextChange` is `true`, the speculative generation is cancelled via `AbortSignal` and restarted with the updated text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
+If `cancelOnTextChange` is `true` and the final transcript differs beyond `similarityThreshold` (default: 0.8), the speculative generation is cancelled via `AbortSignal` and restarted with the confirmed text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 
 ```typescript
+import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({
+  stt: new DeepgramFlux({
     proxyUrl: '/api/proxy/deepgram',
-    model: 'flux-general-en',  // preflight requires Flux (STT V2)
+    options: {
+      model: 'flux-general-en',
+      eagerEotThreshold: 0.5,
+    },
   }),
   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
+    similarityThreshold: 0.8,
   },
 });
 ```

@@ -205,7 +205,7 @@ export interface TranscriptionSpeechFinalEvent extends BaseEvent {
  * Emitted when a provider sends a preflight/eager-end-of-turn signal.
  *
  * @remarks
- * Deepgram v2 models (e.g., `flux-general-en`) emit this before `speech_final`
+ * DeepgramFlux (e.g., `flux-general-en`) emits this before `speech_final`
  * to allow downstream stages (LLM) to start generating speculatively. The text
  * may change slightly when the confirmed `speech_final` arrives.
  *

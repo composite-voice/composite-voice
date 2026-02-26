@@ -74,7 +74,7 @@ const agent = new CompositeVoice({
   stt: new DeepgramSTT({
     proxyUrl: '/api/proxy/deepgram',
     language: 'en',
-    options: { model: 'nova-3', smart_format: true },
+    options: { model: 'nova-3', smartFormat: true },
   }),
   llm: new GroqLLM({
     proxyUrl: '/api/proxy/groq',

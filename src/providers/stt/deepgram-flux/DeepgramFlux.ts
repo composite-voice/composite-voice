@@ -228,7 +228,7 @@ export interface DeepgramFluxConfig extends STTProviderConfig {
  * **Data flow:**
  *
  * ```
- * Microphone -> AudioCapture -> sendAudio(chunk) -> Deepgram V2 WebSocket
+ * Microphone -> AudioCapture -> sendAudio(chunk) -> DeepgramFlux WebSocket
  *                                                       |
  * CompositeVoice <- onTranscription(result) <----------+
  * ```

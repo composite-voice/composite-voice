@@ -198,8 +198,10 @@ With `continuous: true`, the SDK reconnects automatically when the browser ends 
 
 ## Browser support
 
-| Browser | Status | Notes |
-|---------|--------|-------|
-| Chrome / Edge | Recommended | Web Speech API fully supported |
-| Firefox | NativeSTT unavailable | Use Example 01 instead |
-| Safari | Unreliable | Web Speech API behaviour varies — use Example 01 |
+NativeSTT and NativeTTS use the browser's Web Speech API. Microphone capture is handled directly by the browser — no AudioWorklet needed.
+
+| Browser | Web Speech API (STT) | SpeechSynthesis (TTS) | Notes |
+|---------|---------------------|----------------------|-------|
+| Chrome / Edge | Full support | Full support | Recommended |
+| Firefox | Not available | Limited | Use WebSocket providers (DeepgramSTT / DeepgramFlux) instead |
+| Safari | Unreliable | Works | Behaviour varies by version — use WebSocket providers instead |

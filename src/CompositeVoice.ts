@@ -106,7 +106,7 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  *   TTS playback to prevent echo.
  * - **Conversation history**: Optional multi-turn memory with configurable
  *   `maxTurns`, sending accumulated context to the LLM.
- * - **Eager LLM pipeline**: Speculative generation triggered by Deepgram v2
+ * - **Eager LLM pipeline**: Speculative generation triggered by DeepgramFlux
  *   preflight signals, reducing speech-to-first-token latency. If `speech_final`
  *   arrives with different text, the speculative generation is cancelled and
  *   restarted.
@@ -352,7 +352,7 @@ export class CompositeVoice {
     stt.onTranscription((result) => {
       if (result.isPreflight) {
         // ── Preflight / eager end-of-turn ──────────────────────────────────
-        // Deepgram v2 models signal early completion before speech_final.
+        // DeepgramFlux signals early completion before speech_final.
         this.emitEvent({
           type: 'transcription.preflight',
           text: result.text,
@@ -461,7 +461,7 @@ export class CompositeVoice {
    *
    * @remarks
    * When the eager LLM pipeline is enabled, this method fires as soon as the
-   * STT provider emits a preflight signal (e.g., Deepgram v2's early
+   * STT provider emits a preflight signal (e.g., DeepgramFlux's early
    * end-of-turn detection). It creates an `AbortController` so the generation
    * can be cancelled if `speech_final` arrives with different text. If a
    * previous speculative generation is already running, it is aborted first.

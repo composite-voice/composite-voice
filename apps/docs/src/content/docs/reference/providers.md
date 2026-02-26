@@ -11,7 +11,8 @@ CompositeVoice uses three provider slots — **STT** (speech-to-text), **LLM** (
 | Provider | Transport | Models | Interim Results | Preflight |
 |---|---|---|---|---|
 | NativeSTT | Browser API | Browser default | Yes | No |
-| DeepgramSTT | WebSocket | V1: nova-3, nova-2; V2: flux-general-en | Yes | Yes (Flux / V2 only) |
+| DeepgramSTT | WebSocket | V1: nova-3, nova-2 | Yes | No |
+| DeepgramFlux | WebSocket | V2: flux-general-en | Yes | Yes |
 | AssemblyAISTT | WebSocket | Default model | Yes | No |
 
 ### NativeSTT
@@ -38,7 +39,7 @@ const stt = new NativeSTT({
 
 ### DeepgramSTT
 
-Production-grade real-time speech recognition via WebSocket. Supports V1 (Nova) and V2 (Flux) model families, word-level timestamps, and — with Flux models — preflight signals for the eager LLM pipeline.
+Production-grade real-time speech recognition via WebSocket using Deepgram's V1 (Nova) API. Best accuracy across the widest range of languages.
 
 ```typescript
 import { DeepgramSTT } from '@lukeocodes/composite-voice';
@@ -49,27 +50,53 @@ const stt = new DeepgramSTT({
   language: 'en',
   interimResults: true,
   options: {
-    model: 'nova-3',          // V1: nova-3, nova-2 | V2: flux-general-en
-    smart_format: true,        // auto-punctuation and formatting
-    punctuate: true,
-    profanity_filter: false,
+    model: 'nova-3',          // nova-3 (recommended), nova-2, nova-3-medical
+    smartFormat: true,         // auto-punctuation and formatting
+    punctuation: true,
+    profanityFilter: false,
     diarize: false,            // speaker identification
     endpointing: 300,          // ms of silence before end-of-speech
-    utterance_end_ms: 1000,    // ms before utterance boundary
+    utteranceEndMs: 1000,      // ms before utterance boundary
   },
 });
 ```
 
-- STT V1: nova-3 (highest accuracy, recommended default), nova-2 (wider language support)
-- STT V2: flux-general-en (lowest latency, preflight/eager end-of-turn signals)
+- nova-3 (highest accuracy, recommended default), nova-2 (wider language support)
 - Word-level confidence and timestamps
-- Preflight/eager end-of-turn signals for the eager pipeline (Flux / V2 only)
 - Smart formatting and auto-punctuation
 - Profanity filtering
 - Speaker diarization
 - VAD events
 
+> Does not support preflight/eager end-of-turn signals. For the eager LLM pipeline, use [DeepgramFlux](/api/classes/deepgramflux).
+
 [API reference](/api/classes/deepgramstt)
+
+### DeepgramFlux
+
+Low-latency real-time speech recognition via WebSocket using Deepgram's V2 (Flux) API. Supports eager end-of-turn signals for the [eager LLM pipeline](/advanced/pipeline#eager-llm-pipeline).
+
+```typescript
+import { DeepgramFlux } from '@lukeocodes/composite-voice';
+
+const stt = new DeepgramFlux({
+  proxyUrl: '/api/proxy/deepgram',   // server proxy (recommended)
+  // OR: apiKey: 'dg-...',           // direct API key (dev only)
+  options: {
+    model: 'flux-general-en',
+    eagerEotThreshold: 0.5,    // enables eager end-of-turn signals
+    eotThreshold: 0.7,
+  },
+});
+```
+
+- Turn-based transcription via `TurnInfo` events
+- Eager end-of-turn signals (`EagerEndOfTurn` → `isPreflight: true`)
+- Configurable end-of-turn confidence thresholds
+- Keyterm boosting for domain vocabulary
+- **Only STT provider that supports the eager LLM pipeline**
+
+[API reference](/api/classes/deepgramflux)
 
 ### AssemblyAISTT
 
@@ -367,4 +394,4 @@ const tts = new CartesiaTTS({
 
 **For privacy:** NativeSTT + WebLLMLLM + NativeTTS -- everything runs in the browser. No data leaves the device.
 
-**For lowest latency:** DeepgramSTT with Flux model (V2 preflight) + GroqLLM + CartesiaTTS -- fast STT with eager end-of-turn, fastest LLM inference, low-latency streaming TTS.
+**For lowest latency:** DeepgramFlux + GroqLLM + CartesiaTTS -- eager end-of-turn signals, fastest LLM inference, low-latency streaming TTS.
