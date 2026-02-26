@@ -1,0 +1,140 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import fs from "node:fs";
+import path from "node:path";
+
+const REPO_URL = "https://github.com/lukeocodes/composite-voice";
+const examplesDir = path.resolve(process.cwd(), "../../examples");
+
+interface Example {
+  name: string;
+  num: number;
+  description: string;
+  port: number | null;
+  href: string;
+}
+
+/**
+ * Group ranges — examples are grouped by their numeric prefix.
+ * Add new ranges here when new example series are introduced.
+ */
+const groups = [
+  { label: "Foundation", min: 0, max: 9 },
+  { label: "Server & Deployment", min: 10, max: 19 },
+  { label: "Deepgram Pipelines", min: 20, max: 29 },
+  { label: "Provider Showcases", min: 30, max: 199 },
+];
+
+/* Read the examples directory at build time */
+const dirs = fs.readdirSync(examplesDir, { withFileTypes: true })
+  .filter((d) => d.isDirectory() && /^\d/.test(d.name))
+  .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+
+const examples: Example[] = dirs.map((d) => {
+  const pkgPath = path.join(examplesDir, d.name, "package.json");
+  let description = "";
+  let port: number | null = null;
+
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    description = pkg.description || "";
+
+    const devScript: string = pkg.scripts?.dev || "";
+    const portMatch = devScript.match(/--port[= ](\d+)/);
+    if (portMatch) port = parseInt(portMatch[1]);
+  }
+
+  return {
+    name: d.name,
+    num: parseInt(d.name),
+    description,
+    port,
+    href: `${REPO_URL}/tree/main/examples/${d.name}`,
+  };
+});
+
+const grouped = groups
+  .map((g) => ({
+    label: g.label,
+    items: examples.filter((e) => e.num >= g.min && e.num <= g.max),
+  }))
+  .filter((g) => g.items.length > 0);
+---
+
+<DocsLayout title="Examples" description="Runnable example apps covering every provider, pattern, and use case.">
+  <div class="space-y-6">
+    <section class="space-y-3">
+      <p class="text-foreground-muted leading-relaxed">
+        Every example is a standalone Vite app you can run locally. Clone the repository, install dependencies, and start any example:
+      </p>
+      <div class="bg-surface-sunken rounded-lg border border-neutral-200 p-4">
+        <pre class="text-sm font-mono text-foreground"><code>git clone {REPO_URL}.git
+cd composite-voice
+pnpm install
+pnpm --filter {examples[0]?.name || "00-minimal-voice-agent"} dev</code></pre>
+      </div>
+      <p class="text-sm text-foreground-muted">
+        Each example runs on its own port so you can run several simultaneously.
+        Found <strong>{examples.length}</strong> examples.
+      </p>
+    </section>
+
+    {grouped.map((group) => (
+      <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-foreground">{group.label}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {group.items.map((ex) => (
+            <a
+              href={ex.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group block p-4 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all"
+            >
+              <div class="flex items-baseline gap-2">
+                <span class="text-xs font-mono text-foreground-muted tabular-nums">
+                  {String(ex.num).padStart(2, "0")}
+                </span>
+                <h3 class="text-sm font-semibold text-foreground group-hover:text-primary-600 truncate">
+                  {ex.name.replace(/^\d+-/, "")}
+                </h3>
+              </div>
+              {ex.description && (
+                <p class="text-xs text-foreground-muted mt-1 line-clamp-2">
+                  {ex.description}
+                </p>
+              )}
+              {ex.port && (
+                <span class="inline-block mt-2 text-[10px] font-mono text-foreground-muted bg-surface-sunken px-1.5 py-0.5 rounded">
+                  :{ex.port}
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="space-y-3 border-t border-neutral-200 pt-6">
+      <h2 class="text-lg font-semibold text-foreground">Where to start</h2>
+      <div class="space-y-2 text-sm text-foreground-muted">
+        <p>
+          <strong>New to the SDK?</strong> Start with{" "}
+          <a href={`${REPO_URL}/tree/main/examples/00-minimal-voice-agent`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">00-minimal-voice-agent</a>
+          {" "}&mdash; browser-native providers, one API key.
+        </p>
+        <p>
+          <strong>Building for production?</strong> Jump to{" "}
+          <a href={`${REPO_URL}/tree/main/examples/20-deepgram-pipeline`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">20-deepgram-pipeline</a>
+          {" "}for cloud-grade STT/TTS, then add{" "}
+          <a href={`${REPO_URL}/tree/main/examples/10-proxy-server`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">10-proxy-server</a>
+          {" "}for secure key management.
+        </p>
+        <p>
+          <strong>Privacy-sensitive?</strong> See{" "}
+          <a href={`${REPO_URL}/tree/main/examples/50-webllm-pipeline`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">50-webllm-pipeline</a>
+          {" "}&mdash; everything runs in the browser, no data leaves the device.
+        </p>
+      </div>
+    </section>
+  </div>
+</DocsLayout>

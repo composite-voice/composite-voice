@@ -67,6 +67,39 @@ The eager pipeline reduces latency further by starting LLM generation before the
 3. If the user keeps speaking, the SDK cancels the in-flight LLM request and restarts with the updated text
 4. If the preflight was correct (user stopped speaking), the LLM response is already 100-300ms ahead
 
+Compare the standard pipeline to the eager pipeline:
+
+```
+Standard pipeline
+Time ──────────────────────────────────────────────→
+
+User speaks:    ████████████░░░░░░░░░░░░░░░░░░░░░░░
+STT interim:    ░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░
+STT final:      ░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░
+                           ↑ speechFinal triggers LLM
+LLM streaming:  ░░░░░░░░░░░░████████░░░░░░░░░░░░░░░
+TTS streaming:  ░░░░░░░░░░░░░░░████████░░░░░░░░░░░░
+Audio playback: ░░░░░░░░░░░░░░░░░░████████░░░░░░░░░
+```
+
+```
+Eager pipeline (with preflight)
+Time ──────────────────────────────────────────────→
+
+User speaks:    ████████████░░░░░░░░░░░░░░░░░░░░░░░
+STT interim:    ░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░
+STT preflight:  ░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░░░
+                        ↑ preflight triggers LLM early
+STT final:      ░░░░░░░░░░██░░░░░░░░░░░░░░░░░░░░░░░
+LLM streaming:  ░░░░░░░░░░████████░░░░░░░░░░░░░░░░░
+TTS streaming:  ░░░░░░░░░░░░░████████░░░░░░░░░░░░░░
+Audio playback: ░░░░░░░░░░░░░░░████████░░░░░░░░░░░░
+                ↑────────────↑
+                  ~200ms saved
+```
+
+The preflight signal fires before `speechFinal` is confirmed. The LLM starts generating immediately — by the time `speechFinal` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs from the preflight, the SDK cancels the speculative response and restarts.
+
 ```typescript
 const voice = new CompositeVoice({
   stt: new DeepgramSTT({

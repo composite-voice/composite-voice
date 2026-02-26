@@ -68,5 +68,5 @@ export const nav: NavItem[] = [
       { folder: "api/enumerations", label: "Enumerations" },
     ],
   },
-  { folder: "examples", label: "Examples" },
+  { href: "/examples", label: "Examples" },
 ];
