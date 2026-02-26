@@ -18,7 +18,7 @@ import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
-import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
+import { ProviderConnectionError } from '../../../utils/errors';
 
 /**
  * ElevenLabs STT model identifiers.
@@ -262,24 +262,32 @@ export class ElevenLabsSTT extends LiveSTTProvider {
   /**
    * Validates configuration and builds the WebSocket URL with query parameters.
    *
-   * @throws {@link ProviderInitializationError} if none of `apiKey`, `token`,
-   *   or `proxyUrl` is configured.
+   * Logs a debug warning if none of `apiKey`, `token`, or `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.token && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'ElevenLabsSTT',
-        new Error('ElevenLabsSTT requires "apiKey", "token", or "proxyUrl" to be configured.')
+      this.logger.debug(
+        'No authentication method configured for ElevenLabsSTT. ' +
+          'Provide "apiKey", "token", or "proxyUrl" for authenticated connections.'
       );
     }
 
     this.wsUrl = this.buildWebSocketUrl();
 
+    // Log which authentication method will be used (priority: proxyUrl > token > apiKey)
+    const authMethod = this.config.proxyUrl
+      ? 'proxy'
+      : this.config.token
+        ? 'token'
+        : this.config.apiKey
+          ? 'apiKey'
+          : 'none';
+
     this.logger.info('ElevenLabs STT initialized', {
       model: this.config.model,
       commitStrategy: this.config.commitStrategy,
       audioFormat: this.config.audioFormat,
-      hasProxy: !!this.config.proxyUrl,
+      authMethod,
     });
   }
 
@@ -305,11 +313,22 @@ export class ElevenLabsSTT extends LiveSTTProvider {
    * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
+    // Priority: proxyUrl > token > apiKey
     if (this.config.proxyUrl) {
+      // Proxy mode: convert http(s) to ws(s); the proxy injects
+      // the xi-api-key header on the upstream connection server-side.
       return this.config.proxyUrl.replace(/^http/, 'ws');
     }
 
     const params = new URLSearchParams();
+
+    // Authentication via query parameters (browser WebSocket cannot set headers).
+    // Token takes precedence over apiKey when both are provided.
+    if (this.config.token) {
+      params.set('token', this.config.token);
+    } else if (this.config.apiKey) {
+      params.set('xi-api-key', this.config.apiKey);
+    }
 
     // Model
     params.set('model_id', this.config.model ?? 'scribe_v2_realtime');
