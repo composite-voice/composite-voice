@@ -1,12 +1,14 @@
 /**
- * Generate the CV lettermark SVG using satori.
+ * Generate brand SVG assets from the CV lettermark using satori.
  *
- * Renders the BrandName lettermark ("CV") with the Inter Bold font via satori,
- * producing real typographic SVG paths instead of hand-drawn approximations.
+ * Renders "CV" with Inter Bold via satori to produce real typographic
+ * SVG paths, then assembles clean, adaptive SVGs with CSS color-scheme
+ * support for light/dark mode.
  *
  * Outputs:
- *  - packages/ui/src/brand-lettermark.svg  (raw two-color SVG for reference)
- *  - stdout: the SVG path data for use in BrandIcon and favicons
+ *  - packages/ui/src/brand-lettermark.svg     — bare adaptive lettermark
+ *  - packages/ui/src/brand-icon.svg           — iconmark with rounded background
+ *  - apps/{docs,design,web}/public/favicon.svg — iconmark for browser favicons
  *
  * Usage: node scripts/generate-lettermark.mjs
  */
@@ -19,35 +21,32 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 
-// Load Inter Bold (latin subset)
+/* ── Brand tokens ─────────────────────────────── */
+
+const ACCENT = "#41cbbf"; // --primary (teal) — same in both modes
+const BASE_LIGHT = "#1a1a1a"; // letterform color in light mode
+const BASE_DARK = "#ffffff"; // letterform color in dark mode
+const BG_LIGHT = "#ffffff"; // icon background in light mode
+const BG_DARK = "#1a1a1a"; // icon background in dark mode
+
+/* ── 1. Render via satori ─────────────────────── */
+
 const interBold = readFileSync(
   join(root, "node_modules/@fontsource/inter/files/inter-latin-700-normal.woff")
 );
 
-// Brand colors
-const PRIMARY = "#41cbbf"; // --primary (teal)
-const BASE_LIGHT = "#1a1a1a"; // near-black for light mode
-const BASE_DARK = "#ffffff"; // white for dark mode
-
-// Render the lettermark via satori — tight fit around "CV"
-const svg = await satori(
+const rawSvg = await satori(
   {
     type: "div",
     props: {
       children: [
         {
           type: "span",
-          props: {
-            children: "C",
-            style: { color: BASE_LIGHT },
-          },
+          props: { children: "C", style: { color: BASE_LIGHT } },
         },
         {
           type: "span",
-          props: {
-            children: "V",
-            style: { color: PRIMARY },
-          },
+          props: { children: "V", style: { color: ACCENT } },
         },
       ],
       style: {
@@ -68,70 +67,103 @@ const svg = await satori(
     width: 128,
     height: 128,
     fonts: [
-      {
-        name: "Inter",
-        data: interBold,
-        weight: 700,
-        style: "normal",
-      },
+      { name: "Inter", data: interBold, weight: 700, style: "normal" },
     ],
   }
 );
 
-// Write the reference SVG
-const refPath = join(root, "packages/ui/src/brand-lettermark.svg");
-writeFileSync(refPath, svg, "utf-8");
-console.log(`✓ Wrote reference SVG: ${refPath}`);
+/* ── 2. Extract path data ─────────────────────── */
 
-// Write the favicon SVG (with dark mode support)
-// Parse the satori output to inject dark mode CSS
-const faviconSvg = svg
-  // Add a class to the base-color paths (the "C" letter)
-  .replace(
-    new RegExp(`fill="${BASE_LIGHT}"`, "g"),
-    `fill="${BASE_LIGHT}" class="base"`
-  )
-  // Append a <style> before closing </svg>
-  .replace(
-    "</svg>",
-    `<style>@media(prefers-color-scheme:dark){.base{fill:${BASE_DARK}}}</style></svg>`
-  );
-
-const faviconTargets = [
-  join(root, "apps/docs/public/favicon.svg"),
-  join(root, "apps/design/public/favicon.svg"),
-  join(root, "apps/web/public/favicon.svg"),
-];
-
-for (const target of faviconTargets) {
-  writeFileSync(target, faviconSvg, "utf-8");
-  console.log(`✓ Wrote favicon: ${target}`);
-}
-
-// Extract path data from the SVG for use in the BrandIcon React component
-// Satori outputs <path> elements — extract them
-const pathRegex = /<path[^>]*?\bd="([^"]+)"[^>]*?fill="([^"]+)"[^>]*?\/>/g;
+// Satori wraps paths in <g> with masks — extract the raw path `d` attributes
+const pathRegex = /fill="([^"]+)"[^>]*?\bd="([^"]+)"/g;
 const paths = [];
-let match;
-while ((match = pathRegex.exec(svg)) !== null) {
-  paths.push({ d: match[1], fill: match[2] });
+let m;
+while ((m = pathRegex.exec(rawSvg)) !== null) {
+  paths.push({ fill: m[1], d: m[2] });
 }
 
-console.log("\n— Path data for BrandIcon component —");
-for (const p of paths) {
-  const label = p.fill === PRIMARY ? "V (accent)" : "C (base)";
-  console.log(`\n${label}:`);
-  console.log(`  fill: ${p.fill}`);
-  console.log(`  d: ${p.d}`);
+const basePath = paths.find((p) => p.fill === BASE_LIGHT);
+const accentPath = paths.find((p) => p.fill === ACCENT);
+
+if (!basePath || !accentPath) {
+  console.error("Failed to extract path data from satori output.");
+  console.error("Raw SVG:", rawSvg);
+  process.exit(1);
 }
 
-// Also output a combined OG-watermark SVG (white C + teal V, for dark backgrounds)
-const ogSvg = svg.replace(
-  new RegExp(`fill="${BASE_LIGHT}"`, "g"),
-  `fill="${BASE_DARK}"`
-);
-const ogPath = join(root, "packages/ui/src/brand-lettermark-light.svg");
-writeFileSync(ogPath, ogSvg, "utf-8");
-console.log(`\n✓ Wrote light-on-dark SVG: ${ogPath}`);
+console.log("Extracted paths:");
+console.log(`  C (base):   ${basePath.d.slice(0, 60)}…`);
+console.log(`  V (accent): ${accentPath.d.slice(0, 60)}…`);
 
-console.log("\nDone! Update BrandIcon paths in packages/ui/src/icons.tsx with the data above.");
+/* ── 3. Build adaptive lettermark SVG ─────────── */
+
+const lettermarkSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <style>
+    .base { fill: ${BASE_LIGHT}; }
+    .accent { fill: ${ACCENT}; }
+    @media (prefers-color-scheme: dark) {
+      .base { fill: ${BASE_DARK}; }
+    }
+  </style>
+  <path class="base" d="${basePath.d}"/>
+  <path class="accent" d="${accentPath.d}"/>
+</svg>
+`;
+
+/* ── 4. Build adaptive iconmark SVG ───────────── */
+
+const ICON_RADIUS = 28; // ~22% of 128 — modern app-icon feel
+
+const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <style>
+    .bg { fill: ${BG_LIGHT}; }
+    .base { fill: ${BASE_LIGHT}; }
+    .accent { fill: ${ACCENT}; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: ${BG_DARK}; }
+      .base { fill: ${BASE_DARK}; }
+    }
+  </style>
+  <rect class="bg" width="128" height="128" rx="${ICON_RADIUS}"/>
+  <path class="base" d="${basePath.d}"/>
+  <path class="accent" d="${accentPath.d}"/>
+</svg>
+`;
+
+/* ── 5. Write files ───────────────────────────── */
+
+function write(filePath, content) {
+  writeFileSync(filePath, content, "utf-8");
+  console.log(`  ✓ ${filePath.replace(root + "/", "")}`);
+}
+
+console.log("\nWriting SVGs:");
+
+// Reference SVGs in UI package
+write(join(root, "packages/ui/src/brand-lettermark.svg"), lettermarkSvg);
+write(join(root, "packages/ui/src/brand-icon.svg"), iconSvg);
+
+// Favicons (all sites use the iconmark variant)
+const faviconTargets = [
+  "apps/docs/public/favicon.svg",
+  "apps/design/public/favicon.svg",
+  "apps/web/public/favicon.svg",
+];
+for (const rel of faviconTargets) {
+  write(join(root, rel), iconSvg);
+}
+
+// Clean up old light variant (replaced by adaptive approach)
+import { existsSync, unlinkSync } from "fs";
+const oldLight = join(root, "packages/ui/src/brand-lettermark-light.svg");
+if (existsSync(oldLight)) {
+  unlinkSync(oldLight);
+  console.log(`  ✗ Removed old: packages/ui/src/brand-lettermark-light.svg`);
+}
+
+/* ── 6. Print path data for BrandIcon ─────────── */
+
+console.log("\n— Path data (for BrandIcon in icons.tsx) —");
+console.log(`C (base): ${basePath.d}`);
+console.log(`V (accent): ${accentPath.d}`);
+console.log("\nDone.");
