@@ -12,6 +12,9 @@ import compress from '@playform/compress';
 // https://astro.build/config
 export default defineConfig({
 	site: process.env.CV_DOCS_URL || 'http://localhost:4321',
+	markdown: {
+		syntaxHighlight: 'prism',
+	},
 	integrations: [
 		react(),
 		sitemap(),
@@ -26,5 +29,6 @@ export default defineConfig({
 	],
 	vite: {
 		plugins: [tailwindcss()],
+		resolve: { dedupe: ['react', 'react-dom'] },
 	},
 });

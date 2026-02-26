@@ -6,7 +6,7 @@ import { SEO } from "astro-seo";
 import { Breadcrumbs } from "astro-breadcrumbs";
 import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
 import type { SidebarItem } from "@lukeocodes/composite-voice-ui";
-import { nav, isNavFolder } from "../lib/nav";
+import { nav, isNavFolder, isNavSection } from "../lib/nav";
 import pkg from "../../../../package.json";
 
 interface Props {
@@ -33,13 +33,29 @@ const sites = [
 /* Build sidebar from nav config + content collection */
 const entries = await getCollection("docs");
 
+function buildFolderGroup(folder: string, label: string) {
+  const children = entries
+    .filter((e) => e.id.startsWith(`${folder}/`) && !e.id.slice(folder.length + 1).includes("/"))
+    .sort((a, b) => (a.data.order ?? Infinity) - (b.data.order ?? Infinity))
+    .map((e) => ({ href: `/${e.id}`, label: e.data.title }));
+  return { label, children };
+}
+
 const sections: SidebarItem[] = nav.map((item) => {
-  if (isNavFolder(item)) {
-    const children = entries
-      .filter((e) => e.id.startsWith(`${item.folder}/`))
-      .sort((a, b) => (a.data.order ?? Infinity) - (b.data.order ?? Infinity))
-      .map((e) => ({ href: `/${e.id}`, label: e.data.title }));
+  if (isNavSection(item)) {
+    const children: SidebarItem[] = [];
+    if (item.href) {
+      children.push({ href: item.href, label: "Overview" });
+    }
+    children.push(
+      ...item.subfolders
+        .map((sub) => buildFolderGroup(sub.folder, sub.label))
+        .filter((group) => group.children.length > 0)
+    );
     return { label: item.label, children };
+  }
+  if (isNavFolder(item)) {
+    return buildFolderGroup(item.folder, item.label);
   }
   return item;
 });
@@ -138,7 +154,7 @@ const currentPath = Astro.url.pathname;
 
       <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <Breadcrumbs indexText="Design" linkTextFormat="capitalized">
+          <Breadcrumbs indexText="Docs" linkTextFormat="capitalized">
             <span slot="separator">/</span>
           </Breadcrumbs>
 
@@ -159,5 +175,27 @@ const currentPath = Astro.url.pathname;
         <Footer client:load sites={sites} className="mt-auto" />
       </main>
     </div>
+    <script is:inline>
+      // Inject copy-to-clipboard buttons on Prism code blocks
+      document.querySelectorAll('pre[class*="language-"]').forEach(function(pre) {
+        if (pre.querySelector('.copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-btn';
+        btn.setAttribute('aria-label', 'Copy code');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+        btn.addEventListener('click', function() {
+          var code = pre.querySelector('code');
+          var text = code ? code.textContent : pre.textContent;
+          navigator.clipboard.writeText(text || '').then(function() {
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(function() {
+              btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+            }, 2000);
+          });
+        });
+        pre.appendChild(btn);
+      });
+    </script>
   </body>
 </html>
