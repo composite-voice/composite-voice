@@ -313,21 +313,17 @@ export class ElevenLabsSTT extends LiveSTTProvider {
    * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
-    // Priority: proxyUrl > token > apiKey
-    if (this.config.proxyUrl) {
-      // Proxy mode: convert http(s) to ws(s); the proxy injects
-      // the xi-api-key header on the upstream connection server-side.
-      return this.config.proxyUrl.replace(/^http/, 'ws');
-    }
-
     const params = new URLSearchParams();
 
     // Authentication via query parameters (browser WebSocket cannot set headers).
+    // Only needed for direct connections; proxy injects xi-api-key server-side.
     // Token takes precedence over apiKey when both are provided.
-    if (this.config.token) {
-      params.set('token', this.config.token);
-    } else if (this.config.apiKey) {
-      params.set('xi-api-key', this.config.apiKey);
+    if (!this.config.proxyUrl) {
+      if (this.config.token) {
+        params.set('token', this.config.token);
+      } else if (this.config.apiKey) {
+        params.set('xi-api-key', this.config.apiKey);
+      }
     }
 
     // Model
@@ -371,6 +367,15 @@ export class ElevenLabsSTT extends LiveSTTProvider {
     }
     if (this.config.enableLogging !== undefined) {
       params.set('enable_logging', String(this.config.enableLogging));
+    }
+
+    if (this.config.proxyUrl) {
+      // Proxy mode: append the STT API path and query params to the base proxy
+      // URL, then convert http(s) to ws(s). The proxy strips the path prefix and
+      // provider segment, forwarding the remaining path + params to ElevenLabs.
+      // Auth is injected server-side via the xi-api-key header.
+      const base = this.config.proxyUrl.replace(/\/$/, '');
+      return `${base}/v1/speech-to-text/realtime?${params.toString()}`.replace(/^http/, 'ws');
     }
 
     return `wss://api.elevenlabs.io/v1/speech-to-text/realtime?${params.toString()}`;

@@ -23,7 +23,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  *
  * @remarks
  * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini).
- * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs, AssemblyAI, Cartesia).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
  */
 export type RouteType = 'http' | 'websocket';
 

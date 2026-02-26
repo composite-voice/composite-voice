@@ -6,7 +6,7 @@
  * Uses the `ws` package (optional peer dependency) to bidirectionally relay
  * WebSocket connections between a browser client and an upstream AI provider.
  * This enables real-time streaming for providers like Deepgram (STT/TTS),
- * ElevenLabs (TTS), AssemblyAI (STT), and Cartesia (TTS).
+ * ElevenLabs (TTS/STT), AssemblyAI (STT), and Cartesia (TTS).
  *
  * The `ws` module is dynamically imported at runtime so it remains an optional
  * dependency -- applications using only HTTP-based providers (Anthropic, OpenAI,

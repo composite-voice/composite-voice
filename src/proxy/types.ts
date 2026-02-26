@@ -80,11 +80,13 @@ export interface CompositeVoiceProxyConfig {
   openaiApiKey?: string;
 
   /**
-   * ElevenLabs API key -- used for WebSocket TTS proxying.
+   * ElevenLabs API key -- used for WebSocket TTS and STT proxying.
    *
    * @remarks
    * When set, the proxy registers a WebSocket route at `{pathPrefix}/elevenlabs`
-   * that forwards connections to `wss://api.elevenlabs.io`.
+   * that forwards connections to `wss://api.elevenlabs.io`. This single route
+   * handles both TTS (`/v1/text-to-speech/...`) and STT (`/v1/speech-to-text/...`)
+   * traffic. The `xi-api-key` auth header is injected server-side.
    *
    * @defaultValue `undefined` (ElevenLabs proxying disabled)
    */
