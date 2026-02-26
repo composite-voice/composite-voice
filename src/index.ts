@@ -129,6 +129,11 @@ export type {
 } from './providers/stt/deepgram/index';
 export { AssemblyAISTT } from './providers/stt/assemblyai/index';
 export type { AssemblyAISTTConfig } from './providers/stt/assemblyai/index';
+export { DeepgramFlux } from './providers/stt/deepgram-flux/index';
+export type {
+  DeepgramFluxConfig,
+  DeepgramFluxOptions,
+} from './providers/stt/deepgram-flux/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -194,6 +199,9 @@ export {
   // WebSocket manager
   WebSocketManager,
   WebSocketState,
+
+  // Text similarity (for eager LLM pipeline)
+  textSimilarity,
 
   // Audio utilities
   floatTo16BitPCM,

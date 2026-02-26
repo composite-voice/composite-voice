@@ -1,15 +1,16 @@
 /**
- * Deepgram TTS provider using the official Deepgram SDK.
+ * Deepgram TTS provider using the official Deepgram SDK V5.
  *
  * @remarks
  * This module provides a WebSocket-based real-time streaming text-to-speech provider
  * powered by Deepgram's Aura voice models. Text chunks are sent over a persistent
  * WebSocket connection and audio chunks are received as raw PCM or encoded audio.
  *
- * Transport: WebSocket (via `@deepgram/sdk`)
+ * Transport: WebSocket (via `@deepgram/sdk` V5 `speak.v1`)
  * Audio format: Configurable (linear16, mulaw, alaw); default is `linear16` at 24 kHz
  *
- * The `@deepgram/sdk` package is a peer dependency and must be installed separately.
+ * The `@deepgram/sdk` package (>= 5.0.0-beta.1) is a peer dependency and must be
+ * installed separately.
  *
  * @packageDocumentation
  */
@@ -19,11 +20,24 @@ import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
-// Type-safe imports for optional peer dependency
-type DeepgramClient = typeof import('@deepgram/sdk').createClient;
-// Note: Using unknown for LiveTTSClient as the type may not be exported in all SDK versions
+// Type alias for the V5 DeepgramClient constructor
+type DeepgramClientConstructor = new (options: {
+  apiKey: string;
+  baseUrl?: string;
+}) => DeepgramClientInstance;
+
+// Type representing the V5 DeepgramClient instance
+interface DeepgramClientInstance {
+  speak: {
+    v1: {
+      connect(options: Record<string, unknown>): Promise<V1Socket>;
+    };
+  };
+}
+
+// Type representing the V5 speak V1Socket
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LiveTTSClient = any;
+type V1Socket = any;
 
 /**
  * Deepgram-specific TTS synthesis options.
@@ -62,27 +76,6 @@ export interface DeepgramTTSOptions {
    * @defaultValue Falls back to `config.sampleRate` or `24000`
    */
   sampleRate?: number;
-
-  /**
-   * Container format for the output audio.
-   *
-   * @remarks
-   * Use `'none'` for raw audio (typical for WebSocket streaming) or `'wav'`
-   * for WAV-wrapped output.
-   *
-   * @defaultValue `'none'`
-   */
-  container?: string;
-
-  /**
-   * Bit rate for the encoded output audio, in bits per second.
-   *
-   * @remarks
-   * Only applicable for certain encoding formats. Omit for PCM formats.
-   *
-   * @defaultValue `undefined`
-   */
-  bitRate?: number;
 }
 
 /**
@@ -149,7 +142,7 @@ export interface DeepgramTTSConfig extends TTSProviderConfig {
  * Deepgram TTS provider for real-time streaming text-to-speech via WebSocket.
  *
  * @remarks
- * This provider uses the official `@deepgram/sdk` to establish a persistent WebSocket
+ * This provider uses the official `@deepgram/sdk` V5 to establish a persistent WebSocket
  * connection to Deepgram's TTS service. Text chunks are sent incrementally and audio
  * chunks are emitted as they arrive, enabling low-latency speech output.
  *
@@ -192,8 +185,8 @@ export interface DeepgramTTSConfig extends TTSProviderConfig {
  */
 export class DeepgramTTS extends LiveTTSProvider {
   declare public config: DeepgramTTSConfig;
-  private deepgram: Awaited<ReturnType<DeepgramClient>> | null = null;
-  private liveClient: LiveTTSClient | null = null;
+  private deepgram: DeepgramClientInstance | null = null;
+  private speakSocket: V1Socket | null = null;
   private isConnected = false;
 
   /**
@@ -221,7 +214,7 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
-   * Initializes the Deepgram client by dynamically importing the SDK.
+   * Initializes the Deepgram client by dynamically importing the V5 SDK.
    *
    * @remarks
    * The `@deepgram/sdk` is loaded dynamically as a peer dependency. If using
@@ -241,17 +234,21 @@ export class DeepgramTTS extends LiveTTSProvider {
     }
 
     try {
-      // Dynamically import Deepgram SDK (peer dependency)
-      const DeepgramModule = await import('@deepgram/sdk');
-      const { createClient } = DeepgramModule;
+      // Dynamically import Deepgram SDK V5 (peer dependency)
+      const { DeepgramClient: DGClient } = await import('@deepgram/sdk');
 
       if (this.config.proxyUrl) {
         const wsUrl = this.config.proxyUrl.replace(/^http/, 'ws');
-        this.deepgram = createClient('proxy', { global: { url: wsUrl } });
+        this.deepgram = new (DGClient as unknown as DeepgramClientConstructor)({
+          apiKey: 'proxy',
+          baseUrl: wsUrl,
+        });
         this.logger.info('Deepgram TTS initialized (proxy mode)', { proxyUrl: wsUrl });
       } else {
-        this.deepgram = createClient(this.config.apiKey as string);
-        this.logger.info('Deepgram TTS initialized (WebSocket mode)', {
+        this.deepgram = new (DGClient as unknown as DeepgramClientConstructor)({
+          apiKey: this.config.apiKey as string,
+        });
+        this.logger.info('Deepgram TTS initialized (direct mode)', {
           model: this.config.options?.model ?? this.config.voice,
           sampleRate: this.config.sampleRate,
           encoding: this.config.options?.encoding ?? this.config.outputFormat,
@@ -262,7 +259,7 @@ export class DeepgramTTS extends LiveTTSProvider {
         throw new ProviderInitializationError(
           'DeepgramTTS',
           new Error(
-            'Deepgram SDK not found. Install with: npm install @deepgram/sdk\n' +
+            'Deepgram SDK not found. Install with: npm install @deepgram/sdk@^5.0.0-beta.1\n' +
               'The Deepgram SDK is a peer dependency and must be installed separately.'
           )
         );
@@ -278,7 +275,7 @@ export class DeepgramTTS extends LiveTTSProvider {
     if (this.isConnected) {
       await this.disconnect();
     }
-    this.liveClient = null;
+    this.speakSocket = null;
     this.deepgram = null;
     this.logger.info('Deepgram TTS disposed');
   }
@@ -287,8 +284,8 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Connects to the Deepgram WebSocket for real-time TTS streaming.
    *
    * @remarks
-   * Establishes a live TTS connection using the configured model, encoding,
-   * sample rate, and container format. The connection emits audio chunks
+   * Establishes a live TTS connection using the V5 `speak.v1.connect()` API with the
+   * configured model, encoding, and sample rate. The connection emits audio chunks
    * as Deepgram processes incoming text.
    *
    * This method is idempotent -- calling it when already connected is a no-op.
@@ -314,23 +311,23 @@ export class DeepgramTTS extends LiveTTSProvider {
     try {
       this.logger.debug('Connecting to Deepgram TTS WebSocket');
 
-      // Build connection options
-      const options: Record<string, unknown> = {
-        model: this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en',
-        encoding: this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16',
-        sample_rate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
-        container: this.config.options?.container ?? 'none',
+      const model =
+        this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en';
+      const encoding =
+        this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16';
+      const sampleRate = String(
+        this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000
+      );
+
+      // V5 connect args are all strings
+      const connectOptions: Record<string, unknown> = {
+        model,
+        encoding,
+        sample_rate: sampleRate,
       };
 
-      // Add optional parameters
-      if (this.config.options?.bitRate) {
-        options.bit_rate = this.config.options.bitRate;
-      }
-
-      // Create live TTS connection
-      this.liveClient = this.deepgram.speak.live(
-        options as Parameters<typeof this.deepgram.speak.live>[0]
-      );
+      // Create live TTS connection via V5 speak.v1.connect()
+      this.speakSocket = await this.deepgram.speak.v1.connect(connectOptions);
 
       // Set up event handlers
       this.setupEventHandlers();
@@ -341,145 +338,181 @@ export class DeepgramTTS extends LiveTTSProvider {
           reject(new Error('Connection timeout'));
         }, this.config.timeout ?? 10000);
 
-        this.liveClient?.on('Open', () => {
+        this.speakSocket?.on('open', () => {
           clearTimeout(timeout);
           this.isConnected = true;
           this.logger.info('Connected to Deepgram TTS WebSocket');
           resolve();
         });
 
-        this.liveClient?.on('Error', (error: Error) => {
+        this.speakSocket?.on('error', (error: Error) => {
           clearTimeout(timeout);
           this.logger.error('Failed to connect to Deepgram TTS WebSocket', error);
           reject(error);
         });
       });
     } catch (error) {
-      this.liveClient = null;
+      this.speakSocket = null;
       throw new ProviderConnectionError('DeepgramTTS', error as Error);
     }
   }
 
   /**
-   * Sets up event handlers on the live TTS client for audio data, metadata,
-   * flush events, errors, warnings, and connection close.
+   * Sets up event handlers on the V5 speak socket for JSON messages, binary audio
+   * data, errors, and connection close.
+   *
+   * @remarks
+   * In V5, JSON messages (Metadata, Flushed, Cleared, Warning) arrive via the typed
+   * `'message'` event handler. Audio binary data must be captured from the underlying
+   * raw WebSocket exposed via `socket.socket`, since V5's typed handler only routes
+   * text/JSON messages.
    */
   private setupEventHandlers(): void {
-    if (!this.liveClient) return;
+    if (!this.speakSocket) return;
 
-    // Handle audio data
-    this.liveClient.on('Audio', (data: unknown) => {
-      try {
-        // Deepgram sends raw audio bytes as ArrayBuffer or Buffer
-        const audioData = data as ArrayBuffer | Buffer;
+    // Handle JSON messages via the V5 typed 'message' event
+    this.speakSocket.on(
+      'message',
+      (msg: { type?: string; request_id?: string; model_name?: string; model_version?: string; model_uuid?: string } | string) => {
+        try {
+          // String messages are unrecognized text; skip them
+          if (typeof msg === 'string') {
+            this.logger.debug('Unrecognized text message from Deepgram TTS', { msg });
+            return;
+          }
 
-        // Convert Buffer to ArrayBuffer if needed
-        let arrayBuffer: ArrayBuffer;
-        if (audioData instanceof ArrayBuffer) {
-          arrayBuffer = audioData;
-        } else {
-          // Handle Buffer type (Node.js Buffer or Buffer-like objects)
-          const buffer = audioData as Buffer;
-          // Create a new ArrayBuffer and copy the data
-          arrayBuffer = new ArrayBuffer(buffer.byteLength);
-          const view = new Uint8Array(arrayBuffer);
-          view.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
+          // Discriminate on type field
+          switch (msg.type) {
+            case 'Metadata': {
+              this.logger.debug('Metadata received', msg);
+              this.emitMetadata({
+                sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
+                encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
+                  | 'linear16'
+                  | 'opus'
+                  | 'mp3'
+                  | 'mulaw'
+                  | 'alaw',
+                channels: 1,
+                bitDepth: 16,
+                mimeType: `audio/${this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16'}`,
+              });
+              break;
+            }
+            case 'Flushed': {
+              this.logger.debug('Deepgram TTS flushed');
+              break;
+            }
+            case 'Cleared': {
+              this.logger.debug('Deepgram TTS buffer cleared');
+              break;
+            }
+            case 'Warning': {
+              this.logger.warn('Deepgram TTS WebSocket warning', msg);
+              break;
+            }
+            default: {
+              this.logger.debug('Unknown message type from Deepgram TTS', msg);
+              break;
+            }
+          }
+        } catch (error) {
+          this.logger.error('Error processing Deepgram TTS message', error);
         }
-
-        // Create audio chunk
-        const chunk: AudioChunk = {
-          data: arrayBuffer,
-          timestamp: Date.now(),
-          metadata: {
-            sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
-            encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
-              | 'linear16'
-              | 'opus'
-              | 'mp3'
-              | 'mulaw'
-              | 'alaw',
-            channels: 1, // Deepgram TTS typically outputs mono
-            bitDepth: 16,
-          },
-        };
-
-        this.emitAudio(chunk);
-      } catch (error) {
-        this.logger.error('Error processing audio data', error);
       }
-    });
+    );
 
-    // Handle metadata events
-    this.liveClient.on('Metadata', (data: unknown) => {
-      this.logger.debug('Metadata received', data);
+    // Handle binary audio data from the underlying raw WebSocket
+    // V5's typed 'message' event only receives JSON; binary audio comes through
+    // the raw WebSocket exposed via speakSocket.socket
+    const rawSocket = this.speakSocket.socket;
+    if (rawSocket) {
+      rawSocket.addEventListener('message', (event: MessageEvent) => {
+        try {
+          const { data } = event;
 
-      // Extract metadata if available
-      const metadata = data as {
-        request_id?: string;
-        model_name?: string;
-        model_uuid?: string;
-        characters?: number;
-        transfer_encoding?: string;
-        sample_rate?: number;
-      };
-
-      if (metadata) {
-        this.emitMetadata({
-          sampleRate: metadata.sample_rate ?? this.config.sampleRate ?? 24000,
-          encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
-            | 'linear16'
-            | 'opus'
-            | 'mp3'
-            | 'mulaw'
-            | 'alaw',
-          channels: 1,
-          bitDepth: 16,
-          mimeType: `audio/${this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16'}`,
-        });
-      }
-    });
-
-    // Handle flush event (all audio has been sent)
-    this.liveClient.on('Flushed', () => {
-      this.logger.debug('Deepgram TTS flushed');
-    });
+          // Only handle binary data; text is already routed to the typed handler
+          if (data instanceof ArrayBuffer) {
+            this.handleBinaryAudio(data);
+          } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+            // Convert Blob to ArrayBuffer
+            data.arrayBuffer().then((arrayBuffer: ArrayBuffer) => {
+              this.handleBinaryAudio(arrayBuffer);
+            });
+          } else if (
+            typeof Buffer !== 'undefined' &&
+            Buffer.isBuffer(data)
+          ) {
+            // Handle Node.js Buffer
+            const arrayBuffer = new ArrayBuffer(data.byteLength);
+            const view = new Uint8Array(arrayBuffer);
+            view.set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+            this.handleBinaryAudio(arrayBuffer);
+          }
+          // If data is a string, it's JSON and is handled by the typed 'message' event
+        } catch (error) {
+          this.logger.error('Error processing binary audio data', error);
+        }
+      });
+    }
 
     // Handle errors
-    this.liveClient.on('Error', (error: Error) => {
+    this.speakSocket.on('error', (error: Error) => {
       this.logger.error('Deepgram TTS WebSocket error', error);
     });
 
-    // Handle warnings
-    this.liveClient.on('Warning', (warning: unknown) => {
-      this.logger.warn('Deepgram TTS WebSocket warning', warning);
-    });
-
     // Handle close
-    this.liveClient.on('Close', () => {
+    this.speakSocket.on('close', () => {
       this.logger.info('Deepgram TTS WebSocket closed');
       this.isConnected = false;
     });
   }
 
   /**
+   * Processes binary audio data received from the WebSocket and emits it as
+   * an {@link AudioChunk} via the audio callback.
+   *
+   * @param arrayBuffer - The raw audio data as an ArrayBuffer.
+   */
+  private handleBinaryAudio(arrayBuffer: ArrayBuffer): void {
+    const chunk: AudioChunk = {
+      data: arrayBuffer,
+      timestamp: Date.now(),
+      metadata: {
+        sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
+        encoding: (this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16') as
+          | 'linear16'
+          | 'opus'
+          | 'mp3'
+          | 'mulaw'
+          | 'alaw',
+        channels: 1, // Deepgram TTS typically outputs mono
+        bitDepth: 16,
+      },
+    };
+
+    this.emitAudio(chunk);
+  }
+
+  /**
    * Sends a text chunk to Deepgram for real-time synthesis.
    *
    * @remarks
-   * Text is sent over the open WebSocket connection. Deepgram processes the
+   * Text is sent over the open WebSocket connection using the V5
+   * `sendText({ type: 'Speak', text })` method. Deepgram processes the
    * text incrementally and emits audio chunks via the `onAudio` callback.
    * If not connected, the call is silently ignored with a warning log.
    *
    * @param text - The text to synthesize into speech.
    */
   sendText(text: string): void {
-    if (!this.isConnected || !this.liveClient) {
+    if (!this.isConnected || !this.speakSocket) {
       this.logger.warn('Cannot send text: not connected');
       return;
     }
 
     try {
-      // Send text to Deepgram
-      this.liveClient.sendText(text);
+      this.speakSocket.sendText({ type: 'Speak', text });
     } catch (error) {
       this.logger.error('Failed to send text chunk', error);
     }
@@ -489,14 +522,15 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Finalizes the current synthesis session by flushing remaining audio.
    *
    * @remarks
-   * Sends a flush command to Deepgram to ensure all buffered text has been
-   * processed and all resulting audio has been emitted. Waits for the
-   * `Flushed` event or a 1-second timeout before resolving.
+   * Sends a flush command to Deepgram using the V5 `sendFlush({ type: 'Flush' })`
+   * method to ensure all buffered text has been processed and all resulting audio
+   * has been emitted. Waits for the `Flushed` message or a 1-second timeout before
+   * resolving.
    *
    * @throws Rethrows any error that occurs during finalization.
    */
   async finalize(): Promise<void> {
-    if (!this.isConnected || !this.liveClient) {
+    if (!this.isConnected || !this.speakSocket) {
       this.logger.warn('Cannot finalize: not connected');
       return;
     }
@@ -504,17 +538,22 @@ export class DeepgramTTS extends LiveTTSProvider {
     try {
       this.logger.debug('Finalizing Deepgram TTS synthesis');
 
-      // Flush any remaining audio
-      this.liveClient.flush();
+      // Flush any remaining audio via V5 sendFlush
+      this.speakSocket.sendFlush({ type: 'Flush' });
 
-      // Wait for flushed event
+      // Wait for flushed message
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(resolve, 1000); // Force resolve after 1 second
 
-        this.liveClient?.on('Flushed', () => {
-          clearTimeout(timeout);
-          resolve();
-        });
+        this.speakSocket?.on(
+          'message',
+          (msg: { type?: string } | string) => {
+            if (typeof msg !== 'string' && msg.type === 'Flushed') {
+              clearTimeout(timeout);
+              resolve();
+            }
+          }
+        );
       });
 
       this.logger.info('Deepgram TTS finalized');
@@ -525,17 +564,42 @@ export class DeepgramTTS extends LiveTTSProvider {
   }
 
   /**
+   * Clears the Deepgram TTS audio buffer.
+   *
+   * @remarks
+   * Sends a destructive clear command via the V5 `sendClear({ type: 'Clear' })`
+   * method. This immediately discards any buffered text and audio that has not
+   * yet been sent to the client. Useful for interrupting speech when the user
+   * starts talking (barge-in).
+   *
+   * If not connected, the call is silently ignored with a warning log.
+   */
+  clearBuffer(): void {
+    if (!this.isConnected || !this.speakSocket) {
+      this.logger.warn('Cannot clear buffer: not connected');
+      return;
+    }
+
+    try {
+      this.speakSocket.sendClear({ type: 'Clear' });
+      this.logger.debug('Deepgram TTS buffer clear sent');
+    } catch (error) {
+      this.logger.error('Failed to clear Deepgram TTS buffer', error);
+    }
+  }
+
+  /**
    * Disconnects from the Deepgram WebSocket.
    *
    * @remarks
-   * Flushes any remaining audio, sends a finish signal, and waits for
-   * the WebSocket to close (with a 1-second timeout). After disconnection,
-   * the live client reference is released.
+   * Sends a flush command, then a close signal via the V5 `sendClose({ type: 'Close' })`
+   * method, and finally calls `close()` on the socket. Waits for the WebSocket to
+   * close (with a 1-second timeout). After disconnection, the socket reference is released.
    *
    * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.liveClient) {
+    if (!this.isConnected || !this.speakSocket) {
       this.logger.warn('Not connected to Deepgram TTS');
       return;
     }
@@ -543,22 +607,23 @@ export class DeepgramTTS extends LiveTTSProvider {
     try {
       this.logger.debug('Disconnecting from Deepgram TTS WebSocket');
 
-      // Flush and close the stream
-      this.liveClient.flush();
-      this.liveClient.finish();
+      // Flush remaining audio, then send close signal
+      this.speakSocket.sendFlush({ type: 'Flush' });
+      this.speakSocket.sendClose({ type: 'Close' });
+      this.speakSocket.close();
 
       // Wait for close event
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(resolve, 1000); // Force resolve after 1 second
 
-        this.liveClient?.on('Close', () => {
+        this.speakSocket?.on('close', () => {
           clearTimeout(timeout);
           resolve();
         });
       });
 
       this.isConnected = false;
-      this.liveClient = null;
+      this.speakSocket = null;
 
       this.logger.info('Disconnected from Deepgram TTS WebSocket');
     } catch (error) {

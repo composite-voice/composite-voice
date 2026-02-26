@@ -36,6 +36,7 @@ import { Logger, createLogger } from './utils/logger';
 import { ConfigurationError, InvalidStateError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
+import { textSimilarity } from './utils/textSimilarity';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -500,13 +501,15 @@ export class CompositeVoice {
    * @remarks
    * This method implements the reconciliation logic for the eager LLM pipeline:
    *
-   * 1. If an eager generation is running **and** its text matches exactly,
+   * 1. If an eager generation is running **and** its text is sufficiently
+   *    similar to the confirmed text (at or above `similarityThreshold`),
    *    the speculative result is accepted and no new request is made.
-   * 2. If the text differs and `cancelOnTextChange` is `true` (default), the
-   *    eager generation is aborted and a new LLM request is started with the
-   *    confirmed text.
-   * 3. If the text differs but `cancelOnTextChange` is `false`, the speculative
-   *    result is accepted anyway (lowest latency, small accuracy risk).
+   * 2. If the similarity is below the threshold and `cancelOnTextChange` is
+   *    `true` (default), the eager generation is aborted and a new LLM
+   *    request is started with the confirmed text.
+   * 3. If the similarity is below the threshold but `cancelOnTextChange` is
+   *    `false`, the speculative result is accepted anyway (lowest latency,
+   *    small accuracy risk).
    * 4. If no eager generation is running, a normal LLM request is started.
    *
    * @param text - The confirmed final transcript text from the STT provider.
@@ -520,10 +523,17 @@ export class CompositeVoice {
     if (this.eagerAbortController) {
       const eagerText = this.eagerText;
       const shouldCancel = this.config.eagerLLM?.cancelOnTextChange ?? true;
+      const threshold = this.config.eagerLLM?.similarityThreshold ?? 0.8;
 
-      if (eagerText === text) {
-        // Exact match — eager generation is already running; let it complete.
-        this.logger.debug('speech_final matches preflight text — using eager generation');
+      // Compare the preflight text against the confirmed text
+      const similarity = eagerText ? textSimilarity(eagerText, text) : 0;
+
+      if (similarity >= threshold) {
+        // Similar enough — eager generation is already running; let it complete.
+        this.logger.debug(
+          'speech_final similar to preflight — using eager generation',
+          { similarity, threshold, preflight: eagerText, final: text }
+        );
         this.eagerAbortController = null;
         this.eagerText = null;
         return;
@@ -531,20 +541,18 @@ export class CompositeVoice {
 
       if (shouldCancel) {
         this.logger.debug(
-          'speech_final text differs from preflight — cancelling eager, restarting',
-          {
-            preflight: eagerText,
-            final: text,
-          }
+          'speech_final too different from preflight — cancelling eager, restarting',
+          { similarity, threshold, preflight: eagerText, final: text }
         );
         this.eagerAbortController.abort();
         this.eagerAbortController = null;
         this.eagerText = null;
         void this.processLLM(text);
       } else {
-        // Accept the preflight response even though text changed
+        // Accept the preflight response even though text changed beyond threshold
         this.logger.debug(
-          'speech_final text differs but cancelOnTextChange=false — accepting eager response'
+          'speech_final differs but cancelOnTextChange=false — accepting eager response',
+          { similarity, threshold }
         );
         this.eagerAbortController = null;
         this.eagerText = null;

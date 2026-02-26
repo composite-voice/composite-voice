@@ -323,18 +323,38 @@ export interface EagerLLMConfig {
   enabled: boolean;
 
   /**
-   * Whether to cancel speculative generation if the confirmed text differs.
+   * Whether to cancel speculative generation if the confirmed text differs
+   * beyond the {@link similarityThreshold}.
    *
    * @remarks
-   * When `true`, if `speech_final` arrives with different text than the
-   * preflight, the in-flight LLM generation is cancelled via `AbortSignal`
-   * and restarted with the confirmed text. When `false`, the preflight
-   * result is always accepted (lower latency, small risk of a slightly
-   * inaccurate response).
+   * When `true`, if `speech_final` arrives with text that is less similar
+   * than `similarityThreshold` to the preflight text, the in-flight LLM
+   * generation is cancelled via `AbortSignal` and restarted with the
+   * confirmed text. When `false`, the preflight result is always accepted
+   * (lowest latency, small risk of an inaccurate response).
    *
    * @defaultValue true
    */
   cancelOnTextChange?: boolean;
+
+  /**
+   * Minimum text similarity (0–1) for the eager LLM response to be accepted.
+   *
+   * @remarks
+   * When the confirmed `speech_final` text arrives, it is compared to the
+   * preflight text using word-overlap similarity. If the score is **at or
+   * above** this threshold, the speculative LLM response is kept. If it is
+   * below, the response is cancelled and restarted (when
+   * {@link cancelOnTextChange} is `true`).
+   *
+   * A value of `1.0` requires an exact match (rarely useful in practice).
+   * A value of `0.8` allows minor additions at the end of the utterance.
+   * A value of `0.5` is very permissive — only cancels when the text
+   * changes substantially.
+   *
+   * @defaultValue 0.8
+   */
+  similarityThreshold?: number;
 }
 
 /**

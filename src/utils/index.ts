@@ -35,3 +35,4 @@ export * from './websocket';
 export * from './audio';
 export * from './turnTaking';
 export * from './browserCapabilities';
+export * from './textSimilarity';

@@ -12,8 +12,8 @@ importers:
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
       '@deepgram/sdk':
-        specifier: '>=4.11.2'
-        version: 4.11.2
+        specifier: '>=5.0.0-beta.1'
+        version: 5.0.0-beta.4
       '@mlc-ai/web-llm':
         specifier: '>=0.2.74'
         version: 0.2.81
@@ -1073,6 +1073,10 @@ packages:
 
   '@deepgram/sdk@4.11.2':
     resolution: {integrity: sha512-lKGxuXxlSixC8bB0BnzmIpbVjUSgYtz17cqvrgv0ZjmazgUPkuUj9egQPj6k+fbPX8wRzWEqlhrL/DXlXqeDXA==}
+    engines: {node: '>=18.0.0'}
+
+  '@deepgram/sdk@5.0.0-beta.4':
+    resolution: {integrity: sha512-i1Vb5h9W06UHlYVsGaOMIC4kQIil5z/SfzrsUQVUU0UYAuyf5QbcCgtdf+mkElb+aVYokP0Qt0avWYFTfVVmAw==}
     engines: {node: '>=18.0.0'}
 
   '@emmetio/abbreviation@2.3.3':
@@ -6718,6 +6722,13 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - encoding
+      - utf-8-validate
+
+  '@deepgram/sdk@5.0.0-beta.4':
+    dependencies:
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
       - utf-8-validate
 
   '@emmetio/abbreviation@2.3.3':
