@@ -704,6 +704,58 @@ export class ElevenLabsSTT extends LiveSTTProvider {
   }
 
   /**
+   * Manually commits the current audio buffer, finalizing any partial transcript.
+   *
+   * @remarks
+   * This method is only meaningful when `commitStrategy` is `'manual'`. In manual
+   * mode, the server buffers incoming audio and emits `partial_transcript` messages
+   * but does not finalize (commit) the transcript until instructed. Calling
+   * `sendCommit()` sends an empty `input_audio_chunk` with `commit: true`,
+   * telling the server to produce a `committed_transcript` for the buffered audio.
+   *
+   * When `commitStrategy` is `'vad'`, this method is a no-op because the server
+   * automatically commits based on silence detection.
+   *
+   * @example
+   * ```typescript
+   * const stt = new ElevenLabsSTT({
+   *   proxyUrl: 'http://localhost:3001/api/proxy/elevenlabs',
+   *   commitStrategy: 'manual',
+   * });
+   *
+   * // After streaming audio, manually commit to get final transcript:
+   * stt.sendCommit();
+   * ```
+   */
+  sendCommit(): void {
+    if (this.config.commitStrategy !== 'manual') {
+      this.logger.debug('sendCommit() ignored: commit strategy is not "manual"', {
+        commitStrategy: this.config.commitStrategy,
+      });
+      return;
+    }
+
+    if (!this.isConnected || !this.wsManager) {
+      this.logger.warn('Cannot send commit: not connected');
+      return;
+    }
+
+    try {
+      this.wsManager.send(
+        JSON.stringify({
+          message_type: 'input_audio_chunk',
+          audio_base_64: '',
+          commit: true,
+          sample_rate: this.getSampleRate(),
+        })
+      );
+      this.logger.debug('Manual commit sent');
+    } catch (error) {
+      this.logger.error('Failed to send manual commit', error);
+    }
+  }
+
+  /**
    * Disconnects from the ElevenLabs WebSocket.
    *
    * @remarks
