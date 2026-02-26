@@ -2,7 +2,7 @@
  * ElevenLabs STT provider exports.
  */
 
-export { ElevenLabsSTT } from './ElevenLabsSTT';
+export { ElevenLabsSTT, LANGUAGE_MAP, resolveLanguageCode } from './ElevenLabsSTT';
 export type {
   ElevenLabsSTTConfig,
   ElevenLabsSTTModel,

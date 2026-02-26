@@ -172,6 +172,85 @@ export interface ElevenLabsSTTConfig extends STTProviderConfig {
 }
 
 /**
+ * Maps BCP 47 / ISO 639-1 language codes to ISO 639-3 codes used by
+ * ElevenLabs Scribe V2.
+ *
+ * @remarks
+ * ElevenLabs real-time STT expects ISO 639-3 (3-letter) codes for the
+ * `language_code` query parameter. This map allows developers to pass the
+ * more common BCP 47 codes (e.g., `en-US`, `fr`) and have them converted
+ * automatically.
+ *
+ * Coverage: all major languages supported by Scribe V2.
+ */
+export const LANGUAGE_MAP: Record<string, string> = {
+  en: 'eng',
+  fr: 'fra',
+  de: 'deu',
+  es: 'spa',
+  it: 'ita',
+  pt: 'por',
+  nl: 'nld',
+  ja: 'jpn',
+  ko: 'kor',
+  zh: 'zho',
+  ar: 'ara',
+  hi: 'hin',
+  ru: 'rus',
+  pl: 'pol',
+  tr: 'tur',
+  sv: 'swe',
+  da: 'dan',
+  fi: 'fin',
+  no: 'nor',
+  uk: 'ukr',
+  cs: 'ces',
+  el: 'ell',
+  he: 'heb',
+  hu: 'hun',
+  id: 'ind',
+  ms: 'msa',
+  ro: 'ron',
+  th: 'tha',
+  vi: 'vie',
+  bg: 'bul',
+  ca: 'cat',
+  hr: 'hrv',
+  sk: 'slk',
+  ta: 'tam',
+};
+
+/**
+ * Resolves a language string to an ISO 639-3 code for ElevenLabs Scribe V2.
+ *
+ * @remarks
+ * Accepts three input formats:
+ * - **ISO 639-3** (3-letter, e.g., `eng`, `fra`) -- passed through directly
+ * - **ISO 639-1** (2-letter, e.g., `en`, `fr`) -- looked up in {@link LANGUAGE_MAP}
+ * - **BCP 47** (e.g., `en-US`, `fr-FR`) -- base language extracted and looked up
+ *
+ * Returns `undefined` when no language is provided, which enables ElevenLabs
+ * auto-detection.
+ *
+ * @param language - The language code to resolve, or `undefined` for auto-detect.
+ * @returns The ISO 639-3 code, or `undefined` for auto-detection.
+ */
+export function resolveLanguageCode(language: string | undefined): string | undefined {
+  if (!language) return undefined;
+
+  // 3-letter codes are assumed to be ISO 639-3 already
+  if (/^[a-z]{3}$/i.test(language)) {
+    return language.toLowerCase();
+  }
+
+  // Extract the base language from BCP 47 (e.g., "en-US" → "en", "fr" → "fr")
+  const base = language.split(/[-_]/)[0]!.toLowerCase();
+
+  // Look up the 2-letter code in the mapping
+  return LANGUAGE_MAP[base] ?? language;
+}
+
+/**
  * Maps ElevenLabs audio format strings to their sample rates in Hz.
  *
  * @internal
@@ -334,9 +413,11 @@ export class ElevenLabsSTT extends LiveSTTProvider {
       params.set('audio_format', this.config.audioFormat);
     }
 
-    // Language
-    if (this.config.language) {
-      params.set('language_code', this.config.language);
+    // Language — resolve BCP 47 / ISO 639-1 to ISO 639-3 for Scribe V2.
+    // Omitting language enables auto-detection.
+    const languageCode = resolveLanguageCode(this.config.language);
+    if (languageCode) {
+      params.set('language_code', languageCode);
     }
 
     // Commit strategy

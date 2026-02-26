@@ -134,7 +134,7 @@ export type {
   DeepgramFluxConfig,
   DeepgramFluxOptions,
 } from './providers/stt/deepgram-flux/index';
-export { ElevenLabsSTT } from './providers/stt/elevenlabs/index';
+export { ElevenLabsSTT, LANGUAGE_MAP, resolveLanguageCode } from './providers/stt/elevenlabs/index';
 export type {
   ElevenLabsSTTConfig,
   ElevenLabsSTTModel,
