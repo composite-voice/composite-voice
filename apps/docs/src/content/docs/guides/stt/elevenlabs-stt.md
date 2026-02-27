@@ -139,12 +139,12 @@ await agent.start();
 
 ## Tips and gotchas
 
-- **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your ElevenLabs key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically. The proxy shares the same `elevenlabsApiKey` with ElevenLabsTTS.
-- **No peer dependencies.** Like AssemblyAISTT, ElevenLabsSTT uses the SDK's built-in `WebSocketManager` -- no extra packages to install.
+- **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your ElevenLabs key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically. The proxy shares the same `elevenlabsApiKey` with [ElevenLabsTTS](/guides/tts/elevenlabs-tts).
+- **No peer dependencies.** Like [AssemblyAISTT](/guides/stt/assemblyai-stt), ElevenLabsSTT uses the SDK's built-in `WebSocketManager` -- no extra packages to install.
 - **Audio is base64-encoded.** The provider converts raw `ArrayBuffer` audio into base64 JSON messages (`{ audio_base_64: "..." }`) before sending. This is handled automatically.
 - **VAD mode is recommended for microphone input.** It automatically detects speech pauses and commits segments. Use manual mode only when you need explicit control.
 - **`previousText` is sent once.** The context string is included only on the first audio chunk to help the model. It is not repeated on subsequent chunks.
-- **No preflight signals.** ElevenLabsSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, use DeepgramFlux instead.
+- **No preflight signals.** ElevenLabsSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, use [DeepgramFlux](/guides/stt/deepgram-flux) instead.
 - **Session handshake.** The `connect()` call waits for a `session_started` message from the server before resolving, ensuring the session is fully initialized before audio streaming begins.
 - **Auto-commit fallback.** Even in manual mode, the server auto-commits after 90 seconds of buffered audio.
 

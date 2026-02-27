@@ -16,7 +16,7 @@ Browser                          Server                         Provider
   │←── streamed response ─────────│←── streamed response ─────────│
 ```
 
-For WebSocket providers (Deepgram, ElevenLabs, Cartesia, AssemblyAI), the proxy upgrades the connection and relays frames bidirectionally:
+For WebSocket providers ([Deepgram](/guides/stt/deepgram-stt), [ElevenLabs](/guides/tts/elevenlabs-tts), [Cartesia](/guides/tts/cartesia-tts), [AssemblyAI](/guides/stt/assemblyai-stt)), the proxy upgrades the connection and relays frames bidirectionally:
 
 ```
 Browser                          Server                         Provider
@@ -96,7 +96,7 @@ const proxy = createNextJsProxy({
 export const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = proxy;
 ```
 
-**Note:** Vercel's serverless runtime does not support WebSocket upgrades. For WebSocket providers (Deepgram STT/TTS, ElevenLabs, Cartesia, AssemblyAI), deploy with the Node.js adapter on a platform that supports WebSockets, or use the `createNodeProxy` adapter on a self-hosted server.
+**Note:** Vercel's serverless runtime does not support WebSocket upgrades. For WebSocket providers ([Deepgram](/guides/stt/deepgram-stt) STT/TTS, [ElevenLabs](/guides/tts/elevenlabs-tts), [Cartesia](/guides/tts/cartesia-tts), [AssemblyAI](/guides/stt/assemblyai-stt)), deploy with the Node.js adapter on a platform that supports WebSockets, or use the `createNodeProxy` adapter on a self-hosted server.
 
 ### Node.js adapter
 Works with any framework that exposes `http.Server`:

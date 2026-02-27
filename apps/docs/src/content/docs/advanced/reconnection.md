@@ -16,15 +16,15 @@ Five built-in providers communicate over persistent WebSocket connections:
 
 | Provider | Direction | Purpose |
 |---|---|---|
-| `DeepgramSTT` | Browser to Deepgram | Real-time streaming transcription |
-| `AssemblyAISTT` | Browser to AssemblyAI | Real-time streaming transcription |
-| `DeepgramTTS` | Browser to Deepgram | Real-time streaming synthesis |
-| `ElevenLabsTTS` | Browser to ElevenLabs | Real-time streaming synthesis |
-| `CartesiaTTS` | Browser to Cartesia | Real-time streaming synthesis |
+| [`DeepgramSTT`](/guides/stt/deepgram-stt) | Browser to Deepgram | Real-time streaming transcription |
+| [`AssemblyAISTT`](/guides/stt/assemblyai-stt) | Browser to AssemblyAI | Real-time streaming transcription |
+| [`DeepgramTTS`](/guides/tts/deepgram-tts) | Browser to Deepgram | Real-time streaming synthesis |
+| [`ElevenLabsTTS`](/guides/tts/elevenlabs-tts) | Browser to ElevenLabs | Real-time streaming synthesis |
+| [`CartesiaTTS`](/guides/tts/cartesia-tts) | Browser to Cartesia | Real-time streaming synthesis |
 
-REST-based providers (`NativeSTT`, `NativeTTS`, `OpenAITTS`, all LLM providers) use HTTP request/response and are not affected by WebSocket reconnection settings.
+REST-based providers ([NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [OpenAITTS](/guides/tts/openai-tts), all LLM providers) use HTTP request/response and are not affected by WebSocket reconnection settings.
 
-STT providers (DeepgramSTT, AssemblyAISTT) maintain a single connection for the entire listening session, so reconnection is critical for reliability. TTS providers (DeepgramTTS, ElevenLabsTTS, CartesiaTTS) typically open a fresh connection per utterance and disable auto-reconnect by default since each synthesis session is short-lived.
+STT providers ([DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt)) maintain a single connection for the entire listening session, so reconnection is critical for reliability. TTS providers ([DeepgramTTS](/guides/tts/deepgram-tts), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts)) typically open a fresh connection per utterance and disable auto-reconnect by default since each synthesis session is short-lived.
 
 ### `ReconnectionConfig` options
 

@@ -10,7 +10,7 @@ Errors in a CompositeVoice agent fall into three broad categories:
 
 **Provider errors** occur when a provider fails to initialize, connect, or respond. Examples include invalid API keys, missing peer dependencies, rate limiting, and service outages. These surface as `transcription.error`, `llm.error`, or `tts.error` events depending on which pipeline stage failed.
 
-**Network errors** occur when a WebSocket connection drops, an HTTP request times out, or a proxy endpoint is unreachable. WebSocket providers (DeepgramSTT, DeepgramTTS, AssemblyAISTT, ElevenLabsTTS, CartesiaTTS) are particularly susceptible. The SDK's [reconnection system](/advanced/reconnection) handles many of these automatically.
+**Network errors** occur when a WebSocket connection drops, an HTTP request times out, or a proxy endpoint is unreachable. WebSocket providers ([DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts)) are particularly susceptible. The SDK's [reconnection system](/advanced/reconnection) handles many of these automatically.
 
 **Audio errors** occur when microphone access is denied, an audio device disconnects mid-session, or AudioContext playback fails. These surface as `audio.capture.error` or `audio.playback.error` events.
 

@@ -10,11 +10,11 @@ CompositeVoice uses three provider slots — **STT** (speech-to-text), **LLM** (
 
 | Provider | Transport | Models | Interim Results | Preflight |
 |---|---|---|---|---|
-| NativeSTT | Browser API | Browser default | Yes | No |
-| DeepgramSTT | WebSocket | V1: nova-3, nova-2 | Yes | No |
-| DeepgramFlux | WebSocket | V2: flux-general-en | Yes | Yes |
-| AssemblyAISTT | WebSocket | Default model | Yes | No |
-| ElevenLabsSTT | WebSocket | scribe_v2_realtime | Yes | No |
+| [NativeSTT](/guides/stt/native-stt) | Browser API | Browser default | Yes | No |
+| [DeepgramSTT](/guides/stt/deepgram-stt) | WebSocket | V1: nova-3, nova-2 | Yes | No |
+| [DeepgramFlux](/guides/stt/deepgram-flux) | WebSocket | V2: flux-general-en | Yes | Yes |
+| [AssemblyAISTT](/guides/stt/assemblyai-stt) | WebSocket | Default model | Yes | No |
+| [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
 
 ### NativeSTT
 
@@ -69,7 +69,7 @@ const stt = new DeepgramSTT({
 - Speaker diarization
 - VAD events
 
-> Does not support preflight/eager end-of-turn signals. For the eager LLM pipeline, use [DeepgramFlux](/api/classes/deepgramflux).
+> Does not support preflight/eager end-of-turn signals. For the eager LLM pipeline, use [DeepgramFlux](/guides/stt/deepgram-flux).
 
 [API reference](/api/classes/deepgramstt)
 
@@ -154,13 +154,13 @@ const stt = new ElevenLabsSTT({
 
 | Provider | Base | Default Model | Streaming |
 |---|---|---|---|
-| AnthropicLLM | Custom | claude-haiku-4-5 | Yes |
-| OpenAILLM | OpenAI-compatible | (required) | Yes |
-| GroqLLM | OpenAI-compatible | llama-3.3-70b-versatile | Yes |
-| MistralLLM | OpenAI-compatible | mistral-small-latest | Yes |
-| GeminiLLM | OpenAI-compatible | gemini-2.0-flash | Yes |
-| WebLLMLLM | Custom | (required) | Yes |
-| OpenAICompatibleLLM | -- | (required) | Yes |
+| [AnthropicLLM](/guides/llm/anthropic) | Custom | claude-haiku-4-5 | Yes |
+| [OpenAILLM](/guides/llm/openai) | OpenAI-compatible | (required) | Yes |
+| [GroqLLM](/guides/llm/groq) | OpenAI-compatible | llama-3.3-70b-versatile | Yes |
+| [MistralLLM](/guides/llm/mistral) | OpenAI-compatible | mistral-small-latest | Yes |
+| [GeminiLLM](/guides/llm/gemini) | OpenAI-compatible | gemini-2.0-flash | Yes |
+| [WebLLMLLM](/guides/llm/webllm) | Custom | (required) | Yes |
+| [OpenAICompatibleLLM](/guides/llm/openai-compatible) | -- | (required) | Yes |
 
 ### AnthropicLLM
 
@@ -290,11 +290,11 @@ const llm = new OpenAICompatibleLLM({
 
 | Provider | Transport | Voices | Streaming | Audio Format |
 |---|---|---|---|---|
-| NativeTTS | Browser API | System voices | No (managed) | N/A |
-| DeepgramTTS | WebSocket | Aura 2 (7 voices) | Yes | linear16, mulaw, alaw |
-| OpenAITTS | REST | 6 voices | No | mp3, opus, aac, flac, wav |
-| ElevenLabsTTS | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
-| CartesiaTTS | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
+| [NativeTTS](/guides/tts/native-tts) | Browser API | System voices | No (managed) | N/A |
+| [DeepgramTTS](/guides/tts/deepgram-tts) | WebSocket | Aura 2 (7 voices) | Yes | linear16, mulaw, alaw |
+| [OpenAITTS](/guides/tts/openai-tts) | REST | 6 voices | No | mp3, opus, aac, flac, wav |
+| [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
+| [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
 
 ### NativeTTS
 
@@ -416,10 +416,10 @@ const tts = new CartesiaTTS({
 
 ## Choosing providers
 
-**For prototyping:** NativeSTT + any LLM + NativeTTS -- no API keys except the LLM.
+**For prototyping:** [NativeSTT](/guides/stt/native-stt) + any LLM + [NativeTTS](/guides/tts/native-tts) -- no API keys except the LLM.
 
-**For production:** DeepgramSTT + AnthropicLLM + DeepgramTTS (or ElevenLabsTTS / CartesiaTTS) -- best accuracy, lowest latency, streaming throughout.
+**For production:** [DeepgramSTT](/guides/stt/deepgram-stt) + [AnthropicLLM](/guides/llm/anthropic) + [DeepgramTTS](/guides/tts/deepgram-tts) -- best accuracy, lowest latency, streaming throughout.
 
-**For privacy:** NativeSTT + WebLLMLLM + NativeTTS -- everything runs in the browser. No data leaves the device.
+**For privacy:** [NativeSTT](/guides/stt/native-stt) + [WebLLMLLM](/guides/llm/webllm) + [NativeTTS](/guides/tts/native-tts) -- everything runs in the browser. No data leaves the device.
 
-**For lowest latency:** DeepgramFlux + GroqLLM + CartesiaTTS -- eager end-of-turn signals, fastest LLM inference, low-latency streaming TTS.
+**For lowest latency:** [DeepgramFlux](/guides/stt/deepgram-flux) + [GroqLLM](/guides/llm/groq) + [DeepgramTTS](/guides/tts/deepgram-tts) -- eager end-of-turn signals, fastest LLM inference, low-latency streaming TTS.

@@ -97,7 +97,7 @@ await agent.start();
 ## Tips
 
 - **Use Groq model names exactly as listed.** Groq model identifiers differ from the upstream model names (e.g., `llama-3.3-70b-versatile`, not `meta-llama/Llama-3.3-70B`).
-- **Pair with eager LLM for minimum latency.** Groq's fast inference combined with DeepgramSTT's preflight signals produces the lowest speech-to-first-token latency.
+- **Pair with eager LLM for minimum latency.** Groq's fast inference combined with [DeepgramFlux](/guides/stt/deepgram-flux) preflight signals produces the lowest speech-to-first-token latency.
 - **Groq uses the `openai` peer dependency.** You do not need to install `groq-sdk`.
 - **Rate limits apply.** Free-tier Groq accounts have token-per-minute limits. Check the [Groq docs](https://console.groq.com/docs/rate-limits) for current limits.
 

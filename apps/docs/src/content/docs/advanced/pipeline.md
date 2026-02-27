@@ -120,7 +120,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-**Requirements:** [DeepgramFlux](/guides/stt/deepgram-flux) with a Flux model (e.g. `flux-general-en`). DeepgramSTT (V1/Nova) does not emit preflight signals. Other STT providers do not emit preflight events.
+**Requirements:** [DeepgramFlux](/guides/stt/deepgram-flux) with a Flux model (e.g. `flux-general-en`). [DeepgramSTT](/guides/stt/deepgram-stt) (V1/Nova) does not emit preflight signals. Other STT providers do not emit preflight events.
 
 ### Custom providers
 Extend the base classes to add your own STT, LLM, or TTS provider.

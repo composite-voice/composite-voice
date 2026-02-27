@@ -18,7 +18,7 @@ npm install @lukeocodes/composite-voice
 
 ## Your first voice pipeline
 
-The simplest pipeline uses browser-native speech recognition and synthesis -- zero extra API keys beyond Anthropic. NativeSTT wraps the Web Speech API. NativeTTS wraps SpeechSynthesis. Both work out of the box in Chrome, Edge, and Safari.
+The simplest pipeline uses browser-native speech recognition and synthesis -- zero extra API keys beyond Anthropic. [NativeSTT](/guides/stt/native-stt) wraps the Web Speech API. [NativeTTS](/guides/tts/native-tts) wraps SpeechSynthesis. Both work out of the box in Chrome, Edge, and Safari.
 
 ```typescript
 import {
@@ -99,11 +99,11 @@ const server = app.listen(3000, () => {
 });
 ```
 
-The browser sends requests to `/api/proxy/anthropic` and the proxy forwards them to `https://api.anthropic.com` with the real key attached. WebSocket providers (Deepgram, ElevenLabs, AssemblyAI, Cartesia) require the `attachWebSocket` call to handle upgrade requests.
+The browser sends requests to `/api/proxy/anthropic` and the proxy forwards them to `https://api.anthropic.com` with the real key attached. WebSocket providers ([Deepgram](/guides/stt/deepgram-stt), [ElevenLabs](/guides/tts/elevenlabs-tts), [AssemblyAI](/guides/stt/assemblyai-stt), [Cartesia](/guides/tts/cartesia-tts)) require the `attachWebSocket` call to handle upgrade requests.
 
 ## Upgrade to cloud providers
 
-NativeSTT and NativeTTS work for prototyping. For production-quality speech recognition and synthesis, swap in cloud providers. DeepgramSTT and DeepgramTTS use low-latency WebSocket connections.
+[NativeSTT](/guides/stt/native-stt) and [NativeTTS](/guides/tts/native-tts) work for prototyping. For production-quality speech recognition and synthesis, swap in cloud providers. [DeepgramSTT](/guides/stt/deepgram-stt) and [DeepgramTTS](/guides/tts/deepgram-tts) use low-latency WebSocket connections.
 
 ```typescript
 import {

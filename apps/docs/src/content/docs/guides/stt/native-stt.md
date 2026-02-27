@@ -85,7 +85,7 @@ await agent.start();
 - **Browser support is limited.** Chrome and Edge have full support. Safari offers partial support via `webkitSpeechRecognition`. Firefox does not support the Web Speech API at all.
 - **Microphone permission prompt.** NativeSTT pre-checks permission via `getUserMedia` before starting recognition. If the user denies access, `connect()` throws a `ProviderConnectionError`.
 - **Turn-taking pauses capture.** NativeSTT always appears in the SDK's `alwaysPauseCombinations` list, so the microphone pauses during TTS playback regardless of your turn-taking strategy.
-- **No preflight signals.** NativeSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, switch to DeepgramSTT.
+- **No preflight signals.** NativeSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, switch to [DeepgramSTT](/guides/stt/deepgram-stt).
 - **`sendAudio()` is a no-op.** Because the browser manages audio capture, calling `sendAudio()` on NativeSTT does nothing.
 
 ## Related resources

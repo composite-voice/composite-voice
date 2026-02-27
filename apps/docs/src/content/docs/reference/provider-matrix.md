@@ -10,7 +10,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | STT (V1) | STT (V2) | TTS |
 |---|---|---|---|
-| **Class** | `DeepgramSTT` | `DeepgramFlux` | `DeepgramTTS` |
+| **Class** | [`DeepgramSTT`](/guides/stt/deepgram-stt) | [`DeepgramFlux`](/guides/stt/deepgram-flux) | [`DeepgramTTS`](/guides/tts/deepgram-tts) |
 | **Transport** | WebSocket | WebSocket | WebSocket |
 | **Streaming** | Yes | Yes | Yes |
 | **Peer dependency** | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 |
@@ -34,7 +34,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM |
 |---|---|
-| **Class** | `AnthropicLLM` |
+| **Class** | [`AnthropicLLM`](/guides/llm/anthropic) |
 | **Transport** | HTTP streaming (SSE) |
 | **Streaming** | Yes |
 | **Peer dependency** | `@anthropic-ai/sdk` >=0.67.0 |
@@ -54,7 +54,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM | TTS |
 |---|---|---|
-| **Class** | `OpenAILLM` | `OpenAITTS` |
+| **Class** | [`OpenAILLM`](/guides/llm/openai) | [`OpenAITTS`](/guides/tts/openai-tts) |
 | **Transport** | HTTP streaming | HTTP (REST) |
 | **Streaming** | Yes | No (batch synthesis) |
 | **Peer dependency** | `openai` >=6.5.0 | `openai` >=6.5.0 |
@@ -76,7 +76,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM |
 |---|---|
-| **Class** | `GroqLLM` |
+| **Class** | [`GroqLLM`](/guides/llm/groq) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
 | **Peer dependency** | `openai` >=6.5.0 |
@@ -96,7 +96,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM |
 |---|---|
-| **Class** | `GeminiLLM` |
+| **Class** | [`GeminiLLM`](/guides/llm/gemini) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
 | **Peer dependency** | `openai` >=6.5.0 |
@@ -116,7 +116,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM |
 |---|---|
-| **Class** | `MistralLLM` |
+| **Class** | [`MistralLLM`](/guides/llm/mistral) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
 | **Peer dependency** | `openai` >=6.5.0 |
@@ -136,7 +136,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | STT |
 |---|---|
-| **Class** | `AssemblyAISTT` |
+| **Class** | [`AssemblyAISTT`](/guides/stt/assemblyai-stt) |
 | **Transport** | WebSocket |
 | **Streaming** | Yes |
 | **Peer dependency** | None |
@@ -154,7 +154,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | STT | TTS |
 |---|---|---|
-| **Class** | `ElevenLabsSTT` | `ElevenLabsTTS` |
+| **Class** | [`ElevenLabsSTT`](/guides/stt/elevenlabs-stt) | [`ElevenLabsTTS`](/guides/tts/elevenlabs-tts) |
 | **Transport** | WebSocket | WebSocket |
 | **Streaming** | Yes | Yes |
 | **Peer dependency** | None | None |
@@ -176,7 +176,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | TTS |
 |---|---|
-| **Class** | `CartesiaTTS` |
+| **Class** | [`CartesiaTTS`](/guides/tts/cartesia-tts) |
 | **Transport** | WebSocket |
 | **Streaming** | Yes |
 | **Peer dependency** | None |
@@ -196,7 +196,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | STT | TTS |
 |---|---|---|
-| **Class** | `NativeSTT` | `NativeTTS` |
+| **Class** | [`NativeSTT`](/guides/stt/native-stt) | [`NativeTTS`](/guides/tts/native-tts) |
 | **Transport** | Web Speech API | SpeechSynthesis API |
 | **Streaming** | Yes (interim results) | No (managed playback) |
 | **Peer dependency** | None | None |
@@ -208,7 +208,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 **TTS features:** Zero dependencies, works offline, voice enumeration via `getAvailableVoices()`, voice selection by name/language, rate/pitch/volume controls, pause/resume/cancel playback, runtime voice switching with `setVoice()`, managed audio (browser plays directly).
 
-**Limitations:** NativeSTT requires Chromium (no Firefox). Both use managed audio — the SDK cannot access raw audio streams. No preflight signals. Best for prototyping.
+**Limitations:** [NativeSTT](/guides/stt/native-stt) requires Chromium (no Firefox). Both use managed audio — the SDK cannot access raw audio streams. No preflight signals. Best for prototyping.
 
 **Guides:** [NativeSTT](/guides/stt/native-stt) · [NativeTTS](/guides/tts/native-tts) · **Examples:** [00](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent)
 
@@ -218,7 +218,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | | LLM |
 |---|---|
-| **Class** | `WebLLMLLM` |
+| **Class** | [`WebLLMLLM`](/guides/llm/webllm) |
 | **Transport** | WebGPU (in-browser) |
 | **Streaming** | Yes |
 | **Peer dependency** | `@mlc-ai/web-llm` >=0.2.74 |
@@ -238,18 +238,18 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 | Capability | Providers that support it |
 |---|---|
-| **WebSocket streaming** | DeepgramSTT, DeepgramFlux, DeepgramTTS, AssemblyAISTT, ElevenLabsSTT, ElevenLabsTTS, CartesiaTTS |
-| **Preflight / eager LLM** | DeepgramFlux |
-| **Server proxy** | All except NativeSTT, NativeTTS, WebLLMLLM |
-| **No API key needed** | NativeSTT, NativeTTS, WebLLMLLM |
-| **No peer dependency** | NativeSTT, NativeTTS, AssemblyAISTT, ElevenLabsSTT, ElevenLabsTTS, CartesiaTTS |
-| **Managed audio** | NativeSTT, NativeTTS |
-| **Voice cloning controls** | ElevenLabsTTS |
-| **Emotion controls** | CartesiaTTS |
-| **Word boosting** | DeepgramSTT, AssemblyAISTT |
-| **Keyterm boosting** | DeepgramFlux |
-| **Offline capable** | NativeSTT, NativeTTS, WebLLMLLM |
-| **Speaker diarization** | DeepgramSTT |
-| **Word-level timestamps** | DeepgramSTT, DeepgramFlux, AssemblyAISTT, ElevenLabsSTT, DeepgramTTS, CartesiaTTS |
-| **Language auto-detection** | ElevenLabsSTT |
-| **VAD commit strategy** | ElevenLabsSTT |
+| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
+| **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
+| **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
+| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) |
+| **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
+| **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
+| **Offline capable** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
+| **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt) |
+| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) |
+| **VAD commit strategy** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) |

@@ -108,7 +108,7 @@ tts.isPaused();   // true while paused
 
 - Voice availability varies by browser and operating system. Always test on your target platform.
 - Local voices (`localService: true`) have lower latency and work offline. Set `preferLocal: true` to favor them.
-- NativeTTS is best suited for prototyping and demos. For production voice quality, consider [DeepgramTTS](/guides/tts/deepgram-tts), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), or [CartesiaTTS](/guides/tts/cartesia-tts).
+- NativeTTS is best suited for prototyping and demos. For production voice quality, consider [DeepgramTTS](/guides/tts/deepgram-tts).
 
 ## Further reading
 

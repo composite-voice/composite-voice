@@ -44,8 +44,8 @@ When `pauseCaptureOnPlayback` is `'auto'`, the SDK uses the `autoStrategy` setti
 Pauses microphone capture unless the STT provider uses `navigator.mediaDevices.getUserMedia()`, which supports browser-level echo cancellation.
 
 In practice, this means:
-- **NativeSTT** (Web Speech API) -- always pauses, because the SpeechRecognition API has no echo cancellation support
-- **DeepgramSTT** and **AssemblyAISTT** (MediaDevices) -- does not pause, because getUserMedia can enable `echoCancellation: true`
+- **[NativeSTT](/guides/stt/native-stt)** (Web Speech API) -- always pauses, because the SpeechRecognition API has no echo cancellation support
+- **[DeepgramSTT](/guides/stt/deepgram-stt)** and **[AssemblyAISTT](/guides/stt/assemblyai-stt)** (MediaDevices) -- does not pause, because getUserMedia can enable `echoCancellation: true`
 
 ```typescript
 const agent = new CompositeVoice({
@@ -73,7 +73,7 @@ const agent = new CompositeVoice({
 });
 ```
 
-With the default `alwaysPauseCombinations`, this still pauses for any STT combination that includes `NativeSTT`, because `NativeSTT` is listed with a wildcard TTS match (see below). For WebSocket-based STT providers like `DeepgramSTT`, aggressive mode allows full-duplex.
+With the default `alwaysPauseCombinations`, this still pauses for any STT combination that includes [NativeSTT](/guides/stt/native-stt), because NativeSTT is listed with a wildcard TTS match (see below). For WebSocket-based STT providers like [DeepgramSTT](/guides/stt/deepgram-stt), aggressive mode allows full-duplex.
 
 #### Detect
 
@@ -130,9 +130,9 @@ const agent = new CompositeVoice({
 
 | Scenario                                                  | Recommended setting                                   |
 | --------------------------------------------------------- | ----------------------------------------------------- |
-| Using `NativeSTT` (Web Speech API)                        | `'auto'` with `'conservative'` (default) -- NativeSTT always needs pause |
-| Using `DeepgramSTT` or `AssemblyAISTT` on a laptop        | `'auto'` with `'conservative'` or `'detect'`          |
-| Using `DeepgramSTT` with external speakers + good mic     | `'auto'` with `'aggressive'` or `pauseCaptureOnPlayback: false` |
+| Using [NativeSTT](/guides/stt/native-stt) (Web Speech API)                        | `'auto'` with `'conservative'` (default) -- NativeSTT always needs pause |
+| Using [DeepgramSTT](/guides/stt/deepgram-stt) or [AssemblyAISTT](/guides/stt/assemblyai-stt) on a laptop        | `'auto'` with `'conservative'` or `'detect'`          |
+| Using [DeepgramSTT](/guides/stt/deepgram-stt) with external speakers + good mic     | `'auto'` with `'aggressive'` or `pauseCaptureOnPlayback: false` |
 | Headphones (no echo possible)                             | `pauseCaptureOnPlayback: false`                       |
 | Unsure about the user's audio setup                       | `pauseCaptureOnPlayback: true` (always safe)          |
 | Kiosk or embedded device with known hardware              | `pauseCaptureOnPlayback: false` after testing          |
@@ -158,7 +158,7 @@ agent.on('transcription.interim', async ({ text }) => {
 The `stopSpeaking()` method cancels TTS playback, disconnects any Live TTS WebSocket, and transitions the agent back to `listening`. The pipeline then processes the user's new utterance normally.
 
 **When `pauseCaptureOnPlayback` is `'auto'` with `'conservative'`:**
-Whether barge-in is available depends on the STT provider. With `DeepgramSTT` (which supports echo cancellation via MediaDevices), the microphone stays active and barge-in works. With `NativeSTT`, the microphone is paused and barge-in is not available.
+Whether barge-in is available depends on the STT provider. With [DeepgramSTT](/guides/stt/deepgram-stt) (which supports echo cancellation via MediaDevices), the microphone stays active and barge-in works. With [NativeSTT](/guides/stt/native-stt), the microphone is paused and barge-in is not available.
 
 ### Configuration examples
 

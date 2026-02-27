@@ -123,7 +123,7 @@ voice.clearHistory();
 
 The eager LLM pipeline reduces perceived latency by 100-300ms through speculative generation.
 
-Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, which connects to Deepgram's V2 API and emits preflight/eager end-of-turn signals. DeepgramSTT (V1/Nova) does not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
+Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, which connects to Deepgram's V2 API and emits preflight/eager end-of-turn signals. [DeepgramSTT](/guides/stt/deepgram-stt) (V1/Nova) does not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
 
 If `cancelOnTextChange` is `true` and the final transcript differs beyond `similarityThreshold` (default: 0.8), the speculative generation is cancelled via `AbortSignal` and restarted with the confirmed text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 

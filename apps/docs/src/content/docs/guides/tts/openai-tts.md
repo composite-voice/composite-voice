@@ -104,7 +104,7 @@ await voice.start();
 
 - OpenAI TTS has a 4096-character limit per request. CompositeVoice handles this automatically in the pipeline, but keep it in mind for standalone use.
 - The `opus` format gives the best balance of quality and size for browser playback.
-- OpenAITTS is REST-based, not streaming. The full audio Blob is returned after the API processes the entire input. For real-time streaming, consider [DeepgramTTS](/guides/tts/deepgram-tts), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), or [CartesiaTTS](/guides/tts/cartesia-tts).
+- OpenAITTS is REST-based, not streaming. The full audio Blob is returned after the API processes the entire input. For real-time streaming, consider [DeepgramTTS](/guides/tts/deepgram-tts).
 - Use `baseURL` to point at Azure OpenAI or any API-compatible endpoint. For CompositeVoice proxy routing, use `proxyUrl` instead.
 
 ## Further reading

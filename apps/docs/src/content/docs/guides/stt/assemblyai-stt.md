@@ -86,11 +86,11 @@ await agent.start();
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your AssemblyAI key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically.
-- **No peer dependencies.** Unlike DeepgramSTT, AssemblyAISTT uses the SDK's built-in `WebSocketManager` -- no extra packages to install.
+- **No peer dependencies.** Unlike [DeepgramSTT](/guides/stt/deepgram-stt), AssemblyAISTT uses the SDK's built-in `WebSocketManager` -- no extra packages to install.
 - **Word boosting improves accuracy.** Pass product names, technical terms, or proper nouns in `wordBoost` so AssemblyAI prioritizes them during recognition.
 - **Audio is base64-encoded.** The provider converts raw `ArrayBuffer` audio into base64 JSON messages (`{ audio_data: "..." }`) before sending. This is handled automatically.
 - **Automatic reconnection.** The `WebSocketManager` reconnects with exponential backoff (up to 5 attempts, 1s initial delay, 30s max delay) if the connection drops.
-- **No preflight signals.** AssemblyAISTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, use DeepgramSTT instead.
+- **No preflight signals.** AssemblyAISTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, use [DeepgramSTT](/guides/stt/deepgram-stt) instead.
 - **Graceful disconnect.** When you call `disconnect()`, the provider sends a `terminate_session` message to AssemblyAI before closing the WebSocket.
 
 ## Related resources

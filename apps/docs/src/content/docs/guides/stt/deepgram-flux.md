@@ -85,7 +85,7 @@ DeepgramFlux uses Deepgram's V2 API (`listen.v2`), which is fundamentally differ
 
 **Use DeepgramFlux when:** you want the lowest latency via the eager LLM pipeline, or you prefer the turn-based conversation model.
 
-**Use DeepgramSTT when:** you need Nova-3's broader language support, domain-specific models (medical, finance), or V1-specific features like diarization.
+**Use [DeepgramSTT](/guides/stt/deepgram-stt) when:** you need Nova-3's broader language support, domain-specific models (medical, finance), or V1-specific features like diarization.
 
 ## TurnInfo events
 

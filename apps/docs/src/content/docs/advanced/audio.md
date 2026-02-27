@@ -81,8 +81,8 @@ The defaults are exported as `DEFAULT_AUDIO_INPUT_CONFIG`:
 
 `AudioPlayer` uses the Web Audio API to play TTS audio through the speakers. It supports two modes:
 
-- **Complete playback** -- play a single audio `Blob` via `play()` (used by REST-based TTS providers like OpenAITTS).
-- **Streaming playback** -- queue individual `AudioChunk` objects via `addChunk()`, buffered and played sequentially (used by WebSocket-based TTS providers like DeepgramTTS, ElevenLabsTTS, CartesiaTTS).
+- **Complete playback** -- play a single audio `Blob` via `play()` (used by REST-based TTS providers like [OpenAITTS](/guides/tts/openai-tts)).
+- **Streaming playback** -- queue individual `AudioChunk` objects via `addChunk()`, buffered and played sequentially (used by WebSocket-based TTS providers like [DeepgramTTS](/guides/tts/deepgram-tts), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts)).
 
 For streaming playback, the player implements a buffering strategy:
 
@@ -117,14 +117,14 @@ Not all providers use the SDK's `AudioCapture` and `AudioPlayer`. The distinctio
 
 **Managed audio providers** handle their own audio I/O through browser APIs, bypassing the SDK's audio subsystems entirely:
 
-- **NativeSTT** uses the Web Speech API (`SpeechRecognition`), which captures microphone audio internally. Your `AudioInputConfig` settings (sample rate, noise suppression, etc.) do not apply.
-- **NativeTTS** uses the SpeechSynthesis API, which plays audio directly through the browser's built-in speech engine. Your `AudioOutputConfig` settings (buffer size, smoothing, etc.) do not apply.
+- **[NativeSTT](/guides/stt/native-stt)** uses the Web Speech API (`SpeechRecognition`), which captures microphone audio internally. Your `AudioInputConfig` settings (sample rate, noise suppression, etc.) do not apply.
+- **[NativeTTS](/guides/tts/native-tts)** uses the SpeechSynthesis API, which plays audio directly through the browser's built-in speech engine. Your `AudioOutputConfig` settings (buffer size, smoothing, etc.) do not apply.
 
 **Raw audio providers** stream audio data through the SDK, and your configuration applies fully:
 
-- **DeepgramSTT**, **AssemblyAISTT** -- receive PCM chunks from `AudioCapture`. All input config options take effect.
-- **DeepgramTTS**, **ElevenLabsTTS**, **CartesiaTTS** -- send audio chunks to `AudioPlayer`. All output config options take effect.
-- **OpenAITTS** -- sends a complete audio blob to `AudioPlayer` for one-shot playback.
+- **[DeepgramSTT](/guides/stt/deepgram-stt)**, **[AssemblyAISTT](/guides/stt/assemblyai-stt)** -- receive PCM chunks from `AudioCapture`. All input config options take effect.
+- **[DeepgramTTS](/guides/tts/deepgram-tts)**, **[ElevenLabsTTS](/guides/tts/elevenlabs-tts)**, **[CartesiaTTS](/guides/tts/cartesia-tts)** -- send audio chunks to `AudioPlayer`. All output config options take effect.
+- **[OpenAITTS](/guides/tts/openai-tts)** -- sends a complete audio blob to `AudioPlayer` for one-shot playback.
 
 If you use NativeSTT or NativeTTS, the audio config is still accepted without error; it simply has no effect on those providers.
 
