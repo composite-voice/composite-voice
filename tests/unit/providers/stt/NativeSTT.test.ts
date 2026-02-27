@@ -290,17 +290,97 @@ describe('NativeSTT', () => {
       );
     });
 
-    it('should map no-speech error', () => {
+    it('should silently ignore no-speech error (handled by auto-restart)', () => {
       const callback = jest.fn();
       provider.onTranscription(callback);
 
       mockRecognition.onerror?.({ error: 'no-speech', message: '' });
 
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metadata: expect.objectContaining({ error: 'no-speech' }),
-        })
-      );
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('auto-restart', () => {
+    beforeEach(async () => {
+      await provider.initialize();
+      // Simulate onstart firing synchronously so connect() resolves
+      mockRecognition.start.mockImplementation(() => {
+        mockRecognition.onstart?.(new Event('start'));
+      });
+    });
+
+    it('should restart recognition when onend fires while connected', async () => {
+      jest.useFakeTimers();
+      await provider.connect();
+      mockRecognition.start.mockClear();
+
+      // Fire onend unexpectedly
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+
+      expect(mockRecognition.start).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
+    });
+
+    it('should not restart after disconnect', async () => {
+      jest.useFakeTimers();
+      await provider.connect();
+      await provider.disconnect();
+      mockRecognition.start.mockClear();
+
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+
+      expect(mockRecognition.start).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('should stop restarting after MAX_RESTARTS consecutive failures', async () => {
+      jest.useFakeTimers();
+      await provider.connect();
+
+      // After connect, stop auto-triggering onstart so restarts don't reset the counter
+      mockRecognition.start.mockImplementation(() => {
+        /* no onstart — simulates failed restart */
+      });
+      mockRecognition.start.mockClear();
+
+      // Fire onend 5 times without onstart resetting the counter
+      for (let i = 0; i < 5; i++) {
+        mockRecognition.onend?.(new Event('end'));
+        jest.advanceTimersByTime(200);
+      }
+
+      // 6th should not restart
+      mockRecognition.start.mockClear();
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+
+      expect(mockRecognition.start).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('should reset restart counter on successful start', async () => {
+      jest.useFakeTimers();
+      await provider.connect();
+      mockRecognition.start.mockClear();
+
+      // Fire onend a few times
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+
+      // Simulate successful restart (onstart fires)
+      mockRecognition.onstart?.(new Event('start'));
+
+      // Fire onend again — should restart (counter reset)
+      mockRecognition.start.mockClear();
+      mockRecognition.onend?.(new Event('end'));
+      jest.advanceTimersByTime(200);
+
+      expect(mockRecognition.start).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
     });
   });
 

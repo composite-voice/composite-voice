@@ -35,6 +35,7 @@ const stt = new NativeSTT({
 - Works offline
 - Supports 50+ languages via the browser
 - Managed audio — the browser controls the microphone directly
+- **Does not work in de-Googled browsers** (Ungoogled Chromium, Brave) — the Web Speech API requires Google's speech servers
 
 [API reference](/api/classes/nativestt)
 

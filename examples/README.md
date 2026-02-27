@@ -20,7 +20,7 @@ Five standalone Vite apps that each demonstrate a distinct capability of the SDK
 
 - **Node.js** 18 or later
 - **pnpm** — `npm install -g pnpm`
-- **Chrome or Edge** for examples 00 and 02 (Web Speech API limitation — Firefox does not support `NativeSTT`)
+- **Chrome or Edge** for NativeSTT examples (Web Speech API limitation — Firefox, Ungoogled Chromium, and Brave do not support `NativeSTT`)
 - API keys for the providers you need:
   - [Anthropic](https://console.anthropic.com/) — required for examples 00, 01, 02, 03 (client-side), 04 (server-side)
   - [Deepgram](https://console.deepgram.com/) — required for examples 01, 03 (client-side), 04 (server-side). Free tier available, no credit card required.
@@ -163,7 +163,7 @@ pnpm example:00-native-anthropic-native:dev
 
 **NativeSTT does nothing (examples 00 and 02)**
 
-The Web Speech API is only fully supported in Chrome and Edge. Switch to example 01 for Firefox support.
+The Web Speech API is only fully supported in Chrome and Edge. De-Googled browsers like Ungoogled Chromium and Brave strip out Google's speech servers, so NativeSTT will silently fail. Switch to a WebSocket STT example (20+) for browser-agnostic speech recognition.
 
 **API key error at startup**
 

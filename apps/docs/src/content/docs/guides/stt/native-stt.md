@@ -8,7 +8,7 @@ Use NativeSTT for prototyping and demos where you need speech recognition withou
 
 ## Prerequisites
 
-- A Chromium-based browser (Chrome, Edge) or Safari. Firefox does not support the Web Speech API.
+- A Chromium-based browser (Chrome, Edge) or Safari. Firefox does not support the Web Speech API. De-Googled forks (Ungoogled Chromium, Brave) will not work — see [Tips and gotchas](#tips-and-gotchas).
 - Microphone access granted by the user.
 
 No API keys or peer dependencies are required.
@@ -83,6 +83,7 @@ await agent.start();
 ## Tips and gotchas
 
 - **Browser support is limited.** Chrome and Edge have full support. Safari offers partial support via `webkitSpeechRecognition`. Firefox does not support the Web Speech API at all.
+- **De-Googled browsers will not work.** The Web Speech API in Chromium sends audio to Google's servers for recognition. Privacy-focused forks like **Ungoogled Chromium** and **Brave** strip out Google services, so `SpeechRecognition` will silently fail. If you use one of these browsers, switch to a WebSocket-based provider like [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt), or [ElevenLabsSTT](/guides/stt/elevenlabs-stt).
 - **Microphone permission prompt.** NativeSTT pre-checks permission via `getUserMedia` before starting recognition. If the user denies access, `connect()` throws a `ProviderConnectionError`.
 - **Turn-taking pauses capture.** NativeSTT always appears in the SDK's `alwaysPauseCombinations` list, so the microphone pauses during TTS playback regardless of your turn-taking strategy.
 - **No preflight signals.** NativeSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, switch to [DeepgramSTT](/guides/stt/deepgram-stt).

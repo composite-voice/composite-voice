@@ -162,8 +162,12 @@ export class NativeSTT extends LiveSTTProvider {
 
   /** The underlying browser `SpeechRecognition` instance. */
   private recognition: SpeechRecognition | null = null;
-  // State is now managed externally by AudioCaptureStateMachine!
-  // No more isRecognizing or isPaused flags
+  /** Whether the provider should be actively listening (set by connect/disconnect). */
+  private shouldBeListening = false;
+  /** Consecutive restart count — reset on successful `onstart`, used to cap retries. */
+  private restartCount = 0;
+  /** Maximum consecutive restarts before giving up. */
+  private static readonly MAX_RESTARTS = 5;
 
   /**
    * Create a new NativeSTT provider.
@@ -229,6 +233,7 @@ export class NativeSTT extends LiveSTTProvider {
 
   /** Disconnect and release the `SpeechRecognition` instance. */
   protected async onDispose(): Promise<void> {
+    this.shouldBeListening = false;
     if (this.recognition) {
       await this.disconnect();
     }
@@ -272,14 +277,25 @@ export class NativeSTT extends LiveSTTProvider {
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      // Provide more helpful error messages
+      // 'no-speech' fires when Chrome detects silence — not a real error.
+      // The onend handler will auto-restart recognition.
+      if (event.error === 'no-speech') {
+        this.logger.debug('No speech detected — recognition will restart via onend');
+        return;
+      }
+
+      // 'aborted' fires when we call stop()/abort() programmatically — expected during disconnect
+      if (event.error === 'aborted') {
+        this.logger.debug('Recognition aborted (expected during disconnect)');
+        return;
+      }
+
+      // Real errors: provide helpful messages and emit
       let errorMessage = event.message || event.error;
 
       if (event.error === 'not-allowed') {
         errorMessage =
           'Microphone access denied. Please allow microphone permissions in your browser.';
-      } else if (event.error === 'no-speech') {
-        errorMessage = 'No speech detected. Please try speaking again.';
       } else if (event.error === 'audio-capture') {
         errorMessage = 'No microphone found. Please connect a microphone and try again.';
       } else if (event.error === 'network') {
@@ -288,7 +304,7 @@ export class NativeSTT extends LiveSTTProvider {
 
       this.logger.error(`Recognition error: ${event.error}`, errorMessage);
 
-      // Emit error as transcription result
+      // Emit error as transcription result for real errors only
       const errorResult: TranscriptionResult = {
         text: '',
         isFinal: true,
@@ -300,16 +316,42 @@ export class NativeSTT extends LiveSTTProvider {
       };
 
       this.emitTranscription(errorResult);
-
-      // Note: State machine will handle error recovery
     };
 
     this.recognition.onend = () => {
-      this.logger.debug('Recognition ended - state machine will handle restart if needed');
-      // Note: No auto-restart logic! AudioCaptureStateMachine manages lifecycle
+      if (!this.shouldBeListening) {
+        this.logger.debug('Recognition ended (expected — disconnect was called)');
+        return;
+      }
+
+      // Unexpected end while we should still be listening — auto-restart
+      if (this.restartCount >= NativeSTT.MAX_RESTARTS) {
+        this.logger.error(
+          `Recognition ended unexpectedly ${this.restartCount} times — giving up. ` +
+            'Call disconnect() then connect() to reset.'
+        );
+        this.shouldBeListening = false;
+        return;
+      }
+
+      this.restartCount++;
+      this.logger.info(
+        `Recognition ended unexpectedly — restarting (attempt ${this.restartCount}/${NativeSTT.MAX_RESTARTS})`
+      );
+
+      // Small delay to avoid rapid-fire restart loops
+      setTimeout(() => {
+        if (!this.shouldBeListening || !this.recognition) return;
+        try {
+          this.recognition.start();
+        } catch (error) {
+          this.logger.error('Failed to restart recognition', error);
+        }
+      }, 200);
     };
 
     this.recognition.onstart = () => {
+      this.restartCount = 0;
       this.logger.info('✅ Recognition started - listening for speech...');
     };
   }
@@ -415,6 +457,8 @@ export class NativeSTT extends LiveSTTProvider {
 
       try {
         this.logger.debug('Starting speech recognition');
+        this.shouldBeListening = true;
+        this.restartCount = 0;
         this.recognition.start();
       } catch (error) {
         clearTimeout(timeout);
@@ -443,6 +487,8 @@ export class NativeSTT extends LiveSTTProvider {
    * @returns Resolves immediately after requesting the stop.
    */
   disconnect(): Promise<void> {
+    this.shouldBeListening = false;
+
     if (!this.recognition) {
       this.logger.debug('No recognition object to disconnect');
       return Promise.resolve();

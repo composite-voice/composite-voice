@@ -23,7 +23,7 @@ The minimum viable voice agent. Browser speech recognition, Claude, and browser 
 ## Prerequisites
 
 - **Node.js** 18 or later and **pnpm** (`npm install -g pnpm`)
-- **Chrome or Edge** — the Web Speech API is not available in Firefox or Safari
+- **Chrome or Edge** — the Web Speech API is not available in Firefox, Safari, or de-Googled browsers (Ungoogled Chromium, Brave)
 - An [Anthropic API key](https://console.anthropic.com/) — free to create, pay per token
 
 ---
@@ -166,7 +166,7 @@ pnpm build
 
 **Nothing happens when I speak**
 
-- Make sure you're using Chrome or Edge — Firefox and Safari don't support the Web Speech API
+- Make sure you're using Chrome or Edge — Firefox, Safari, Ungoogled Chromium, and Brave don't support the Web Speech API (it requires Google's speech servers)
 - Click **Initialize** first, then **Start** — these are two separate steps
 - Check your microphone works in another app
 - Click anywhere on the page before speaking — browsers require a user gesture before granting mic access
@@ -203,5 +203,9 @@ NativeSTT and NativeTTS use the browser's Web Speech API. Microphone capture is 
 | Browser | Web Speech API (STT) | SpeechSynthesis (TTS) | Notes |
 |---------|---------------------|----------------------|-------|
 | Chrome / Edge | Full support | Full support | Recommended |
+| Ungoogled Chromium | Not available | Full support | See note below |
+| Brave | Not available | Full support | See note below |
 | Firefox | Not available | Limited | Use WebSocket providers (DeepgramSTT / DeepgramFlux) instead |
 | Safari | Unreliable | Works | Behaviour varies by version — use WebSocket providers instead |
+
+> **De-Googled browsers:** The Web Speech API in Chromium-based browsers sends audio to Google's speech recognition servers. Privacy-focused forks like **Ungoogled Chromium** and **Brave** strip out Google services, so `SpeechRecognition` will silently fail or not exist at all. NativeTTS (SpeechSynthesis) still works fine since it runs locally. If you use one of these browsers, switch to a WebSocket-based STT provider like [DeepgramSTT](../20-deepgram-pipeline/), [AssemblyAISTT](../40-assemblyai-pipeline/), or [ElevenLabsSTT](../81-elevenlabs-stt/).
