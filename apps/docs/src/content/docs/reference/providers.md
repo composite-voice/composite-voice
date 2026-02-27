@@ -14,6 +14,7 @@ CompositeVoice uses three provider slots — **STT** (speech-to-text), **LLM** (
 | DeepgramSTT | WebSocket | V1: nova-3, nova-2 | Yes | No |
 | DeepgramFlux | WebSocket | V2: flux-general-en | Yes | Yes |
 | AssemblyAISTT | WebSocket | Default model | Yes | No |
+| ElevenLabsSTT | WebSocket | scribe_v2_realtime | Yes | No |
 
 ### NativeSTT
 
@@ -119,6 +120,33 @@ const stt = new AssemblyAISTT({
 - Automatic reconnection
 
 [API reference](/api/classes/assemblyaistt)
+
+### ElevenLabsSTT
+
+Real-time speech recognition via WebSocket using ElevenLabs Scribe V2 with ~150ms latency and 90+ language support.
+
+```typescript
+import { ElevenLabsSTT } from '@lukeocodes/composite-voice';
+
+const stt = new ElevenLabsSTT({
+  proxyUrl: '/api/proxy/elevenlabs',
+  // OR: apiKey: '...',
+  // OR: token: '...',             // single-use token
+  model: 'scribe_v2_realtime',
+  audioFormat: 'pcm_16000',
+  language: 'en',                  // BCP 47, ISO 639-1, or ISO 639-3
+  commitStrategy: 'vad',           // 'vad' (default) or 'manual'
+  includeTimestamps: true,         // word-level timestamps
+});
+```
+
+- VAD and manual commit strategies
+- 90+ languages with auto-detection
+- Word-level timestamps and confidence
+- Three auth methods (API key, proxy, single-use token)
+- Shares proxy config with ElevenLabsTTS
+
+[API reference](/api/classes/elevenlabsstt)
 
 ---
 

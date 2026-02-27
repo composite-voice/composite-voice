@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 16 provider classes. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 11 provider companies across 17 provider classes. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Deepgram
 
@@ -152,21 +152,23 @@ CompositeVoice supports 11 provider companies across 16 provider classes. This p
 
 ### ElevenLabs
 
-| | TTS |
-|---|---|
-| **Class** | `ElevenLabsTTS` |
-| **Transport** | WebSocket |
-| **Streaming** | Yes |
-| **Peer dependency** | None |
-| **Proxy support** | Yes |
-| **Browser support** | All modern browsers |
-| **Default model** | eleven_turbo_v2_5 |
+| | STT | TTS |
+|---|---|---|
+| **Class** | `ElevenLabsSTT` | `ElevenLabsTTS` |
+| **Transport** | WebSocket | WebSocket |
+| **Streaming** | Yes | Yes |
+| **Peer dependency** | None | None |
+| **Proxy support** | Yes | Yes |
+| **Browser support** | All modern browsers | All modern browsers |
+| **Default model** | scribe_v2_realtime | eleven_turbo_v2_5 |
+
+**STT features:** Scribe V2 Realtime (~150ms latency), 90+ languages with auto-detection, VAD and manual commit strategies, interim results (partial transcripts), word-level timestamps and confidence, base64-encoded audio, three auth methods (API key, proxy, single-use token), BCP 47 / ISO 639-1 / ISO 639-3 language code auto-mapping, configurable VAD sensitivity, `previousText` context, zero-retention mode.
 
 **TTS features:** Voice cloning controls (stability 0–1, similarityBoost 0–1), BOS/EOS stream-input protocol, word-level alignment, 6 output formats (pcm_16000, pcm_22050, pcm_24000, pcm_44100, mp3_44100_128, ulaw_8000), multilingual models.
 
-**Models:** eleven_turbo_v2_5 (fast), eleven_turbo_v2, eleven_multilingual_v2, eleven_monolingual_v1.
+**TTS models:** eleven_turbo_v2_5 (fast), eleven_turbo_v2, eleven_multilingual_v2, eleven_monolingual_v1.
 
-**Guides:** [ElevenLabsTTS](/guides/tts/elevenlabs-tts) · **Examples:** [80](https://github.com/lukeocodes/composite-voice/tree/main/examples/80-elevenlabs-pipeline)
+**Guides:** [ElevenLabsSTT](/guides/stt/elevenlabs-stt) · [ElevenLabsTTS](/guides/tts/elevenlabs-tts) · **Examples:** [80](https://github.com/lukeocodes/composite-voice/tree/main/examples/80-elevenlabs-pipeline), [81](https://github.com/lukeocodes/composite-voice/tree/main/examples/81-elevenlabs-stt)
 
 ---
 
@@ -236,11 +238,11 @@ CompositeVoice supports 11 provider companies across 16 provider classes. This p
 
 | Capability | Providers that support it |
 |---|---|
-| **WebSocket streaming** | DeepgramSTT, DeepgramFlux, DeepgramTTS, AssemblyAISTT, ElevenLabsTTS, CartesiaTTS |
+| **WebSocket streaming** | DeepgramSTT, DeepgramFlux, DeepgramTTS, AssemblyAISTT, ElevenLabsSTT, ElevenLabsTTS, CartesiaTTS |
 | **Preflight / eager LLM** | DeepgramFlux |
 | **Server proxy** | All except NativeSTT, NativeTTS, WebLLMLLM |
 | **No API key needed** | NativeSTT, NativeTTS, WebLLMLLM |
-| **No peer dependency** | NativeSTT, NativeTTS, AssemblyAISTT, ElevenLabsTTS, CartesiaTTS |
+| **No peer dependency** | NativeSTT, NativeTTS, AssemblyAISTT, ElevenLabsSTT, ElevenLabsTTS, CartesiaTTS |
 | **Managed audio** | NativeSTT, NativeTTS |
 | **Voice cloning controls** | ElevenLabsTTS |
 | **Emotion controls** | CartesiaTTS |
@@ -248,4 +250,6 @@ CompositeVoice supports 11 provider companies across 16 provider classes. This p
 | **Keyterm boosting** | DeepgramFlux |
 | **Offline capable** | NativeSTT, NativeTTS, WebLLMLLM |
 | **Speaker diarization** | DeepgramSTT |
-| **Word-level timestamps** | DeepgramSTT, DeepgramFlux, AssemblyAISTT, DeepgramTTS, CartesiaTTS |
+| **Word-level timestamps** | DeepgramSTT, DeepgramFlux, AssemblyAISTT, ElevenLabsSTT, DeepgramTTS, CartesiaTTS |
+| **Language auto-detection** | ElevenLabsSTT |
+| **VAD commit strategy** | ElevenLabsSTT |
