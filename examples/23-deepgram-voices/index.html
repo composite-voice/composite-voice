@@ -490,9 +490,11 @@
     <script type="module">
         import {
             CompositeVoice,
+            MicrophoneInput,
             DeepgramSTT,
-            DeepgramTTS,
             AnthropicLLM,
+            DeepgramTTS,
+            BrowserAudioOutput,
         } from '@lukeocodes/composite-voice';
 
         /* ------------------------------------------------------------------ */
@@ -688,9 +690,7 @@
             });
 
             agent = new CompositeVoice({
-                stt,
-                llm,
-                tts,
+                providers: [new MicrophoneInput(), stt, llm, tts, new BrowserAudioOutput()],
                 logging: { enabled: true, level: 'info' },
             });
 
