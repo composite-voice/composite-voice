@@ -25,10 +25,10 @@ The only change is the LLM provider:
 
 ```javascript
 // Example 00 (Anthropic)
-llm: new AnthropicLLM({ proxyUrl: '...', model: 'claude-haiku-4-5-20251001' })
+providers: [new NativeSTT(), new AnthropicLLM({ proxyUrl: '...', model: 'claude-haiku-4-5-20251001' }), new NativeTTS()]
 
 // Example 40 (OpenAI)
-llm: new OpenAILLM({ proxyUrl: '...', model: 'gpt-4o-mini' })
+providers: [new NativeSTT(), new OpenAILLM({ proxyUrl: '...', model: 'gpt-4o-mini' }), new NativeTTS()]
 ```
 
 Everything else — STT, TTS, events, state machine, UI — is identical.
