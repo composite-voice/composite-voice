@@ -193,9 +193,13 @@ export type {
   CartesiaOutputFormat,
 } from './providers/tts/cartesia/index';
 
+// Built-in providers - Input
+export { BufferInput } from './providers/input/index';
+
 // Built-in providers - Output
 export { BrowserAudioOutput } from './providers/output/index';
 export type { BrowserAudioOutputConfig } from './providers/output/index';
+export { NullOutput } from './providers/output/index';
 
 // Utilities
 export {
