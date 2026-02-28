@@ -12,6 +12,134 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Project Overview
+
+**composite-voice** is a TypeScript SDK for building voice agents with a pluggable 5-role audio pipeline. It supports browser and server-side runtimes with an event-driven architecture.
+
+## 5-Role Pipeline Architecture
+
+The SDK uses a 5-role pipeline where each role is filled by a provider:
+
+```
+[InputProvider] → InputQueue → [STTProvider] → [LLMProvider] → [TTSProvider] → OutputQueue → [OutputProvider]
+```
+
+The five roles are: `input`, `stt`, `llm`, `tts`, `output` (defined as `ProviderRole` in `src/core/types/roles.ts`).
+
+### Array-Based Config
+
+Providers are configured as a flat array. The SDK resolves them to a typed `ResolvedPipeline` via `resolveProviders()`:
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramSTT({ /* ... */ }),
+    new AnthropicLLM({ /* ... */ }),
+    new DeepgramTTS({ /* ... */ }),
+    new BrowserAudioOutput(),
+  ],
+});
+```
+
+### Multi-Role Providers
+
+Some providers cover multiple roles. NativeSTT covers `input` + `stt`, and NativeTTS covers `tts` + `output`. This allows a minimal 3-provider config:
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [new NativeSTT(), new AnthropicLLM({ /* ... */ }), new NativeTTS()],
+});
+```
+
+### Auto-Fill Defaults
+
+- If `input` and `stt` are both uncovered, `NativeSTT()` is auto-filled (covers both)
+- If `tts` and `output` are both uncovered, `NativeTTS()` is auto-filled (covers both)
+- `llm` is always required — no default LLM provider
+
+### Audio Buffering (Race Condition Fix)
+
+When `input` and `stt` are separate providers, an `AudioBufferQueue` buffers audio frames during the STT WebSocket handshake. The queue drains once the STT connection is established, ensuring no audio is lost.
+
+### Header Cache
+
+`AudioHeaderCache` caches audio container headers (WAV, OGG, MP3, etc.) so they can be re-injected after a WebSocket reconnection.
+
+## Source Structure
+
+```
+src/
+├── CompositeVoice.ts          # Main orchestrator
+├── index.ts                   # Public API exports
+├── core/
+│   ├── types/
+│   │   ├── roles.ts           # ProviderRole, ALL_PROVIDER_ROLES
+│   │   ├── providers.ts       # All provider interfaces (Base, STT, LLM, TTS, Input, Output)
+│   │   ├── config.ts          # CompositeVoiceConfig, AudioBufferQueueConfig
+│   │   └── audio.ts           # AudioChunk, AudioMetadata, AudioFormat
+│   ├── pipeline/
+│   │   ├── AudioBufferQueue.ts       # Bounded FIFO queue between pipeline stages
+│   │   ├── AudioHeaderCache.ts       # Header caching for reconnection
+│   │   ├── resolveProviders.ts       # Maps provider array → ResolvedPipeline
+│   │   └── configureSTTFromMetadata.ts  # Auto-configures STT from input metadata
+│   ├── events/                # EventEmitter, typed event definitions
+│   ├── state/                 # AgentStateMachine, audio/processing state machines
+│   └── audio/                 # AudioCapture, AudioPlayer (browser internals)
+├── providers/
+│   ├── base/                  # Abstract base classes (BaseProvider → Base{STT,LLM,TTS}Provider)
+│   ├── input/                 # MicrophoneInput, BufferInput
+│   ├── stt/                   # NativeSTT, DeepgramSTT, DeepgramFlux, AssemblyAISTT, ElevenLabsSTT
+│   ├── llm/                   # AnthropicLLM, OpenAILLM, GroqLLM, MistralLLM, GeminiLLM, WebLLMLLM
+│   ├── tts/                   # NativeTTS, DeepgramTTS, OpenAITTS, ElevenLabsTTS, CartesiaTTS
+│   └── output/                # BrowserAudioOutput, NullOutput
+├── proxy/                     # Server-side proxy adapters (Express, Next.js, Node)
+└── utils/                     # Logger, errors, audio utilities, format detection, WebSocket manager
+```
+
+## Key Patterns
+
+- **Role declaration:** Providers declare `public readonly roles: readonly ProviderRole[]` (e.g., `['stt']` or `['input', 'stt']` for multi-role)
+- **Base class hierarchy:** `BaseProvider` → `BaseSTTProvider`/`BaseLLMProvider`/`BaseTTSProvider` → transport-specific → concrete
+- **Multi-role detection:** `Object.is(pipeline.input, pipeline.stt)` checks if same instance fills both slots
+- **Provider deduplication:** `new Set<BaseProvider>([...])` prevents double init/dispose of multi-role providers
+- **Queue draining asymmetry:** Input queue starts draining AFTER STT connects (race condition fix); output queue drains immediately
+- **Constructor-name detection:** `provider.constructor.name` identifies providers in pipeline utilities (not duck-typing)
+- **Queue events on hot paths:** `AudioBufferQueue` uses `emitSync()` (not async) via an `onOverflow()` callback
+- **TSDoc everywhere:** Module files start with `@packageDocumentation`; interfaces use `@remarks`, `@example`, `@see`, ASCII diagrams
+
+## Quality Gates
+
+```bash
+pnpm test             # Full test suite
+pnpm tsc --noEmit     # Type checking
+```
+
+For examples: `pnpm build` in the example directory.
+
+## Test Structure
+
+```
+tests/
+├── unit/
+│   ├── core/          # Pipeline, audio, events, state machine tests
+│   ├── providers/     # Base provider and concrete provider tests
+│   ├── proxy/         # Proxy adapter tests
+│   └── utils/         # Utility function tests
+├── integration/       # Multi-component integration tests
+├── e2e/               # End-to-end scenarios
+├── fixtures/          # Test data
+└── mocks/             # MockProviders.ts (implement interfaces directly, not base classes)
+```
+
+## Pre-commit Hooks
+
+`.husky/pre-commit` runs:
+1. `pnpm install --frozen-lockfile` — catches out-of-sync lockfile
+2. `pnpm test` — full test suite
+
+When modifying `package.json`, always run `pnpm install` first so the lockfile updates before committing.
+
 <!-- BEGIN BEADS INTEGRATION -->
 
 ## Issue Tracking with bd (beads)
