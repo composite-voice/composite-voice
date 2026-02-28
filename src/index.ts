@@ -6,11 +6,18 @@
  * Re-exports all public classes, interfaces, types, and utilities from the SDK.
  * This is the primary module consumers import from when using the SDK.
  *
- * The SDK provides a composable voice AI pipeline with pluggable providers for
- * Speech-to-Text (STT), Large Language Models (LLM), and Text-to-Speech (TTS).
+ * The SDK provides a 5-role audio pipeline with pluggable providers for
+ * Audio Input, Speech-to-Text (STT), Large Language Models (LLM),
+ * Text-to-Speech (TTS), and Audio Output. Providers declare their roles
+ * via a `roles` property, and multi-role providers (e.g., NativeSTT covering
+ * both `input` and `stt`) are supported via array-based config.
+ *
+ * Pipeline: [InputProvider] → InputQueue → [STT] → [LLM] → [TTS] → OutputQueue → [OutputProvider]
+ *
  * It features an event-driven architecture, conversation history management,
- * eager LLM pipeline support, configurable turn-taking strategies, and
- * WebSocket reconnection with exponential backoff.
+ * eager LLM pipeline support, configurable turn-taking strategies,
+ * audio buffering between pipeline stages, format detection with header caching,
+ * and WebSocket reconnection with exponential backoff.
  *
  * @example Basic usage with NativeSTT, Anthropic LLM, and NativeTTS
  * ```typescript
@@ -252,5 +259,10 @@ export {
 export type { DetectedAudioFormat } from './utils/index';
 
 // Pipeline utilities
-export { AudioBufferQueue, AudioHeaderCache } from './core/pipeline/index';
+export {
+  AudioBufferQueue,
+  AudioHeaderCache,
+  resolveProviders,
+  configureSTTFromMetadata,
+} from './core/pipeline/index';
 export type { QueueStats, DrainCallback } from './core/pipeline/index';
