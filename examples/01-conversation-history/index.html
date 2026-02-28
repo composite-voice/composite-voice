@@ -382,9 +382,11 @@ Remember everything the user has told you in this conversation.`,
                 });
 
                 agent = new CompositeVoice({
-                    stt,
-                    llm,
-                    tts,
+                    providers: [
+                        stt, // [input + stt]
+                        llm, // [llm]
+                        tts, // [tts + output]
+                    ],
                     conversationHistory: {
                         enabled: true,
                         maxTurns: 10,

@@ -26,7 +26,7 @@ By default, `CompositeVoice` is stateless — each utterance goes to the LLM wit
 
 ```javascript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: true,
     maxTurns: 10,   // keep the last 10 user + assistant pairs in context
