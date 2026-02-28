@@ -252,4 +252,5 @@ export {
 export type { DetectedAudioFormat } from './utils/index';
 
 // Pipeline utilities
-export { AudioHeaderCache } from './core/pipeline/index';
+export { AudioBufferQueue, AudioHeaderCache } from './core/pipeline/index';
+export type { QueueStats, DrainCallback } from './core/pipeline/index';
