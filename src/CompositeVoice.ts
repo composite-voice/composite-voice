@@ -1,11 +1,21 @@
 /**
- * Main CompositeVoice SDK module providing the primary public API for the voice pipeline.
+ * Main CompositeVoice SDK module providing the primary public API for the
+ * 5-role audio pipeline.
  *
  * @remarks
- * This module exports the {@link CompositeVoice} class, which orchestrates the full
- * Speech-to-Text (STT) to Large Language Model (LLM) to Text-to-Speech (TTS)
- * pipeline. It manages provider lifecycles, state machines, audio I/O, event
+ * This module exports the {@link CompositeVoice} class, which orchestrates the
+ * full 5-role audio pipeline:
+ *
+ * ```
+ * [InputProvider] -> InputQueue -> [STT] -> [LLM] -> [TTS] -> OutputQueue -> [OutputProvider]
+ * ```
+ *
+ * It manages provider lifecycles, state machines, audio buffering, event
  * emission, conversation history, and the eager/speculative LLM pipeline.
+ *
+ * The race condition where Deepgram missed first audio frames is fixed by
+ * {@link AudioBufferQueue}: audio is buffered while the STT WebSocket handshake
+ * completes, then flushed in order when the connection is ready.
  *
  * @packageDocumentation
  */
@@ -26,18 +36,24 @@ import type {
   LiveTTSProvider,
   RestTTSProvider,
   LLMMessage,
+  ResolvedPipeline,
+  BaseProvider,
 } from './core/types/providers';
+import type { AudioChunk } from './core/types/audio';
 import { AgentStateMachine } from './core/state/AgentStateMachine';
 import { SimpleAudioCaptureStateMachine as AudioCaptureStateMachine } from './core/state/SimpleAudioCaptureStateMachine';
 import { SimpleAudioPlaybackStateMachine as AudioPlaybackStateMachine } from './core/state/SimpleAudioPlaybackStateMachine';
 import { SimpleProcessingStateMachine as ProcessingStateMachine } from './core/state/SimpleProcessingStateMachine';
-import { AudioCapture } from './core/audio/AudioCapture';
-import { AudioPlayer } from './core/audio/AudioPlayer';
 import { Logger, createLogger } from './utils/logger';
-import { ConfigurationError, InvalidStateError } from './utils/errors';
+import { InvalidStateError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
+import { resolveProviders } from './core/pipeline/resolveProviders';
+import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
+import type { QueueStats } from './core/pipeline/AudioBufferQueue';
+import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
+import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -86,26 +102,33 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
 }
 
 /**
- * The primary class of the CompositeVoice SDK, orchestrating a complete voice
- * pipeline from speech recognition through language model processing to speech
- * synthesis.
+ * The primary class of the CompositeVoice SDK, orchestrating a complete 5-role
+ * audio pipeline from input capture through speech recognition, language model
+ * processing, speech synthesis, to audio output.
  *
  * @remarks
- * `CompositeVoice` composes three pluggable provider types -- STT, LLM, and TTS --
- * into a unified, event-driven voice agent. It manages:
+ * `CompositeVoice` resolves a flat array of providers into a typed
+ * {@link ResolvedPipeline} covering five roles (`input`, `stt`, `llm`, `tts`,
+ * `output`), then wires them together with {@link AudioBufferQueue} instances
+ * to prevent race conditions and an {@link AudioHeaderCache} for WebSocket
+ * reconnection scenarios. It manages:
  *
- * - **Provider lifecycle**: Initialization, connection, and disposal of all three
- *   providers.
+ * - **5-role pipeline**: Providers are resolved via {@link resolveProviders} into
+ *   a typed pipeline. Multi-role providers (e.g., NativeSTT covering `input`+`stt`)
+ *   use simplified paths without queues.
+ * - **Race condition fix**: An `AudioBufferQueue` between the input provider and
+ *   STT buffers audio frames during the WebSocket handshake, then flushes them
+ *   in order when `startDraining()` is called.
+ * - **Provider lifecycle**: Initialization, connection, and disposal of all
+ *   providers, with deduplication for multi-role instances (using `Set`).
  * - **State machines**: Four coordinated state machines (audio capture, audio
  *   playback, processing, and an orchestrating agent state machine) that derive
  *   the high-level agent state (`idle`, `ready`, `listening`, `thinking`,
  *   `speaking`, `error`).
- * - **Audio I/O**: SDK-managed `AudioCapture` and `AudioPlayer` for providers
- *   that do not handle their own audio pipelines (i.e., do not cover the
- *   `'input'` or `'output'` roles).
  * - **Turn-taking**: Configurable strategies (`auto`, `conservative`,
  *   `aggressive`, `detect`) that control whether audio capture pauses during
- *   TTS playback to prevent echo.
+ *   TTS playback to prevent echo. Pause/resume stops/starts queue draining,
+ *   pauses/resumes input, disconnects/reconnects STT with header re-injection.
  * - **Conversation history**: Optional multi-turn memory with configurable
  *   `maxTurns`, sending accumulated context to the LLM.
  * - **Eager LLM pipeline**: Speculative generation triggered by DeepgramFlux
@@ -137,10 +160,32 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  * await agent.startListening();
  *
  * // The pipeline now runs automatically:
- * //   [input] -> STT -> LLM -> TTS -> [output]
+ * //   [input] -> InputQueue -> [stt] -> [llm] -> [tts] -> OutputQueue -> [output]
  *
  * // When finished:
  * await agent.dispose();
+ * ```
+ *
+ * @example With explicit 5-provider config
+ * ```typescript
+ * import {
+ *   CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM,
+ *   DeepgramTTS, BrowserAudioOutput,
+ * } from 'composite-voice';
+ *
+ * const agent = new CompositeVoice({
+ *   providers: [
+ *     new MicrophoneInput(),
+ *     new DeepgramSTT({ apiKey: '...' }),
+ *     new AnthropicLLM({ model: 'claude-sonnet-4-20250514' }),
+ *     new DeepgramTTS({ apiKey: '...' }),
+ *     new BrowserAudioOutput(),
+ *   ],
+ *   queue: {
+ *     input: { maxSize: 2000 },
+ *     output: { maxSize: 500 },
+ *   },
+ * });
  * ```
  *
  * @example With conversation history and eager LLM
@@ -167,26 +212,58 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  *
  * @see {@link EventEmitter} for the underlying event system.
  * @see {@link CompositeVoiceConfig} for all configuration options.
+ * @see {@link resolveProviders} for the provider resolution algorithm.
+ * @see {@link AudioBufferQueue} for the queue that fixes the race condition.
+ * @see {@link AudioHeaderCache} for header caching on reconnection.
  */
 export class CompositeVoice {
   private config: CompositeVoiceConfig;
   private events: EventEmitter;
   private logger: Logger;
 
-  // Resolved provider references (extracted from config.providers by role)
+  /** The resolved 5-role pipeline with a provider assigned to each slot. */
+  private pipeline: ResolvedPipeline;
+
+  // Convenience aliases for the 3 core providers
   private stt: STTProvider;
   private llm: LLMProvider;
   private tts: TTSProvider;
+
+  /**
+   * Audio buffer queue between input and STT providers.
+   *
+   * @remarks
+   * Buffers audio frames while the STT WebSocket handshake completes,
+   * then flushes them in order via `startDraining()`. Only used when
+   * input and STT are separate providers (not multi-role).
+   */
+  private inputQueue: AudioBufferQueue;
+
+  /**
+   * Audio buffer queue between TTS and output providers.
+   *
+   * @remarks
+   * Buffers audio chunks from the TTS provider for the output provider.
+   * Only used when TTS and output are separate providers (not multi-role).
+   */
+  private outputQueue: AudioBufferQueue;
+
+  /**
+   * Caches the audio container header for re-injection on WebSocket reconnection.
+   *
+   * @remarks
+   * Only used when input and STT are separate providers. The first audio
+   * chunks are sniffed for container format (WAV, OGG, etc.) and the header
+   * is cached. On STT reconnection, the cached header is re-sent so the
+   * remote service can resume parsing audio frames.
+   */
+  private headerCache: AudioHeaderCache;
 
   // State machines
   private captureStateMachine: AudioCaptureStateMachine;
   private playbackStateMachine: AudioPlaybackStateMachine;
   private processingStateMachine: ProcessingStateMachine;
   private agentStateMachine: AgentStateMachine;
-
-  // Audio I/O (only for non-native providers)
-  private audioCapture: AudioCapture | undefined = undefined;
-  private audioPlayer: AudioPlayer | undefined = undefined;
 
   // Conversation history (when enabled via config)
   private conversationHistory: LLMMessage[] = [];
@@ -198,23 +275,51 @@ export class CompositeVoice {
   private initialized = false;
 
   /**
+   * Whether the input and STT providers are the same multi-role instance.
+   *
+   * @remarks
+   * When `true`, the input provider manages its own audio capture and feeds
+   * it directly to the STT engine (e.g., NativeSTT via SpeechRecognition).
+   * No `AudioBufferQueue` or `AudioHeaderCache` is needed. When `false`,
+   * audio flows through the input queue with the race condition fix.
+   */
+  private get isMultiRoleInput(): boolean {
+    return Object.is(this.pipeline.input, this.pipeline.stt);
+  }
+
+  /**
+   * Whether the TTS and output providers are the same multi-role instance.
+   *
+   * @remarks
+   * When `true`, the TTS provider handles its own audio playback (e.g.,
+   * NativeTTS via SpeechSynthesis). No output queue or separate output
+   * provider wiring is needed. When `false`, audio flows through the
+   * output queue to the output provider.
+   */
+  private get isMultiRoleOutput(): boolean {
+    return Object.is(this.pipeline.tts, this.pipeline.output);
+  }
+
+  /**
    * Creates a new CompositeVoice instance with the given provider configuration.
    *
    * @remarks
-   * The constructor validates the configuration, initializes the internal event
-   * emitter, creates the four state machines (audio capture, audio playback,
-   * processing, and the orchestrating agent state machine), and wires up the
-   * agent state change listener. It does **not** initialize providers or start
-   * listening -- call {@link CompositeVoice.initialize | initialize()} and then
-   * {@link CompositeVoice.startListening | startListening()} to begin the pipeline.
+   * The constructor resolves the `providers` array into a typed
+   * {@link ResolvedPipeline} via {@link resolveProviders}, creates input and
+   * output {@link AudioBufferQueue} instances, initializes the
+   * {@link AudioHeaderCache}, creates the four state machines, and wires up
+   * the agent state change listener. It does **not** initialize providers or
+   * start listening -- call {@link CompositeVoice.initialize | initialize()}
+   * and then {@link CompositeVoice.startListening | startListening()} to
+   * begin the pipeline.
    *
    * @param config - The SDK configuration containing a `providers` array with
    *   provider instances, plus optional queue, logging, turn-taking, conversation
    *   history, and eager LLM settings.
    *
    * @throws {@link ConfigurationError}
-   * Thrown if the required `stt`, `llm`, or `tts` roles are not covered by the
-   * providers array.
+   * Thrown if the required roles are not covered by the providers array,
+   * if duplicate roles are found, or if providers fail duck-type validation.
    *
    * @example
    * ```typescript
@@ -229,11 +334,29 @@ export class CompositeVoice {
    * ```
    */
   constructor(config: CompositeVoiceConfig) {
-    const { stt, llm, tts } = this.resolveProviderRoles(config);
-    this.stt = stt;
-    this.llm = llm;
-    this.tts = tts;
+    // Resolve providers into a fully typed 5-role pipeline
+    this.pipeline = resolveProviders(config.providers);
+    this.stt = this.pipeline.stt;
+    this.llm = this.pipeline.llm;
+    this.tts = this.pipeline.tts;
     this.config = config;
+
+    // Create audio buffer queues (configurable via config.queue)
+    this.inputQueue = new AudioBufferQueue({
+      name: 'input',
+      maxSize: 1000,
+      overflowStrategy: 'drop-oldest',
+      ...config.queue?.input,
+    });
+    this.outputQueue = new AudioBufferQueue({
+      name: 'output',
+      maxSize: 1000,
+      overflowStrategy: 'drop-oldest',
+      ...config.queue?.output,
+    });
+
+    // Create header cache for WebSocket reconnection
+    this.headerCache = new AudioHeaderCache();
 
     // Setup logging
     const loggingConfig = { ...DEFAULT_LOGGING_CONFIG, ...config.logging };
@@ -265,57 +388,8 @@ export class CompositeVoice {
   }
 
   /**
-   * Resolves STT, LLM, and TTS provider references from the flat providers array.
-   *
-   * @remarks
-   * Finds providers by their declared `roles` property. Each of the three core
-   * roles (`stt`, `llm`, `tts`) must be covered by at least one provider.
-   * This is an interim resolution step; the full 5-role pipeline resolution
-   * (including `input` and `output`) will be implemented by `resolveProviders()`.
-   *
-   * @param config - The SDK configuration containing the providers array.
-   * @returns An object with typed `stt`, `llm`, and `tts` provider references.
-   *
-   * @throws {@link ConfigurationError}
-   * Thrown if the `providers` array is missing, or if any of the required roles
-   * (`stt`, `llm`, `tts`) are not covered.
-   */
-  private resolveProviderRoles(config: CompositeVoiceConfig): {
-    stt: STTProvider;
-    llm: LLMProvider;
-    tts: TTSProvider;
-  } {
-    if (!config.providers || !Array.isArray(config.providers) || config.providers.length === 0) {
-      throw new ConfigurationError(
-        'CompositeVoice requires a non-empty providers array'
-      );
-    }
-
-    const sttProvider = config.providers.find((p) => p.roles.includes('stt'));
-    const llmProvider = config.providers.find((p) => p.roles.includes('llm'));
-    const ttsProvider = config.providers.find((p) => p.roles.includes('tts'));
-
-    if (!sttProvider || !llmProvider || !ttsProvider) {
-      const missing: string[] = [];
-      if (!sttProvider) missing.push('stt');
-      if (!llmProvider) missing.push('llm');
-      if (!ttsProvider) missing.push('tts');
-      throw new ConfigurationError(
-        `CompositeVoice requires providers covering these roles: ${missing.join(', ')}`
-      );
-    }
-
-    return {
-      stt: sttProvider as unknown as STTProvider,
-      llm: llmProvider as unknown as LLMProvider,
-      tts: ttsProvider as unknown as TTSProvider,
-    };
-  }
-
-  /**
    * Initializes the SDK by connecting the agent state machine to its
-   * sub-machines and initializing all three providers (STT, LLM, TTS)
-   * concurrently.
+   * sub-machines and initializing all pipeline providers concurrently.
    *
    * @remarks
    * This method must be called exactly once before {@link startListening} or
@@ -323,9 +397,9 @@ export class CompositeVoice {
    * returns immediately. On success it emits an `'agent.ready'` event and
    * transitions the agent state machine from `idle` to `ready`.
    *
-   * Provider initialization is performed in parallel via `Promise.all`, so if
-   * any single provider fails the entire initialization is aborted and the
-   * error is both emitted as an `'agent.error'` event and re-thrown.
+   * Multi-role providers are deduplicated using a `Set` so that a provider
+   * covering both `input` and `stt` (e.g., NativeSTT) is only initialized
+   * once. All unique providers are initialized concurrently via `Promise.all`.
    *
    * @throws Throws the underlying provider error if any provider's
    *   `initialize()` method rejects.
@@ -354,12 +428,16 @@ export class CompositeVoice {
         this.processingStateMachine
       );
 
-      // Initialize providers
-      await Promise.all([
-        this.stt.initialize(),
-        this.llm.initialize(),
-        this.tts.initialize(),
+      // Deduplicate multi-role provider instances (e.g., NativeSTT is both input + stt)
+      const uniqueProviders = new Set<BaseProvider>([
+        this.pipeline.input,
+        this.pipeline.stt,
+        this.pipeline.llm,
+        this.pipeline.tts,
+        this.pipeline.output,
       ]);
+      await Promise.all([...uniqueProviders].map((p) => p.initialize()));
+
       this.setupProviders();
 
       this.initialized = true;
@@ -388,12 +466,14 @@ export class CompositeVoice {
    * processing or eager speculation as needed.
    *
    * For Live (WebSocket) TTS providers, this registers `onAudio` and
-   * `onMetadata` callbacks to forward audio chunks to the `AudioPlayer` and
-   * emit `tts.audio` / `tts.metadata` events. An `AudioPlayer` is created
-   * if the provider does not manage its own audio pipeline.
+   * `onMetadata` callbacks. When TTS and output are separate providers,
+   * audio flows through the output queue: `tts.onAudio -> outputQueue ->
+   * output.enqueue`. When they are multi-role, audio is handled internally
+   * by the provider. The output queue starts draining immediately since the
+   * output provider has no async connection handshake.
    */
   private setupProviders(): void {
-    const { stt, tts } = this;
+    const { stt, tts, pipeline } = this;
 
     // Setup STT provider callbacks (all STT providers have onTranscription)
     stt.onTranscription((result) => {
@@ -462,43 +542,62 @@ export class CompositeVoice {
       }
     });
 
-    // Setup TTS provider callbacks (only Live TTS has onAudio)
+    // Setup TTS provider callbacks (only Live TTS has onAudio/onMetadata)
     if (isLiveTTS(tts)) {
-      // Initialize AudioPlayer for Live TTS (unless provider covers the 'output' role)
-      if (!tts.roles.includes('output')) {
-        this.audioPlayer = new AudioPlayer(undefined, this.logger);
-      }
+      if (this.isMultiRoleOutput) {
+        // Multi-role tts===output: no queue needed, TTS handles playback internally.
+        // Track playback state for agent state machine derivation.
+        tts.onAudio((chunk) => {
+          this.emitEvent({
+            type: 'tts.audio',
+            chunk,
+            timestamp: Date.now(),
+          });
 
-      tts.onAudio((chunk) => {
-        this.emitEvent({
-          type: 'tts.audio',
-          chunk,
-          timestamp: Date.now(),
-        });
-
-        if (this.audioPlayer) {
-          // Transition from idle → buffering when first audio chunk arrives,
-          // signalling the AgentStateMachine that the agent is now speaking.
           if (this.playbackStateMachine.getState() === 'idle') {
             this.playbackStateMachine.setBuffering();
           }
-          void this.audioPlayer.addChunk(chunk);
-        }
-      });
-
-      // Register metadata callback (provider may or may not emit metadata)
-      tts.onMetadata((metadata) => {
-        this.emitEvent({
-          type: 'tts.metadata',
-          metadata,
-          timestamp: Date.now(),
         });
 
-        // Configure AudioPlayer with metadata
-        if (this.audioPlayer) {
-          this.audioPlayer.setMetadata(metadata);
-        }
-      });
+        tts.onMetadata((metadata) => {
+          this.emitEvent({
+            type: 'tts.metadata',
+            metadata,
+            timestamp: Date.now(),
+          });
+        });
+      } else {
+        // Separate TTS and output: wire audio through output queue
+        tts.onAudio((chunk) => {
+          this.emitEvent({
+            type: 'tts.audio',
+            chunk,
+            timestamp: Date.now(),
+          });
+
+          // Track playback state for agent state machine
+          if (this.playbackStateMachine.getState() === 'idle') {
+            this.playbackStateMachine.setBuffering();
+          }
+          this.outputQueue.enqueue(chunk);
+        });
+
+        // Wire metadata to output provider for format configuration
+        tts.onMetadata((metadata) => {
+          this.emitEvent({
+            type: 'tts.metadata',
+            metadata,
+            timestamp: Date.now(),
+          });
+          pipeline.output.configure(metadata);
+        });
+
+        // Start draining output queue to output provider immediately
+        // (no async handshake needed for output, unlike input→STT)
+        this.outputQueue.startDraining((chunk: AudioChunk) => {
+          pipeline.output.enqueue(chunk);
+        });
+      }
     }
   }
 
@@ -627,7 +726,7 @@ export class CompositeVoice {
    * 5. On completion, emits `llm.complete`, appends to conversation history,
    *    and triggers TTS synthesis (REST or Live finalization).
    * 6. Handles `AbortSignal` for eager pipeline cancellation at every stage,
-   *    resetting TTS and playback state on mid-stream abort.
+   *    resetting TTS, output provider, and playback state on mid-stream abort.
    *
    * @param text - The user's transcribed text to send to the LLM.
    * @param signal - Optional `AbortSignal` for cancelling the generation,
@@ -732,8 +831,10 @@ export class CompositeVoice {
             this.playbackStateMachine.setIdle();
           }
         }
-        if (this.audioPlayer) {
-          await this.audioPlayer.stop();
+        // Stop output provider and clear output queue for separate output
+        if (!this.isMultiRoleOutput) {
+          this.outputQueue.clear();
+          this.pipeline.output.stop();
         }
         this.processingStateMachine.setIdle();
         return;
@@ -784,19 +885,22 @@ export class CompositeVoice {
 
   /**
    * Synthesizes the given text through a REST TTS provider and plays the
-   * resulting audio.
+   * resulting audio through the output provider.
    *
    * @remarks
    * This method is the REST TTS analogue of {@link finalizeLiveTTS}. It:
    *
    * 1. Optionally pauses audio capture to prevent echo (based on turn-taking
-   *    configuration and provider combination).
+   *    configuration and provider combination). For separate input providers,
+   *    this stops queue draining and pauses the input.
    * 2. Transitions the playback state machine to `buffering`.
    * 3. Calls `synthesize()` on the REST TTS provider. If the provider manages
-   *    its own audio (e.g., NativeTTS via `SpeechSynthesis`), no `AudioPlayer`
-   *    is used. Otherwise, the SDK creates an `AudioPlayer` and plays the blob.
+   *    its own audio (multi-role `tts === output`, e.g., NativeTTS), no
+   *    separate output is needed. Otherwise, the synthesized blob is converted
+   *    to an {@link AudioChunk} and enqueued on the output provider.
    * 4. Transitions playback through `stopped` to `idle`.
-   * 5. Resumes audio capture if it was paused.
+   * 5. Resumes audio capture if it was paused, re-injecting the cached header
+   *    and restarting queue draining for separate input providers.
    * 6. On error, attempts to recover STT capture and emits `tts.error` and
    *    `agent.error` events.
    *
@@ -810,7 +914,7 @@ export class CompositeVoice {
     });
 
     try {
-      const { stt, tts } = this;
+      const { stt, tts, pipeline } = this;
       const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
       const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
@@ -818,6 +922,11 @@ export class CompositeVoice {
       const captureState = this.captureStateMachine.getState();
       if (shouldPause && captureState === 'active') {
         this.captureStateMachine.setPaused();
+        // For separate input: stop draining and pause input provider
+        if (!this.isMultiRoleInput) {
+          this.inputQueue.stopDraining();
+          pipeline.input.pause();
+        }
         if (isLiveSTT(stt)) {
           await stt.disconnect();
         }
@@ -831,16 +940,16 @@ export class CompositeVoice {
 
       // REST TTS: synthesize and play
       if (isRestTTS(tts)) {
-        if (tts.roles.includes('output')) {
+        if (this.isMultiRoleOutput) {
           // Provider covers the 'output' role (e.g. NativeTTS via SpeechSynthesis)
           await tts.synthesize(text);
         } else {
-          // SDK-managed TTS: get audio blob and play via AudioPlayer
-          if (!this.audioPlayer) {
-            this.audioPlayer = new AudioPlayer(undefined, this.logger);
-          }
+          // Separate output: synthesize to Blob, convert to AudioChunk, enqueue
           const audioBlob = await tts.synthesize(text);
-          await this.audioPlayer.play(audioBlob);
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const chunk: AudioChunk = { data: arrayBuffer, timestamp: Date.now() };
+          pipeline.output.enqueue(chunk);
+          await pipeline.output.flush();
         }
       }
 
@@ -852,16 +961,41 @@ export class CompositeVoice {
       const resumeCaptureState = this.captureStateMachine.getState();
       if (resumeCaptureState === 'paused') {
         // paused → active (resume)
+        if (!this.isMultiRoleInput) {
+          pipeline.input.resume();
+        }
         if (isLiveSTT(stt)) {
           await stt.connect();
+          // Re-inject cached header for WebSocket reconnection
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       } else if (resumeCaptureState === 'error') {
         // error → idle → starting → active
         this.captureStateMachine.setIdle();
         this.captureStateMachine.setStarting();
+        if (!this.isMultiRoleInput) {
+          pipeline.input.resume();
+        }
         if (isLiveSTT(stt)) {
           await stt.connect();
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       }
@@ -882,7 +1016,7 @@ export class CompositeVoice {
 
       // Try to recover - resume STT
       try {
-        const { stt } = this;
+        const { stt, pipeline } = this;
 
         // Recover capture state machine
         const captureState = this.captureStateMachine.getState();
@@ -891,12 +1025,23 @@ export class CompositeVoice {
           this.captureStateMachine.setIdle();
           this.captureStateMachine.setStarting();
         } else if (captureState === 'paused') {
-          // paused → active (already handled above, but for safety)
-          // No state change needed, just reconnect
+          // paused → active (resume input)
+          if (!this.isMultiRoleInput) {
+            pipeline.input.resume();
+          }
         }
 
         if (isLiveSTT(stt)) {
           await stt.connect();
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       } catch (recoveryError) {
@@ -926,11 +1071,14 @@ export class CompositeVoice {
    * key difference is that audio chunks have already been arriving in real-time
    * during LLM streaming (via `sendText()`), so this method only needs to:
    *
-   * 1. Optionally pause audio capture to prevent echo.
+   * 1. Optionally pause audio capture to prevent echo. For separate input
+   *    providers, this stops queue draining and pauses the input.
    * 2. Call `finalize()` on the Live TTS provider to flush remaining text.
-   * 3. Wait for the `AudioPlayer` to drain all queued audio chunks.
+   * 3. Wait for the output provider to drain all queued audio chunks (via
+   *    `flush()`), or for the multi-role provider to complete internally.
    * 4. Transition playback state through `stopped` to `idle`.
-   * 5. Resume audio capture if it was paused.
+   * 5. Resume audio capture if it was paused, re-injecting the cached header
+   *    and restarting queue draining.
    * 6. On error, attempt to recover STT capture and re-throw after emitting
    *    `tts.error` and `agent.error` events.
    *
@@ -948,7 +1096,7 @@ export class CompositeVoice {
     });
 
     try {
-      const { stt, tts } = this;
+      const { stt, tts, pipeline } = this;
       const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
       const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
@@ -956,6 +1104,10 @@ export class CompositeVoice {
       const captureState = this.captureStateMachine.getState();
       if (shouldPause && captureState === 'active') {
         this.captureStateMachine.setPaused();
+        if (!this.isMultiRoleInput) {
+          this.inputQueue.stopDraining();
+          pipeline.input.pause();
+        }
         if (isLiveSTT(stt)) {
           await stt.disconnect();
         }
@@ -967,9 +1119,9 @@ export class CompositeVoice {
         // Finalize the TTS provider (flushes remaining text)
         await tts.finalize();
 
-        // Wait for AudioPlayer to drain all queued audio
-        if (this.audioPlayer) {
-          await this.audioPlayer.waitForCompletion();
+        // Wait for output provider to finish playing all audio
+        if (!this.isMultiRoleOutput) {
+          await pipeline.output.flush();
         }
       }
 
@@ -985,15 +1137,39 @@ export class CompositeVoice {
       // Resume capture
       const resumeCaptureState = this.captureStateMachine.getState();
       if (resumeCaptureState === 'paused') {
+        if (!this.isMultiRoleInput) {
+          pipeline.input.resume();
+        }
         if (isLiveSTT(stt)) {
           await stt.connect();
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       } else if (resumeCaptureState === 'error') {
         this.captureStateMachine.setIdle();
         this.captureStateMachine.setStarting();
+        if (!this.isMultiRoleInput) {
+          pipeline.input.resume();
+        }
         if (isLiveSTT(stt)) {
           await stt.connect();
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       }
@@ -1017,14 +1193,27 @@ export class CompositeVoice {
 
       // Try to resume STT capture
       try {
-        const { stt } = this;
+        const { stt, pipeline } = this;
         const captureState = this.captureStateMachine.getState();
         if (captureState === 'error') {
           this.captureStateMachine.setIdle();
           this.captureStateMachine.setStarting();
+        } else if (captureState === 'paused') {
+          if (!this.isMultiRoleInput) {
+            pipeline.input.resume();
+          }
         }
         if (isLiveSTT(stt)) {
           await stt.connect();
+          if (!this.isMultiRoleInput) {
+            const header = this.headerCache.getHeader();
+            if (header) {
+              stt.sendAudio(header);
+            }
+            this.inputQueue.startDraining((chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            });
+          }
         }
         this.captureStateMachine.setActive();
       } catch (recoveryError) {
@@ -1047,20 +1236,23 @@ export class CompositeVoice {
   }
 
   /**
-   * Starts listening for user speech input by connecting the STT provider and,
-   * if needed, initializing SDK-managed audio capture.
+   * Starts listening for user speech input by wiring the input provider to the
+   * STT provider through the input queue and header cache.
    *
    * @remarks
    * This method transitions the agent from `ready` (or `idle`) into the
-   * `listening` state. The exact behavior depends on the STT provider type:
+   * `listening` state. The exact behavior depends on the pipeline topology:
    *
-   * - **Managed audio** (e.g., NativeSTT): The provider handles its own
-   *   microphone access. CompositeVoice only calls `connect()` on Live STT
-   *   providers.
-   * - **SDK-managed audio** (e.g., DeepgramSTT): CompositeVoice creates an
-   *   `AudioCapture` instance, connects the Live STT provider, then starts
-   *   capturing microphone audio and forwarding it to the provider via
-   *   `sendAudio()`.
+   * - **Multi-role input===stt** (e.g., NativeSTT): Simplified path — just
+   *   calls `connect()` on the Live STT provider. The provider handles its
+   *   own microphone access internally.
+   * - **Separate input + STT** (e.g., MicrophoneInput + DeepgramSTT): The
+   *   race condition fix is applied:
+   *   1. Wire `input.onAudio` → `headerCache.process` → `inputQueue.enqueue`
+   *   2. Start the input provider (begins audio capture)
+   *   3. Auto-configure STT encoding/sampleRate from input metadata
+   *   4. Connect the STT provider (async WebSocket handshake)
+   *   5. `inputQueue.startDraining` — flush buffered chunks + switch to pass-through
    *
    * On success, emits an `'audio.capture.start'` event.
    *
@@ -1088,27 +1280,38 @@ export class CompositeVoice {
     this.captureStateMachine.setStarting();
 
     try {
-      const { stt } = this;
+      const { stt, pipeline } = this;
 
-      // Provider covers the 'input' role (e.g. NativeSTT via SpeechRecognition)
-      if (stt.roles.includes('input')) {
+      if (this.isMultiRoleInput) {
+        // Multi-role input===stt (e.g., NativeSTT via SpeechRecognition):
+        // The provider manages its own audio capture — just connect.
         if (isLiveSTT(stt)) {
           await stt.connect();
         }
       } else {
-        // SDK-managed STT: CompositeVoice captures audio and sends to provider
+        // Separate input + STT: apply the race condition fix.
+        // 1. Wire input → headerCache → inputQueue
+        pipeline.input.onAudio((chunk: AudioChunk) => {
+          this.headerCache.process(chunk.data);
+          this.inputQueue.enqueue(chunk);
+        });
+
+        // 2. Start capturing audio (sync — begins delivering chunks immediately)
+        pipeline.input.start();
+
+        // 3. Auto-configure STT from input's audio metadata
+        configureSTTFromMetadata(stt, pipeline.input.getMetadata());
+
+        // 4. Connect STT (async — WebSocket handshake happens here)
+        // While this is in progress, audio chunks are buffered in the inputQueue.
         if (isLiveSTT(stt)) {
-          // Initialize AudioCapture if needed
-          if (!this.audioCapture) {
-            this.audioCapture = new AudioCapture(undefined, this.logger);
-          }
-
-          // Connect STT provider first
           await stt.connect();
+        }
 
-          // Start capturing audio and send to STT
-          await this.audioCapture.start((audioData) => {
-            stt.sendAudio(audioData);
+        // 5. Start draining: flush all buffered chunks then switch to pass-through
+        if (isLiveSTT(stt)) {
+          this.inputQueue.startDraining((chunk: AudioChunk) => {
+            stt.sendAudio(chunk.data);
           });
         }
       }
@@ -1128,13 +1331,20 @@ export class CompositeVoice {
   }
 
   /**
-   * Stops listening for user speech by halting audio capture and disconnecting
-   * the STT provider.
+   * Stops listening for user speech by halting audio capture, clearing the
+   * input queue, and disconnecting the STT provider.
    *
    * @remarks
    * If the agent is not currently in the `listening` state, this method logs a
-   * warning and returns without error. On success, it transitions the capture
-   * state machine to `stopped` and emits an `'audio.capture.stop'` event.
+   * warning and returns without error. On success, it:
+   *
+   * 1. Stops draining the input queue
+   * 2. Clears the input queue
+   * 3. Stops the input provider (for separate input)
+   * 4. Disconnects the STT provider
+   * 5. Resets the header cache
+   * 6. Transitions the capture state machine to `stopped`
+   * 7. Emits an `'audio.capture.stop'` event
    *
    * @throws Throws the underlying error if stopping audio capture or
    *   disconnecting the STT provider fails.
@@ -1157,17 +1367,24 @@ export class CompositeVoice {
     this.logger.info('Stopping listening');
 
     try {
-      const { stt } = this;
+      const { stt, pipeline } = this;
 
-      // Stop audio capture
-      if (this.audioCapture) {
-        await this.audioCapture.stop();
+      // Stop draining and clear the input queue
+      this.inputQueue.stopDraining();
+      this.inputQueue.clear();
+
+      // Stop input provider (for separate input)
+      if (!this.isMultiRoleInput) {
+        pipeline.input.stop();
       }
 
       // Disconnect STT provider
       if (isLiveSTT(stt)) {
         await stt.disconnect();
       }
+
+      // Reset header cache for next listening session
+      this.headerCache.reset();
 
       this.captureStateMachine.setStopped();
 
@@ -1187,9 +1404,9 @@ export class CompositeVoice {
    *
    * @remarks
    * If the agent is not currently in the `speaking` state, this method returns
-   * silently. Otherwise it stops the `AudioPlayer`, disconnects any Live TTS
-   * WebSocket, transitions the playback state machine back to `idle`, and emits
-   * a `'tts.complete'` event.
+   * silently. Otherwise it stops the output provider (clearing its queue),
+   * disconnects any Live TTS WebSocket, transitions the playback state machine
+   * back to `idle`, and emits a `'tts.complete'` event.
    *
    * This is useful for implementing "barge-in" behavior where the user
    * interrupts the agent mid-speech.
@@ -1218,8 +1435,10 @@ export class CompositeVoice {
     try {
       const { tts } = this;
 
-      if (this.audioPlayer) {
-        await this.audioPlayer.stop();
+      // Stop output provider and clear output queue (for separate output)
+      if (!this.isMultiRoleOutput) {
+        this.outputQueue.clear();
+        this.pipeline.output.stop();
       }
 
       if (isLiveTTS(tts)) {
@@ -1388,6 +1607,34 @@ export class CompositeVoice {
   }
 
   /**
+   * Returns statistics from both the input and output audio buffer queues.
+   *
+   * @remarks
+   * Provides observability into the pipeline's buffering behavior. The input
+   * queue sits between the `AudioInputProvider` and the STT provider; the
+   * output queue sits between the TTS provider and the `AudioOutputProvider`.
+   *
+   * Stats include current size, total enqueued/dequeued/dropped counts, and
+   * the age of the oldest buffered chunk. For multi-role providers where the
+   * queue is not actively used, stats will show zero activity.
+   *
+   * @returns An object with `input` and `output` {@link QueueStats} snapshots.
+   *
+   * @example
+   * ```typescript
+   * const stats = agent.getQueueStats();
+   * console.log(`Input queue: ${stats.input.size} buffered, ${stats.input.totalDropped} dropped`);
+   * console.log(`Output queue: ${stats.output.size} buffered`);
+   * ```
+   */
+  getQueueStats(): { input: QueueStats; output: QueueStats } {
+    return {
+      input: this.inputQueue.getStats(),
+      output: this.outputQueue.getStats(),
+    };
+  }
+
+  /**
    * Returns a shallow copy of the current conversation history.
    *
    * @remarks
@@ -1473,8 +1720,8 @@ export class CompositeVoice {
   }
 
   /**
-   * Disposes of the SDK, releasing all resources including providers, state
-   * machines, audio I/O, event listeners, and conversation history.
+   * Disposes of the SDK, releasing all resources including providers, queues,
+   * state machines, event listeners, and conversation history.
    *
    * @remarks
    * This method performs a full teardown in the following order:
@@ -1482,9 +1729,10 @@ export class CompositeVoice {
    * 1. Stops listening and speaking if the agent is in those states.
    * 2. Aborts any in-flight eager LLM generation.
    * 3. Clears conversation history.
-   * 4. Stops and disposes SDK-managed `AudioCapture` and `AudioPlayer`.
-   * 5. Disposes all three providers concurrently (they handle their own
-   *    audio cleanup).
+   * 4. Clears both input and output queues.
+   * 5. Disposes all pipeline providers concurrently, deduplicated so that
+   *    multi-role providers (e.g., NativeSTT covering `input`+`stt`) are
+   *    only disposed once.
    * 6. Removes all event listeners from the internal `EventEmitter`.
    * 7. Resets and disposes all four state machines.
    *
@@ -1527,22 +1775,19 @@ export class CompositeVoice {
       // Clear conversation history
       this.conversationHistory = [];
 
-      // Stop and dispose SDK-managed audio I/O
-      if (this.audioCapture) {
-        await this.audioCapture.stop();
-        this.audioCapture = undefined;
-      }
-      if (this.audioPlayer) {
-        await this.audioPlayer.dispose();
-        this.audioPlayer = undefined;
-      }
+      // Clear queues
+      this.inputQueue.clear();
+      this.outputQueue.clear();
 
-      // Dispose providers (they handle their own audio cleanup)
-      await Promise.all([
-        this.stt.dispose(),
-        this.llm.dispose(),
-        this.tts.dispose(),
+      // Dispose all unique providers (deduplicated for multi-role instances)
+      const uniqueProviders = new Set<BaseProvider>([
+        this.pipeline.input,
+        this.pipeline.stt,
+        this.pipeline.llm,
+        this.pipeline.tts,
+        this.pipeline.output,
       ]);
+      await Promise.all([...uniqueProviders].map((p) => p.dispose()));
 
       // Clear event listeners
       this.events.removeAllListeners();
