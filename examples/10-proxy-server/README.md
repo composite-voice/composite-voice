@@ -113,23 +113,29 @@ Browser ──[no keys]──▶ /proxy/anthropic ──[key injected]──▶ 
 ### Browser code (zero API keys)
 
 ```javascript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import {
+  CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput,
+} from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,  // ← no apiKey
-    options: { model: 'nova-3', interimResults: true, endpointing: 300 },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,  // ← no apiKey
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant.',
-    maxTokens: 200,
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,  // ← no apiKey
-    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
-  }),
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramSTT({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,  // ← no apiKey
+      options: { model: 'nova-3', interimResults: true, endpointing: 300 },
+    }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,  // ← no apiKey
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant.',
+      maxTokens: 200,
+    }),
+    new DeepgramTTS({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,  // ← no apiKey
+      options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+    }),
+    new BrowserAudioOutput(),
+  ],
 });
 ```
 
