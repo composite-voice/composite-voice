@@ -12,10 +12,10 @@
  *
  * Future stories will add:
  * - `AudioBufferQueue` (US-002) — bounded FIFO queue between pipeline stages
- * - `AudioHeaderCache` (US-003) — format detection and header caching
  *
  * @packageDocumentation
  */
 
 export { configureSTTFromMetadata } from './configureSTTFromMetadata';
 export { resolveProviders } from './resolveProviders';
+export { AudioHeaderCache } from './AudioHeaderCache';

@@ -15,6 +15,8 @@
  *   `int16ToFloat`), buffer manipulation (`concatenateArrayBuffers`, `downsampleAudio`),
  *   WAV header creation, RMS calculation, silence detection, and fade effects.
  * - **Turn-taking** -- Utilities for managing conversational turn-taking strategies.
+ * - **Audio format detection** -- Magic-byte-based format detection (`detectAudioFormat`,
+ *   `extractHeader`) for WAV, OGG, MP3, AAC, WebM, FLAC, AIFF, and MP4.
  * - **Browser capabilities** -- Utilities for detecting browser audio and speech API support.
  *
  * @example
@@ -36,3 +38,4 @@ export * from './audio';
 export * from './turnTaking';
 export * from './browserCapabilities';
 export * from './textSimilarity';
+export * from './audioFormat';

@@ -241,4 +241,15 @@ export {
   calculateRMS,
   isSilent,
   applyFade,
+
+  // Audio format detection
+  detectAudioFormat,
+  extractHeader,
+  MIN_SNIFF_BYTES,
 } from './utils/index';
+
+// Audio format detection types
+export type { DetectedAudioFormat } from './utils/index';
+
+// Pipeline utilities
+export { AudioHeaderCache } from './core/pipeline/index';
