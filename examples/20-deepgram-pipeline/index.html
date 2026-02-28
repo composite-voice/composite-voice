@@ -328,6 +328,8 @@
             DeepgramSTT,
             DeepgramTTS,
             AnthropicLLM,
+            MicrophoneInput,
+            BrowserAudioOutput,
         } from '@lukeocodes/composite-voice';
 
         let agent = null;
@@ -419,9 +421,7 @@
                 });
 
                 agent = new CompositeVoice({
-                    stt,
-                    llm,
-                    tts,
+                    providers: [new MicrophoneInput(), stt, llm, tts, new BrowserAudioOutput()],
                     logging: { enabled: true, level: 'info' },
                 });
 

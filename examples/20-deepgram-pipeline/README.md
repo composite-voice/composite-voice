@@ -4,9 +4,11 @@ The production-ready pipeline: real-time WebSocket transcription, Claude, and 24
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
+| **Input** | `MicrophoneInput` | MediaStream API | All modern browsers |
 | **STT** | `DeepgramSTT` — nova-3 | WebSocket, real-time streaming | All modern browsers |
 | **LLM** | `AnthropicLLM` — claude-haiku-4-5-20251001 | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz audio | All modern browsers |
+| **Output** | `BrowserAudioOutput` | Web Audio API | All modern browsers |
 
 **Free tier available** — both Deepgram providers work on the free tier. No credit card required to get started.
 
@@ -83,16 +85,16 @@ Open [http://localhost:3020](http://localhost:3020) in any modern browser — Ch
 ## How it works
 
 ```
-Microphone
-    ↓
+MicrophoneInput (MediaStream API)
+    ↓  InputQueue buffers audio during STT connection
 DeepgramSTT (nova-3, WebSocket)
     ↓  transcription.interim  — word by word as you speak
     ↓  transcription.speechFinal  — VAD detects end of utterance → triggers LLM
 AnthropicLLM (claude-haiku-4-5-20251001, HTTP streaming)
     ↓  llm.chunk  — token by token
 DeepgramTTS (aura-2-thalia-en, WebSocket, 24 kHz)
-    ↓
-Speakers
+    ↓  OutputQueue buffers audio chunks
+BrowserAudioOutput (Web Audio API)
     ↓  agent returns to listening
 ```
 
@@ -101,32 +103,39 @@ The `auto` turn-taking strategy is active by default. With Deepgram, the microph
 ### The core code
 
 ```javascript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import {
+  CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS,
+  MicrophoneInput, BrowserAudioOutput,
+} from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    options: {
-      model: 'nova-3',
-      smartFormat: true,
-      interimResults: true,
-      endpointing: 300,   // ms of silence before speech_final fires
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses concise.',
-    maxTokens: 200,
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    options: {
-      model: 'aura-2-thalia-en',
-      encoding: 'linear16',
-      sampleRate: 24000,
-    },
-  }),
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramSTT({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      options: {
+        model: 'nova-3',
+        smartFormat: true,
+        interimResults: true,
+        endpointing: 300,   // ms of silence before speech_final fires
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses concise.',
+      maxTokens: 200,
+    }),
+    new DeepgramTTS({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      options: {
+        model: 'aura-2-thalia-en',
+        encoding: 'linear16',
+        sampleRate: 24000,
+      },
+    }),
+    new BrowserAudioOutput(),
+  ],
 });
 
 await agent.initialize();
