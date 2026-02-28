@@ -5,15 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
-**A browser SDK for building AI voice agents — wire together any STT, LLM, and TTS provider behind one unified interface.**
+**An SDK for building AI voice agents — wire together any combination of input, STT, LLM, TTS, and output providers behind one unified 5-role pipeline.**
 
 ```typescript
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
+    new NativeTTS(),
+  ],
 });
 
 await agent.initialize();
@@ -31,14 +33,17 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 
 | Feature                         | What it means for you                                                                                                                                                             |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.       |
 | **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change. |
 | **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                              |
 | **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use. Many providers (AssemblyAI, ElevenLabs, Cartesia) need no peer dependency at all.              |
-| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, and state transitions.                                                      |
+| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, queue stats, and state transitions.                                         |
+| **Race-condition-free**         | Audio frames are buffered in a queue during STT connection. No frames are ever lost, even when the WebSocket handshake takes time.                                                |
 | **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                |
 | **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                |
 | **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                              |
-| **Extensible**                  | Abstract base classes make it straightforward to add any STT, LLM, or TTS service. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.     |
+| **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                   |
+| **Extensible**                  | Abstract base classes for all 5 roles. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                                                 |
 
 ---
 
@@ -46,7 +51,8 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 
 - [Installation](#installation)
 - [Quick start](#quick-start)
-- [How it works](#how-it-works)
+- [5-role pipeline](#5-role-pipeline)
+- [Provider roles](#provider-roles)
 - [Providers](#providers)
 - [Configuration](#configuration)
 - [Events](#events)
@@ -55,6 +61,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Eager LLM pipeline](#eager-llm-pipeline)
 - [Turn-taking](#turn-taking)
 - [Server-side proxy](#server-side-proxy)
+- [Server-side usage](#server-side-usage)
 - [Custom providers](#custom-providers)
 - [Examples](#examples)
 - [Browser support](#browser-support)
@@ -92,22 +99,24 @@ AssemblyAI, ElevenLabs, and Cartesia providers use raw WebSocket connections and
 
 ## Quick start
 
-### Simplest setup — one API key, free STT and TTS
+### Simplest setup — 3 providers, one API key
 
-Uses the browser's built-in Web Speech API and SpeechSynthesis. Requires only an Anthropic key. Works in Chrome and Edge with no additional dependencies.
+Uses the browser's built-in Web Speech API and SpeechSynthesis. NativeSTT covers the `input`+`stt` roles and NativeTTS covers `tts`+`output`, so you only need an LLM. Works in Chrome and Edge.
 
 ```typescript
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new AnthropicLLM({
-    apiKey: 'sk-ant-...',
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-    maxTokens: 200,
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new AnthropicLLM({
+      apiKey: 'sk-ant-...',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+      maxTokens: 200,
+    }),
+    new NativeTTS(),
+  ],
 });
 
 agent.on('transcription.final', (e) => console.log('You said:', e.text));
@@ -120,38 +129,44 @@ await agent.startListening();
 
 See [Example 00](./examples/00-minimal-voice-agent/) for a full runnable demo with UI.
 
-### Production setup — Deepgram + Anthropic
+### Production setup — 5 providers, explicit audio I/O
 
-Real-time WebSocket STT, Claude, and 24 kHz streaming TTS. Works in all modern browsers including Firefox.
+Full 5-role pipeline with separate input and output providers. Audio is buffered between stages, eliminating the race condition where first frames could be lost during STT WebSocket handshake.
 
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    apiKey: 'your-deepgram-key',
-    options: {
-      model: 'nova-3',
-      smartFormat: true,
-      interimResults: true,
-      endpointing: 300,
-    },
-  }),
-  llm: new AnthropicLLM({
-    apiKey: 'your-anthropic-key',
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-    maxTokens: 200,
-  }),
-  tts: new DeepgramTTS({
-    apiKey: 'your-deepgram-key',
-    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
-  }),
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramSTT({
+      apiKey: 'your-deepgram-key',
+      options: {
+        model: 'nova-3',
+        smartFormat: true,
+        interimResults: true,
+        endpointing: 300,
+      },
+    }),
+    new AnthropicLLM({
+      apiKey: 'your-anthropic-key',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+      maxTokens: 200,
+    }),
+    new DeepgramTTS({
+      apiKey: 'your-deepgram-key',
+      options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+    }),
+    new BrowserAudioOutput(),
+  ],
 });
 
 await agent.initialize();
@@ -162,28 +177,99 @@ See [Example 20](./examples/20-deepgram-pipeline/) for the full runnable demo.
 
 ---
 
-## How it works
+## 5-role pipeline
 
-Every voice agent follows the same pipeline:
+Every voice agent follows the same 5-stage pipeline:
 
 ```
-Microphone
-    |
-STT provider  (NativeSTT, DeepgramSTT, or AssemblyAISTT)
-    |  transcription.speechFinal — user finished speaking
-LLM provider  (AnthropicLLM, OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, or WebLLMLLM)
-    |  llm.chunk — token by token
-TTS provider  (NativeTTS, DeepgramTTS, OpenAITTS, ElevenLabsTTS, or CartesiaTTS)
-    |
-Speakers
-    |  returns to listening automatically
+[InputProvider]  →  InputQueue  →  [STT]  →  [LLM]  →  [TTS]  →  OutputQueue  →  [OutputProvider]
+     input             ↑           stt        llm        tts           ↑              output
+                  buffers during                                 buffers during
+                  STT connection                                 output setup
 ```
+
+| Stage | Role     | What it does                                  | Example providers                            |
+| ----- | -------- | --------------------------------------------- | -------------------------------------------- |
+| 1     | `input`  | Captures audio from a source                  | `MicrophoneInput`, `BufferInput`, `NativeSTT` |
+| 2     | `stt`    | Converts audio to text                        | `DeepgramSTT`, `AssemblyAISTT`, `NativeSTT`  |
+| 3     | `llm`    | Generates a text response                     | `AnthropicLLM`, `OpenAILLM`, `WebLLMLLM`     |
+| 4     | `tts`    | Converts text to audio                        | `DeepgramTTS`, `ElevenLabsTTS`, `NativeTTS`   |
+| 5     | `output` | Plays audio to a destination                  | `BrowserAudioOutput`, `NullOutput`, `NativeTTS` |
+
+Audio frames are buffered in queues between stages. The input queue holds frames while the STT WebSocket connects, then flushes them in order — no audio is ever lost. The output queue does the same for TTS-to-speaker handoff.
 
 The agent state machine moves through well-defined states — `idle -> ready -> listening -> thinking -> speaking` — emitting events at every transition. Your UI subscribes to these events; the SDK manages the lifecycle.
 
 ---
 
+## Provider roles
+
+Every provider declares a `roles` property listing which pipeline slots it fills. The SDK resolves the full 5-role pipeline from a flat `providers` array.
+
+### Multi-role providers
+
+Some providers handle multiple roles. NativeSTT manages its own microphone internally (Web Speech API), so it covers both `input` and `stt`. NativeTTS manages its own speaker output, so it covers `tts` and `output`.
+
+```typescript
+// 3-provider config — NativeSTT covers input+stt, NativeTTS covers tts+output
+const agent = new CompositeVoice({
+  providers: [
+    new NativeSTT(),        // roles: ['input', 'stt']
+    new AnthropicLLM({...}), // roles: ['llm']
+    new NativeTTS(),        // roles: ['tts', 'output']
+  ],
+});
+```
+
+### Explicit 5-provider config
+
+When using providers that handle a single role each, supply all 5:
+
+```typescript
+// 5-provider config — each role filled by a separate provider
+const agent = new CompositeVoice({
+  providers: [
+    new MicrophoneInput(),        // roles: ['input']
+    new DeepgramSTT({...}),       // roles: ['stt']
+    new AnthropicLLM({...}),      // roles: ['llm']
+    new DeepgramTTS({...}),       // roles: ['tts']
+    new BrowserAudioOutput(),     // roles: ['output']
+  ],
+});
+```
+
+### Defaults
+
+When you omit certain roles, the SDK auto-fills them:
+
+- **`input` + `stt` both uncovered** → auto-fills with `new NativeSTT()` (covers both)
+- **`tts` + `output` both uncovered** → auto-fills with `new NativeTTS()` (covers both)
+- **`llm` is always required** — no default LLM provider
+
+This means the minimal config is just an LLM:
+
+```typescript
+// LLM-only config — NativeSTT and NativeTTS auto-filled
+const agent = new CompositeVoice({
+  providers: [
+    new AnthropicLLM({ apiKey: '...', model: 'claude-haiku-4-5-20251001' }),
+  ],
+});
+```
+
+---
+
 ## Providers
+
+### Audio Input
+
+| Provider          | Environment | Roles             | Peer dependency |
+| ----------------- | ----------- | ----------------- | --------------- |
+| `MicrophoneInput` | Browser     | `input`           | None            |
+| `BufferInput`     | Node/Bun/Deno | `input`         | None            |
+| `NativeSTT`       | Browser     | `input` + `stt`   | None            |
+
+`MicrophoneInput` wraps the browser's `getUserMedia` + `AudioContext` into a provider. `BufferInput` accepts pushed `ArrayBuffer` data for server-side pipelines. `NativeSTT` manages its own microphone internally.
 
 ### Speech-to-Text (STT)
 
@@ -400,6 +486,16 @@ new CartesiaTTS({
 });
 ```
 
+### Audio Output
+
+| Provider             | Environment   | Roles              | Peer dependency |
+| -------------------- | ------------- | ------------------ | --------------- |
+| `BrowserAudioOutput` | Browser       | `output`           | None            |
+| `NullOutput`         | Node/Bun/Deno | `output`           | None            |
+| `NativeTTS`          | Browser       | `tts` + `output`   | None            |
+
+`BrowserAudioOutput` wraps the browser's `AudioContext` for speaker playback. `NullOutput` silently discards audio for server-side pipelines. `NativeTTS` manages its own speaker output internally via the SpeechSynthesis API.
+
 ---
 
 ## Configuration
@@ -408,10 +504,20 @@ Full `CompositeVoice` configuration reference:
 
 ```typescript
 const agent = new CompositeVoice({
-  // Required: one provider of each type
-  stt: sttProvider,
-  llm: llmProvider,
-  tts: ttsProvider,
+  // Required: array of provider instances covering the 5 pipeline roles
+  providers: [
+    new MicrophoneInput({ sampleRate: 16000 }),
+    new DeepgramSTT({ apiKey: '...' }),
+    new AnthropicLLM({ apiKey: '...' }),
+    new DeepgramTTS({ apiKey: '...' }),
+    new BrowserAudioOutput(),
+  ],
+
+  // Audio buffer queue tuning (for separate input/STT and TTS/output providers)
+  queue: {
+    input: { maxSize: 2000, overflowStrategy: 'drop-oldest' },
+    output: { maxSize: 500 },
+  },
 
   // Conversation memory (disabled by default)
   conversationHistory: {
@@ -429,12 +535,6 @@ const agent = new CompositeVoice({
   // Turn-taking: whether to pause the mic during TTS playback
   turnTaking: {
     strategy: 'auto', // 'auto' | 'conservative' | 'aggressive' | 'detect'
-  },
-
-  // Audio capture settings
-  audio: {
-    sampleRate: 16000,
-    channels: 1,
   },
 
   // Logging
@@ -514,6 +614,23 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `audio.playback.end`   | —           | Audio playback ended   |
 | `audio.playback.error` | `{ error }` | Playback failure       |
 
+### Queue events
+
+| Event            | Payload                                                              | Description                                 |
+| ---------------- | -------------------------------------------------------------------- | ------------------------------------------- |
+| `queue.overflow` | `{ queueName, droppedChunks, currentSize }`                          | Queue exceeded `maxSize`, chunks were dropped |
+| `queue.stats`    | `{ queueName, size, totalEnqueued, totalDequeued, oldestChunkAge }` | Pipeline health snapshot from `getQueueStats()` |
+
+```typescript
+agent.on('queue.overflow', (e) => {
+  console.warn(`Queue "${e.queueName}" dropped ${e.droppedChunks} chunks (size: ${e.currentSize})`);
+});
+
+agent.on('queue.stats', (e) => {
+  console.log(`Queue "${e.queueName}": ${e.size} buffered, ${e.totalEnqueued} total`);
+});
+```
+
 ---
 
 ## Agent states
@@ -553,9 +670,7 @@ Enable multi-turn memory so the LLM remembers previous exchanges within a sessio
 
 ```typescript
 const agent = new CompositeVoice({
-  stt,
-  llm,
-  tts,
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: true,
     maxTurns: 10, // keep last 10 user + assistant pairs; 0 = unlimited
@@ -594,12 +709,14 @@ With the [DeepgramFlux](./apps/docs/src/content/docs/guides/stt/deepgram-flux.md
 
 ```typescript
 const agent = new CompositeVoice({
-  stt: new DeepgramFlux({
-    apiKey: 'your-key',
-    options: { model: 'flux-general-en', eagerEotThreshold: 0.5 },
-  }),
-  llm,
-  tts,
+  providers: [
+    new DeepgramFlux({
+      apiKey: 'your-key',
+      options: { model: 'flux-general-en', eagerEotThreshold: 0.5 },
+    }),
+    llm,
+    tts,
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true, // restart if the preflight text diverged
@@ -634,9 +751,7 @@ Turn-taking controls whether the microphone is paused while the AI is speaking. 
 
 ```typescript
 const agent = new CompositeVoice({
-  stt,
-  llm,
-  tts,
+  providers: [stt, llm, tts],
   turnTaking: { strategy: 'auto' },
 });
 ```
@@ -740,29 +855,101 @@ const tts = new DeepgramTTS({
   options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
 });
 
-const agent = new CompositeVoice({ stt, llm, tts });
+const agent = new CompositeVoice({ providers: [stt, llm, tts] });
 ```
 
 See [Example 10](./examples/10-proxy-server/) for a complete production-ready setup.
 
 ---
 
+## Server-side usage
+
+The SDK runs outside the browser. Use `BufferInput` and `NullOutput` for Node.js, Bun, or Deno pipelines where there is no microphone or speaker.
+
+```typescript
+import {
+  CompositeVoice,
+  BufferInput,
+  DeepgramSTT,
+  AnthropicLLM,
+  DeepgramTTS,
+  NullOutput,
+} from '@lukeocodes/composite-voice';
+
+// Define the audio format you will push
+const input = new BufferInput({
+  sampleRate: 16000,
+  encoding: 'linear16',
+  channels: 1,
+  bitDepth: 16,
+});
+
+const agent = new CompositeVoice({
+  providers: [
+    input,
+    new DeepgramSTT({ apiKey: process.env.DEEPGRAM_API_KEY }),
+    new AnthropicLLM({ apiKey: process.env.ANTHROPIC_API_KEY, model: 'claude-haiku-4-5-20251001' }),
+    new DeepgramTTS({ apiKey: process.env.DEEPGRAM_API_KEY }),
+    new NullOutput(),
+  ],
+});
+
+await agent.initialize();
+await agent.startListening();
+
+// Push audio from any source (file, stream, WebSocket, etc.)
+input.push(audioBuffer);
+```
+
+`BufferInput` and `NullOutput` have zero browser dependencies — no `navigator`, `window`, or `AudioContext`.
+
+---
+
 ## Custom providers
 
-All built-in providers implement abstract base classes. You can plug in any STT, LLM, or TTS service by extending the appropriate base class and emitting the expected events.
+All built-in providers implement abstract base classes. You can plug in any provider for any of the 5 pipeline roles by extending the appropriate base class and emitting the expected events.
 
-### Base classes
+### Base classes and interfaces
 
-| Base class            | Use for                                                          |
-| --------------------- | ---------------------------------------------------------------- |
-| `BaseSTTProvider`     | Any speech-to-text provider                                      |
-| `LiveSTTProvider`     | WebSocket-based real-time STT                                    |
-| `RestSTTProvider`     | Request/response STT (batch transcription)                       |
-| `BaseLLMProvider`     | Any language model                                               |
-| `OpenAICompatibleLLM` | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
-| `BaseTTSProvider`     | Any text-to-speech provider                                      |
-| `LiveTTSProvider`     | WebSocket-based streaming TTS                                    |
-| `RestTTSProvider`     | Request/response TTS                                             |
+| Base class / Interface | Role      | Use for                                                          |
+| ---------------------- | --------- | ---------------------------------------------------------------- |
+| `AudioInputProvider`   | `input`   | Custom audio capture (microphone, file, stream)                  |
+| `BaseSTTProvider`      | `stt`     | Any speech-to-text provider                                      |
+| `LiveSTTProvider`      | `stt`     | WebSocket-based real-time STT                                    |
+| `RestSTTProvider`      | `stt`     | Request/response STT (batch transcription)                       |
+| `BaseLLMProvider`      | `llm`     | Any language model                                               |
+| `OpenAICompatibleLLM`  | `llm`     | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
+| `BaseTTSProvider`      | `tts`     | Any text-to-speech provider                                      |
+| `LiveTTSProvider`      | `tts`     | WebSocket-based streaming TTS                                    |
+| `RestTTSProvider`      | `tts`     | Request/response TTS                                             |
+| `AudioOutputProvider`  | `output`  | Custom audio playback (speakers, file, stream)                   |
+
+Every custom provider must declare its `roles` property.
+
+### AudioInputProvider skeleton
+
+```typescript
+import type { AudioInputProvider, AudioChunk, AudioMetadata, ProviderType, ProviderRole } from '@lukeocodes/composite-voice';
+
+class MyInput implements AudioInputProvider {
+  public readonly type: ProviderType = 'rest';
+  public readonly roles: readonly ProviderRole[] = ['input'];
+
+  private callback: ((chunk: AudioChunk) => void) | null = null;
+
+  async initialize(): Promise<void> { /* set up your audio source */ }
+  async dispose(): Promise<void> { /* clean up */ }
+  isReady(): boolean { return true; }
+
+  start(): void { /* begin capturing and call this.callback with AudioChunk objects */ }
+  stop(): void { /* stop capturing */ }
+  pause(): void { /* pause capturing */ }
+  resume(): void { /* resume capturing */ }
+  isActive(): boolean { return false; }
+  onAudio(callback: (chunk: AudioChunk) => void): void { this.callback = callback; }
+  getMetadata(): AudioMetadata { return { sampleRate: 16000, encoding: 'linear16', channels: 1, bitDepth: 16 }; }
+}
+```
 
 ### STT provider skeleton
 
@@ -770,6 +957,9 @@ All built-in providers implement abstract base classes. You can plug in any STT,
 import { BaseSTTProvider } from '@lukeocodes/composite-voice';
 
 class MySTT extends BaseSTTProvider {
+  // Declare the roles this provider covers
+  public readonly roles = ['stt'] as const;
+
   protected async onInitialize(): Promise<void> {
     // Connect to your STT service, set up any clients or state.
   }
@@ -836,6 +1026,8 @@ const llm = new MyLLM({
 import { BaseTTSProvider } from '@lukeocodes/composite-voice';
 
 class MyTTS extends BaseTTSProvider {
+  public readonly roles = ['tts'] as const;
+
   protected async onInitialize(): Promise<void> {
     // Set up your TTS client.
   }
@@ -846,6 +1038,32 @@ class MyTTS extends BaseTTSProvider {
     this.emit('tts.audio', { chunk: audioBuffer });
     this.emit('tts.complete');
   }
+}
+```
+
+### AudioOutputProvider skeleton
+
+```typescript
+import type { AudioOutputProvider, AudioChunk, AudioMetadata, ProviderType, ProviderRole } from '@lukeocodes/composite-voice';
+
+class MyOutput implements AudioOutputProvider {
+  public readonly type: ProviderType = 'rest';
+  public readonly roles: readonly ProviderRole[] = ['output'];
+
+  async initialize(): Promise<void> { /* set up your audio destination */ }
+  async dispose(): Promise<void> { /* clean up */ }
+  isReady(): boolean { return true; }
+
+  configure(metadata: AudioMetadata): void { /* configure output format */ }
+  enqueue(chunk: AudioChunk): void { /* write audio chunk to destination */ }
+  async flush(): Promise<void> { /* wait for all enqueued audio to finish */ }
+  stop(): void { /* stop playback */ }
+  pause(): void { /* pause playback */ }
+  resume(): void { /* resume playback */ }
+  isPlaying(): boolean { return false; }
+  onPlaybackStart(callback: () => void): void { /* register callback */ }
+  onPlaybackEnd(callback: () => void): void { /* register callback */ }
+  onPlaybackError(callback: (error: Error) => void): void { /* register callback */ }
 }
 ```
 
