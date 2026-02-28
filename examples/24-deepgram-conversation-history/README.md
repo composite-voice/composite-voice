@@ -4,9 +4,11 @@ The "complete production agent" — Deepgram's high-quality STT and TTS combined
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
+| **Input** | `MicrophoneInput` | getUserMedia + AudioContext | All modern browsers |
 | **STT** | `DeepgramSTT` — nova-3 | WebSocket, real-time | All modern browsers |
 | **LLM** | `AnthropicLLM` with `conversationHistory` | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
+| **Output** | `BrowserAudioOutput` | Web Audio API | All modern browsers |
 
 ---
 
