@@ -269,29 +269,31 @@
       //   NativeTTS  — browser SpeechSynthesis API    (free, all browsers)
       //
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: new WebLLMLLM({
-          model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
-          maxTokens: 200,
-          stream: true,
-          onLoadProgress: ({ progress, text }) => {
-            const pct = Math.round(progress * 100);
-            progressText.textContent = text;
-            progressPct.textContent = `${pct}%`;
-            progressFill.style.width = `${pct}%`;
-          },
-        }),
+          new WebLLMLLM({
+            model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: 200,
+            stream: true,
+            onLoadProgress: ({ progress, text }) => {
+              const pct = Math.round(progress * 100);
+              progressText.textContent = text;
+              progressPct.textContent = `${pct}%`;
+              progressFill.style.width = `${pct}%`;
+            },
+          }),
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
 
       // ── 2. Subscribe to events ────────────────────────────────────────────
