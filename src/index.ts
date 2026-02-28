@@ -12,26 +12,29 @@
  * eager LLM pipeline support, configurable turn-taking strategies, and
  * WebSocket reconnection with exponential backoff.
  *
- * @example Basic usage with Deepgram STT, Anthropic LLM, and Deepgram TTS
+ * @example Basic usage with NativeSTT, Anthropic LLM, and NativeTTS
  * ```typescript
  * import {
  *   CompositeVoice,
- *   DeepgramSTT,
+ *   NativeSTT,
  *   AnthropicLLM,
- *   DeepgramTTS,
+ *   NativeTTS,
  * } from '@lukeocodes/composite-voice';
  *
  * const voice = new CompositeVoice({
- *   stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
- *   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
- *   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+ *   providers: [
+ *     new NativeSTT(),
+ *     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+ *     new NativeTTS(),
+ *   ],
  * });
  *
- * voice.on('agent:stateChange', ({ state }) => console.log('State:', state));
- * voice.on('transcription:speechFinal', ({ text }) => console.log('User:', text));
- * voice.on('tts:audio', ({ audio }) => console.log('Audio chunk received'));
+ * voice.on('agent.stateChange', ({ state }) => console.log('State:', state));
+ * voice.on('transcription.speechFinal', ({ text }) => console.log('User:', text));
+ * voice.on('tts.audio', ({ audio }) => console.log('Audio chunk received'));
  *
- * await voice.start();
+ * await voice.initialize();
+ * await voice.startListening();
  * ```
  *
  * @example Creating a custom provider
@@ -84,7 +87,7 @@ export type {
 
   // Config types
   CompositeVoiceConfig,
-  AudioConfig,
+  AudioBufferQueueConfig,
   ReconnectionConfig,
   LoggingConfig,
   ConversationHistoryConfig,

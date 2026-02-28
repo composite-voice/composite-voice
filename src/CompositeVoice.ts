@@ -20,6 +20,7 @@ import type {
 import type { CompositeVoiceConfig } from './core/types/config';
 import type {
   STTProvider,
+  LLMProvider,
   TTSProvider,
   LiveSTTProvider,
   LiveTTSProvider,
@@ -116,16 +117,15 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  *
  * @example Basic lifecycle
  * ```typescript
- * import { CompositeVoice } from 'composite-voice';
- * import { DeepgramSTT } from 'composite-voice/providers/stt';
- * import { AnthropicLLM } from 'composite-voice/providers/llm';
- * import { DeepgramTTS } from 'composite-voice/providers/tts';
+ * import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
  *
- * const stt = new DeepgramSTT({ model: 'nova-3' });
- * const llm = new AnthropicLLM({ model: 'claude-sonnet-4-20250514', systemPrompt: 'You are a helpful assistant.' });
- * const tts = new DeepgramTTS({ model: 'aura-2' });
- *
- * const agent = new CompositeVoice({ stt, llm, tts });
+ * const agent = new CompositeVoice({
+ *   providers: [
+ *     new NativeSTT(),
+ *     new AnthropicLLM({ model: 'claude-sonnet-4-20250514', systemPrompt: 'You are a helpful assistant.' }),
+ *     new NativeTTS(),
+ *   ],
+ * });
  *
  * // Subscribe to events before initializing
  * agent.on('agent.stateChange', ({ state }) => console.log('State:', state));
@@ -137,7 +137,7 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  * await agent.startListening();
  *
  * // The pipeline now runs automatically:
- * //   microphone -> STT -> LLM -> TTS -> speaker
+ * //   [input] -> STT -> LLM -> TTS -> [output]
  *
  * // When finished:
  * await agent.dispose();
@@ -146,9 +146,11 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  * @example With conversation history and eager LLM
  * ```typescript
  * const agent = new CompositeVoice({
- *   stt,
- *   llm,
- *   tts,
+ *   providers: [
+ *     new NativeSTT(),
+ *     new AnthropicLLM({ model: 'claude-sonnet-4-20250514' }),
+ *     new NativeTTS(),
+ *   ],
  *   conversationHistory: { enabled: true, maxTurns: 10 },
  *   eagerLLM: { enabled: true, cancelOnTextChange: true },
  * });
@@ -170,6 +172,11 @@ export class CompositeVoice {
   private config: CompositeVoiceConfig;
   private events: EventEmitter;
   private logger: Logger;
+
+  // Resolved provider references (extracted from config.providers by role)
+  private stt: STTProvider;
+  private llm: LLMProvider;
+  private tts: TTSProvider;
 
   // State machines
   private captureStateMachine: AudioCaptureStateMachine;
@@ -201,26 +208,31 @@ export class CompositeVoice {
    * listening -- call {@link CompositeVoice.initialize | initialize()} and then
    * {@link CompositeVoice.startListening | startListening()} to begin the pipeline.
    *
-   * @param config - The SDK configuration containing STT, LLM, and TTS provider
-   *   instances, plus optional audio, logging, turn-taking, conversation history,
-   *   and eager LLM settings.
+   * @param config - The SDK configuration containing a `providers` array with
+   *   provider instances, plus optional queue, logging, turn-taking, conversation
+   *   history, and eager LLM settings.
    *
    * @throws {@link ConfigurationError}
-   * Thrown if any of the required providers (`stt`, `llm`, `tts`) are missing
-   * from the configuration.
+   * Thrown if the required `stt`, `llm`, or `tts` roles are not covered by the
+   * providers array.
    *
    * @example
    * ```typescript
    * const agent = new CompositeVoice({
-   *   stt: new DeepgramSTT({ model: 'nova-3' }),
-   *   llm: new AnthropicLLM({ model: 'claude-sonnet-4-20250514' }),
-   *   tts: new DeepgramTTS({ model: 'aura-2' }),
+   *   providers: [
+   *     new NativeSTT(),
+   *     new AnthropicLLM({ model: 'claude-sonnet-4-20250514' }),
+   *     new NativeTTS(),
+   *   ],
    *   logging: { enabled: true, level: 'debug' },
    * });
    * ```
    */
   constructor(config: CompositeVoiceConfig) {
-    this.validateConfig(config);
+    const { stt, llm, tts } = this.resolveProviderRoles(config);
+    this.stt = stt;
+    this.llm = llm;
+    this.tts = tts;
     this.config = config;
 
     // Setup logging
@@ -253,17 +265,51 @@ export class CompositeVoice {
   }
 
   /**
-   * Validates that the provided configuration contains all required providers.
+   * Resolves STT, LLM, and TTS provider references from the flat providers array.
    *
-   * @param config - The SDK configuration to validate.
+   * @remarks
+   * Finds providers by their declared `roles` property. Each of the three core
+   * roles (`stt`, `llm`, `tts`) must be covered by at least one provider.
+   * This is an interim resolution step; the full 5-role pipeline resolution
+   * (including `input` and `output`) will be implemented by `resolveProviders()`.
+   *
+   * @param config - The SDK configuration containing the providers array.
+   * @returns An object with typed `stt`, `llm`, and `tts` provider references.
    *
    * @throws {@link ConfigurationError}
-   * Thrown if `stt`, `llm`, or `tts` is missing from the configuration.
+   * Thrown if the `providers` array is missing, or if any of the required roles
+   * (`stt`, `llm`, `tts`) are not covered.
    */
-  private validateConfig(config: CompositeVoiceConfig): void {
-    if (!config.stt || !config.llm || !config.tts) {
-      throw new ConfigurationError('CompositeVoice requires stt, llm, and tts providers');
+  private resolveProviderRoles(config: CompositeVoiceConfig): {
+    stt: STTProvider;
+    llm: LLMProvider;
+    tts: TTSProvider;
+  } {
+    if (!config.providers || !Array.isArray(config.providers) || config.providers.length === 0) {
+      throw new ConfigurationError(
+        'CompositeVoice requires a non-empty providers array'
+      );
     }
+
+    const sttProvider = config.providers.find((p) => p.roles.includes('stt'));
+    const llmProvider = config.providers.find((p) => p.roles.includes('llm'));
+    const ttsProvider = config.providers.find((p) => p.roles.includes('tts'));
+
+    if (!sttProvider || !llmProvider || !ttsProvider) {
+      const missing: string[] = [];
+      if (!sttProvider) missing.push('stt');
+      if (!llmProvider) missing.push('llm');
+      if (!ttsProvider) missing.push('tts');
+      throw new ConfigurationError(
+        `CompositeVoice requires providers covering these roles: ${missing.join(', ')}`
+      );
+    }
+
+    return {
+      stt: sttProvider as unknown as STTProvider,
+      llm: llmProvider as unknown as LLMProvider,
+      tts: ttsProvider as unknown as TTSProvider,
+    };
   }
 
   /**
@@ -286,7 +332,7 @@ export class CompositeVoice {
    *
    * @example
    * ```typescript
-   * const agent = new CompositeVoice({ stt, llm, tts });
+   * const agent = new CompositeVoice({ providers: [stt, llm, tts] });
    * agent.on('agent.ready', () => console.log('SDK is ready'));
    * await agent.initialize();
    * ```
@@ -310,9 +356,9 @@ export class CompositeVoice {
 
       // Initialize providers
       await Promise.all([
-        this.config.stt.initialize(),
-        this.config.llm.initialize(),
-        this.config.tts.initialize(),
+        this.stt.initialize(),
+        this.llm.initialize(),
+        this.tts.initialize(),
       ]);
       this.setupProviders();
 
@@ -347,7 +393,7 @@ export class CompositeVoice {
    * if the provider does not manage its own audio pipeline.
    */
   private setupProviders(): void {
-    const { stt, tts } = this.config;
+    const { stt, tts } = this;
 
     // Setup STT provider callbacks (all STT providers have onTranscription)
     stt.onTranscription((result) => {
@@ -420,7 +466,7 @@ export class CompositeVoice {
     if (isLiveTTS(tts)) {
       // Initialize AudioPlayer for Live TTS (unless provider covers the 'output' role)
       if (!tts.roles.includes('output')) {
-        this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
+        this.audioPlayer = new AudioPlayer(undefined, this.logger);
       }
 
       tts.onAudio((chunk) => {
@@ -616,7 +662,7 @@ export class CompositeVoice {
     });
 
     try {
-      const { llm, tts } = this.config;
+      const { llm, tts } = this;
       const historyConfig = this.config.conversationHistory;
       const useHistory = historyConfig?.enabled === true;
 
@@ -764,7 +810,7 @@ export class CompositeVoice {
     });
 
     try {
-      const { stt, tts } = this.config;
+      const { stt, tts } = this;
       const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
       const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
@@ -791,7 +837,7 @@ export class CompositeVoice {
         } else {
           // SDK-managed TTS: get audio blob and play via AudioPlayer
           if (!this.audioPlayer) {
-            this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
+            this.audioPlayer = new AudioPlayer(undefined, this.logger);
           }
           const audioBlob = await tts.synthesize(text);
           await this.audioPlayer.play(audioBlob);
@@ -836,7 +882,7 @@ export class CompositeVoice {
 
       // Try to recover - resume STT
       try {
-        const { stt } = this.config;
+        const { stt } = this;
 
         // Recover capture state machine
         const captureState = this.captureStateMachine.getState();
@@ -902,7 +948,7 @@ export class CompositeVoice {
     });
 
     try {
-      const { stt, tts } = this.config;
+      const { stt, tts } = this;
       const turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...this.config.turnTaking };
       const shouldPause = shouldPauseCaptureOnPlayback(turnTakingConfig, stt, tts, this.logger);
 
@@ -971,7 +1017,7 @@ export class CompositeVoice {
 
       // Try to resume STT capture
       try {
-        const { stt } = this.config;
+        const { stt } = this;
         const captureState = this.captureStateMachine.getState();
         if (captureState === 'error') {
           this.captureStateMachine.setIdle();
@@ -1042,7 +1088,7 @@ export class CompositeVoice {
     this.captureStateMachine.setStarting();
 
     try {
-      const { stt } = this.config;
+      const { stt } = this;
 
       // Provider covers the 'input' role (e.g. NativeSTT via SpeechRecognition)
       if (stt.roles.includes('input')) {
@@ -1054,7 +1100,7 @@ export class CompositeVoice {
         if (isLiveSTT(stt)) {
           // Initialize AudioCapture if needed
           if (!this.audioCapture) {
-            this.audioCapture = new AudioCapture(this.config.audio?.input, this.logger);
+            this.audioCapture = new AudioCapture(undefined, this.logger);
           }
 
           // Connect STT provider first
@@ -1111,7 +1157,7 @@ export class CompositeVoice {
     this.logger.info('Stopping listening');
 
     try {
-      const { stt } = this.config;
+      const { stt } = this;
 
       // Stop audio capture
       if (this.audioCapture) {
@@ -1170,7 +1216,7 @@ export class CompositeVoice {
     }
 
     try {
-      const { tts } = this.config;
+      const { tts } = this;
 
       if (this.audioPlayer) {
         await this.audioPlayer.stop();
@@ -1493,9 +1539,9 @@ export class CompositeVoice {
 
       // Dispose providers (they handle their own audio cleanup)
       await Promise.all([
-        this.config.stt.dispose(),
-        this.config.llm.dispose(),
-        this.config.tts.dispose(),
+        this.stt.dispose(),
+        this.llm.dispose(),
+        this.tts.dispose(),
       ]);
 
       // Clear event listeners

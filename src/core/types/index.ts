@@ -15,7 +15,7 @@
  *   `TTSProvider`, `AudioInputProvider`, `AudioOutputProvider`,
  *   `ResolvedPipeline`, and their configuration interfaces that define the
  *   contracts all providers must implement.
- * - **Config types** -- `CompositeVoiceConfig`, `AudioConfig`,
+ * - **Config types** -- `CompositeVoiceConfig`, `AudioBufferQueueConfig`,
  *   `ReconnectionConfig`, `LoggingConfig`, `ConversationHistoryConfig`,
  *   `EagerLLMConfig`, and `TurnTakingConfig` for SDK configuration.
  *

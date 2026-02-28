@@ -82,7 +82,7 @@ export type AudioEncoding = 'linear16' | 'opus' | 'mp3' | 'mulaw' | 'alaw';
  * ```
  *
  * @see {@link AudioOutputConfig} for playback configuration
- * @see {@link AudioConfig} for the parent configuration that wraps input and output
+ * @see {@link CompositeVoiceConfig} for the top-level SDK configuration
  */
 export interface AudioInputConfig {
   /**
@@ -184,7 +184,7 @@ export interface AudioInputConfig {
  * ```
  *
  * @see {@link AudioInputConfig} for capture configuration
- * @see {@link AudioConfig} for the parent configuration that wraps input and output
+ * @see {@link CompositeVoiceConfig} for the top-level SDK configuration
  */
 export interface AudioOutputConfig {
   /**

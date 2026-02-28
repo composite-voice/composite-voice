@@ -54,9 +54,7 @@ describe('Composite Mode Integration', () => {
   describe('initialization', () => {
     it('should initialize with all providers', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       await agent.initialize();
@@ -67,9 +65,7 @@ describe('Composite Mode Integration', () => {
 
     it('should emit ready event', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       const readyPromise = new Promise((resolve) => {
@@ -85,9 +81,9 @@ describe('Composite Mode Integration', () => {
     it('should throw error if missing providers', () => {
       expect(() => {
         new CompositeVoice({
-          stt: new NativeSTT(),
-          // Missing LLM and TTS
-        } as any);
+          providers: [new NativeSTT()],
+          // Missing LLM and TTS roles
+        });
       }).toThrow();
     });
   });
@@ -95,9 +91,7 @@ describe('Composite Mode Integration', () => {
   describe('event flow', () => {
     it('should emit state change events', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       const states: string[] = [];
@@ -113,9 +107,7 @@ describe('Composite Mode Integration', () => {
 
     it('should track all event types', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       const events: string[] = [];
@@ -132,20 +124,9 @@ describe('Composite Mode Integration', () => {
   });
 
   describe('configuration', () => {
-    it('should apply audio configuration', async () => {
+    it('should initialize with provider array config', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
-        audio: {
-          input: {
-            sampleRate: 48000,
-            channels: 2,
-          },
-          output: {
-            bufferSize: 8192,
-          },
-        },
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       await agent.initialize();
@@ -159,9 +140,7 @@ describe('Composite Mode Integration', () => {
       const customLogger = jest.fn();
 
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
         logging: {
           enabled: true,
           level: 'debug',
@@ -179,9 +158,7 @@ describe('Composite Mode Integration', () => {
   describe('disposal', () => {
     it('should dispose all providers', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       await agent.initialize();
@@ -193,9 +170,7 @@ describe('Composite Mode Integration', () => {
 
     it('should handle disposal without initialization', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       await expect(agent.dispose()).resolves.not.toThrow();
@@ -203,9 +178,7 @@ describe('Composite Mode Integration', () => {
 
     it('should remove all event listeners on disposal', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       const listener = jest.fn();
@@ -250,9 +223,7 @@ describe('Composite Mode Integration', () => {
       }
 
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new FailingProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new FailingProvider(), new NativeTTS()],
       });
 
       await expect(agent.initialize()).rejects.toThrow();
@@ -261,9 +232,7 @@ describe('Composite Mode Integration', () => {
 
     it('should emit error events', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       const errorHandler = jest.fn();
@@ -280,9 +249,7 @@ describe('Composite Mode Integration', () => {
   describe('component access', () => {
     it('should provide access to audio capture', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       // Audio I/O is now managed by providers, not exposed by SDK
@@ -292,9 +259,7 @@ describe('Composite Mode Integration', () => {
 
     it('should not expose audio player (providers manage I/O)', async () => {
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: new MockLLMProvider(),
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), new MockLLMProvider(), new NativeTTS()],
       });
 
       // Audio I/O is now managed by providers, not exposed by SDK
@@ -308,9 +273,7 @@ describe('Composite Mode Integration', () => {
     beforeEach(async () => {
       mockLLM = new MockLLMProvider();
       agent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: mockLLM,
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), mockLLM, new NativeTTS()],
         conversationHistory: { enabled: true },
       });
       await agent.initialize();
@@ -328,9 +291,7 @@ describe('Composite Mode Integration', () => {
     it('should use generate() when history is disabled', async () => {
       const noHistoryLLM = new MockLLMProvider();
       const noHistoryAgent = new CompositeVoice({
-        stt: new NativeSTT(),
-        llm: noHistoryLLM,
-        tts: new NativeTTS(),
+        providers: [new NativeSTT(), noHistoryLLM, new NativeTTS()],
       });
       await noHistoryAgent.initialize();
 

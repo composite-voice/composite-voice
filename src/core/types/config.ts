@@ -4,8 +4,9 @@
  * @remarks
  * This module defines all configuration interfaces used to initialize and customize
  * a CompositeVoice agent. The main entry point is {@link CompositeVoiceConfig}, which
- * composes provider selection with audio, reconnection, logging, turn-taking, conversation
- * history, and eager LLM settings.
+ * accepts a flat `providers` array for pipeline configuration, plus optional settings
+ * for queue buffering, reconnection, logging, turn-taking, conversation history, and
+ * eager LLM.
  *
  * Default values for each configuration group are exported as constants (e.g.,
  * {@link DEFAULT_AUDIO_INPUT_CONFIG}, {@link DEFAULT_RECONNECTION_CONFIG}) and are
@@ -15,93 +16,67 @@
  */
 
 import type { AudioInputConfig, AudioOutputConfig } from './audio';
-import type { STTProvider, LLMProvider, TTSProvider } from './providers';
+import type { BaseProvider } from './providers';
 
 /**
- * Provider configuration specifying the STT, LLM, and TTS providers for the agent.
+ * Configuration for an {@link AudioBufferQueue} instance.
  *
  * @remarks
- * Every CompositeVoice agent requires exactly one provider for each pipeline stage:
- * speech-to-text (STT), large language model (LLM), and text-to-speech (TTS).
- * Providers can be either REST-based or WebSocket-based (live/streaming).
+ * Controls the bounded FIFO queue used between pipeline stages (e.g., between
+ * an `AudioInputProvider` and the STT provider, or between the TTS provider
+ * and an `AudioOutputProvider`). The queue buffers audio frames while the
+ * downstream consumer is not yet connected (e.g., during STT WebSocket
+ * handshake) and flushes them in order once `startDraining()` is called.
  *
  * @example
  * ```typescript
- * import { DeepgramSTT, AnthropicLLM, DeepgramTTS } from 'composite-voice';
- *
- * const providers: ProviderConfig = {
- *   stt: new DeepgramSTT({ apiKey: 'dg-key', model: 'nova-3' }),
- *   llm: new AnthropicLLM({ apiKey: 'anthropic-key', model: 'claude-sonnet-4-20250514' }),
- *   tts: new DeepgramTTS({ apiKey: 'dg-key', model: 'aura-2' }),
+ * const queueConfig: AudioBufferQueueConfig = {
+ *   name: 'input-queue',
+ *   maxSize: 2000,
+ *   overflowStrategy: 'drop-oldest',
  * };
  * ```
  *
- * @see {@link STTProvider} for speech-to-text provider interfaces
- * @see {@link LLMProvider} for LLM provider interface
- * @see {@link TTSProvider} for text-to-speech provider interfaces
+ * @see {@link CompositeVoiceConfig} for where queue config is specified
  */
-export interface ProviderConfig {
+export interface AudioBufferQueueConfig {
   /**
-   * Speech-to-text provider instance.
-   *
-   * @see {@link STTProvider}
-   */
-  stt: STTProvider;
-
-  /**
-   * Large language model provider instance.
-   *
-   * @see {@link LLMProvider}
-   */
-  llm: LLMProvider;
-
-  /**
-   * Text-to-speech provider instance.
-   *
-   * @see {@link TTSProvider}
-   */
-  tts: TTSProvider;
-}
-
-/**
- * Audio configuration grouping input (capture) and output (playback) settings.
- *
- * @remarks
- * Wraps {@link AudioInputConfig} and {@link AudioOutputConfig} as optional partials.
- * Any properties you omit will be filled in from {@link DEFAULT_AUDIO_INPUT_CONFIG}
- * and {@link DEFAULT_AUDIO_OUTPUT_CONFIG} respectively.
- *
- * @example
- * ```typescript
- * const audio: AudioConfig = {
- *   input: { sampleRate: 16000, format: 'pcm' },
- *   output: { minBufferDuration: 150 },
- * };
- * ```
- *
- * @see {@link AudioInputConfig} for all input options
- * @see {@link AudioOutputConfig} for all output options
- */
-export interface AudioConfig {
-  /**
-   * Audio input (microphone) configuration.
+   * Diagnostic name for the queue, used in log messages and stats events.
    *
    * @remarks
-   * Partial -- unspecified properties fall back to {@link DEFAULT_AUDIO_INPUT_CONFIG}.
-   *
-   * @see {@link AudioInputConfig}
+   * When specified via {@link CompositeVoiceConfig.queue}, the SDK automatically
+   * assigns names (`'input'` and `'output'`), so this field is optional in that
+   * context.
    */
-  input?: Partial<AudioInputConfig>;
+  name: string;
 
   /**
-   * Audio output (playback) configuration.
+   * Maximum number of audio chunks the queue can hold before overflow handling
+   * kicks in.
    *
    * @remarks
-   * Partial -- unspecified properties fall back to {@link DEFAULT_AUDIO_OUTPUT_CONFIG}.
+   * When the queue reaches this size and a new chunk is enqueued, the
+   * {@link AudioBufferQueueConfig.overflowStrategy | overflowStrategy}
+   * determines what happens.
    *
-   * @see {@link AudioOutputConfig}
+   * @defaultValue 1000
    */
-  output?: Partial<AudioOutputConfig>;
+  maxSize: number;
+
+  /**
+   * Strategy for handling queue overflow when {@link maxSize} is reached.
+   *
+   * @remarks
+   * - `'drop-oldest'` — Removes the oldest chunk to make room (default).
+   *   Best for real-time audio where stale frames are less useful.
+   * - `'drop-newest'` — Discards the incoming chunk. Useful when preserving
+   *   the beginning of a stream is more important.
+   * - `'block'` — Blocks the enqueue call until space is available.
+   *   Use with caution as it can cause backpressure in the pipeline.
+   *
+   * @defaultValue `'drop-oldest'`
+   */
+  overflowStrategy: 'drop-oldest' | 'drop-newest' | 'block';
 }
 
 /**
@@ -405,42 +380,102 @@ export interface ConversationHistoryConfig {
  *
  * @remarks
  * This is the top-level configuration object passed to the `CompositeVoice` constructor.
- * It extends {@link ProviderConfig} (requiring STT, LLM, and TTS providers) and adds
- * optional settings for audio, reconnection, logging, turn-taking, conversation history,
+ * It accepts a flat `providers` array containing all pipeline providers, plus optional
+ * settings for queue buffering, reconnection, logging, turn-taking, conversation history,
  * eager LLM, error recovery, and custom extensions.
+ *
+ * The `providers` array replaces the old `{ stt, llm, tts }` pattern, enabling
+ * multi-role providers (e.g., NativeSTT covering both `'input'` and `'stt'` roles)
+ * and explicit audio I/O providers (e.g., `MicrophoneInput`, `BrowserAudioOutput`).
  *
  * All optional fields have sensible defaults that are applied automatically by the SDK.
  *
- * @example
+ * @example 3-provider config (multi-role NativeSTT and NativeTTS)
  * ```typescript
- * import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from 'composite-voice';
+ * import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
  *
  * const agent = new CompositeVoice({
- *   stt: new DeepgramSTT({ apiKey: 'dg-key', model: 'nova-3' }),
- *   llm: new AnthropicLLM({ apiKey: 'anthropic-key', model: 'claude-sonnet-4-20250514' }),
- *   tts: new DeepgramTTS({ apiKey: 'dg-key', model: 'aura-2' }),
- *   audio: {
- *     input: { sampleRate: 16000, format: 'pcm' },
- *   },
+ *   providers: [
+ *     new NativeSTT(),
+ *     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+ *     new NativeTTS(),
+ *   ],
  *   conversationHistory: { enabled: true, maxTurns: 10 },
  *   logging: { enabled: true, level: 'debug' },
  * });
  * ```
  *
- * @see {@link ProviderConfig} for required provider fields
- * @see {@link AudioConfig} for audio configuration
+ * @example 5-provider config (explicit audio I/O)
+ * ```typescript
+ * import {
+ *   CompositeVoice,
+ *   MicrophoneInput,
+ *   DeepgramSTT,
+ *   AnthropicLLM,
+ *   DeepgramTTS,
+ *   BrowserAudioOutput,
+ * } from 'composite-voice';
+ *
+ * const agent = new CompositeVoice({
+ *   providers: [
+ *     new MicrophoneInput({ sampleRate: 16000 }),
+ *     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+ *     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+ *     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+ *     new BrowserAudioOutput(),
+ *   ],
+ *   queue: {
+ *     input: { maxSize: 2000 },
+ *     output: { maxSize: 500 },
+ *   },
+ * });
+ * ```
+ *
+ * @see {@link BaseProvider} for the provider interface that all providers implement
  * @see {@link ReconnectionConfig} for WebSocket reconnection settings
  * @see {@link TurnTakingConfig} for turn-taking behavior
  * @see {@link EagerLLMConfig} for speculative generation settings
  * @see {@link ConversationHistoryConfig} for multi-turn history
+ * @see {@link AudioBufferQueueConfig} for queue configuration
  */
-export type CompositeVoiceConfig = ProviderConfig & {
+export interface CompositeVoiceConfig {
   /**
-   * Audio configuration for input capture and output playback.
+   * Array of provider instances for the voice pipeline.
    *
-   * @see {@link AudioConfig}
+   * @remarks
+   * Each provider declares its {@link BaseProvider.roles | roles} property indicating
+   * which pipeline slots it covers. The SDK resolves the 5-role pipeline
+   * (`input`, `stt`, `llm`, `tts`, `output`) from this array:
+   *
+   * - Multi-role providers (e.g., `NativeSTT` with `roles: ['input', 'stt']`) cover
+   *   multiple slots with a single instance.
+   * - Single-role providers (e.g., `MicrophoneInput` with `roles: ['input']`) cover
+   *   exactly one slot.
+   * - The `llm` role is always required.
+   * - When `input`+`stt` are uncovered, defaults to `NativeSTT()`.
+   * - When `tts`+`output` are uncovered, defaults to `NativeTTS()`.
+   *
+   * @see {@link BaseProvider} for the interface all providers implement
    */
-  audio?: AudioConfig;
+  providers: BaseProvider[];
+
+  /**
+   * Queue configuration for input and output audio buffer queues.
+   *
+   * @remarks
+   * When separate input and STT providers are used (e.g., `MicrophoneInput` +
+   * `DeepgramSTT`), an `AudioBufferQueue` buffers audio between them to
+   * prevent frame loss during STT connection. Similarly for TTS + output.
+   * This config lets you tune queue sizes and overflow behavior.
+   *
+   * @see {@link AudioBufferQueueConfig}
+   */
+  queue?: {
+    /** Configuration overrides for the input→STT buffer queue. */
+    input?: Partial<AudioBufferQueueConfig>;
+    /** Configuration overrides for the TTS→output buffer queue. */
+    output?: Partial<AudioBufferQueueConfig>;
+  };
 
   /**
    * WebSocket reconnection configuration.
@@ -513,7 +548,7 @@ export type CompositeVoiceConfig = ProviderConfig & {
    * via the config object.
    */
   extra?: Record<string, unknown>;
-};
+}
 
 /**
  * Default audio input configuration values.
