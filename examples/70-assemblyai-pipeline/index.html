@@ -328,6 +328,8 @@
             AssemblyAISTT,
             AnthropicLLM,
             DeepgramTTS,
+            MicrophoneInput,
+            BrowserAudioOutput,
         } from '@lukeocodes/composite-voice';
 
         let agent = null;
@@ -388,27 +390,31 @@
             initBtn.disabled = true;
 
             try {
+                const stt = new AssemblyAISTT({
+                    proxyUrl: `${window.location.origin}/proxy/assemblyai`,
+                    language: 'en',
+                    sampleRate: 16000,
+                });
+
+                const llm = new AnthropicLLM({
+                    proxyUrl: `${window.location.origin}/proxy/anthropic`,
+                    model: 'claude-sonnet-4-20250514',
+                    systemPrompt: 'You are a helpful voice assistant. Keep responses concise and conversational — two to three sentences at most.',
+                    maxTokens: 200,
+                    stream: true,
+                });
+
+                const tts = new DeepgramTTS({
+                    proxyUrl: `${window.location.origin}/proxy/deepgram`,
+                    options: {
+                        model: 'aura-2-thalia-en',
+                        encoding: 'linear16',
+                        sampleRate: 24000,
+                    },
+                });
+
                 agent = new CompositeVoice({
-                    stt: new AssemblyAISTT({
-                        proxyUrl: `${window.location.origin}/proxy/assemblyai`,
-                        language: 'en',
-                        sampleRate: 16000,
-                    }),
-                    llm: new AnthropicLLM({
-                        proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                        model: 'claude-sonnet-4-20250514',
-                        systemPrompt: 'You are a helpful voice assistant. Keep responses concise and conversational — two to three sentences at most.',
-                        maxTokens: 200,
-                        stream: true,
-                    }),
-                    tts: new DeepgramTTS({
-                        proxyUrl: `${window.location.origin}/proxy/deepgram`,
-                        options: {
-                            model: 'aura-2-thalia-en',
-                            encoding: 'linear16',
-                            sampleRate: 24000,
-                        },
-                    }),
+                    providers: [new MicrophoneInput(), stt, llm, tts, new BrowserAudioOutput()],
                     logging: { enabled: true, level: 'info' },
                 });
 
