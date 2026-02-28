@@ -178,7 +178,7 @@
   </div>
 
   <script type="module">
-    import { CompositeVoice, NativeSTT, OpenAILLM, OpenAITTS } from '@lukeocodes/composite-voice';
+    import { CompositeVoice, NativeSTT, OpenAILLM, OpenAITTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
     // ─── UI ────────────────────────────────────────────────────────────────────
     const root       = document.getElementById('root');
@@ -222,31 +222,34 @@
       //
       // OpenAI for both LLM and TTS, with NativeSTT for speech recognition.
       //
-      //   NativeSTT  — browser Web Speech API         (free, Chrome/Edge)
-      //   OpenAILLM  — GPT via proxy → HTTP stream    (pay per token)
-      //   OpenAITTS  — tts-1 via proxy → audio blob   (pay per character)
+      //   NativeSTT         — browser Web Speech API         (free, Chrome/Edge) [input + stt]
+      //   OpenAILLM         — GPT via proxy → HTTP stream    (pay per token)     [llm]
+      //   OpenAITTS         — tts-1 via proxy → audio blob   (pay per character)  [tts]
+      //   BrowserAudioOutput — browser AudioContext playback                       [output]
       //
+      const stt = new NativeSTT({
+        language: 'en-US',
+        continuous: true,
+        interimResults: true,
+      });
+
+      const llm = new OpenAILLM({
+        proxyUrl: `${window.location.origin}/proxy/openai`,
+        model: 'gpt-4o-mini',
+        systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+        maxTokens: 200,
+        stream: true,
+      });
+
+      const tts = new OpenAITTS({
+        proxyUrl: `${window.location.origin}/proxy/openai`,
+        model: 'tts-1',
+        voice: 'nova',
+        responseFormat: 'mp3',
+      });
+
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
-
-        llm: new OpenAILLM({
-          proxyUrl: `${window.location.origin}/proxy/openai`,
-          model: 'gpt-4o-mini',
-          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
-          maxTokens: 200,
-          stream: true,
-        }),
-
-        tts: new OpenAITTS({
-          proxyUrl: `${window.location.origin}/proxy/openai`,
-          model: 'tts-1',
-          voice: 'nova',
-          responseFormat: 'mp3',
-        }),
+        providers: [stt, llm, tts, new BrowserAudioOutput()],
       });
 
       // ── 2. Subscribe to events ────────────────────────────────────────────
