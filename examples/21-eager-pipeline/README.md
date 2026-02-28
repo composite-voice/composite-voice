@@ -4,9 +4,11 @@ Demonstrates speculative LLM generation: the SDK starts generating a response be
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
+| **Input** | `MicrophoneInput` | MediaStream API | All modern browsers |
 | **STT** | `DeepgramFlux` — flux-general-en | WebSocket (V2 API), real-time | All modern browsers |
 | **LLM** | `AnthropicLLM` with `eagerLLM` | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
+| **Output** | `BrowserAudioOutput` | Web Audio API | All modern browsers |
 
 ---
 
@@ -43,18 +45,22 @@ By the time `speech_final` confirms the transcript, the LLM may already have tok
 Enable it with three config options:
 
 ```javascript
-import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS, MicrophoneInput, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramFlux({
-    proxyUrl: '/api/proxy/deepgram',
-    options: {
-      model: 'flux-general-en',
-      eagerEotThreshold: 0.5,  // fire preflight at 50% end-of-turn confidence
-      eotThreshold: 0.7,       // fire speechFinal at 70% confidence
-    },
-  }),
-  llm, tts,
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramFlux({
+      proxyUrl: '/api/proxy/deepgram',
+      options: {
+        model: 'flux-general-en',
+        eagerEotThreshold: 0.5,  // fire preflight at 50% end-of-turn confidence
+        eotThreshold: 0.7,       // fire speechFinal at 70% confidence
+      },
+    }),
+    llm, tts,
+    new BrowserAudioOutput(),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,      // restart if the preflight text was wrong

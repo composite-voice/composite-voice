@@ -302,6 +302,8 @@
             DeepgramFlux,
             DeepgramTTS,
             AnthropicLLM,
+            MicrophoneInput,
+            BrowserAudioOutput,
         } from '@lukeocodes/composite-voice';
 
         let agent = null;
@@ -398,9 +400,7 @@
                 });
 
                 agent = new CompositeVoice({
-                    stt,
-                    llm,
-                    tts,
+                    providers: [new MicrophoneInput(), stt, llm, tts, new BrowserAudioOutput()],
                     // Enable eager LLM: start generating when preflight fires
                     eagerLLM: {
                         enabled: true,

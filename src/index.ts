@@ -148,9 +148,8 @@ export type {
 } from './providers/stt/deepgram/index';
 export { AssemblyAISTT } from './providers/stt/assemblyai/index';
 export type { AssemblyAISTTConfig } from './providers/stt/assemblyai/index';
-// DISABLED — DeepgramFlux requires @deepgram/sdk V5 (listen.v2 API)
-// export { DeepgramFlux } from './providers/stt/deepgram-flux/index';
-// export type { DeepgramFluxConfig, DeepgramFluxOptions } from './providers/stt/deepgram-flux/index';
+export { DeepgramFlux } from './providers/stt/deepgram-flux/index';
+export type { DeepgramFluxConfig, DeepgramFluxOptions } from './providers/stt/deepgram-flux/index';
 export { ElevenLabsSTT, LANGUAGE_MAP, resolveLanguageCode } from './providers/stt/elevenlabs/index';
 export type {
   ElevenLabsSTTConfig,
