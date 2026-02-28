@@ -10,6 +10,7 @@
  * - **TTS events** (`tts.*`) - Text-to-speech synthesis progress
  * - **Agent events** (`agent.*`) - Agent lifecycle and state changes
  * - **Audio events** (`audio.*`) - Microphone capture and audio playback status
+ * - **Queue events** (`queue.*`) - Audio buffer queue overflow and stats
  *
  * Subscribe to events using the `on()` method on a CompositeVoice instance.
  * All event listeners receive a typed event object extending {@link BaseEvent}.
@@ -789,6 +790,155 @@ export type AudioEvent =
   | AudioPlaybackErrorEvent;
 
 // ---------------------------------------------------------------------------
+// Queue events
+// ---------------------------------------------------------------------------
+
+/**
+ * Emitted when an {@link AudioBufferQueue} drops chunks due to overflow.
+ *
+ * @remarks
+ * This event fires each time the queue drops one or more chunks because it
+ * has reached its configured `maxSize` and the overflow strategy is
+ * `'drop-oldest'` or `'drop-newest'`. The event includes the queue name,
+ * the number of chunks dropped in this overflow instance, and the current
+ * buffer size after the drop.
+ *
+ * Monitoring this event helps detect situations where the STT or output
+ * consumer is too slow to keep up with the producer, potentially causing
+ * audio gaps.
+ *
+ * @example
+ * ```typescript
+ * agent.on('queue.overflow', (event) => {
+ *   console.warn(
+ *     `Queue "${event.queueName}" overflowed: ` +
+ *     `${event.droppedChunks} chunks dropped, ${event.currentSize} remaining`
+ *   );
+ * });
+ * ```
+ *
+ * @see {@link QueueStatsEvent} for periodic pipeline health snapshots
+ * @see {@link QueueEvent} for all queue event types
+ */
+export interface QueueOverflowEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'queue.overflow';
+
+  /**
+   * Diagnostic name of the queue that overflowed.
+   *
+   * @remarks
+   * Typically `'input'` (between InputProvider and STT) or `'output'`
+   * (between TTS and OutputProvider).
+   */
+  queueName: string;
+
+  /**
+   * Number of chunks dropped in this overflow instance.
+   *
+   * @remarks
+   * For `'drop-oldest'` and `'drop-newest'` strategies, this is typically 1
+   * per overflow event. The cumulative total is available via
+   * {@link QueueStatsEvent.totalDropped} or {@link QueueStats.totalDropped}.
+   */
+  droppedChunks: number;
+
+  /**
+   * Current number of chunks in the buffer after the drop.
+   *
+   * @remarks
+   * Equals the queue's `maxSize` for `'drop-oldest'` (the buffer remains
+   * full after replacing the oldest chunk).
+   */
+  currentSize: number;
+}
+
+/**
+ * Emitted when queue statistics are requested via `getQueueStats()`.
+ *
+ * @remarks
+ * This event provides a point-in-time snapshot of an {@link AudioBufferQueue}'s
+ * health metrics, including current size, total throughput counters, and the
+ * age of the oldest buffered chunk. One event is emitted per queue (input and
+ * output) each time `getQueueStats()` is called.
+ *
+ * Use this event for dashboards, logging, or alerting on pipeline health.
+ *
+ * @example
+ * ```typescript
+ * agent.on('queue.stats', (event) => {
+ *   console.log(
+ *     `Queue "${event.queueName}": ${event.size} buffered, ` +
+ *     `${event.totalEnqueued} in, ${event.totalDequeued} out, ` +
+ *     `oldest: ${event.oldestChunkAge}ms`
+ *   );
+ * });
+ *
+ * // Trigger stats emission
+ * const stats = agent.getQueueStats();
+ * ```
+ *
+ * @see {@link QueueOverflowEvent} for overflow-specific alerts
+ * @see {@link QueueEvent} for all queue event types
+ */
+export interface QueueStatsEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'queue.stats';
+
+  /**
+   * Diagnostic name of the queue.
+   *
+   * @remarks
+   * Typically `'input'` or `'output'`.
+   */
+  queueName: string;
+
+  /**
+   * Current number of chunks in the buffer.
+   *
+   * @remarks
+   * Always 0 when the queue is in draining (pass-through) mode.
+   */
+  size: number;
+
+  /**
+   * Total number of chunks enqueued since creation.
+   *
+   * @remarks
+   * Includes chunks that were subsequently dropped due to overflow.
+   */
+  totalEnqueued: number;
+
+  /**
+   * Total number of chunks delivered to the drain callback.
+   *
+   * @remarks
+   * Includes both buffered chunks flushed during drain and pass-through chunks.
+   */
+  totalDequeued: number;
+
+  /**
+   * Age of the oldest chunk in the buffer, in milliseconds.
+   *
+   * @remarks
+   * Returns 0 when the buffer is empty or in draining mode.
+   */
+  oldestChunkAge: number;
+}
+
+/**
+ * Union of all queue-related events.
+ *
+ * @remarks
+ * Use this type to handle any queue event generically, or subscribe to
+ * specific event types via the {@link EventListenerMap}.
+ *
+ * @see {@link QueueOverflowEvent}
+ * @see {@link QueueStatsEvent}
+ */
+export type QueueEvent = QueueOverflowEvent | QueueStatsEvent;
+
+// ---------------------------------------------------------------------------
 // Composite types
 // ---------------------------------------------------------------------------
 
@@ -822,13 +972,15 @@ export type AudioEvent =
  * @see {@link TTSEvent}
  * @see {@link AgentEvent}
  * @see {@link AudioEvent}
+ * @see {@link QueueEvent}
  */
 export type CompositeVoiceEvent =
   | TranscriptionEvent
   | LLMEvent
   | TTSEvent
   | AgentEvent
-  | AudioEvent;
+  | AudioEvent
+  | QueueEvent;
 
 /**
  * String union of all possible event type identifiers.
@@ -967,4 +1119,10 @@ export interface EventListenerMap {
 
   /** Listener for {@link AudioPlaybackErrorEvent}. */
   'audio.playback.error': EventListener<AudioPlaybackErrorEvent>;
+
+  /** Listener for {@link QueueOverflowEvent}. */
+  'queue.overflow': EventListener<QueueOverflowEvent>;
+
+  /** Listener for {@link QueueStatsEvent}. */
+  'queue.stats': EventListener<QueueStatsEvent>;
 }

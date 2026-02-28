@@ -119,6 +119,9 @@ export type {
   TTSEvent,
   AgentEvent,
   AudioEvent,
+  QueueEvent,
+  QueueOverflowEvent,
+  QueueStatsEvent,
 } from './core/events/index';
 
 // Event emitter
@@ -264,4 +267,4 @@ export {
   resolveProviders,
   configureSTTFromMetadata,
 } from './core/pipeline/index';
-export type { QueueStats, DrainCallback } from './core/pipeline/index';
+export type { QueueStats, DrainCallback, OverflowCallback } from './core/pipeline/index';

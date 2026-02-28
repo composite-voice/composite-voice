@@ -152,6 +152,22 @@ export interface QueueStats {
 export type DrainCallback = (chunk: AudioChunk) => void;
 
 /**
+ * Callback type for overflow notifications.
+ *
+ * @remarks
+ * Invoked by {@link AudioBufferQueue} each time one or more chunks are dropped
+ * due to overflow (when the buffer is full and the strategy is `'drop-oldest'`
+ * or `'drop-newest'`). The orchestrator uses this to emit `queue.overflow`
+ * events.
+ *
+ * @param droppedChunks - Number of chunks dropped in this overflow instance.
+ * @param currentSize - Current buffer size after the drop.
+ *
+ * @see {@link AudioBufferQueue.onOverflow}
+ */
+export type OverflowCallback = (droppedChunks: number, currentSize: number) => void;
+
+/**
  * Bounded FIFO queue that buffers audio chunks between pipeline stages.
  *
  * @remarks
@@ -222,6 +238,9 @@ export class AudioBufferQueue {
   /** Resolver for the `'block'` overflow strategy's pending promise. */
   private blockResolver: (() => void) | null = null;
 
+  /** Overflow notification callback, set by {@link onOverflow}. */
+  private overflowCallback: OverflowCallback | null = null;
+
   /**
    * Creates a new AudioBufferQueue.
    *
@@ -276,10 +295,17 @@ export class AudioBufferQueue {
         case 'drop-oldest':
           this.buffer.shift();
           this.droppedCount++;
-          break;
+          this.buffer.push(chunk);
+          if (this.overflowCallback) {
+            this.overflowCallback(1, this.buffer.length);
+          }
+          return;
 
         case 'drop-newest':
           this.droppedCount++;
+          if (this.overflowCallback) {
+            this.overflowCallback(1, this.buffer.length);
+          }
           return;
 
         case 'block':
@@ -441,5 +467,32 @@ export class AudioBufferQueue {
    */
   isDraining(): boolean {
     return this.draining;
+  }
+
+  /**
+   * Registers a callback that is invoked whenever the queue drops chunks
+   * due to overflow.
+   *
+   * @remarks
+   * The callback receives the number of chunks dropped in this instance and
+   * the current buffer size after the drop. Only one overflow callback is
+   * supported; calling this method replaces any previously registered callback.
+   *
+   * The orchestrator uses this to bridge overflow events to the typed
+   * {@link EventEmitter} system.
+   *
+   * @param callback - The function to call on overflow, or `null` to clear.
+   *
+   * @example
+   * ```typescript
+   * queue.onOverflow((droppedChunks, currentSize) => {
+   *   console.warn(`Dropped ${droppedChunks} chunks, buffer at ${currentSize}`);
+   * });
+   * ```
+   *
+   * @see {@link OverflowCallback}
+   */
+  onOverflow(callback: OverflowCallback | null): void {
+    this.overflowCallback = callback;
   }
 }

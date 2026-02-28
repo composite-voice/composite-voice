@@ -365,6 +365,26 @@ export class CompositeVoice {
     // Initialize event emitter
     this.events = new EventEmitter();
 
+    // Wire queue overflow events to the event emitter
+    this.inputQueue.onOverflow((droppedChunks, currentSize) => {
+      this.events.emitSync({
+        type: 'queue.overflow',
+        queueName: 'input',
+        droppedChunks,
+        currentSize,
+        timestamp: Date.now(),
+      });
+    });
+    this.outputQueue.onOverflow((droppedChunks, currentSize) => {
+      this.events.emitSync({
+        type: 'queue.overflow',
+        queueName: 'output',
+        droppedChunks,
+        currentSize,
+        timestamp: Date.now(),
+      });
+    });
+
     // Initialize the 3 state machines
     this.captureStateMachine = new AudioCaptureStateMachine(this.logger);
     this.playbackStateMachine = new AudioPlaybackStateMachine(this.logger);
@@ -1628,9 +1648,33 @@ export class CompositeVoice {
    * ```
    */
   getQueueStats(): { input: QueueStats; output: QueueStats } {
+    const inputStats = this.inputQueue.getStats();
+    const outputStats = this.outputQueue.getStats();
+
+    // Emit queue.stats events for both queues
+    const timestamp = Date.now();
+    this.events.emitSync({
+      type: 'queue.stats',
+      queueName: inputStats.name,
+      size: inputStats.size,
+      totalEnqueued: inputStats.totalEnqueued,
+      totalDequeued: inputStats.totalDequeued,
+      oldestChunkAge: inputStats.oldestChunkAge,
+      timestamp,
+    });
+    this.events.emitSync({
+      type: 'queue.stats',
+      queueName: outputStats.name,
+      size: outputStats.size,
+      totalEnqueued: outputStats.totalEnqueued,
+      totalDequeued: outputStats.totalDequeued,
+      oldestChunkAge: outputStats.oldestChunkAge,
+      timestamp,
+    });
+
     return {
-      input: this.inputQueue.getStats(),
-      output: this.outputQueue.getStats(),
+      input: inputStats,
+      output: outputStats,
     };
   }
 

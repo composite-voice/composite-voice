@@ -18,7 +18,7 @@
  */
 
 export { AudioBufferQueue } from './AudioBufferQueue';
-export type { QueueStats, DrainCallback } from './AudioBufferQueue';
+export type { QueueStats, DrainCallback, OverflowCallback } from './AudioBufferQueue';
 export { configureSTTFromMetadata } from './configureSTTFromMetadata';
 export { resolveProviders } from './resolveProviders';
 export { AudioHeaderCache } from './AudioHeaderCache';
