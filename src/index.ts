@@ -194,6 +194,8 @@ export type {
 } from './providers/tts/cartesia/index';
 
 // Built-in providers - Input
+export { MicrophoneInput } from './providers/input/index';
+export type { MicrophoneInputConfig } from './providers/input/index';
 export { BufferInput } from './providers/input/index';
 
 // Built-in providers - Output
