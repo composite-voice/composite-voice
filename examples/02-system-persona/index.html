@@ -385,23 +385,25 @@
       const persona = PERSONAS[selectedPersona];
 
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({          // [input + stt]
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: new AnthropicLLM({
-          proxyUrl: `${window.location.origin}/proxy/anthropic`,
-          model: 'claude-haiku-4-5-20251001',
-          systemPrompt: persona.systemPrompt,
-          maxTokens: 200,
-        }),
+          new AnthropicLLM({       // [llm]
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model: 'claude-haiku-4-5-20251001',
+            systemPrompt: persona.systemPrompt,
+            maxTokens: 200,
+          }),
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({          // [tts + output]
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
 
       // ── Events ──────────────────────────────────────────────────────────────
