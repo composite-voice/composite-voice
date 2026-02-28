@@ -69,7 +69,7 @@
  *
  * const voice = new CompositeVoice({
  *   stt: new DeepgramSTT({ proxyUrl: `${PROXY}/deepgram` }),
- *   llm: new AnthropicLLM({ proxyUrl: `${PROXY}/anthropic`, model: 'claude-haiku-4-6' }),
+ *   llm: new AnthropicLLM({ proxyUrl: `${PROXY}/anthropic`, model: 'claude-haiku-4-5' }),
  *   tts: new DeepgramTTS({ proxyUrl: `${PROXY}/deepgram` }),
  * });
  * ```

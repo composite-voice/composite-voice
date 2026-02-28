@@ -1,5 +1,9 @@
 /**
- * Deepgram real-time speech-to-text provider using the official Deepgram SDK V5.
+ * Deepgram real-time speech-to-text provider using native WebSocket.
+ *
+ * @remarks
+ * Connects directly to the Deepgram V1 WebSocket API without the `@deepgram/sdk`.
+ * Protocol: {@link https://developers.deepgram.com/docs/streaming | Deepgram Streaming API}
  *
  * @packageDocumentation
  */
@@ -10,81 +14,14 @@ import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
- * Shape of the V5 DeepgramClient returned by `new DeepgramClient(...)`.
- * We use this instead of importing the type directly since the SDK is a
- * peer dependency loaded via dynamic `import()`.
- */
-interface V5DeepgramClient {
-  listen: {
-    v1: {
-      connect(args: Record<string, string>): Promise<V5Socket>;
-    };
-  };
-}
-
-/**
- * Shape of the V5 socket returned by `listen.v1.connect()`.
- */
-interface V5Socket {
-  on(event: 'open', handler: () => void): void;
-  on(event: 'close', handler: (event: unknown) => void): void;
-  on(event: 'error', handler: (error: Error) => void): void;
-  on(event: 'message', handler: (msg: V5Message) => void): void;
-  connect(): void;
-  waitForOpen(): Promise<void>;
-  sendMedia(data: ArrayBufferLike | Blob | ArrayBufferView): void;
-  sendFinalize(msg: { type: 'Finalize' }): void;
-  sendCloseStream(msg: { type: 'CloseStream' }): void;
-  sendKeepAlive(msg: { type: 'KeepAlive' }): void;
-}
-
-/**
- * Union of V5 message types received via the single `'message'` handler.
- */
-interface V5Message {
-  type: 'Results' | 'Metadata' | 'UtteranceEnd' | 'SpeechStarted';
-  /** Present when type === 'Results' */
-  channel_index?: number[];
-  duration?: number;
-  start?: number;
-  is_final?: boolean;
-  speech_final?: boolean;
-  channel?: {
-    alternatives: Array<{
-      transcript: string;
-      confidence: number;
-      words?: Array<{
-        word: string;
-        start: number;
-        end: number;
-        confidence: number;
-      }>;
-    }>;
-  };
-  metadata?: {
-    request_id: string;
-    model_info?: { name: string; version: string; arch: string };
-    model_uuid?: string;
-  };
-  from_finalize?: boolean;
-  entities?: Array<{
-    label: string;
-    value: string;
-    raw_value: string;
-    confidence: number;
-    start_word: number;
-    end_word: number;
-  }>;
-}
-
-/**
- * Deepgram-specific transcription options passed to the WebSocket connection.
+ * Deepgram-specific transcription options passed as query parameters
+ * on the WebSocket connection URL.
  *
  * @remarks
  * These options map to Deepgram's
  * {@link https://developers.deepgram.com/docs/streaming | real-time streaming API}
- * parameters. They are set on the {@link DeepgramSTTConfig.options} property
- * and forwarded when the WebSocket connection is established.
+ * query parameters. They are set on the {@link DeepgramSTTConfig.options} property
+ * and appended to the WebSocket URL when the connection is established.
  *
  * @see {@link DeepgramSTTConfig} for the full provider configuration
  */
@@ -97,8 +34,6 @@ export interface DeepgramTranscriptionOptions {
    * `'nova-2-conversationalai'`, `'nova-2-voicemail'`, `'nova-2-video'`,
    * `'nova-2-medical'`, `'nova-2-drivethru'`, `'nova-2-automotive'`,
    * `'nova'`, `'enhanced'`, `'base'`.
-   *
-   * For Flux (V2) models, use {@link DeepgramFlux} instead.
    */
   model?: string;
 
@@ -264,7 +199,7 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
    * URL of the CompositeVoice proxy server's Deepgram endpoint.
    * Example: `'http://localhost:3000/api/proxy/deepgram'`
    *
-   * When set, the Deepgram SDK connects to this URL instead of
+   * When set, the WebSocket connects through this URL instead of
    * `wss://api.deepgram.com`, allowing browsers to reach Deepgram through a
    * same-origin proxy that injects the real API key server-side.
    */
@@ -273,12 +208,15 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
   options?: DeepgramTranscriptionOptions;
 }
 
+/** Deepgram's base WebSocket URL for streaming transcription. */
+const DEEPGRAM_WS_URL = 'wss://api.deepgram.com';
+
 /**
- * Deepgram real-time STT provider using the official `@deepgram/sdk` V5.
+ * Deepgram real-time STT provider using native WebSocket (no SDK required).
  *
  * @remarks
  * `DeepgramSTT` extends {@link LiveSTTProvider} and connects to Deepgram's
- * V1 WebSocket-based streaming transcription API via the SDK V5 client. It supports:
+ * V1 WebSocket streaming transcription API directly. It supports:
  *
  * - Real-time interim and final transcription results
  * - Multi-segment utterance buffering (accumulates `is_final` segments
@@ -288,13 +226,12 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
  * - All V1 query parameters (model, language, punctuate, smart_format, etc.)
  * - Keep-alive and finalize (flush) methods
  *
- * For Flux (V2) models with eager end-of-turn / preflight signals, use
- * {@link DeepgramFlux} instead.
- *
- * **Transport:** WebSocket (via `@deepgram/sdk` V5)
+ * **Transport:** Native WebSocket (no `@deepgram/sdk` required)
  *
  * **Browser support:** All modern browsers (Chrome, Firefox, Safari, Edge).
- * Requires the `@deepgram/sdk` (>= 5.0.0-beta.1) peer dependency to be installed.
+ *
+ * **Auth in browser:** Direct mode uses WebSocket subprotocol `["token", apiKey]`;
+ * proxy mode omits auth (the proxy injects the key via HTTP headers).
  *
  * **Data flow:**
  *
@@ -336,16 +273,12 @@ export interface DeepgramSTTConfig extends STTProviderConfig {
  * @see {@link LiveSTTProvider} for the base WebSocket STT class
  * @see {@link DeepgramSTTConfig} for configuration options
  * @see {@link DeepgramTranscriptionOptions} for transcription parameters
- * @see {@link AssemblyAISTT} for an alternative real-time STT provider
  */
 export class DeepgramSTT extends LiveSTTProvider {
   declare public config: DeepgramSTTConfig;
 
-  /** The V5 Deepgram SDK client instance. */
-  private deepgram: V5DeepgramClient | null = null;
-
-  /** The active V5 socket for streaming transcription. */
-  private socket: V5Socket | null = null;
+  /** The raw WebSocket connection to Deepgram. */
+  private ws: WebSocket | null = null;
 
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
@@ -385,11 +318,10 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Dynamically import the Deepgram SDK V5 and create the client.
+   * Validate configuration — no SDK import required.
    *
    * @throws {@link ProviderInitializationError}
-   * Thrown when neither `apiKey` nor `proxyUrl` is configured, or when
-   * the `@deepgram/sdk` peer dependency is not installed.
+   * Thrown when neither `apiKey` nor `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
@@ -399,156 +331,141 @@ export class DeepgramSTT extends LiveSTTProvider {
       );
     }
 
-    try {
-      // Dynamically import Deepgram SDK V5 (peer dependency).
-      // We use `as any` on the constructor call because the installed
-      // types may be V4 while we target the V5 API shape. At runtime
-      // the SDK must be >= 5.0.0-beta.1.
-      const DeepgramModule = await import('@deepgram/sdk');
-      const DGClient = (DeepgramModule as Record<string, unknown>).DeepgramClient as new (
-        opts: Record<string, unknown>
-      ) => V5DeepgramClient;
-
-      if (this.config.proxyUrl) {
-        // Proxy mode: redirect all SDK connections to the proxy server.
-        // The proxy injects the real Deepgram API key server-side.
-        // Convert http(s) to ws(s) for the SDK's WebSocket URL.
-        const wsUrl = this.config.proxyUrl.replace(/^http/, 'ws');
-        this.deepgram = new DGClient({ apiKey: 'proxy', baseUrl: wsUrl });
-        this.logger.info('Deepgram STT initialized (proxy mode)', { proxyUrl: wsUrl });
-      } else {
-        this.deepgram = new DGClient({ apiKey: this.config.apiKey as string });
-        this.logger.info('Deepgram STT initialized (WebSocket mode)', {
-          model: this.config.options?.model ?? 'nova-3',
-          language: this.config.language,
-        });
-      }
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'DeepgramSTT',
-          new Error(
-            'Deepgram SDK not found. Install with: npm install @deepgram/sdk@^5.0.0-beta.1\n' +
-              'The Deepgram SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('DeepgramSTT', error as Error);
+    if (this.config.proxyUrl) {
+      this.logger.info('Deepgram STT initialized (proxy mode)', {
+        proxyUrl: this.config.proxyUrl,
+      });
+    } else {
+      this.logger.info('Deepgram STT initialized (direct mode)', {
+        model: this.config.options?.model ?? 'nova-3',
+        language: this.config.language,
+      });
     }
   }
 
-  /** Disconnect the WebSocket (if connected) and release SDK resources. */
+  /** Disconnect the WebSocket (if connected) and release resources. */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
       await this.disconnect();
     }
     this.utteranceBuffer = [];
-    this.socket = null;
-    this.deepgram = null;
+    this.ws = null;
     this.logger.info('Deepgram STT disposed');
   }
 
   /**
-   * Build the V1 connect args from the config.
+   * Build the full WebSocket connection URL with query parameters.
    *
    * @remarks
-   * V5's `listen.v1.connect()` expects ALL values as strings. This method
-   * converts booleans, numbers, and arrays into their string representations.
+   * Proxy mode: `ws(s)://<proxyUrl>/v1/listen?model=nova-3&...`
+   * Direct mode: `wss://api.deepgram.com/v1/listen?model=nova-3&...`
    */
-  private buildConnectArgs(): Record<string, string> {
-    const opts = this.config.options;
-    const args: Record<string, string> = {};
+  private buildConnectionUrl(): string {
+    const base = this.config.proxyUrl
+      ? this.config.proxyUrl.replace(/^http/, 'ws')
+      : DEEPGRAM_WS_URL;
 
-    // Authorization header
-    if (this.config.proxyUrl) {
-      args.Authorization = 'Token proxy';
-    } else {
-      args.Authorization = `Token ${this.config.apiKey}`;
-    }
+    const params = new URLSearchParams();
+    const opts = this.config.options;
 
     // Core params (always set)
-    args.model = opts?.model ?? 'nova-3';
-    args.language = this.config.language ?? 'en-US';
-    args.punctuate = String(opts?.punctuation ?? true);
-    args.smart_format = String(opts?.smartFormat ?? true);
-    args.interim_results = String(this.config.interimResults ?? true);
-    args.endpointing = String(opts?.endpointing ?? false);
-    args.vad_events = String(opts?.vadEvents ?? false);
-    args.profanity_filter = String(opts?.profanityFilter ?? false);
-    args.diarize = String(opts?.diarize ?? false);
-    args.utterances = String(opts?.utterances ?? false);
+    params.set('model', opts?.model ?? 'nova-3');
+    params.set('language', this.config.language ?? 'en-US');
+    params.set('punctuate', String(opts?.punctuation ?? true));
+    params.set('smart_format', String(opts?.smartFormat ?? true));
+    params.set('interim_results', String(this.config.interimResults ?? true));
+    params.set('endpointing', String(opts?.endpointing ?? false));
+    params.set('vad_events', String(opts?.vadEvents ?? false));
+    params.set('profanity_filter', String(opts?.profanityFilter ?? false));
+    params.set('diarize', String(opts?.diarize ?? false));
 
     // Optional params (only include if set)
     if (opts?.encoding !== undefined) {
-      args.encoding = opts.encoding;
+      params.set('encoding', opts.encoding);
     }
     if (opts?.sampleRate !== undefined) {
-      args.sample_rate = String(opts.sampleRate);
+      params.set('sample_rate', String(opts.sampleRate));
     }
     if (opts?.channels !== undefined) {
-      args.channels = String(opts.channels);
+      params.set('channels', String(opts.channels));
     }
     if (opts?.redact && opts.redact.length > 0) {
-      args.redact = opts.redact.join(',');
+      for (const r of opts.redact) {
+        params.append('redact', r);
+      }
     }
     if (opts?.keywords && opts.keywords.length > 0) {
-      args.keywords = opts.keywords.join(',');
+      for (const kw of opts.keywords) {
+        params.append('keywords', kw);
+      }
     }
     if (opts?.keyterms && opts.keyterms.length > 0) {
-      args.keyterm = opts.keyterms.join(',');
-    }
-    if (opts?.alternatives !== undefined) {
-      args.alternatives = String(opts.alternatives);
-    }
-    if (opts?.detectEntities !== undefined) {
-      args.detect_entities = String(opts.detectEntities);
+      for (const kt of opts.keyterms) {
+        params.append('keyterm', kt);
+      }
     }
     if (opts?.numerals !== undefined) {
-      args.numerals = String(opts.numerals);
+      params.set('numerals', String(opts.numerals));
     }
     if (opts?.multichannel !== undefined) {
-      args.multichannel = String(opts.multichannel);
+      params.set('multichannel', String(opts.multichannel));
     }
     if (opts?.dictation !== undefined) {
-      args.dictation = String(opts.dictation);
+      params.set('dictation', String(opts.dictation));
     }
     if (opts?.replace && opts.replace.length > 0) {
-      args.replace = opts.replace.join(',');
+      for (const r of opts.replace) {
+        params.append('replace', r);
+      }
     }
     if (opts?.search && opts.search.length > 0) {
-      args.search = opts.search.join(',');
+      for (const s of opts.search) {
+        params.append('search', s);
+      }
     }
     if (opts?.utteranceEndMs !== undefined) {
-      args.utterance_end_ms = String(opts.utteranceEndMs);
+      params.set('utterance_end_ms', String(opts.utteranceEndMs));
     }
     if (opts?.version !== undefined) {
-      args.version = opts.version;
+      params.set('version', opts.version);
     }
     if (opts?.tag !== undefined) {
-      args.tag = opts.tag;
+      params.set('tag', opts.tag);
     }
     if (opts?.mipOptOut !== undefined) {
-      args.mip_opt_out = String(opts.mipOptOut);
+      params.set('mip_opt_out', String(opts.mipOptOut));
     }
     if (opts?.extra && opts.extra.length > 0) {
-      args.extra = opts.extra.join(',');
+      for (const e of opts.extra) {
+        params.append('extra', e);
+      }
+    }
+    if (opts?.detectEntities !== undefined) {
+      params.set('detect_entities', String(opts.detectEntities));
+    }
+    if (opts?.alternatives !== undefined) {
+      params.set('alternatives', String(opts.alternatives));
+    }
+    if (opts?.utterances !== undefined) {
+      params.set('utterances', String(opts.utterances));
     }
 
-    return args;
+    return `${base}/v1/listen?${params.toString()}`;
   }
 
   /**
    * Open a WebSocket connection to Deepgram for real-time transcription.
    *
    * @remarks
-   * Builds V1 connection args from {@link DeepgramSTTConfig}, calls
-   * `listen.v1.connect()` to obtain a V5 socket, then waits for the
-   * WebSocket `open` event before resolving. The connection timeout
-   * defaults to {@link DeepgramSTTConfig.timeout | config.timeout} (10 000 ms).
+   * Builds the connection URL with all query parameters, creates a native
+   * WebSocket, and waits for the `open` event before resolving.
+   *
+   * In direct mode, auth is sent via WebSocket subprotocol `["token", apiKey]`
+   * (the standard Deepgram browser auth mechanism). In proxy mode, no auth is
+   * sent — the proxy injects the real API key via HTTP headers.
    *
    * @throws {@link ProviderConnectionError}
-   * Thrown when the provider is not initialized, the Deepgram client is
-   * missing, or the connection times out / errors.
+   * Thrown when the provider is not initialized, or the connection times out / errors.
    */
   async connect(): Promise<void> {
     this.assertReady();
@@ -558,126 +475,122 @@ export class DeepgramSTT extends LiveSTTProvider {
       return;
     }
 
-    if (!this.deepgram) {
-      throw new ProviderConnectionError(
-        'DeepgramSTT',
-        new Error('Deepgram client not initialized')
-      );
-    }
-
     try {
-      this.logger.debug('Connecting to Deepgram WebSocket (V5 SDK)');
+      this.logger.debug('Connecting to Deepgram WebSocket');
 
-      const connectArgs = this.buildConnectArgs();
+      const url = this.buildConnectionUrl();
 
-      // V5: connect() returns a Promise<V5Socket>
-      this.socket = await this.deepgram.listen.v1.connect(connectArgs);
+      if (this.config.proxyUrl) {
+        // Proxy mode: no auth — the proxy injects the real API key
+        this.ws = new WebSocket(url);
+      } else {
+        // Direct mode: auth via WebSocket subprotocol
+        this.ws = new WebSocket(url, ['token', this.config.apiKey!]);
+      }
 
-      // Set up the unified message handler and lifecycle events
-      this.setupEventHandlers();
-
-      // Initiate the connection and wait for open
-      this.socket.connect();
-
+      // Wait for the connection to open (with timeout)
+      const timeoutMs = this.config.timeout ?? 10000;
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Connection timeout'));
-        }, this.config.timeout ?? 10000);
+        }, timeoutMs);
 
-        this.socket!.on('open', () => {
+        this.ws!.onopen = () => {
           clearTimeout(timeout);
           this.isConnected = true;
           this.logger.info('Connected to Deepgram WebSocket');
           resolve();
-        });
+        };
 
-        this.socket!.on('error', (error: Error) => {
+        this.ws!.onerror = (event) => {
           clearTimeout(timeout);
-          this.logger.error('Failed to connect to Deepgram WebSocket', error);
-          reject(error);
-        });
+          reject(
+            new Error(`WebSocket error: ${(event as ErrorEvent).message ?? 'connection failed'}`)
+          );
+        };
       });
+
+      // Register event handlers after connection is open
+      this.setupEventHandlers();
     } catch (error) {
-      this.socket = null;
+      this.ws = null;
       throw new ProviderConnectionError('DeepgramSTT', error as Error);
     }
   }
 
   /**
-   * Wire up the V5 unified `message` handler and lifecycle events on the
-   * socket for `Results`, `Metadata`, `UtteranceEnd`, and `SpeechStarted`
-   * message types, plus `error` and `close` socket events.
+   * Wire up WebSocket message handlers for Deepgram V1 events:
+   * `Results`, `UtteranceEnd`, `SpeechStarted`, `Metadata`.
    */
   private setupEventHandlers(): void {
-    if (!this.socket) return;
+    if (!this.ws) return;
 
-    // V5 unified message handler — all STT events arrive here
-    this.socket.on('message', (msg: V5Message) => {
-      try {
-        switch (msg.type) {
-          case 'Results':
-            this.handleResults(msg);
-            break;
-
-          case 'Metadata':
-            this.logger.debug('Metadata received', msg);
-            break;
-
-          case 'UtteranceEnd':
-            this.handleUtteranceEnd(msg);
-            break;
-
-          case 'SpeechStarted':
-            this.handleSpeechStarted(msg);
-            break;
-
-          default:
-            this.logger.debug('Unknown message type', { type: (msg as V5Message).type });
-            break;
+    this.ws.onmessage = (event: MessageEvent) => {
+      // All Deepgram control messages are JSON text frames
+      if (typeof event.data === 'string') {
+        try {
+          const msg = JSON.parse(event.data);
+          switch (msg.type) {
+            case 'Results':
+              this.handleResults(msg);
+              break;
+            case 'UtteranceEnd':
+              this.handleUtteranceEnd(msg);
+              break;
+            case 'SpeechStarted':
+              this.handleSpeechStarted(msg);
+              break;
+            case 'Metadata':
+              this.logger.debug('Metadata received', msg);
+              break;
+            default:
+              this.logger.debug('Unknown message type', msg);
+          }
+        } catch (error) {
+          this.logger.error('Error parsing Deepgram message', error);
         }
-      } catch (error) {
-        this.logger.error('Error processing message', error);
       }
-    });
+    };
 
-    // Handle errors
-    this.socket.on('error', (error: Error) => {
-      this.logger.error('Deepgram WebSocket error', error);
+    this.ws.onerror = (event) => {
+      this.logger.error('Deepgram WebSocket error', event);
 
       const errorResult: TranscriptionResult = {
         text: '',
         isFinal: true,
         confidence: 0,
         metadata: {
-          error: error.message,
+          error: (event as ErrorEvent).message ?? 'WebSocket error',
         },
       };
 
       this.emitTranscription(errorResult);
-    });
+    };
 
-    // Handle close
-    this.socket.on('close', () => {
-      this.logger.info('Deepgram WebSocket closed');
+    this.ws.onclose = (event) => {
+      this.logger.info('Deepgram WebSocket closed', {
+        code: event.code,
+        reason: event.reason,
+      });
       this.isConnected = false;
-    });
+    };
   }
 
   /**
-   * Process a V5 `Results` message (transcription data).
+   * Process a V1 `Results` message from Deepgram.
    *
    * Handles interim results, final segments, and speech_final utterance
-   * completion. Preflight/eager signals are not supported in V1 — use
-   * {@link DeepgramFlux} for speculative end-of-turn detection.
+   * completion.
    */
-  private handleResults(msg: V5Message): void {
-    const alternative = msg.channel?.alternatives?.[0];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleResults(data: any): void {
+    const alternative = data.channel?.alternatives?.[0];
     if (!alternative) return;
 
     const transcript = alternative.transcript;
     const confidence = alternative.confidence;
-    const isFinal = msg.is_final ?? false;
-    const speechFinal = msg.speech_final ?? false;
+    const isFinal = data.is_final ?? false;
+    const speechFinal = data.speech_final ?? false;
 
     if (isFinal) {
       // Accumulate this segment into the current utterance
@@ -699,7 +612,7 @@ export class DeepgramSTT extends LiveSTTProvider {
             isFinal: true,
             speechFinal: false,
             confidence,
-            metadata: { speechFinal: false, duration: msg.duration },
+            metadata: { speechFinal: false, duration: data.duration },
           });
         }
 
@@ -709,7 +622,7 @@ export class DeepgramSTT extends LiveSTTProvider {
           isFinal: true,
           speechFinal: true,
           confidence,
-          metadata: { speechFinal: true, duration: msg.duration },
+          metadata: { speechFinal: true, duration: data.duration },
         });
       } else {
         // Mid-utterance final segment — emit for display but not for LLM
@@ -719,7 +632,7 @@ export class DeepgramSTT extends LiveSTTProvider {
             isFinal: true,
             speechFinal: false,
             confidence,
-            metadata: { speechFinal: false, duration: msg.duration },
+            metadata: { speechFinal: false, duration: data.duration },
           });
         }
       }
@@ -730,17 +643,18 @@ export class DeepgramSTT extends LiveSTTProvider {
           text: transcript,
           isFinal: false,
           confidence,
-          metadata: { duration: msg.duration },
+          metadata: { duration: data.duration },
         });
       }
     }
   }
 
   /**
-   * Process a V5 `UtteranceEnd` message.
+   * Process a V1 `UtteranceEnd` event.
    */
-  private handleUtteranceEnd(msg: V5Message): void {
-    this.logger.debug('Utterance end', msg);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleUtteranceEnd(data: any): void {
+    this.logger.debug('Utterance end', data);
 
     const result: TranscriptionResult = {
       text: '',
@@ -748,7 +662,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       confidence: 1,
       metadata: {
         event: 'utterance_end',
-        data: msg,
+        data,
       },
     };
 
@@ -756,10 +670,11 @@ export class DeepgramSTT extends LiveSTTProvider {
   }
 
   /**
-   * Process a V5 `SpeechStarted` message.
+   * Process a V1 `SpeechStarted` event.
    */
-  private handleSpeechStarted(msg: V5Message): void {
-    this.logger.debug('Speech started', msg);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleSpeechStarted(data: any): void {
+    this.logger.debug('Speech started', data);
 
     const result: TranscriptionResult = {
       text: '',
@@ -767,7 +682,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       confidence: 1,
       metadata: {
         event: 'speech_started',
-        data: msg,
+        data,
       },
     };
 
@@ -778,19 +693,19 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Send a raw audio chunk to Deepgram for real-time transcription.
    *
    * @remarks
-   * Uses the V5 `socket.sendMedia()` method. If the connection is not
-   * open, the chunk is silently dropped and a warning is logged.
+   * Sends the audio data as a binary WebSocket frame. If the connection is
+   * not open, the chunk is silently dropped and a warning is logged.
    *
    * @param chunk - Raw audio data captured from the microphone.
    */
   sendAudio(chunk: ArrayBuffer): void {
-    if (!this.isConnected || !this.socket) {
+    if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send audio: not connected');
       return;
     }
 
     try {
-      this.socket.sendMedia(chunk);
+      this.ws.send(chunk);
     } catch (error) {
       this.logger.error('Failed to send audio chunk', error);
     }
@@ -800,17 +715,17 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Send a keep-alive signal to prevent the WebSocket from timing out.
    *
    * @remarks
-   * Useful for long pauses where no audio is being sent but the
-   * connection should remain open.
+   * Sends `{ "type": "KeepAlive" }` JSON message. Useful for long pauses
+   * where no audio is being sent but the connection should remain open.
    */
   sendKeepAlive(): void {
-    if (!this.isConnected || !this.socket) {
+    if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send keep-alive: not connected');
       return;
     }
 
     try {
-      this.socket.sendKeepAlive({ type: 'KeepAlive' });
+      this.ws.send(JSON.stringify({ type: 'KeepAlive' }));
       this.logger.debug('Sent keep-alive');
     } catch (error) {
       this.logger.error('Failed to send keep-alive', error);
@@ -822,18 +737,18 @@ export class DeepgramSTT extends LiveSTTProvider {
    * transcription result from Deepgram.
    *
    * @remarks
-   * This tells Deepgram to process any buffered audio and return a final
-   * result with `from_finalize: true`. Useful before disconnecting or
-   * when you need an immediate result.
+   * Sends `{ "type": "Finalize" }` JSON message. This tells Deepgram to
+   * process any buffered audio and return a final result. Useful before
+   * disconnecting or when you need an immediate result.
    */
   sendFinalize(): void {
-    if (!this.isConnected || !this.socket) {
+    if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send finalize: not connected');
       return;
     }
 
     try {
-      this.socket.sendFinalize({ type: 'Finalize' });
+      this.ws.send(JSON.stringify({ type: 'Finalize' }));
       this.logger.debug('Sent finalize');
     } catch (error) {
       this.logger.error('Failed to send finalize', error);
@@ -844,14 +759,14 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Gracefully close the Deepgram WebSocket connection.
    *
    * @remarks
-   * Sends a `CloseStream` message via the V5 socket, then waits up to
-   * 1 second for the `close` event before force-resolving. Resets the
-   * utterance buffer and internal connection state.
+   * Sends a `CloseStream` control message for graceful server-side cleanup,
+   * then closes the WebSocket. Waits up to 1 second for the `close` event
+   * before force-resolving. Resets the utterance buffer and internal state.
    *
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.socket) {
+    if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram');
       return;
     }
@@ -859,22 +774,39 @@ export class DeepgramSTT extends LiveSTTProvider {
     try {
       this.logger.debug('Disconnecting from Deepgram WebSocket');
 
-      // V5: send CloseStream to gracefully end
-      this.socket.sendCloseStream({ type: 'CloseStream' });
+      // Send CloseStream for graceful server-side cleanup
+      try {
+        this.ws.send(JSON.stringify({ type: 'CloseStream' }));
+      } catch {
+        // Ignore — connection may already be closing
+      }
 
-      // Wait for close event
+      // Wait for close event with a 1s safety timeout
       await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 1000); // Force resolve after 1 second
+        const timeout = setTimeout(() => {
+          this.ws?.close();
+          resolve();
+        }, 1000);
 
-        this.socket?.on('close', () => {
+        const ws = this.ws;
+        if (ws) {
+          const existingOnClose = ws.onclose;
+          ws.onclose = (event) => {
+            clearTimeout(timeout);
+            if (existingOnClose) {
+              existingOnClose.call(ws, event);
+            }
+            resolve();
+          };
+        } else {
           clearTimeout(timeout);
           resolve();
-        });
+        }
       });
 
       this.isConnected = false;
       this.utteranceBuffer = [];
-      this.socket = null;
+      this.ws = null;
 
       this.logger.info('Disconnected from Deepgram WebSocket');
     } catch (error) {

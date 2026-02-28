@@ -1,7 +1,7 @@
 /**
  * E2E test for example 24-deepgram-conversation-history.
  *
- * Provider stack: DeepgramSTT (nova-3) + Anthropic LLM (claude-haiku-4-6) + DeepgramTTS (aura-2)
+ * Provider stack: DeepgramSTT (nova-3) + Anthropic LLM (claude-haiku-4-5) + DeepgramTTS (aura-2)
  * Feature: Multi-turn conversation history (maxTurns: 10)
  *
  * This test uses **real APIs** — no browser mocks are injected.

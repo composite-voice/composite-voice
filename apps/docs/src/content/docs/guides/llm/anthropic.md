@@ -24,7 +24,7 @@ const agent = new CompositeVoice({
   stt: new NativeSTT({ language: 'en-US' }),
   llm: new AnthropicLLM({
     proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-6',
+    model: 'claude-haiku-4-5',
     maxTokens: 512,
     systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
   }),
@@ -38,7 +38,7 @@ await agent.start();
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `model` | `string` | `'claude-haiku-4-6'` | Model identifier. See model variants below. |
+| `model` | `string` | `'claude-haiku-4-5'` | Model identifier. See model variants below. |
 | `maxTokens` | `number` | `1024` | Maximum tokens per response. Anthropic requires this field. |
 | `systemPrompt` | `string` | -- | System-level instructions for the assistant. |
 | `temperature` | `number` | -- | Randomness (0 = deterministic, 2 = creative). |
@@ -52,7 +52,7 @@ await agent.start();
 
 | Model | Speed | Capability |
 |---|---|---|
-| `claude-haiku-4-6` | Fastest | Best for low-latency voice |
+| `claude-haiku-4-5` | Fastest | Best for low-latency voice |
 | `claude-sonnet-4-6` | Balanced | Good reasoning + speed |
 | `claude-opus-4-6` | Slowest | Most capable |
 
@@ -74,7 +74,7 @@ const agent = new CompositeVoice({
   }),
   llm: new AnthropicLLM({
     proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-6',
+    model: 'claude-haiku-4-5',
     maxTokens: 256,
     temperature: 0.7,
     systemPrompt: 'You are a friendly voice assistant. Answer briefly.',

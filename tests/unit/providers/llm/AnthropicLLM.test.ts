@@ -49,7 +49,7 @@ describe('AnthropicLLM', () => {
     mockMessagesStream.mockReturnValue(mockStream);
     config = {
       apiKey: 'test-api-key',
-      model: 'claude-haiku-4-6',
+      model: 'claude-haiku-4-5',
       temperature: 0.7,
       maxTokens: 500,
       systemPrompt: 'You are a helpful assistant.',
@@ -69,27 +69,27 @@ describe('AnthropicLLM', () => {
       expect(provider.isReady()).toBe(true);
     });
 
-    it('should default to claude-haiku-4-6 when no model specified', () => {
+    it('should default to claude-haiku-4-5 when no model specified', () => {
       const minimalConfig = { apiKey: 'key' } as AnthropicLLMConfig;
       provider = new AnthropicLLM(minimalConfig);
-      expect(provider.config.model).toBe('claude-haiku-4-6');
+      expect(provider.config.model).toBe('claude-haiku-4-5');
     });
 
     it('should default max_tokens to 1024 when not specified', () => {
-      const minimalConfig = { apiKey: 'key', model: 'claude-haiku-4-6' } as AnthropicLLMConfig;
+      const minimalConfig = { apiKey: 'key', model: 'claude-haiku-4-5' } as AnthropicLLMConfig;
       provider = new AnthropicLLM(minimalConfig);
       expect(provider.config.maxTokens).toBe(1024);
     });
 
     it('should default stream to true', () => {
-      const minimalConfig = { apiKey: 'key', model: 'claude-haiku-4-6' } as AnthropicLLMConfig;
+      const minimalConfig = { apiKey: 'key', model: 'claude-haiku-4-5' } as AnthropicLLMConfig;
       provider = new AnthropicLLM(minimalConfig);
       expect(provider.config.stream).toBe(true);
     });
 
     it('should preserve explicit config values over defaults', () => {
       provider = new AnthropicLLM(config);
-      expect(provider.config.model).toBe('claude-haiku-4-6');
+      expect(provider.config.model).toBe('claude-haiku-4-5');
       expect(provider.config.maxTokens).toBe(500);
       expect(provider.config.temperature).toBe(0.7);
     });
@@ -297,7 +297,7 @@ describe('AnthropicLLM', () => {
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'claude-haiku-4-6',
+          model: 'claude-haiku-4-5',
         })
       );
     });

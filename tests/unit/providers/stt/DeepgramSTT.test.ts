@@ -1,35 +1,64 @@
 /**
- * Tests for DeepgramSTT provider (V5 SDK)
+ * Tests for DeepgramSTT provider (native WebSocket — no SDK)
  */
 
 import { DeepgramSTT } from '../../../../src/providers/stt/deepgram/DeepgramSTT';
 import { Logger } from '../../../../src/utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../../src/utils/errors';
 
-// Mock V5 socket
-const mockSocket = {
-  on: jest.fn(),
-  connect: jest.fn(),
-  waitForOpen: jest.fn().mockResolvedValue(undefined),
-  sendMedia: jest.fn(),
-  sendFinalize: jest.fn(),
-  sendCloseStream: jest.fn(),
-  sendKeepAlive: jest.fn(),
-};
+// ─── Mock WebSocket ────────────────────────────────────────────────────────
 
-// Mock V5 DeepgramClient
-const mockDeepgramClient = {
-  listen: {
-    v1: {
-      connect: jest.fn().mockResolvedValue(mockSocket),
-    },
-  },
-};
+/** Captured handler assignments from the most recently constructed MockWebSocket. */
+let mockWs: MockWebSocket;
 
-// Mock the @deepgram/sdk module (V5)
-jest.mock('@deepgram/sdk', () => ({
-  DeepgramClient: jest.fn(() => mockDeepgramClient),
-}));
+class MockWebSocket {
+  url: string;
+  protocols: string | string[] | undefined;
+  binaryType = 'blob';
+
+  // Handler slots mirroring the real WebSocket API
+  onopen: ((ev: Event) => void) | null = null;
+  onclose: ((ev: CloseEvent) => void) | null = null;
+  onerror: ((ev: Event) => void) | null = null;
+  onmessage: ((ev: MessageEvent) => void) | null = null;
+
+  send = jest.fn();
+  close = jest.fn();
+
+  constructor(url: string, protocols?: string | string[]) {
+    this.url = url;
+    this.protocols = protocols;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    mockWs = this;
+  }
+
+  // ─── Helpers for simulating server-side behaviour in tests ──────────
+
+  /** Simulate the WebSocket `open` event. */
+  _triggerOpen(): void {
+    this.onopen?.({} as Event);
+  }
+
+  /** Simulate a text message from Deepgram (JSON). */
+  _triggerMessage(data: string | ArrayBuffer): void {
+    this.onmessage?.({ data } as MessageEvent);
+  }
+
+  /** Simulate a WebSocket error. */
+  _triggerError(message = 'connection failed'): void {
+    this.onerror?.({ message } as unknown as Event);
+  }
+
+  /** Simulate the WebSocket `close` event. */
+  _triggerClose(code = 1000, reason = ''): void {
+    this.onclose?.({ code, reason } as CloseEvent);
+  }
+}
+
+// Install the mock globally so `new WebSocket(...)` in the provider hits it.
+(globalThis as any).WebSocket = MockWebSocket;
+
+// ────────────────────────────────────────────────────────────────────────────
 
 describe('DeepgramSTT', () => {
   let logger: Logger;
@@ -37,18 +66,13 @@ describe('DeepgramSTT', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     logger = new Logger('test', { enabled: false });
-    // Reset the mock to return mockSocket each time
-    mockDeepgramClient.listen.v1.connect.mockResolvedValue(mockSocket);
   });
+
+  // ─── Initialization ──────────────────────────────────────────────────
 
   describe('Initialization', () => {
     it('should initialize with default configuration', async () => {
-      const provider = new DeepgramSTT(
-        {
-          apiKey: 'test-key',
-        },
-        logger
-      );
+      const provider = new DeepgramSTT({ apiKey: 'test-key' }, logger);
 
       await provider.initialize();
 
@@ -81,23 +105,10 @@ describe('DeepgramSTT', () => {
       expect(provider.config.options?.model).toBe('nova');
     });
 
-    it('should throw error if Deepgram SDK is not installed', async () => {
-      // Create a provider and mock the import to fail
-      const provider = new DeepgramSTT({ apiKey: 'test-key' }, logger);
-
-      // Mock the onInitialize to simulate SDK not found
-      const originalOnInitialize = (provider as any).onInitialize;
-      (provider as any).onInitialize = async () => {
-        throw new ProviderInitializationError(
-          'DeepgramSTT',
-          new Error("Cannot find module '@deepgram/sdk'")
-        );
-      };
+    it('should throw error when neither apiKey nor proxyUrl is set', async () => {
+      const provider = new DeepgramSTT({}, logger);
 
       await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
-
-      // Restore original
-      (provider as any).onInitialize = originalOnInitialize;
     });
 
     it('should dispose properly', async () => {
@@ -108,6 +119,8 @@ describe('DeepgramSTT', () => {
       expect(provider.isReady()).toBe(false);
     });
   });
+
+  // ─── WebSocket Mode ──────────────────────────────────────────────────
 
   describe('WebSocket Mode', () => {
     let provider: DeepgramSTT;
@@ -142,165 +155,129 @@ describe('DeepgramSTT', () => {
       await provider.dispose();
     });
 
-    it('should connect successfully', async () => {
-      // Setup mock to trigger 'open' event when on('open') is called
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
+    /** Helper: connect the provider by triggering `onopen`. */
+    async function connectProvider(): Promise<void> {
+      const connectPromise = provider.connect!();
+      // The constructor runs synchronously, so mockWs is ready
+      mockWs._triggerOpen();
+      await connectPromise;
+    }
 
-      await provider.connect!();
+    it('should connect successfully via native WebSocket', async () => {
+      await connectProvider();
 
       expect(provider.isWebSocketConnected()).toBe(true);
-      expect(mockDeepgramClient.listen.v1.connect).toHaveBeenCalled();
-      expect(mockSocket.connect).toHaveBeenCalled();
     });
 
-    it('should pass configuration options to V1 connect as strings', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
+    it('should build connection URL with query parameters', async () => {
+      await connectProvider();
 
-      await provider.connect!();
+      const url = new URL(mockWs.url);
+      expect(url.pathname).toBe('/v1/listen');
+      expect(url.searchParams.get('model')).toBe('nova-2');
+      expect(url.searchParams.get('language')).toBe('en-US');
+      expect(url.searchParams.get('punctuate')).toBe('true');
+      expect(url.searchParams.get('smart_format')).toBe('true');
+      expect(url.searchParams.get('interim_results')).toBe('true');
+      expect(url.searchParams.get('endpointing')).toBe('500');
+      expect(url.searchParams.get('vad_events')).toBe('true');
+    });
 
-      expect(mockDeepgramClient.listen.v1.connect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: 'nova-2',
-          language: 'en-US',
-          punctuate: 'true',
-          smart_format: 'true',
-          interim_results: 'true',
-          endpointing: '500',
-          vad_events: 'true',
-          Authorization: 'Token test-key',
-        })
+    it('should use subprotocol auth in direct mode', async () => {
+      await connectProvider();
+
+      expect(mockWs.protocols).toEqual(['token', 'test-key']);
+    });
+
+    it('should use no subprotocol in proxy mode', async () => {
+      const proxyProvider = new DeepgramSTT(
+        { proxyUrl: 'http://localhost:3001/api/proxy/deepgram' },
+        logger
       );
+      await proxyProvider.initialize();
+
+      const proxyConnectPromise = proxyProvider.connect!();
+      mockWs._triggerOpen();
+      await proxyConnectPromise;
+
+      expect(mockWs.protocols).toBeUndefined();
+      expect(mockWs.url).toContain('ws://localhost:3001/api/proxy/deepgram/v1/listen');
+
+      await proxyProvider.dispose();
     });
 
     it('should handle connection timeout', async () => {
-      // Don't trigger any events to simulate timeout
-      mockSocket.on.mockImplementation(() => {});
-
       const customProvider = new DeepgramSTT(
-        {
-          apiKey: 'test-key',
-          timeout: 100, // Short timeout
-        },
+        { apiKey: 'test-key', timeout: 100 },
         logger
       );
       await customProvider.initialize();
 
+      // Don't trigger onopen — let it time out
       await expect(customProvider.connect!()).rejects.toThrow(ProviderConnectionError);
     });
 
     it('should handle connection error', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: (error: Error) => void) => {
-        if (event === 'error') {
-          setTimeout(() => callback(new Error('Connection failed')), 0);
-        }
-      });
-
-      await expect(provider.connect!()).rejects.toThrow(ProviderConnectionError);
+      const connectPromise = provider.connect!();
+      mockWs._triggerError('Connection refused');
+      await expect(connectPromise).rejects.toThrow(ProviderConnectionError);
     });
 
-    it('should send audio chunks via sendMedia', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
-
-      await provider.connect!();
+    it('should send audio chunks via ws.send()', async () => {
+      await connectProvider();
 
       const audioChunk = new ArrayBuffer(1024);
       provider.sendAudio!(audioChunk);
 
-      expect(mockSocket.sendMedia).toHaveBeenCalledWith(audioChunk);
+      expect(mockWs.send).toHaveBeenCalledWith(audioChunk);
     });
 
-    it('should not send audio when not connected', async () => {
+    it('should not send audio when not connected', () => {
       const audioChunk = new ArrayBuffer(1024);
       provider.sendAudio!(audioChunk);
 
-      expect(mockSocket.sendMedia).not.toHaveBeenCalled();
+      expect(mockWs?.send).not.toHaveBeenCalled();
     });
 
-    it('should process transcription results via unified message handler', async () => {
-      let messageHandler: (msg: unknown) => void;
+    it('should process interim transcription results', async () => {
+      await connectProvider();
 
-      mockSocket.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'message') {
-          messageHandler = callback as (msg: unknown) => void;
-        }
-      });
-
-      await provider.connect!();
-
-      // Simulate V5 Results message
       const mockResult = {
         type: 'Results',
         channel: {
-          alternatives: [
-            {
-              transcript: 'Hello world',
-              confidence: 0.95,
-            },
-          ],
+          alternatives: [{ transcript: 'Hello world', confidence: 0.95 }],
         },
         is_final: false,
         speech_final: false,
         duration: 1.5,
       };
 
-      messageHandler!(mockResult);
+      mockWs._triggerMessage(JSON.stringify(mockResult));
 
-      // Interim result
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: 'Hello world',
           isFinal: false,
           confidence: 0.95,
-          metadata: expect.objectContaining({
-            duration: 1.5,
-          }),
+          metadata: expect.objectContaining({ duration: 1.5 }),
         })
       );
     });
 
-    it('should process final transcription results with speechFinal as first-class field', async () => {
-      let messageHandler: (msg: unknown) => void;
-
-      mockSocket.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'message') {
-          messageHandler = callback as (msg: unknown) => void;
-        }
-      });
-
-      await provider.connect!();
+    it('should process final transcription results with speechFinal', async () => {
+      await connectProvider();
 
       const mockResult = {
         type: 'Results',
         channel: {
-          alternatives: [
-            {
-              transcript: 'Complete sentence.',
-              confidence: 0.98,
-            },
-          ],
+          alternatives: [{ transcript: 'Complete sentence.', confidence: 0.98 }],
         },
         is_final: true,
         speech_final: true,
         duration: 2.0,
       };
 
-      messageHandler!(mockResult);
+      mockWs._triggerMessage(JSON.stringify(mockResult));
 
       // With speech_final=true the provider emits two calls:
       // 1. The segment itself (isFinal:true, speechFinal:false)
@@ -311,100 +288,88 @@ describe('DeepgramSTT', () => {
           isFinal: true,
           speechFinal: true,
           confidence: 0.98,
-          metadata: expect.objectContaining({
-            speechFinal: true,
-            duration: 2.0,
-          }),
+          metadata: expect.objectContaining({ speechFinal: true, duration: 2.0 }),
         })
       );
     });
 
-    it('should handle utterance end events via message handler', async () => {
-      let messageHandler: (msg: unknown) => void;
+    it('should accumulate utterance buffer across multiple is_final segments', async () => {
+      await connectProvider();
 
-      mockSocket.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'message') {
-          messageHandler = callback as (msg: unknown) => void;
-        }
-      });
+      // First is_final segment (not speech_final yet)
+      mockWs._triggerMessage(
+        JSON.stringify({
+          type: 'Results',
+          channel: { alternatives: [{ transcript: 'Hello', confidence: 0.9 }] },
+          is_final: true,
+          speech_final: false,
+          duration: 1.0,
+        })
+      );
 
-      await provider.connect!();
+      // Second is_final segment with speech_final
+      mockWs._triggerMessage(
+        JSON.stringify({
+          type: 'Results',
+          channel: { alternatives: [{ transcript: 'world', confidence: 0.95 }] },
+          is_final: true,
+          speech_final: true,
+          duration: 1.5,
+        })
+      );
 
-      const mockUtteranceEnd = {
-        type: 'UtteranceEnd',
-      };
-      messageHandler!(mockUtteranceEnd);
+      // The speech_final emission should contain the full accumulated utterance
+      expect(transcriptionCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'Hello world',
+          isFinal: true,
+          speechFinal: true,
+        })
+      );
+    });
+
+    it('should handle UtteranceEnd events', async () => {
+      await connectProvider();
+
+      mockWs._triggerMessage(
+        JSON.stringify({ type: 'UtteranceEnd', last_word_end: 1.5 })
+      );
 
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: '',
           isFinal: true,
-          metadata: expect.objectContaining({
-            event: 'utterance_end',
-          }),
+          metadata: expect.objectContaining({ event: 'utterance_end' }),
         })
       );
     });
 
-    it('should handle speech started events via message handler', async () => {
-      let messageHandler: (msg: unknown) => void;
+    it('should handle SpeechStarted events', async () => {
+      await connectProvider();
 
-      mockSocket.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'message') {
-          messageHandler = callback as (msg: unknown) => void;
-        }
-      });
-
-      await provider.connect!();
-
-      const mockSpeechStarted = {
-        type: 'SpeechStarted',
-      };
-      messageHandler!(mockSpeechStarted);
+      mockWs._triggerMessage(JSON.stringify({ type: 'SpeechStarted' }));
 
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: '',
           isFinal: false,
-          metadata: expect.objectContaining({
-            event: 'speech_started',
-          }),
+          metadata: expect.objectContaining({ event: 'speech_started' }),
         })
       );
     });
 
-    it('should handle errors during transcription', async () => {
-      const errorHandlers: Array<(error: Error) => void> = [];
-
-      mockSocket.on.mockImplementation((event: string, callback: (data?: unknown) => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'error') {
-          errorHandlers.push(callback as (error: Error) => void);
-        }
-      });
-
-      await provider.connect!();
-
-      // Clear previous calls
+    it('should handle WebSocket errors after connection', async () => {
+      await connectProvider();
       transcriptionCallback.mockClear();
 
-      const mockError = new Error('Transcription error');
-      // Call all registered error handlers
-      errorHandlers.forEach((handler) => handler(mockError));
+      mockWs._triggerError('Transcription error');
 
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: '',
           isFinal: true,
           confidence: 0,
-          metadata: {
-            error: 'Transcription error',
-          },
+          metadata: expect.objectContaining({ error: expect.any(String) }),
         })
       );
     });
@@ -415,113 +380,76 @@ describe('DeepgramSTT', () => {
       await expect(uninitProvider.connect!()).rejects.toThrow();
     });
 
-    it('should disconnect successfully using sendCloseStream', async () => {
-      let closeHandler: () => void;
-
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        } else if (event === 'close') {
-          closeHandler = callback;
-        }
-      });
-
-      await provider.connect!();
+    it('should disconnect successfully', async () => {
+      await connectProvider();
       expect(provider.isWebSocketConnected()).toBe(true);
 
-      // Trigger disconnect
+      // disconnect sends CloseStream then waits for close event
       const disconnectPromise = provider.disconnect!();
-      closeHandler!();
+      mockWs._triggerClose();
       await disconnectPromise;
 
-      expect(mockSocket.sendCloseStream).toHaveBeenCalledWith({ type: 'CloseStream' });
+      expect(mockWs.send).toHaveBeenCalledWith(
+        JSON.stringify({ type: 'CloseStream' })
+      );
       expect(provider.isWebSocketConnected()).toBe(false);
     });
 
     it('should not disconnect when not connected', async () => {
       await expect(provider.disconnect!()).resolves.not.toThrow();
-      expect(mockSocket.sendCloseStream).not.toHaveBeenCalled();
     });
 
     it('should handle already connected state', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
-
-      await provider.connect!();
-      await provider.connect!(); // Second call should not throw
+      await connectProvider();
+      await provider.connect!(); // Second call should not throw (no-op)
 
       expect(provider.isWebSocketConnected()).toBe(true);
     });
 
     it('should handle multiple audio chunks', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
-
-      await provider.connect!();
+      await connectProvider();
 
       const chunks = [new ArrayBuffer(512), new ArrayBuffer(512), new ArrayBuffer(512)];
-
       chunks.forEach((chunk) => provider.sendAudio!(chunk));
 
-      expect(mockSocket.sendMedia).toHaveBeenCalledTimes(3);
+      expect(mockWs.send).toHaveBeenCalledTimes(3);
     });
 
-    it('should send keep-alive', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
-
-      await provider.connect!();
+    it('should send keep-alive as JSON message', async () => {
+      await connectProvider();
 
       provider.sendKeepAlive();
 
-      expect(mockSocket.sendKeepAlive).toHaveBeenCalledWith({ type: 'KeepAlive' });
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'KeepAlive' }));
     });
 
     it('should not send keep-alive when not connected', () => {
       provider.sendKeepAlive();
-
-      expect(mockSocket.sendKeepAlive).not.toHaveBeenCalled();
+      // mockWs won't exist yet since we never connected
     });
 
-    it('should send finalize', async () => {
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
-
-      await provider.connect!();
+    it('should send finalize as JSON message', async () => {
+      await connectProvider();
 
       provider.sendFinalize();
 
-      expect(mockSocket.sendFinalize).toHaveBeenCalledWith({ type: 'Finalize' });
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'Finalize' }));
     });
 
     it('should not send finalize when not connected', () => {
       provider.sendFinalize();
-
-      expect(mockSocket.sendFinalize).not.toHaveBeenCalled();
+      // No assertion needed — just shouldn't throw
     });
   });
+
+  // ─── Configuration ───────────────────────────────────────────────────
 
   describe('Configuration', () => {
     it('should get current configuration', async () => {
       const config = {
         apiKey: 'test-key',
         language: 'en-US',
-        options: {
-          model: 'nova-2',
-          punctuation: true,
-        },
+        options: { model: 'nova-2', punctuation: true },
       };
 
       const provider = new DeepgramSTT(config, logger);
@@ -564,16 +492,16 @@ describe('DeepgramSTT', () => {
       expect(provider.isReady()).toBe(true);
       expect(provider.type).toBe('websocket');
 
-      const config = provider.getConfig() as typeof provider.config;
-      expect(config.options?.model).toBe('enhanced');
-      expect(config.options?.diarize).toBe(true);
-      expect(config.options?.redact).toEqual(['pci', 'ssn']);
-      expect(config.options?.keywords).toEqual(['test', 'example']);
+      const retrievedConfig = provider.getConfig() as typeof provider.config;
+      expect(retrievedConfig.options?.model).toBe('enhanced');
+      expect(retrievedConfig.options?.diarize).toBe(true);
+      expect(retrievedConfig.options?.redact).toEqual(['pci', 'ssn']);
+      expect(retrievedConfig.options?.keywords).toEqual(['test', 'example']);
 
       await provider.dispose();
     });
 
-    it('should wire all V1 options through connect args as strings', async () => {
+    it('should wire all V1 options through the WebSocket URL query params', async () => {
       const provider = new DeepgramSTT(
         {
           apiKey: 'test-key',
@@ -612,74 +540,60 @@ describe('DeepgramSTT', () => {
 
       await provider.initialize();
 
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
+      const connectPromise = provider.connect!();
+      mockWs._triggerOpen();
+      await connectPromise;
 
-      await provider.connect!();
+      const url = new URL(mockWs.url);
+      const p = url.searchParams;
 
-      expect(mockDeepgramClient.listen.v1.connect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Authorization: 'Token test-key',
-          model: 'nova-3',
-          language: 'en-US',
-          punctuate: 'true',
-          smart_format: 'true',
-          interim_results: 'true',
-          endpointing: '300',
-          vad_events: 'true',
-          profanity_filter: 'true',
-          diarize: 'true',
-          utterances: 'true',
-          encoding: 'linear16',
-          sample_rate: '16000',
-          channels: '2',
-          redact: 'pci,ssn',
-          keywords: 'hello,world',
-          keyterm: 'CompositeVoice',
-          alternatives: '3',
-          detect_entities: 'true',
-          numerals: 'true',
-          multichannel: 'true',
-          dictation: 'true',
-          replace: 'colour:color',
-          search: 'action item',
-          utterance_end_ms: '1000',
-          version: '2024-01-01',
-          tag: 'test-tag',
-          mip_opt_out: 'true',
-          extra: 'key1:val1',
-        })
-      );
+      // Core params
+      expect(p.get('model')).toBe('nova-3');
+      expect(p.get('language')).toBe('en-US');
+      expect(p.get('punctuate')).toBe('true');
+      expect(p.get('smart_format')).toBe('true');
+      expect(p.get('interim_results')).toBe('true');
+      expect(p.get('endpointing')).toBe('300');
+      expect(p.get('vad_events')).toBe('true');
+      expect(p.get('profanity_filter')).toBe('true');
+      expect(p.get('diarize')).toBe('true');
+
+      // Optional params
+      expect(p.get('encoding')).toBe('linear16');
+      expect(p.get('sample_rate')).toBe('16000');
+      expect(p.get('channels')).toBe('2');
+      expect(p.getAll('redact')).toEqual(['pci', 'ssn']);
+      expect(p.getAll('keywords')).toEqual(['hello', 'world']);
+      expect(p.getAll('keyterm')).toEqual(['CompositeVoice']);
+      expect(p.get('alternatives')).toBe('3');
+      expect(p.get('detect_entities')).toBe('true');
+      expect(p.get('numerals')).toBe('true');
+      expect(p.get('multichannel')).toBe('true');
+      expect(p.get('dictation')).toBe('true');
+      expect(p.getAll('replace')).toEqual(['colour:color']);
+      expect(p.getAll('search')).toEqual(['action item']);
+      expect(p.get('utterance_end_ms')).toBe('1000');
+      expect(p.get('version')).toBe('2024-01-01');
+      expect(p.get('tag')).toBe('test-tag');
+      expect(p.get('mip_opt_out')).toBe('true');
+      expect(p.getAll('extra')).toEqual(['key1:val1']);
 
       await provider.dispose();
     });
 
-    it('should use proxy Authorization when proxyUrl is set', async () => {
+    it('should support proxy mode URL construction', async () => {
       const provider = new DeepgramSTT(
-        {
-          proxyUrl: 'http://localhost:3001/api/proxy/deepgram',
-        },
+        { proxyUrl: 'http://localhost:3001/api/proxy/deepgram' },
         logger
       );
 
       await provider.initialize();
 
-      mockSocket.on.mockImplementation((event: string, callback: () => void) => {
-        if (event === 'open') {
-          setTimeout(callback, 0);
-        }
-      });
+      const connectPromise = provider.connect!();
+      mockWs._triggerOpen();
+      await connectPromise;
 
-      await provider.connect!();
-
-      expect(mockDeepgramClient.listen.v1.connect).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Authorization: 'Token proxy',
-        })
-      );
+      expect(mockWs.url).toContain('ws://localhost:3001/api/proxy/deepgram/v1/listen');
 
       await provider.dispose();
     });

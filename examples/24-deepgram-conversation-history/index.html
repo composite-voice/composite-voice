@@ -236,7 +236,7 @@
         <p class="subtitle">24 — Deepgram Conversation History</p>
         <div class="stack-badges">
             <span class="badge stt">STT: Deepgram nova-3</span>
-            <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge llm">LLM: Anthropic claude-haiku-4-5</span>
             <span class="badge tts">TTS: Deepgram aura-2</span>
             <span class="badge feat">Feature: Multi-turn history</span>
         </div>
@@ -374,7 +374,7 @@
                     }),
                     llm: new AnthropicLLM({
                         proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                        model: 'claude-haiku-4-6',
+                        model: 'claude-haiku-4-5',
                         systemPrompt: 'You are a helpful, friendly voice assistant. Keep responses concise and conversational — two to three sentences at most. Remember everything discussed in this conversation.',
                         maxTokens: 300,
                         temperature: 0.7,

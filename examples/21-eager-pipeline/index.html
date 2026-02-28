@@ -232,7 +232,7 @@
 
         <div class="stack-badges">
             <span class="badge stt">STT: DeepgramFlux</span>
-            <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge llm">LLM: Anthropic claude-haiku-4-5</span>
             <span class="badge tts">TTS: Deepgram aura-2</span>
             <span class="badge eager">Eager: eagerLLM enabled</span>
         </div>
@@ -260,7 +260,7 @@
                 </div>
             </div>
             <div class="stage llm-stage">
-                <h4><span class="stage-dot"></span> LLM — claude-haiku-4-6</h4>
+                <h4><span class="stage-dot"></span> LLM — claude-haiku-4-5</h4>
                 <div class="stage-content" id="llm-log">
                     <span style="font-style:italic;color:#475569">Waiting for transcript...</span>
                 </div>
@@ -381,7 +381,7 @@
 
                 const llm = new AnthropicLLM({
                     proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                    model: 'claude-haiku-4-6',
+                    model: 'claude-haiku-4-5',
                     systemPrompt: 'You are a helpful voice assistant. Keep responses to one or two sentences.',
                     maxTokens: 150,
                     temperature: 0.7,

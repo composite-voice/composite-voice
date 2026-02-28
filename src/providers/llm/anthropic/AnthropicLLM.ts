@@ -49,7 +49,7 @@ type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').Message
  * // Direct API access
  * const config: AnthropicLLMConfig = {
  *   apiKey: 'sk-ant-...',
- *   model: 'claude-haiku-4-6',
+ *   model: 'claude-haiku-4-5',
  *   maxTokens: 2048,
  *   systemPrompt: 'You are a helpful voice assistant.',
  * };
@@ -93,11 +93,11 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
    * Anthropic model identifier.
    *
    * @remarks
-   * - Fastest: `'claude-haiku-4-6'` (default)
+   * - Fastest: `'claude-haiku-4-5'` (default)
    * - Balanced: `'claude-sonnet-4-6'`
    * - Most capable: `'claude-opus-4-6'`
    *
-   * @defaultValue `'claude-haiku-4-6'`
+   * @defaultValue `'claude-haiku-4-5'`
    */
   model: string;
   /**
@@ -151,7 +151,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  *
  * const llm = new AnthropicLLM({
  *   apiKey: process.env.ANTHROPIC_API_KEY,
- *   model: 'claude-haiku-4-6',
+ *   model: 'claude-haiku-4-5',
  *   maxTokens: 512,
  *   systemPrompt: 'You are a concise voice assistant.',
  * });
@@ -195,7 +195,7 @@ export class AnthropicLLM extends BaseLLMProvider {
    * @remarks
    * The constructor normalizes the configuration by applying defaults:
    * `maxTokens` defaults to `1024`, `stream` defaults to `true`, and
-   * `model` defaults to `'claude-haiku-4-6'`.
+   * `model` defaults to `'claude-haiku-4-5'`.
    *
    * @param config - Anthropic provider configuration. Must include at least
    *   `model` and either `apiKey` or `proxyUrl`.
@@ -207,7 +207,7 @@ export class AnthropicLLM extends BaseLLMProvider {
       maxTokens: 1024,
       stream: true,
       ...config,
-      model: config.model ?? 'claude-haiku-4-6',
+      model: config.model ?? 'claude-haiku-4-5',
     };
     super(normalizedConfig, logger);
   }

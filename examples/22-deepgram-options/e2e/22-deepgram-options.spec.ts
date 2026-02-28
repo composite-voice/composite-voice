@@ -1,7 +1,7 @@
 /**
  * E2E test for example 22-deepgram-options.
  *
- * Provider stack: DeepgramSTT (configurable) + Anthropic LLM (claude-haiku-4-6) + DeepgramTTS (aura-2)
+ * Provider stack: DeepgramSTT (configurable) + Anthropic LLM (claude-haiku-4-5) + DeepgramTTS (aura-2)
  *
  * This test uses **real APIs** — no browser mocks are injected.
  * Chromium's fake audio capture flag feeds the spacewalk.wav fixture into

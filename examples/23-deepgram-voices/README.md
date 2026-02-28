@@ -5,7 +5,7 @@ Voice gallery for Deepgram Aura 2 — preview and select from available TTS voic
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
 | **STT** | `DeepgramSTT` — nova-3 | WebSocket | All modern browsers |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 | HTTP streaming | All |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-5 | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — selectable Aura 2 voice | WebSocket, 24 kHz | All modern browsers |
 
 ---

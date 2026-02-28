@@ -23,7 +23,7 @@
  *
  * const voice = new CompositeVoice({
  *   stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
- *   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-6' }),
+ *   llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
  *   tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
  * });
  *
@@ -129,8 +129,9 @@ export type {
 } from './providers/stt/deepgram/index';
 export { AssemblyAISTT } from './providers/stt/assemblyai/index';
 export type { AssemblyAISTTConfig } from './providers/stt/assemblyai/index';
-export { DeepgramFlux } from './providers/stt/deepgram-flux/index';
-export type { DeepgramFluxConfig, DeepgramFluxOptions } from './providers/stt/deepgram-flux/index';
+// DISABLED — DeepgramFlux requires @deepgram/sdk V5 (listen.v2 API)
+// export { DeepgramFlux } from './providers/stt/deepgram-flux/index';
+// export type { DeepgramFluxConfig, DeepgramFluxOptions } from './providers/stt/deepgram-flux/index';
 export { ElevenLabsSTT, LANGUAGE_MAP, resolveLanguageCode } from './providers/stt/elevenlabs/index';
 export type {
   ElevenLabsSTTConfig,

@@ -451,7 +451,7 @@
         <p class="subtitle">22 — Deepgram Options</p>
         <div class="stack-badges">
             <span class="badge stt">STT: Deepgram (configurable)</span>
-            <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge llm">LLM: Anthropic claude-haiku-4-5</span>
             <span class="badge tts">TTS: Deepgram aura-2</span>
         </div>
 
@@ -576,7 +576,7 @@
                 <div class="response-panel">
                     <h3>
                         AI Response
-                        <span class="response-tag">Anthropic claude-haiku-4-6</span>
+                        <span class="response-tag">Anthropic claude-haiku-4-5</span>
                     </h3>
                     <div id="response" class="response-content">
                         <p class="placeholder">AI responses will appear here...</p>
@@ -723,7 +723,7 @@
 
             const llm = new AnthropicLLM({
                 proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                model: 'claude-haiku-4-6',
+                model: 'claude-haiku-4-5',
                 systemPrompt: 'You are a helpful voice assistant. Keep responses concise and conversational — two to three sentences at most.',
                 maxTokens: 200,
                 temperature: 0.7,

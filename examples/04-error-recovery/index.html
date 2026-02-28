@@ -589,13 +589,16 @@
     btnEmitError.addEventListener('click', () => {
       if (!agent) return;
 
-      // Emit a synthetic agent error to demonstrate the error event flow
-      agent.emit('agent.error', {
-        error: new Error('Simulated agent error for demonstration'),
-        context: 'manual-simulation',
-        recoverable: true,
-      });
-      addLogEntry('sim: emit error', 'warning', 'Manually emitted agent.error event');
+      // Simulate an agent error by directly invoking the error handling UI.
+      // CompositeVoice doesn't expose a public emit() — the event emitter is
+      // internal by design — so we drive the demo UI directly.
+      const simulatedError = new Error('Simulated agent error for demonstration');
+      errorCount++;
+      updateErrorCount();
+      setLastError('Simulated agent error fo…', 'error-state');
+      setRecoveryStatus('Error', 'error-state');
+      addLogEntry('agent.error', 'error', simulatedError.message);
+      addLogEntry('sim: emit error', 'warning', 'Manually triggered error simulation');
     });
 
     btnClearLog.addEventListener('click', () => {

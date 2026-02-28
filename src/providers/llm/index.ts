@@ -20,7 +20,7 @@
  *
  * const llm = new AnthropicLLM({
  *   proxyUrl: '/api/proxy/anthropic',
- *   model: 'claude-haiku-4-6',
+ *   model: 'claude-haiku-4-5',
  *   systemPrompt: 'You are a helpful voice assistant.',
  * });
  * ```

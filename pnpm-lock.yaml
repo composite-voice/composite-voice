@@ -11,9 +11,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@mlc-ai/web-llm':
         specifier: '>=0.2.74'
         version: 0.2.81
@@ -98,70 +95,6 @@ importers:
     dependencies:
       '@4hse/astro-llms-txt':
         specifier: ^1.0.4
-        version: 1.0.4(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
-      '@astrojs/react':
-        specifier: ^4.2.1
-        version: 4.4.2(@types/node@25.0.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(terser@5.44.1)(yaml@2.8.1)
-      '@astrojs/sitemap':
-        specifier: ^3.7.0
-        version: 3.7.0
-      '@lukeocodes/composite-voice-ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      '@playform/compress':
-        specifier: ^0.2.1
-        version: 0.2.1(@types/node@25.0.3)(jiti@2.6.1)(rollup@4.52.5)(typescript@5.9.3)(yaml@2.8.1)
-      '@playform/inline':
-        specifier: ^0.1.2
-        version: 0.1.2(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
-      '@tailwindcss/vite':
-        specifier: ^4.1.8
-        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1))
-      '@unpic/astro':
-        specifier: ^1.0.2
-        version: 1.0.2(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
-      astro:
-        specifier: ^5.17.1
-        version: 5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
-      astro-breadcrumbs:
-        specifier: ^3.3.3
-        version: 3.3.3(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
-      astro-capo:
-        specifier: ^0.0.1
-        version: 0.0.1(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
-      astro-og-canvas:
-        specifier: ^0.10.1
-        version: 0.10.1(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
-      astro-robots-txt:
-        specifier: ^1.0.0
-        version: 1.0.0
-      astro-seo:
-        specifier: ^1.1.0
-        version: 1.1.0(prettier@3.6.2)(typescript@5.9.3)
-      canvaskit-wasm:
-        specifier: ^0.40.0
-        version: 0.40.0
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tailwindcss:
-        specifier: ^4.1.8
-        version: 4.2.1
-    devDependencies:
-      '@types/react':
-        specifier: ^19.1.6
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.6
-        version: 19.2.3(@types/react@19.2.14)
-
-  apps/docs:
-    dependencies:
-      '@4hse/astro-llms-txt':
-        specifier: ^1.0.4
         version: 1.0.4(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
       '@astrojs/react':
         specifier: ^4.2.1
@@ -196,9 +129,73 @@ importers:
       astro-og-canvas:
         specifier: ^0.10.1
         version: 0.10.1(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+      astro-robots-txt:
+        specifier: ^1.0.0
+        version: 1.0.0
+      astro-seo:
+        specifier: ^1.1.0
+        version: 1.1.0(prettier@3.6.2)(typescript@5.9.3)
+      canvaskit-wasm:
+        specifier: ^0.40.0
+        version: 0.40.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.6
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.6
+        version: 19.2.3(@types/react@19.2.14)
+
+  apps/docs:
+    dependencies:
+      '@4hse/astro-llms-txt':
+        specifier: ^1.0.4
+        version: 1.0.4(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+      '@astrojs/react':
+        specifier: ^4.2.1
+        version: 4.4.2(@types/node@25.0.3)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(terser@5.44.1)(yaml@2.8.1)
+      '@astrojs/sitemap':
+        specifier: ^3.7.0
+        version: 3.7.0
+      '@lukeocodes/composite-voice-ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@playform/compress':
+        specifier: ^0.2.1
+        version: 0.2.1(@types/node@25.0.3)(jiti@2.6.1)(rollup@4.52.5)(typescript@5.9.3)(yaml@2.8.1)
+      '@playform/inline':
+        specifier: ^0.1.2
+        version: 0.1.2(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1))
+      '@unpic/astro':
+        specifier: ^1.0.2
+        version: 1.0.2(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+      astro:
+        specifier: ^5.17.1
+        version: 5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
+      astro-breadcrumbs:
+        specifier: ^3.3.3
+        version: 3.3.3(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+      astro-capo:
+        specifier: ^0.0.1
+        version: 0.0.1(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+      astro-og-canvas:
+        specifier: ^0.10.1
+        version: 0.10.1(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
       astro-pagefind:
         specifier: ^1.8.5
-        version: 1.8.5(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
+        version: 1.8.5(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1))
       astro-robots-txt:
         specifier: ^1.0.0
         version: 1.0.0
@@ -379,18 +376,12 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       vite:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.0.3)(lightningcss@1.31.1)(terser@5.44.1)
 
   examples/100-gemini-pipeline:
     dependencies:
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -422,9 +413,6 @@ importers:
 
   examples/110-mistral-pipeline:
     dependencies:
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -464,9 +452,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -480,9 +465,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -496,9 +478,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -512,9 +491,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -528,9 +504,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -580,9 +553,6 @@ importers:
 
   examples/41-openai-deepgram:
     dependencies:
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -622,9 +592,6 @@ importers:
 
   examples/60-groq-pipeline:
     dependencies:
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -641,9 +608,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -657,9 +621,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: '>=0.67.0'
         version: 0.67.0(zod@3.25.76)
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -680,9 +641,6 @@ importers:
 
   examples/90-cartesia-pipeline:
     dependencies:
-      '@deepgram/sdk':
-        specifier: '>=5.0.0-beta.1'
-        version: 5.0.0-beta.4
       '@lukeocodes/composite-voice':
         specifier: workspace:*
         version: link:../..
@@ -1076,10 +1034,6 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
-
-  '@deepgram/sdk@5.0.0-beta.4':
-    resolution: {integrity: sha512-i1Vb5h9W06UHlYVsGaOMIC4kQIil5z/SfzrsUQVUU0UYAuyf5QbcCgtdf+mkElb+aVYokP0Qt0avWYFTfVVmAw==}
-    engines: {node: '>=18.0.0'}
 
   '@emmetio/abbreviation@2.3.3':
     resolution: {integrity: sha512-mgv58UrU3rh4YgbE/TzgLQwJ3pFsHHhCLqY20aJq+9comytTXUDNGG/SMtSeMJdkpxgXSXunBGLD8Boka3JyVA==}
@@ -6675,13 +6629,6 @@ snapshots:
 
   '@csstools/css-tokenizer@3.0.4': {}
 
-  '@deepgram/sdk@5.0.0-beta.4':
-    dependencies:
-      ws: 8.18.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
   '@emmetio/abbreviation@2.3.3':
     dependencies:
       '@emmetio/scanner': 1.0.4
@@ -8250,10 +8197,10 @@ snapshots:
       deterministic-object-hash: 2.0.2
       entities: 7.0.1
 
-  astro-pagefind@1.8.5(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)):
+  astro-pagefind@1.8.5(astro@5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)):
     dependencies:
       '@pagefind/default-ui': 1.4.0
-      astro: 5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
+      astro: 5.17.3(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.52.5)(terser@5.44.1)(typescript@5.9.3)(yaml@2.8.1)
       pagefind: 1.4.0
       sirv: 3.0.2
 

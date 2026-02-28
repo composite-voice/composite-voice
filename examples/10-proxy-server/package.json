@@ -14,7 +14,6 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": ">=0.67.0",
-    "@deepgram/sdk": ">=5.0.0-beta.1",
     "vite": "^5.0.0"
   }
 }

@@ -3,29 +3,15 @@
  * Deepgram Flux (V2) Speech-to-Text provider.
  *
  * @remarks
- * Re-exports the {@link DeepgramFlux} class and its configuration types.
- * DeepgramFlux connects to Deepgram's V2 real-time streaming STT service via
- * WebSocket using the `@deepgram/sdk` V5 `listen.v2` API. It supports
- * turn-based transcription with `TurnInfo` events, eager end-of-turn signals
- * for speculative LLM generation, and Flux models (e.g., `flux-general-en`).
+ * DISABLED — The V2 `listen.v2` API requires `@deepgram/sdk` V5 which is
+ * currently unstable. Exports are preserved for type compatibility but the
+ * provider throws at runtime.
  *
- * Requires either a direct API key or a proxy URL for authentication.
- *
- * @example
- * ```typescript
- * import { DeepgramFlux } from '@lukeocodes/composite-voice';
- *
- * const stt = new DeepgramFlux({
- *   proxyUrl: '/api/proxy/deepgram',
- *   options: {
- *     model: 'flux-general-en',
- *     eagerEotThreshold: 0.5,
- *   },
- * });
- * ```
+ * To re-enable: upgrade `@deepgram/sdk` to >=5.x and uncomment the full
+ * class body in `DeepgramFlux.ts`.
  *
  * @see {@link DeepgramSTT} for the V1 (Nova) Deepgram STT provider
- * @see {@link AssemblyAISTT} for AssemblyAI streaming STT
  */
 
+// Exports preserved for type compatibility (class throws at runtime)
 export { DeepgramFlux, type DeepgramFluxConfig, type DeepgramFluxOptions } from './DeepgramFlux';

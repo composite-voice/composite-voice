@@ -5,7 +5,7 @@ Interactive configuration panel for tuning `DeepgramSTT` (V1/Nova) settings. Cha
 | | Provider | Transport |
 |-|----------|-----------|
 | **STT** | `DeepgramSTT` — configurable V1 models | WebSocket |
-| **LLM** | `AnthropicLLM` — claude-haiku-4-6 | HTTP streaming |
+| **LLM** | `AnthropicLLM` — claude-haiku-4-5 | HTTP streaming |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket |
 
 > This example tunes `DeepgramSTT` (V1/Nova) options. For the V2 eager pipeline with preflight signals, see [Example 21 — Eager Pipeline](../21-eager-pipeline/) which uses `DeepgramFlux`.

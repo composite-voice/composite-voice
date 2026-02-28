@@ -236,7 +236,7 @@
         <p class="subtitle">01 — Conversation History</p>
         <div class="stack-badges">
             <span class="badge stt">STT: NativeSTT (Web Speech API)</span>
-            <span class="badge llm">LLM: Anthropic claude-haiku-4-6</span>
+            <span class="badge llm">LLM: Anthropic claude-haiku-4-5</span>
             <span class="badge tts">TTS: NativeTTS (SpeechSynthesis)</span>
             <span class="badge feat">Feature: Multi-turn history</span>
         </div>
@@ -367,7 +367,7 @@
 
                 const llm = new AnthropicLLM({
                     proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                    model: 'claude-haiku-4-6',
+                    model: 'claude-haiku-4-5',
                     systemPrompt: `You are a helpful, friendly voice assistant having a spoken conversation.
 Keep responses concise and conversational — two to three sentences at most.
 Remember everything the user has told you in this conversation.`,

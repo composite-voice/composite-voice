@@ -1,7 +1,7 @@
 /**
  * E2E test for example 10-proxy-server.
  *
- * Provider stack: DeepgramSTT (nova-3) + Anthropic LLM (claude-haiku-4-6) + DeepgramTTS (aura-2)
+ * Provider stack: DeepgramSTT (nova-3) + Anthropic LLM (claude-haiku-4-5) + DeepgramTTS (aura-2)
  * All routed through a Vite dev proxy — no API keys in the browser.
  *
  * This test uses **real APIs** via the proxy — no browser mocks are injected.

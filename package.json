@@ -185,16 +185,12 @@
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.67.0",
-    "@deepgram/sdk": ">=5.0.0-beta.1",
     "@mlc-ai/web-llm": ">=0.2.74",
     "openai": ">=6.5.0",
     "ws": ">=8.0.0"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/sdk": {
-      "optional": true
-    },
-    "@deepgram/sdk": {
       "optional": true
     },
     "openai": {
