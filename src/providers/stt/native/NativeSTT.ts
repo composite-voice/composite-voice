@@ -1,11 +1,28 @@
 /**
  * Native browser speech-to-text provider using the Web Speech API.
  *
+ * @remarks
+ * This module provides a multi-role provider (`'input'` + `'stt'`) that wraps the
+ * browser's `SpeechRecognition` API. Because the Web Speech API manages microphone
+ * access and transcription internally, NativeSTT fills both the audio input and
+ * speech-to-text pipeline slots. It implements the {@link AudioInputProvider}
+ * interface (start, stop, pause, resume, isActive, onAudio, getMetadata) in
+ * addition to the {@link LiveSTTProvider} contract (connect, sendAudio, disconnect).
+ *
+ * When the provider resolution algorithm detects that the same provider covers
+ * both `'input'` and `'stt'`, the orchestrator takes a simplified path that
+ * calls `connect()` / `disconnect()` directly, without setting up an
+ * {@link AudioBufferQueue} between the two stages.
+ *
+ * @see {@link AudioInputProvider} for the input role contract
+ * @see {@link LiveSTTProvider} for the STT role contract
+ *
  * @packageDocumentation
  */
 
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
+import type { AudioChunk, AudioMetadata } from '../../../core/types/audio';
 import type { ProviderRole } from '../../../core/types/roles';
 import { ProviderConnectionError } from '../../../utils/errors';
 import { Logger } from '../../../utils/logger';
@@ -529,5 +546,121 @@ export class NativeSTT extends LiveSTTProvider {
     // No-op: Native STT uses SpeechRecognition API which directly accesses the microphone
     // Audio flow: Microphone → SpeechRecognition API → onTranscription callback
     this.logger.debug('sendAudio() called on native STT (no-op - browser manages audio capture)');
+  }
+
+  // ── AudioInputProvider interface (multi-role: input + stt) ──────────
+
+  /**
+   * Start capturing audio via the browser's SpeechRecognition API.
+   *
+   * @remarks
+   * Delegates to {@link NativeSTT.connect | connect()}. This method exists
+   * to satisfy the {@link AudioInputProvider} interface for duck-type
+   * validation in the provider resolution algorithm. In the multi-role
+   * simplified path, the orchestrator calls `connect()` directly.
+   *
+   * @see {@link AudioInputProvider.start}
+   */
+  start(): void {
+    this.connect().catch((err) =>
+      this.logger.error('Failed to start audio input', err)
+    );
+  }
+
+  /**
+   * Stop capturing audio via the browser's SpeechRecognition API.
+   *
+   * @remarks
+   * Delegates to {@link NativeSTT.disconnect | disconnect()}.
+   *
+   * @see {@link AudioInputProvider.stop}
+   */
+  stop(): void {
+    this.disconnect().catch((err) =>
+      this.logger.error('Failed to stop audio input', err)
+    );
+  }
+
+  /**
+   * Pause audio capture by stopping recognition.
+   *
+   * @remarks
+   * The Web Speech API's `SpeechRecognition` does not support a native
+   * pause operation, so this delegates to
+   * {@link NativeSTT.disconnect | disconnect()} to halt recognition.
+   * Use {@link NativeSTT.resume | resume()} to restart.
+   *
+   * @see {@link AudioInputProvider.pause}
+   */
+  pause(): void {
+    this.disconnect().catch((err) =>
+      this.logger.error('Failed to pause audio input', err)
+    );
+  }
+
+  /**
+   * Resume audio capture after a pause.
+   *
+   * @remarks
+   * Delegates to {@link NativeSTT.connect | connect()} to restart the
+   * SpeechRecognition engine after a {@link NativeSTT.pause | pause()}.
+   *
+   * @see {@link AudioInputProvider.resume}
+   */
+  resume(): void {
+    this.connect().catch((err) =>
+      this.logger.error('Failed to resume audio input', err)
+    );
+  }
+
+  /**
+   * Check whether the SpeechRecognition engine is actively listening.
+   *
+   * @returns `true` when recognition is active (between `connect()` and
+   *   `disconnect()`).
+   *
+   * @see {@link AudioInputProvider.isActive}
+   */
+  isActive(): boolean {
+    return this.shouldBeListening;
+  }
+
+  /**
+   * No-op — NativeSTT directly accesses the microphone via the browser's
+   * SpeechRecognition API and does not emit raw audio chunks.
+   *
+   * @remarks
+   * The browser handles audio capture internally. This method exists
+   * solely to satisfy the {@link AudioInputProvider} interface.
+   *
+   * @param _callback - Audio callback (unused).
+   *
+   * @see {@link AudioInputProvider.onAudio}
+   */
+  onAudio(_callback: (chunk: AudioChunk) => void): void {
+    // No-op: browser's SpeechRecognition API handles audio internally
+  }
+
+  /**
+   * Returns sensible audio metadata defaults for the Web Speech API.
+   *
+   * @remarks
+   * The Web Speech API does not expose the actual audio format it uses
+   * internally, so this returns reasonable defaults matching the most
+   * common browser configuration. These values are used by the pipeline's
+   * STT metadata auto-configuration when NativeSTT is the input provider.
+   *
+   * @returns {@link AudioMetadata} with `sampleRate: 16000`,
+   *   `encoding: 'linear16'`, `channels: 1`, `bitDepth: 16`
+   *
+   * @see {@link AudioInputProvider.getMetadata}
+   */
+  getMetadata(): AudioMetadata {
+    return {
+      sampleRate: 16000,
+      encoding: 'linear16',
+      channels: 1,
+      bitDepth: 16,
+    };
   }
 }

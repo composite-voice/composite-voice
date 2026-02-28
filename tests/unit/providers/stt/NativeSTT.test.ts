@@ -384,6 +384,71 @@ describe('NativeSTT', () => {
     });
   });
 
+  describe('AudioInputProvider interface', () => {
+    beforeEach(async () => {
+      await provider.initialize();
+      mockRecognition.start.mockImplementation(() => {
+        Promise.resolve().then(() => mockRecognition.onstart?.(new Event('start')));
+      });
+    });
+
+    it('start() should delegate to connect()', async () => {
+      provider.start();
+      // Flush the async connect() → getUserMedia → recognition.start() chain
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(mockRecognition.start).toHaveBeenCalled();
+    });
+
+    it('stop() should delegate to disconnect()', () => {
+      provider.stop();
+      expect(mockRecognition.stop).toHaveBeenCalled();
+    });
+
+    it('pause() should delegate to disconnect()', () => {
+      provider.pause();
+      expect(mockRecognition.stop).toHaveBeenCalled();
+    });
+
+    it('resume() should delegate to connect()', async () => {
+      provider.resume();
+      // Flush the async connect() → getUserMedia → recognition.start() chain
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(mockRecognition.start).toHaveBeenCalled();
+    });
+
+    it('isActive() should return false before connect', () => {
+      expect(provider.isActive()).toBe(false);
+    });
+
+    it('isActive() should return true after connect', async () => {
+      await provider.connect();
+      expect(provider.isActive()).toBe(true);
+    });
+
+    it('isActive() should return false after disconnect', async () => {
+      await provider.connect();
+      await provider.disconnect();
+      expect(provider.isActive()).toBe(false);
+    });
+
+    it('onAudio() should be a no-op and not throw', () => {
+      const callback = jest.fn();
+      expect(() => provider.onAudio(callback)).not.toThrow();
+    });
+
+    it('getMetadata() should return sensible defaults', () => {
+      const metadata = provider.getMetadata();
+      expect(metadata).toEqual({
+        sampleRate: 16000,
+        encoding: 'linear16',
+        channels: 1,
+        bitDepth: 16,
+      });
+    });
+  });
+
   describe('disposal', () => {
     it('should dispose without throwing', async () => {
       await provider.initialize();

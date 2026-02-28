@@ -17,6 +17,7 @@ const mockVoices = [
 ];
 
 let mockUtterance: {
+  onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: ((e: any) => void) | null;
   text?: string;
@@ -25,12 +26,14 @@ let mockUtterance: {
   pitch?: number;
   lang?: string;
 } = {
+  onstart: null,
   onend: null,
   onerror: null,
 };
 
 const MockSpeechSynthesisUtterance = jest.fn().mockImplementation((text: string) => {
   mockUtterance = {
+    onstart: null,
     onend: null,
     onerror: null,
     text,
@@ -62,7 +65,7 @@ describe('NativeTTS', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUtterance = { onend: null, onerror: null };
+    mockUtterance = { onstart: null, onend: null, onerror: null };
     mockSynthesis.getVoices.mockReturnValue(mockVoices);
     mockSynthesis.speak.mockImplementation(() => {
       Promise.resolve().then(() => mockUtterance.onend?.());
@@ -235,6 +238,89 @@ describe('NativeTTS', () => {
       expect(provider.isPaused()).toBe(true);
       mockSynthesis.paused = false;
       expect(provider.isPaused()).toBe(false);
+    });
+  });
+
+  describe('AudioOutputProvider interface', () => {
+    beforeEach(async () => {
+      await provider.initialize();
+    });
+
+    it('configure() should be a no-op and not throw', () => {
+      expect(() =>
+        provider.configure({
+          sampleRate: 24000,
+          encoding: 'linear16',
+          channels: 1,
+          bitDepth: 16,
+        })
+      ).not.toThrow();
+    });
+
+    it('enqueue() should be a no-op and not throw', () => {
+      expect(() =>
+        provider.enqueue({
+          data: new ArrayBuffer(100),
+          timestamp: Date.now(),
+        })
+      ).not.toThrow();
+    });
+
+    it('flush() should resolve immediately', async () => {
+      await expect(provider.flush()).resolves.toBeUndefined();
+    });
+
+    it('stop() should delegate to cancel()', () => {
+      provider.stop();
+      expect(mockSynthesis.cancel).toHaveBeenCalled();
+    });
+
+    it('isPlaying() should delegate to isSpeaking()', () => {
+      mockSynthesis.speaking = true;
+      expect(provider.isPlaying()).toBe(true);
+      mockSynthesis.speaking = false;
+      expect(provider.isPlaying()).toBe(false);
+    });
+
+    it('onPlaybackStart() should register callback fired on utterance start', async () => {
+      const callback = jest.fn();
+      provider.onPlaybackStart(callback);
+
+      // Modify speak mock to fire onstart then onend
+      mockSynthesis.speak.mockImplementation(() => {
+        Promise.resolve().then(() => {
+          mockUtterance.onstart?.();
+          mockUtterance.onend?.();
+        });
+      });
+
+      await provider.synthesize('Hello');
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('onPlaybackEnd() should register callback fired on utterance end', async () => {
+      const callback = jest.fn();
+      provider.onPlaybackEnd(callback);
+
+      await provider.synthesize('Hello');
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('onPlaybackError() should register callback fired on utterance error', async () => {
+      const errorCallback = jest.fn();
+      provider.onPlaybackError(errorCallback);
+
+      mockSynthesis.speak.mockImplementation(() => {
+        Promise.resolve().then(() =>
+          mockUtterance.onerror?.({ error: 'synthesis-failed' })
+        );
+      });
+
+      await expect(provider.synthesize('fail')).rejects.toThrow();
+      expect(errorCallback).toHaveBeenCalledTimes(1);
+      expect(errorCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('synthesis-failed') })
+      );
     });
   });
 

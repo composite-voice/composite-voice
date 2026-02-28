@@ -2,21 +2,32 @@
  * Native browser TTS provider using the Web Speech API.
  *
  * @remarks
- * This module provides a TTS provider that leverages the browser's built-in
+ * This module provides a multi-role provider (`'tts'` + `'output'`) that wraps the
+ * browser's built-in
  * {@link https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis | SpeechSynthesis API}
- * for text-to-speech conversion. Unlike other TTS providers in the SDK, NativeTTS
- * manages its own audio playback directly through the browser -- CompositeVoice does
- * NOT receive audio data from this provider. The audio flows directly from the
- * SpeechSynthesis engine to the device speakers.
+ * for text-to-speech conversion and audio playback. Because the Web Speech API
+ * manages both synthesis and speaker output internally, NativeTTS fills both the
+ * TTS and audio output pipeline slots. It implements the {@link AudioOutputProvider}
+ * interface (configure, enqueue, flush, stop, pause, resume, isPlaying, playback
+ * callbacks) in addition to the {@link RestTTSProvider} contract (synthesize).
+ *
+ * When the provider resolution algorithm detects that the same provider covers
+ * both `'tts'` and `'output'`, the orchestrator takes a simplified path that
+ * calls `synthesize()` directly, without routing audio through an
+ * {@link AudioBufferQueue}.
  *
  * Transport: None (browser-managed playback)
  * Audio format: Browser-native (not capturable)
+ *
+ * @see {@link AudioOutputProvider} for the output role contract
+ * @see {@link RestTTSProvider} for the TTS role contract
  *
  * @packageDocumentation
  */
 
 import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
+import type { AudioChunk, AudioMetadata } from '../../../core/types/audio';
 import type { ProviderRole } from '../../../core/types/roles';
 import { Logger } from '../../../utils/logger';
 
@@ -125,6 +136,13 @@ export class NativeTTS extends RestTTSProvider {
   private synthesis: SpeechSynthesis;
   private availableVoices: SpeechSynthesisVoice[] = [];
   private selectedVoice: SpeechSynthesisVoice | null = null;
+
+  /** Registered callback for playback start events. */
+  private playbackStartCallback: (() => void) | null = null;
+  /** Registered callback for playback end events. */
+  private playbackEndCallback: (() => void) | null = null;
+  /** Registered callback for playback error events. */
+  private playbackErrorCallback: ((error: Error) => void) | null = null;
 
   /**
    * Creates a new NativeTTS provider instance.
@@ -319,8 +337,13 @@ export class NativeTTS extends RestTTSProvider {
       const pitch = this.config.pitch ?? 0;
       utterance.pitch = Math.max(0, Math.min(2, 1 + pitch / 20));
 
+      utterance.onstart = () => {
+        this.playbackStartCallback?.();
+      };
+
       utterance.onend = () => {
         this.logger.debug('Speech finished');
+        this.playbackEndCallback?.();
         // Note: Web Speech API doesn't provide audio data
         // Return empty blob as we can't capture the audio
         resolve(new Blob());
@@ -328,7 +351,9 @@ export class NativeTTS extends RestTTSProvider {
 
       utterance.onerror = (event) => {
         this.logger.error('Speech error', event);
-        reject(new Error(`Speech synthesis error: ${event.error}`));
+        const error = new Error(`Speech synthesis error: ${event.error}`);
+        this.playbackErrorCallback?.(error);
+        reject(error);
       };
 
       this.synthesis.speak(utterance);
@@ -445,5 +470,129 @@ export class NativeTTS extends RestTTSProvider {
 
     this.logger.warn(`Voice not found: ${voiceName}`);
     return false;
+  }
+
+  // ── AudioOutputProvider interface (multi-role: tts + output) ────────
+
+  /**
+   * No-op — NativeTTS uses the browser's SpeechSynthesis API which manages
+   * its own audio format internally.
+   *
+   * @remarks
+   * This method exists to satisfy the {@link AudioOutputProvider} interface
+   * for duck-type validation. The browser handles audio format configuration
+   * for SpeechSynthesis internally.
+   *
+   * @param _metadata - Audio metadata (unused).
+   *
+   * @see {@link AudioOutputProvider.configure}
+   */
+  configure(_metadata: AudioMetadata): void {
+    // No-op: SpeechSynthesis manages its own audio format
+  }
+
+  /**
+   * No-op — NativeTTS synthesizes and plays audio internally via the
+   * browser's SpeechSynthesis API. External audio chunks are not accepted.
+   *
+   * @remarks
+   * This method exists to satisfy the {@link AudioOutputProvider} interface.
+   * Audio output is handled entirely by `SpeechSynthesis.speak()` in the
+   * {@link NativeTTS.synthesize | synthesize()} method.
+   *
+   * @param _chunk - Audio chunk (unused).
+   *
+   * @see {@link AudioOutputProvider.enqueue}
+   */
+  enqueue(_chunk: AudioChunk): void {
+    // No-op: SpeechSynthesis plays audio internally
+  }
+
+  /**
+   * No-op — resolves immediately since SpeechSynthesis manages playback.
+   *
+   * @remarks
+   * This method exists to satisfy the {@link AudioOutputProvider} interface.
+   * The actual wait-for-completion is handled within
+   * {@link NativeTTS.synthesize | synthesize()}, which resolves its promise
+   * when the utterance finishes.
+   *
+   * @see {@link AudioOutputProvider.flush}
+   */
+  async flush(): Promise<void> {
+    // No-op: synthesize() already waits for completion
+  }
+
+  /**
+   * Stop playback immediately by cancelling all speech.
+   *
+   * @remarks
+   * Delegates to {@link NativeTTS.cancel | cancel()}, which calls
+   * `SpeechSynthesis.cancel()` to remove all utterances from the queue
+   * and stop the currently speaking utterance.
+   *
+   * @see {@link AudioOutputProvider.stop}
+   */
+  stop(): void {
+    this.cancel();
+  }
+
+  /**
+   * Check whether the browser is currently playing synthesized speech.
+   *
+   * @remarks
+   * Delegates to {@link NativeTTS.isSpeaking | isSpeaking()}.
+   *
+   * @returns `true` when the SpeechSynthesis engine is actively speaking.
+   *
+   * @see {@link AudioOutputProvider.isPlaying}
+   */
+  isPlaying(): boolean {
+    return this.isSpeaking();
+  }
+
+  /**
+   * Register a callback invoked when speech playback begins.
+   *
+   * @remarks
+   * The callback is fired from the `SpeechSynthesisUtterance.onstart`
+   * event within {@link NativeTTS.synthesize | synthesize()}.
+   *
+   * @param callback - Function called when playback starts.
+   *
+   * @see {@link AudioOutputProvider.onPlaybackStart}
+   */
+  onPlaybackStart(callback: () => void): void {
+    this.playbackStartCallback = callback;
+  }
+
+  /**
+   * Register a callback invoked when speech playback finishes.
+   *
+   * @remarks
+   * The callback is fired from the `SpeechSynthesisUtterance.onend`
+   * event within {@link NativeTTS.synthesize | synthesize()}.
+   *
+   * @param callback - Function called when playback ends.
+   *
+   * @see {@link AudioOutputProvider.onPlaybackEnd}
+   */
+  onPlaybackEnd(callback: () => void): void {
+    this.playbackEndCallback = callback;
+  }
+
+  /**
+   * Register a callback invoked when a playback error occurs.
+   *
+   * @remarks
+   * The callback is fired from the `SpeechSynthesisUtterance.onerror`
+   * event within {@link NativeTTS.synthesize | synthesize()}.
+   *
+   * @param callback - Function called with the error.
+   *
+   * @see {@link AudioOutputProvider.onPlaybackError}
+   */
+  onPlaybackError(callback: (error: Error) => void): void {
+    this.playbackErrorCallback = callback;
   }
 }
