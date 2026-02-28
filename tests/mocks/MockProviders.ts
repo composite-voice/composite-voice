@@ -3,14 +3,17 @@
  */
 
 import type {
-  STTProvider,
+  RestSTTProvider,
   LLMProvider,
-  TTSProvider,
+  RestTTSProvider,
+  LiveSTTProvider,
   STTProviderConfig,
   LLMProviderConfig,
   TTSProviderConfig,
   TranscriptionResult,
   BaseProvider,
+  AudioInputProvider,
+  AudioOutputProvider,
 } from '../../src/core/types/providers';
 import type { ProviderRole } from '../../src/core/types/roles';
 import type { AudioChunk, AudioMetadata } from '../../src/core/types/audio';
@@ -18,7 +21,7 @@ import type { AudioChunk, AudioMetadata } from '../../src/core/types/audio';
 /**
  * Mock STT Provider
  */
-export class MockSTTProvider implements STTProvider {
+export class MockSTTProvider implements RestSTTProvider {
   type = 'rest' as const;
   roles: readonly ProviderRole[] = ['stt'];
   config: STTProviderConfig = { model: 'mock' };
@@ -37,8 +40,8 @@ export class MockSTTProvider implements STTProvider {
     return this.ready;
   }
 
-  async transcribe(audio: Blob): Promise<string> {
-    return 'Mock transcription';
+  async transcribe(_audio: Blob): Promise<void> {
+    // Results delivered via onTranscription callback
   }
 
   onTranscription(callback: (result: TranscriptionResult) => void) {
@@ -105,7 +108,7 @@ export class MockLLMProvider implements LLMProvider {
 /**
  * Mock TTS Provider
  */
-export class MockTTSProvider implements TTSProvider {
+export class MockTTSProvider implements RestTTSProvider {
   type = 'rest' as const;
   roles: readonly ProviderRole[] = ['tts'];
   config: TTSProviderConfig = { model: 'mock' };
@@ -125,7 +128,7 @@ export class MockTTSProvider implements TTSProvider {
     return this.ready;
   }
 
-  async synthesize(text: string): Promise<Blob> {
+  async synthesize(_text: string): Promise<Blob> {
     // Create a simple audio blob
     const buffer = new ArrayBuffer(1024);
     return new Blob([buffer], { type: 'audio/wav' });
@@ -190,7 +193,7 @@ export class MockAllInOneProvider implements BaseProvider {
     this.connected = true;
   }
 
-  sendAudio(chunk: ArrayBuffer) {
+  sendAudio(_chunk: ArrayBuffer) {
     if (!this.connected) {
       throw new Error('Not connected');
     }
@@ -255,6 +258,284 @@ export class MockAllInOneProvider implements BaseProvider {
 }
 
 /**
+ * Mock Input Provider implementing AudioInputProvider.
+ *
+ * @remarks
+ * Simulates an audio input source for integration testing. Chunks are
+ * delivered to the registered `onAudio` callback when {@link pushChunk}
+ * is called (manual push mode). The provider tracks start/stop/pause/resume
+ * lifecycle calls.
+ */
+export class MockInputProvider implements AudioInputProvider {
+  type = 'rest' as const;
+  roles: readonly ProviderRole[] = ['input'];
+  private ready = false;
+  private active = false;
+  private paused = false;
+  private audioCallback?: (chunk: AudioChunk) => void;
+  private sequenceCounter = 0;
+  private readonly metadata: AudioMetadata;
+
+  /** Track lifecycle calls for assertions. */
+  public startCalled = false;
+  public stopCalled = false;
+  public pauseCalled = false;
+  public resumeCalled = false;
+
+  constructor(metadata?: Partial<AudioMetadata>) {
+    this.metadata = {
+      sampleRate: metadata?.sampleRate ?? 16000,
+      encoding: metadata?.encoding ?? 'linear16',
+      channels: metadata?.channels ?? 1,
+      bitDepth: metadata?.bitDepth ?? 16,
+    };
+  }
+
+  async initialize() {
+    this.ready = true;
+  }
+
+  async dispose() {
+    this.ready = false;
+    this.active = false;
+  }
+
+  isReady() {
+    return this.ready;
+  }
+
+  start() {
+    this.active = true;
+    this.paused = false;
+    this.startCalled = true;
+  }
+
+  stop() {
+    this.active = false;
+    this.stopCalled = true;
+  }
+
+  pause() {
+    this.paused = true;
+    this.pauseCalled = true;
+  }
+
+  resume() {
+    this.paused = false;
+    this.resumeCalled = true;
+  }
+
+  isActive() {
+    return this.active && !this.paused;
+  }
+
+  onAudio(callback: (chunk: AudioChunk) => void) {
+    this.audioCallback = callback;
+  }
+
+  getMetadata(): AudioMetadata {
+    return { ...this.metadata };
+  }
+
+  // ─── Test helpers ────────────────────────────────────────────────────
+
+  /** Push a single chunk to the registered callback. */
+  pushChunk(data?: ArrayBuffer): AudioChunk {
+    const chunk: AudioChunk = {
+      data: data ?? new Uint8Array([this.sequenceCounter & 0xff]).buffer,
+      timestamp: Date.now(),
+      sequence: this.sequenceCounter++,
+    };
+    if (this.audioCallback && this.active && !this.paused) {
+      this.audioCallback(chunk);
+    }
+    return chunk;
+  }
+
+  /** Push N chunks in sequence and return them. */
+  pushChunks(count: number): AudioChunk[] {
+    const chunks: AudioChunk[] = [];
+    for (let i = 0; i < count; i++) {
+      chunks.push(this.pushChunk());
+    }
+    return chunks;
+  }
+}
+
+/**
+ * Mock Output Provider implementing AudioOutputProvider.
+ *
+ * @remarks
+ * Records all enqueued chunks and lifecycle calls for assertion in tests.
+ */
+export class MockOutputProvider implements AudioOutputProvider {
+  type = 'rest' as const;
+  roles: readonly ProviderRole[] = ['output'];
+  private ready = false;
+  private playing = false;
+  private playbackStartCallback?: () => void;
+  private playbackEndCallback?: () => void;
+  private playbackErrorCallback?: (error: Error) => void;
+
+  /** Chunks enqueued into this output. */
+  public enqueuedChunks: AudioChunk[] = [];
+  /** Metadata passed to configure(). */
+  public configuredMetadata?: AudioMetadata;
+  /** Track lifecycle calls for assertions. */
+  public flushCalled = false;
+  public stopCalled = false;
+  public pauseCalled = false;
+  public resumeCalled = false;
+
+  async initialize() {
+    this.ready = true;
+  }
+
+  async dispose() {
+    this.ready = false;
+  }
+
+  isReady() {
+    return this.ready;
+  }
+
+  configure(metadata: AudioMetadata) {
+    this.configuredMetadata = metadata;
+  }
+
+  enqueue(chunk: AudioChunk) {
+    this.enqueuedChunks.push(chunk);
+  }
+
+  async flush() {
+    this.flushCalled = true;
+  }
+
+  stop() {
+    this.playing = false;
+    this.stopCalled = true;
+  }
+
+  pause() {
+    this.pauseCalled = true;
+  }
+
+  resume() {
+    this.resumeCalled = true;
+  }
+
+  isPlaying() {
+    return this.playing;
+  }
+
+  onPlaybackStart(callback: () => void) {
+    this.playbackStartCallback = callback;
+  }
+
+  onPlaybackEnd(callback: () => void) {
+    this.playbackEndCallback = callback;
+  }
+
+  onPlaybackError(callback: (error: Error) => void) {
+    this.playbackErrorCallback = callback;
+  }
+
+  // ─── Test helpers ────────────────────────────────────────────────────
+
+  /** Simulate playback start. */
+  emitPlaybackStart() {
+    this.playing = true;
+    this.playbackStartCallback?.();
+  }
+
+  /** Simulate playback end. */
+  emitPlaybackEnd() {
+    this.playing = false;
+    this.playbackEndCallback?.();
+  }
+
+  /** Simulate playback error. */
+  emitPlaybackError(error: Error) {
+    this.playbackErrorCallback?.(error);
+  }
+}
+
+/**
+ * Mock Live STT Provider implementing LiveSTTProvider.
+ *
+ * @remarks
+ * Simulates a WebSocket-based STT provider with a configurable connection
+ * delay. Records all audio data sent via `sendAudio()` for assertion.
+ */
+export class MockLiveSTTProvider implements LiveSTTProvider {
+  type = 'websocket' as const;
+  roles: readonly ProviderRole[] = ['stt'];
+  config: STTProviderConfig = { model: 'mock-live' };
+  private ready = false;
+  private connected = false;
+  private transcriptionCallback?: (result: TranscriptionResult) => void;
+
+  /** Audio buffers received via sendAudio(). */
+  public receivedAudio: ArrayBuffer[] = [];
+
+  /** Configurable delay in ms for connect(). */
+  public connectDelayMs: number;
+
+  constructor(connectDelayMs = 0) {
+    this.connectDelayMs = connectDelayMs;
+  }
+
+  async initialize() {
+    this.ready = true;
+  }
+
+  async dispose() {
+    this.ready = false;
+    this.connected = false;
+  }
+
+  isReady() {
+    return this.ready;
+  }
+
+  async connect() {
+    if (this.connectDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.connectDelayMs));
+    }
+    this.connected = true;
+  }
+
+  sendAudio(chunk: ArrayBuffer) {
+    if (!this.connected) {
+      throw new Error('MockLiveSTTProvider: not connected');
+    }
+    this.receivedAudio.push(chunk);
+  }
+
+  async disconnect() {
+    this.connected = false;
+  }
+
+  onTranscription(callback: (result: TranscriptionResult) => void) {
+    this.transcriptionCallback = callback;
+  }
+
+  // ─── Test helpers ────────────────────────────────────────────────────
+
+  isConnected() {
+    return this.connected;
+  }
+
+  emitTranscription(text: string, isFinal = true) {
+    this.transcriptionCallback?.({
+      text,
+      isFinal,
+      confidence: 0.95,
+    });
+  }
+}
+
+/**
  * Failing provider for error testing
  */
 export class FailingProvider implements LLMProvider {
@@ -272,11 +553,11 @@ export class FailingProvider implements LLMProvider {
     return false;
   }
 
-  async generate() {
+  async generate(): Promise<AsyncIterable<string>> {
     throw new Error('Generation failed');
   }
 
-  async generateFromMessages() {
+  async generateFromMessages(): Promise<AsyncIterable<string>> {
     return this.generate();
   }
 }
