@@ -86,21 +86,23 @@ Three providers, zero client-side keys. The Vite dev server proxies API requests
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({
-    language: 'en-US',
-    continuous: true,     // keep listening between pauses
-    interimResults: true, // stream partial words while speaking
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-    maxTokens: 200,
-  }),
-  tts: new NativeTTS({
-    rate: 1.0,
-    preferLocal: true,
-  }),
+  providers: [
+    new NativeSTT({
+      language: 'en-US',
+      continuous: true,     // keep listening between pauses
+      interimResults: true, // stream partial words while speaking
+    }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+      maxTokens: 200,
+    }),
+    new NativeTTS({
+      rate: 1.0,
+      preferLocal: true,
+    }),
+  ],
 });
 
 // Subscribe to events
