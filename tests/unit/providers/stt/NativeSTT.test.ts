@@ -65,8 +65,8 @@ describe('NativeSTT', () => {
   });
 
   describe('initialization', () => {
-    it('should set managedAudio to true', () => {
-      expect(provider.managedAudio).toBe(true);
+    it('should declare input and stt roles', () => {
+      expect(provider.roles).toEqual(['input', 'stt']);
     });
 
     it('should set type to websocket', () => {

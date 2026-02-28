@@ -17,6 +17,7 @@
 
 import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
+import type { ProviderRole } from '../../../core/types/roles';
 import { Logger } from '../../../utils/logger';
 
 /**
@@ -113,13 +114,14 @@ export interface NativeTTSConfig extends TTSProviderConfig {
 export class NativeTTS extends RestTTSProvider {
   declare public config: NativeTTSConfig;
   /**
-   * Indicates that NativeTTS manages its own audio playback via the SpeechSynthesis API.
+   * NativeTTS covers both `'tts'` and `'output'` pipeline roles.
    *
    * @remarks
-   * When `true`, CompositeVoice will not set up an AudioPlayer for this provider.
-   * Audio is played directly by the browser's SpeechSynthesis engine.
+   * The browser's SpeechSynthesis API handles both synthesis and playback
+   * internally, so this provider fills both slots in the pipeline.
+   * CompositeVoice will not set up a separate `AudioOutputProvider`.
    */
-  public override readonly managedAudio = true;
+  public override readonly roles: readonly ProviderRole[] = ['tts', 'output'];
   private synthesis: SpeechSynthesis;
   private availableVoices: SpeechSynthesisVoice[] = [];
   private selectedVoice: SpeechSynthesisVoice | null = null;

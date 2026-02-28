@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deepgram SDK V4 - Browser Microphone Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.3rem; }
+    #log { background: #111; color: #0f0; padding: 1rem; border-radius: 6px; height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; }
+    button { font-size: 1rem; padding: 0.5rem 1.5rem; margin: 0.5rem 0.5rem 0.5rem 0; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #start { background: #2d7; color: #fff; border: none; border-radius: 4px; }
+    #stop { background: #d44; color: #fff; border: none; border-radius: 4px; }
+    label { display: block; margin: 0.5rem 0; }
+    input { padding: 0.3rem; width: 300px; }
+    .status { font-weight: bold; margin: 0.5rem 0; }
+    .status.connected { color: green; }
+    .status.disconnected { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Deepgram SDK V4 (4.11.3) - Browser Microphone Test</h1>
+  <p>Uses <code>createClient</code> + <code>listen.live</code> from the stable v4 SDK with <code>getUserMedia</code>.</p>
+
+  <label>API Key: <input type="password" id="apiKey" placeholder="Enter Deepgram API key" /></label>
+
+  <div>
+    <button id="start">Start Microphone</button>
+    <button id="stop" disabled>Stop</button>
+  </div>
+
+  <div class="status disconnected" id="status">Disconnected</div>
+  <div id="log"></div>
+
+  <script type="module">
+    import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
+
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const apiKeyInput = document.getElementById('apiKey');
+
+    let connection = null;
+    let mediaStream = null;
+    let processor = null;
+    let audioContext = null;
+
+    function log(msg) {
+      const ts = new Date().toISOString().slice(11, 23);
+      logEl.textContent += `[${ts}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(text, connected) {
+      statusEl.textContent = text;
+      statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+    }
+
+    startBtn.addEventListener('click', async () => {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        alert('Please enter your Deepgram API key');
+        return;
+      }
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      log('Requesting microphone access...');
+
+      try {
+        // Get microphone
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true }
+        });
+        log('Microphone access granted');
+
+        // V4 pattern: createClient with API key
+        const deepgram = createClient(apiKey);
+        log(`Deepgram client created (v4 createClient)`);
+
+        // V4: connection = deepgram.listen.live(options)
+        // Connection auto-opens in v4
+        connection = deepgram.listen.live({
+          model: 'nova-3',
+          language: 'en',
+          punctuate: true,
+          interim_results: true,
+          smart_format: true,
+          encoding: 'linear16',
+          sample_rate: 16000,
+          channels: 1,
+        });
+
+        log('listen.live() called — connection auto-opens in v4');
+
+        // V4 uses EventEmitter-style .on() with LiveTranscriptionEvents
+        connection.on(LiveTranscriptionEvents.Open, () => {
+          log('✓ WebSocket OPEN — streaming microphone audio');
+          setStatus('Connected — speak into your microphone', true);
+          startAudioPipeline();
+        });
+
+        connection.on(LiveTranscriptionEvents.Transcript, (data) => {
+          const alt = data.channel?.alternatives?.[0];
+          if (alt?.transcript) {
+            const prefix = data.is_final ? '★ FINAL' : '  interim';
+            log(`${prefix}: "${alt.transcript}"`);
+          }
+        });
+
+        connection.on(LiveTranscriptionEvents.Metadata, (data) => {
+          log(`Metadata: request_id=${data.request_id}, model=${data.model_info?.name || 'unknown'}`);
+        });
+
+        connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
+          log('--- utterance end ---');
+        });
+
+        connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
+          log('(speech started)');
+        });
+
+        connection.on(LiveTranscriptionEvents.Error, (err) => {
+          log(`✗ ERROR: ${err.message || JSON.stringify(err)}`);
+          setStatus('Error', false);
+        });
+
+        connection.on(LiveTranscriptionEvents.Close, () => {
+          log('WebSocket closed');
+          setStatus('Disconnected', false);
+          cleanup();
+        });
+
+      } catch (err) {
+        log(`✗ Failed: ${err.message}`);
+        setStatus('Error', false);
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    });
+
+    function startAudioPipeline() {
+      audioContext = new AudioContext({ sampleRate: 16000 });
+      const source = audioContext.createMediaStreamSource(mediaStream);
+
+      processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (!connection) return;
+        const float32 = e.inputBuffer.getChannelData(0);
+        // Convert float32 to int16
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        connection.send(int16.buffer);
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      log('Audio pipeline connected — speak now!');
+    }
+
+    function cleanup() {
+      if (processor) { processor.disconnect(); processor = null; }
+      if (audioContext) { audioContext.close(); audioContext = null; }
+      if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+
+    stopBtn.addEventListener('click', () => {
+      log('Stopping...');
+      if (connection) {
+        try { connection.requestClose(); } catch(e) {}
+        connection = null;
+      }
+      cleanup();
+      setStatus('Disconnected', false);
+    });
+  </script>
+</body>
+</html>

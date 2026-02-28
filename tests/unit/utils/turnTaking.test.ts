@@ -14,7 +14,7 @@ import type { STTProvider, TTSProvider } from '../../../src/core/types/providers
 function makeSTT(name: string): STTProvider {
   const provider = {
     type: 'websocket' as const,
-    managedAudio: false as const,
+    roles: ['stt'] as const,
     config: {},
     initialize: jest.fn(),
     dispose: jest.fn(),
@@ -35,7 +35,7 @@ function makeSTT(name: string): STTProvider {
 function makeTTS(name: string): TTSProvider {
   const provider = {
     type: 'rest' as const,
-    managedAudio: false as const,
+    roles: ['tts'] as const,
     config: {},
     initialize: jest.fn(),
     dispose: jest.fn(),

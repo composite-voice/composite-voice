@@ -6,6 +6,7 @@
 
 import type { TTSProviderConfig } from '../../core/types/providers';
 import type { AudioChunk, AudioMetadata } from '../../core/types/audio';
+import type { ProviderRole } from '../../core/types/roles';
 import { BaseProvider } from './BaseProvider';
 import { Logger } from '../../utils/logger';
 
@@ -65,6 +66,9 @@ import { Logger } from '../../utils/logger';
  * @see {@link BaseProvider} for the root provider lifecycle
  */
 export abstract class BaseTTSProvider extends BaseProvider {
+  /** TTS providers cover the `'tts'` pipeline role by default. */
+  public override readonly roles: readonly ProviderRole[] = ['tts'];
+
   /** TTS-specific provider configuration. */
   public override config: TTSProviderConfig;
 

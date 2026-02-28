@@ -1,0 +1,13 @@
+{
+  "name": "browser-mic-test",
+  "private": true,
+  "scripts": {
+    "dev": "vite --port 3099"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^4.11.3"
+  }
+}

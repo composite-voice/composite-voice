@@ -17,6 +17,7 @@
  */
 
 import type { AudioChunk, AudioMetadata } from './audio';
+import type { ProviderRole } from './roles';
 
 /**
  * Communication type for providers.
@@ -107,7 +108,7 @@ export interface BaseProviderConfig {
  * ```typescript
  * class MyCustomProvider implements BaseProvider {
  *   readonly type: ProviderType = 'rest';
- *   readonly managedAudio = false;
+ *   readonly roles: readonly ProviderRole[] = ['stt'];
  *   private ready = false;
  *
  *   async initialize(): Promise<void> {
@@ -127,6 +128,7 @@ export interface BaseProviderConfig {
  * ```
  *
  * @see {@link ProviderType} for communication type values
+ * @see {@link ProviderRole} for the pipeline roles a provider can declare
  * @see {@link RestSTTProvider} for a REST-based STT implementation contract
  * @see {@link LiveSTTProvider} for a WebSocket-based STT implementation contract
  * @see {@link LLMProvider} for the LLM implementation contract
@@ -142,17 +144,26 @@ export interface BaseProvider {
   readonly type: ProviderType;
 
   /**
-   * Whether this provider manages its own audio pipeline.
+   * Pipeline roles this provider covers.
    *
    * @remarks
-   * When `true`, CompositeVoice will NOT set up AudioCapture (for STT) or
-   * AudioPlayer (for TTS) -- the provider handles audio directly with the
-   * device (e.g., NativeSTT uses the Web Speech API's `SpeechRecognition`,
-   * NativeTTS uses `SpeechSynthesis`).
+   * Each provider declares which stages of the 5-role audio pipeline it can
+   * fulfil. Single-role providers list one role (e.g. `['stt']`); multi-role
+   * providers list every role they handle (e.g. `['input', 'stt']` for
+   * NativeSTT, which manages its own microphone access).
    *
-   * @defaultValue false
+   * The provider resolution algorithm reads this property to assign providers
+   * to pipeline slots. Base provider classes set sensible defaults:
+   * - {@link BaseSTTProvider}: `['stt']`
+   * - {@link BaseLLMProvider}: `['llm']`
+   * - {@link BaseTTSProvider}: `['tts']`
+   *
+   * @defaultValue `[]`
+   *
+   * @see {@link ProviderRole} for the possible role values
+   * @see {@link ResolvedPipeline} for the resolved pipeline slots
    */
-  readonly managedAudio: boolean;
+  readonly roles: readonly ProviderRole[];
 
   /**
    * Initialize the provider and allocate any required resources.
@@ -348,7 +359,7 @@ export interface STTProviderConfig extends BaseProviderConfig {
  * ```typescript
  * class MyRestSTT implements RestSTTProvider {
  *   readonly type = 'rest';
- *   readonly managedAudio = false;
+ *   readonly roles = ['stt'] as const;
  *   config: STTProviderConfig;
  *
  *   constructor(config: STTProviderConfig) {
@@ -422,7 +433,7 @@ export interface RestSTTProvider extends BaseProvider {
  * ```typescript
  * class MyLiveSTT implements LiveSTTProvider {
  *   readonly type = 'websocket';
- *   readonly managedAudio = false;
+ *   readonly roles = ['stt'] as const;
  *   config: STTProviderConfig;
  *
  *   async initialize() { /* ... *\/ }
@@ -722,7 +733,7 @@ export interface LLMGenerationOptions {
  * ```typescript
  * class MyLLMProvider implements LLMProvider {
  *   readonly type = 'rest';
- *   readonly managedAudio = false;
+ *   readonly roles = ['llm'] as const;
  *   config: LLMProviderConfig;
  *
  *   async initialize() { /* ... *\/ }
@@ -884,7 +895,7 @@ export interface TTSProviderConfig extends BaseProviderConfig {
  * ```typescript
  * class MyRestTTS implements RestTTSProvider {
  *   readonly type = 'rest';
- *   readonly managedAudio = false;
+ *   readonly roles = ['tts'] as const;
  *   config: TTSProviderConfig;
  *
  *   async initialize() { /* ... *\/ }
@@ -937,7 +948,7 @@ export interface RestTTSProvider extends BaseProvider {
  * ```typescript
  * class MyLiveTTS implements LiveTTSProvider {
  *   readonly type = 'websocket';
- *   readonly managedAudio = false;
+ *   readonly roles = ['tts'] as const;
  *   config: TTSProviderConfig;
  *
  *   async initialize() { /* ... *\/ }
@@ -1049,3 +1060,325 @@ export interface LiveTTSProvider extends BaseProvider {
  * @see {@link LiveTTSProvider} for real-time streaming synthesis
  */
 export type TTSProvider = RestTTSProvider | LiveTTSProvider;
+
+/**
+ * Audio input provider interface for the `'input'` pipeline role.
+ *
+ * @remarks
+ * An `AudioInputProvider` captures audio from a source (e.g. microphone,
+ * file buffer, network stream) and delivers it as {@link AudioChunk} objects
+ * via the {@link AudioInputProvider.onAudio | onAudio} callback. It is the
+ * first stage of the 5-role pipeline:
+ *
+ * ```
+ * [AudioInputProvider] -> InputQueue -> [STT] -> [LLM] -> [TTS] -> OutputQueue -> [AudioOutputProvider]
+ *  ^^^^^^^^^^^^^^^^^^
+ * ```
+ *
+ * Providers implementing this interface must set `roles` to include `'input'`.
+ * Multi-role providers (e.g. NativeSTT) may also include `'stt'` when the
+ * underlying API handles both capture and transcription internally.
+ *
+ * **Lifecycle:** `initialize()` -> `start()` -> audio flows via `onAudio` ->
+ * `pause()` / `resume()` -> `stop()` -> `dispose()`
+ *
+ * @example
+ * ```typescript
+ * import type { AudioInputProvider, AudioChunk, AudioMetadata } from 'composite-voice';
+ *
+ * class MyMicrophoneInput implements AudioInputProvider {
+ *   readonly type = 'websocket';
+ *   readonly roles = ['input'] as const;
+ *   private callback?: (chunk: AudioChunk) => void;
+ *   private active = false;
+ *
+ *   async initialize() { /* request permissions *\/ }
+ *   async dispose() { /* release resources *\/ }
+ *   isReady() { return true; }
+ *
+ *   start() { this.active = true; /* begin capture *\/ }
+ *   stop() { this.active = false; /* end capture *\/ }
+ *   pause() { /* pause capture *\/ }
+ *   resume() { /* resume capture *\/ }
+ *   isActive() { return this.active; }
+ *
+ *   onAudio(callback: (chunk: AudioChunk) => void) {
+ *     this.callback = callback;
+ *   }
+ *
+ *   getMetadata(): AudioMetadata {
+ *     return { sampleRate: 16000, encoding: 'linear16', channels: 1, bitDepth: 16 };
+ *   }
+ * }
+ * ```
+ *
+ * @see {@link BaseProvider} for lifecycle methods
+ * @see {@link AudioChunk} for the audio data type
+ * @see {@link AudioMetadata} for the metadata type
+ * @see {@link AudioOutputProvider} for the corresponding output role
+ */
+export interface AudioInputProvider extends BaseProvider {
+  /**
+   * Start capturing audio from the input source.
+   *
+   * @remarks
+   * After calling `start()`, the provider begins delivering audio chunks
+   * via the callback registered with {@link AudioInputProvider.onAudio | onAudio}.
+   * Must be called after {@link BaseProvider.initialize | initialize}.
+   */
+  start(): void;
+
+  /**
+   * Stop capturing audio and release the input source.
+   *
+   * @remarks
+   * Stops audio delivery. The provider can be restarted with
+   * {@link AudioInputProvider.start | start}.
+   */
+  stop(): void;
+
+  /**
+   * Temporarily pause audio capture without releasing the source.
+   *
+   * @remarks
+   * Used by the turn-taking system to mute capture during TTS playback.
+   * Resume with {@link AudioInputProvider.resume | resume}.
+   */
+  pause(): void;
+
+  /**
+   * Resume audio capture after a pause.
+   *
+   * @see {@link AudioInputProvider.pause | pause}
+   */
+  resume(): void;
+
+  /**
+   * Check whether the input source is actively capturing audio.
+   *
+   * @returns `true` when audio is being captured (between `start()` and `stop()`,
+   *   and not paused)
+   */
+  isActive(): boolean;
+
+  /**
+   * Register a callback to receive captured audio chunks.
+   *
+   * @remarks
+   * The provider calls this callback with each chunk of captured audio.
+   * Must be called before {@link AudioInputProvider.start | start}.
+   *
+   * @param callback - Function invoked with each {@link AudioChunk}
+   */
+  onAudio(callback: (chunk: AudioChunk) => void): void;
+
+  /**
+   * Get the audio format metadata for the captured audio.
+   *
+   * @remarks
+   * Returns metadata describing the format of audio chunks this provider
+   * will emit. Used by the pipeline to auto-configure the STT provider's
+   * encoding, sample rate, and channel settings.
+   *
+   * @returns {@link AudioMetadata} describing the audio format
+   *
+   * @see {@link AudioMetadata} for the metadata type
+   */
+  getMetadata(): AudioMetadata;
+}
+
+/**
+ * Audio output provider interface for the `'output'` pipeline role.
+ *
+ * @remarks
+ * An `AudioOutputProvider` receives synthesized audio from the TTS stage
+ * and plays it through a destination (e.g. speakers, file, null sink).
+ * It is the last stage of the 5-role pipeline:
+ *
+ * ```
+ * [AudioInputProvider] -> InputQueue -> [STT] -> [LLM] -> [TTS] -> OutputQueue -> [AudioOutputProvider]
+ *                                                                                  ^^^^^^^^^^^^^^^^^^^
+ * ```
+ *
+ * Providers implementing this interface must set `roles` to include `'output'`.
+ * Multi-role providers (e.g. NativeTTS) may also include `'tts'` when the
+ * underlying API handles both synthesis and playback internally.
+ *
+ * **Lifecycle:** `initialize()` -> `configure(metadata)` -> `enqueue(chunk)`
+ * (repeated) -> `flush()` -> `stop()` -> `dispose()`
+ *
+ * @example
+ * ```typescript
+ * import type { AudioOutputProvider, AudioChunk, AudioMetadata } from 'composite-voice';
+ *
+ * class MySpeakerOutput implements AudioOutputProvider {
+ *   readonly type = 'websocket';
+ *   readonly roles = ['output'] as const;
+ *
+ *   async initialize() { /* set up AudioContext *\/ }
+ *   async dispose() { /* close AudioContext *\/ }
+ *   isReady() { return true; }
+ *
+ *   configure(metadata: AudioMetadata) { /* configure playback format *\/ }
+ *   enqueue(chunk: AudioChunk) { /* buffer chunk for playback *\/ }
+ *   async flush() { /* wait for all queued audio to finish playing *\/ }
+ *   stop() { /* stop playback immediately *\/ }
+ *   pause() { /* pause playback *\/ }
+ *   resume() { /* resume playback *\/ }
+ *   isPlaying() { return false; }
+ *
+ *   onPlaybackStart(callback: () => void) { /* ... *\/ }
+ *   onPlaybackEnd(callback: () => void) { /* ... *\/ }
+ *   onPlaybackError(callback: (error: Error) => void) { /* ... *\/ }
+ * }
+ * ```
+ *
+ * @see {@link BaseProvider} for lifecycle methods
+ * @see {@link AudioChunk} for the audio data type
+ * @see {@link AudioMetadata} for the metadata type
+ * @see {@link AudioInputProvider} for the corresponding input role
+ */
+export interface AudioOutputProvider extends BaseProvider {
+  /**
+   * Configure the output with the audio format metadata from the TTS provider.
+   *
+   * @remarks
+   * Called when the TTS provider emits metadata describing the format of
+   * incoming audio chunks. The output provider uses this to configure its
+   * playback pipeline (e.g. AudioContext sample rate).
+   *
+   * @param metadata - Format description for the incoming audio
+   *
+   * @see {@link AudioMetadata}
+   */
+  configure(metadata: AudioMetadata): void;
+
+  /**
+   * Enqueue an audio chunk for playback.
+   *
+   * @remarks
+   * Called for each audio chunk received from the TTS provider (via the
+   * output queue). Chunks are played in the order they are enqueued.
+   *
+   * @param chunk - Audio data to play
+   *
+   * @see {@link AudioChunk}
+   */
+  enqueue(chunk: AudioChunk): void;
+
+  /**
+   * Wait for all enqueued audio to finish playing.
+   *
+   * @remarks
+   * Called after the TTS provider signals that all text has been synthesized.
+   * Resolves when the last enqueued chunk has finished playing.
+   */
+  flush(): Promise<void>;
+
+  /**
+   * Stop playback immediately and clear any buffered audio.
+   */
+  stop(): void;
+
+  /**
+   * Temporarily pause playback.
+   *
+   * @remarks
+   * Playback can be resumed with {@link AudioOutputProvider.resume | resume}.
+   */
+  pause(): void;
+
+  /**
+   * Resume playback after a pause.
+   *
+   * @see {@link AudioOutputProvider.pause | pause}
+   */
+  resume(): void;
+
+  /**
+   * Check whether audio is currently playing.
+   *
+   * @returns `true` when audio is actively being played
+   */
+  isPlaying(): boolean;
+
+  /**
+   * Register a callback invoked when audio playback begins.
+   *
+   * @param callback - Function called when playback starts
+   */
+  onPlaybackStart(callback: () => void): void;
+
+  /**
+   * Register a callback invoked when all audio has finished playing.
+   *
+   * @param callback - Function called when playback ends
+   */
+  onPlaybackEnd(callback: () => void): void;
+
+  /**
+   * Register a callback invoked when a playback error occurs.
+   *
+   * @param callback - Function called with the error
+   */
+  onPlaybackError(callback: (error: Error) => void): void;
+}
+
+/**
+ * A fully resolved 5-role pipeline with a provider assigned to each slot.
+ *
+ * @remarks
+ * `ResolvedPipeline` is the output of the provider resolution algorithm
+ * (`resolveProviders()`). It guarantees that every pipeline stage has exactly
+ * one provider assigned. Multi-role providers may appear in multiple slots
+ * (e.g. NativeSTT fills both `input` and `stt`).
+ *
+ * ```
+ * [input] -> InputQueue -> [stt] -> [llm] -> [tts] -> OutputQueue -> [output]
+ *    |                       |        |        |                        |
+ *    v                       v        v        v                        v
+ * AudioInputProvider   STTProvider  LLMProvider  TTSProvider   AudioOutputProvider
+ * ```
+ *
+ * @example
+ * ```typescript
+ * import { resolveProviders } from 'composite-voice';
+ * import type { ResolvedPipeline } from 'composite-voice';
+ *
+ * const pipeline: ResolvedPipeline = resolveProviders([
+ *   new MicrophoneInput(),
+ *   new DeepgramSTT({ apiKey: '...' }),
+ *   new AnthropicLLM({ model: 'claude-sonnet-4-20250514', apiKey: '...' }),
+ *   new DeepgramTTS({ apiKey: '...' }),
+ *   new BrowserAudioOutput(),
+ * ]);
+ *
+ * console.log(pipeline.input);  // MicrophoneInput
+ * console.log(pipeline.stt);    // DeepgramSTT
+ * console.log(pipeline.llm);    // AnthropicLLM
+ * console.log(pipeline.tts);    // DeepgramTTS
+ * console.log(pipeline.output); // BrowserAudioOutput
+ * ```
+ *
+ * @see {@link AudioInputProvider} for the input slot contract
+ * @see {@link STTProvider} for the stt slot contract
+ * @see {@link LLMProvider} for the llm slot contract
+ * @see {@link TTSProvider} for the tts slot contract
+ * @see {@link AudioOutputProvider} for the output slot contract
+ */
+export interface ResolvedPipeline {
+  /** Provider handling the `'input'` role (audio capture). */
+  input: AudioInputProvider;
+
+  /** Provider handling the `'stt'` role (speech-to-text). */
+  stt: STTProvider;
+
+  /** Provider handling the `'llm'` role (language model). */
+  llm: LLMProvider;
+
+  /** Provider handling the `'tts'` role (text-to-speech). */
+  tts: TTSProvider;
+
+  /** Provider handling the `'output'` role (audio playback). */
+  output: AudioOutputProvider;
+}

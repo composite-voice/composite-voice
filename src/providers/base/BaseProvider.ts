@@ -9,6 +9,7 @@ import type {
   BaseProviderConfig,
   ProviderType,
 } from '../../core/types/providers';
+import type { ProviderRole } from '../../core/types/roles';
 import { ProviderInitializationError } from '../../utils/errors';
 import { Logger } from '../../utils/logger';
 
@@ -73,17 +74,18 @@ export abstract class BaseProvider implements IBaseProvider {
   public readonly type: ProviderType;
 
   /**
-   * Whether this provider manages its own audio pipeline.
+   * Pipeline roles this provider covers.
    *
    * @remarks
-   * Override to `true` in providers that bypass the SDK audio I/O
-   * (e.g. {@link NativeSTT}, NativeTTS). When `true`, CompositeVoice
-   * will **not** set up `AudioCapture` (for STT) or `AudioPlayer`
-   * (for TTS) -- the provider handles audio directly with the device.
+   * Subclasses override this to declare which pipeline stages they handle.
+   * For example, {@link BaseSTTProvider} sets `['stt']`, while NativeSTT
+   * overrides to `['input', 'stt']` because it manages its own microphone.
    *
-   * @defaultValue `false`
+   * @defaultValue `[]`
+   *
+   * @see {@link ProviderRole} for the possible role values
    */
-  public readonly managedAudio: boolean = false;
+  public readonly roles: readonly ProviderRole[] = [];
 
   /** Provider-specific configuration. */
   protected config: BaseProviderConfig;

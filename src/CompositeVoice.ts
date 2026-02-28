@@ -100,7 +100,8 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
  *   the high-level agent state (`idle`, `ready`, `listening`, `thinking`,
  *   `speaking`, `error`).
  * - **Audio I/O**: SDK-managed `AudioCapture` and `AudioPlayer` for providers
- *   that do not handle their own audio pipelines (i.e., `managedAudio: false`).
+ *   that do not handle their own audio pipelines (i.e., do not cover the
+ *   `'input'` or `'output'` roles).
  * - **Turn-taking**: Configurable strategies (`auto`, `conservative`,
  *   `aggressive`, `detect`) that control whether audio capture pauses during
  *   TTS playback to prevent echo.
@@ -417,8 +418,8 @@ export class CompositeVoice {
 
     // Setup TTS provider callbacks (only Live TTS has onAudio)
     if (isLiveTTS(tts)) {
-      // Initialize AudioPlayer for Live TTS (unless provider manages its own audio)
-      if (!tts.managedAudio) {
+      // Initialize AudioPlayer for Live TTS (unless provider covers the 'output' role)
+      if (!tts.roles.includes('output')) {
         this.audioPlayer = new AudioPlayer(this.config.audio?.output, this.logger);
       }
 
@@ -784,8 +785,8 @@ export class CompositeVoice {
 
       // REST TTS: synthesize and play
       if (isRestTTS(tts)) {
-        if (tts.managedAudio) {
-          // Provider manages its own audio playback (e.g. NativeTTS via SpeechSynthesis)
+        if (tts.roles.includes('output')) {
+          // Provider covers the 'output' role (e.g. NativeTTS via SpeechSynthesis)
           await tts.synthesize(text);
         } else {
           // SDK-managed TTS: get audio blob and play via AudioPlayer
@@ -1043,8 +1044,8 @@ export class CompositeVoice {
     try {
       const { stt } = this.config;
 
-      // Provider manages its own audio capture (e.g. NativeSTT via SpeechRecognition)
-      if (stt.managedAudio) {
+      // Provider covers the 'input' role (e.g. NativeSTT via SpeechRecognition)
+      if (stt.roles.includes('input')) {
         if (isLiveSTT(stt)) {
           await stt.connect();
         }

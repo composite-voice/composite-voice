@@ -6,13 +6,13 @@ import type {
   STTProvider,
   LLMProvider,
   TTSProvider,
-  AllInOneProvider,
   STTProviderConfig,
   LLMProviderConfig,
   TTSProviderConfig,
-  AllInOneProviderConfig,
   TranscriptionResult,
+  BaseProvider,
 } from '../../src/core/types/providers';
+import type { ProviderRole } from '../../src/core/types/roles';
 import type { AudioChunk, AudioMetadata } from '../../src/core/types/audio';
 
 /**
@@ -20,7 +20,7 @@ import type { AudioChunk, AudioMetadata } from '../../src/core/types/audio';
  */
 export class MockSTTProvider implements STTProvider {
   type = 'rest' as const;
-  managedAudio = false as const;
+  roles: readonly ProviderRole[] = ['stt'];
   config: STTProviderConfig = { model: 'mock' };
   private ready = false;
   private transcriptionCallback?: (result: TranscriptionResult) => void;
@@ -62,7 +62,7 @@ export class MockSTTProvider implements STTProvider {
  */
 export class MockLLMProvider implements LLMProvider {
   type = 'rest' as const;
-  managedAudio = false as const;
+  roles: readonly ProviderRole[] = ['llm'];
   config: LLMProviderConfig = { model: 'mock' };
   private ready = false;
   public generateCalled = false;
@@ -107,7 +107,7 @@ export class MockLLMProvider implements LLMProvider {
  */
 export class MockTTSProvider implements TTSProvider {
   type = 'rest' as const;
-  managedAudio = false as const;
+  roles: readonly ProviderRole[] = ['tts'];
   config: TTSProviderConfig = { model: 'mock' };
   private ready = false;
   private audioCallback?: (chunk: AudioChunk) => void;
@@ -158,11 +158,14 @@ export class MockTTSProvider implements TTSProvider {
 
 /**
  * Mock All-in-One Provider
+ *
+ * @remarks
+ * Combines STT + LLM + TTS capabilities in a single provider with WebSocket transport.
+ * Uses roles to declare all covered pipeline stages.
  */
-export class MockAllInOneProvider implements AllInOneProvider {
+export class MockAllInOneProvider implements BaseProvider {
   type = 'websocket' as const;
-  managedAudio = false as const;
-  config: AllInOneProviderConfig = { model: 'mock' };
+  roles: readonly ProviderRole[] = ['stt', 'llm', 'tts'];
   private ready = false;
   private connected = false;
   private transcriptionCallback?: (result: TranscriptionResult) => void;
@@ -256,7 +259,7 @@ export class MockAllInOneProvider implements AllInOneProvider {
  */
 export class FailingProvider implements LLMProvider {
   type = 'rest' as const;
-  managedAudio = false as const;
+  roles: readonly ProviderRole[] = ['llm'];
   config: LLMProviderConfig = { model: 'fail' };
 
   async initialize() {

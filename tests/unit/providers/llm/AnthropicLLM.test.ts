@@ -99,9 +99,9 @@ describe('AnthropicLLM', () => {
       expect(provider.type).toBe('rest');
     });
 
-    it('should set managedAudio to false', () => {
+    it('should declare llm role', () => {
       provider = new AnthropicLLM(config);
-      expect(provider.managedAudio).toBe(false);
+      expect(provider.roles).toEqual(['llm']);
     });
 
     it('should store api key in config', async () => {

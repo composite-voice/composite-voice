@@ -52,6 +52,9 @@ export { CompositeVoice } from './CompositeVoice';
 
 // Core types
 export type {
+  // Role types
+  ProviderRole,
+
   // Audio types
   AudioFormat,
   AudioEncoding,
@@ -66,6 +69,8 @@ export type {
   ProviderType,
   BaseProvider,
   BaseProviderConfig,
+  AudioInputProvider,
+  AudioOutputProvider,
   STTProvider,
   STTProviderConfig,
   TranscriptionResult,
@@ -75,6 +80,7 @@ export type {
   LLMGenerationOptions,
   TTSProvider,
   TTSProviderConfig,
+  ResolvedPipeline,
 
   // Config types
   CompositeVoiceConfig,
@@ -85,6 +91,9 @@ export type {
   EagerLLMConfig,
   TurnTakingConfig,
 } from './core/types/index';
+
+// Role constants
+export { ALL_PROVIDER_ROLES } from './core/types/index';
 
 // Event types
 export type {

@@ -5,6 +5,7 @@
  */
 
 import type { STTProviderConfig, TranscriptionResult } from '../../core/types/providers';
+import type { ProviderRole } from '../../core/types/roles';
 import { BaseProvider } from './BaseProvider';
 import { Logger } from '../../utils/logger';
 
@@ -59,6 +60,9 @@ import { Logger } from '../../utils/logger';
  * @see {@link BaseProvider} for the root provider lifecycle
  */
 export abstract class BaseSTTProvider extends BaseProvider {
+  /** STT providers cover the `'stt'` pipeline role by default. */
+  public override readonly roles: readonly ProviderRole[] = ['stt'];
+
   /** STT-specific provider configuration. */
   public override config: STTProviderConfig;
 

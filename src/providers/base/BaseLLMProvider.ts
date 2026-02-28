@@ -10,6 +10,7 @@ import type {
   LLMGenerationOptions,
   LLMMessage,
 } from '../../core/types/providers';
+import type { ProviderRole } from '../../core/types/roles';
 import { BaseProvider } from './BaseProvider';
 import { Logger } from '../../utils/logger';
 
@@ -70,6 +71,9 @@ import { Logger } from '../../utils/logger';
  * @see {@link LLMProvider} for the interface contract
  */
 export abstract class BaseLLMProvider extends BaseProvider implements LLMProvider {
+  /** LLM providers cover the `'llm'` pipeline role by default. */
+  public override readonly roles: readonly ProviderRole[] = ['llm'];
+
   /** LLM-specific provider configuration. */
   public override config: LLMProviderConfig;
 

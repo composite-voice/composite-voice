@@ -83,8 +83,8 @@ describe('NativeTTS', () => {
   });
 
   describe('initialization', () => {
-    it('should set managedAudio to true', () => {
-      expect(provider.managedAudio).toBe(true);
+    it('should declare tts and output roles', () => {
+      expect(provider.roles).toEqual(['tts', 'output']);
     });
 
     it('should set type to rest', () => {

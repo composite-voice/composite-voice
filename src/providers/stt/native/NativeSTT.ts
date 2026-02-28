@@ -6,6 +6,7 @@
 
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
+import type { ProviderRole } from '../../../core/types/roles';
 import { ProviderConnectionError } from '../../../utils/errors';
 import { Logger } from '../../../utils/logger';
 
@@ -102,8 +103,8 @@ export interface NativeSTTConfig extends STTProviderConfig {
  * @remarks
  * Unlike other STT providers, `NativeSTT` manages its own audio pipeline
  * -- the browser's `SpeechRecognition` API directly accesses the microphone.
- * Because of this, the {@link managedAudio} flag is set to `true` and
- * CompositeVoice will **not** set up an `AudioCapture` instance. The
+ * Because of this, the provider declares `roles: ['input', 'stt']` and
+ * CompositeVoice will **not** set up a separate `AudioInputProvider`. The
  * {@link sendAudio} method is a no-op.
  *
  * **Transport:** WebSocket-like (browser-managed, extends {@link LiveSTTProvider})
@@ -151,14 +152,14 @@ export class NativeSTT extends LiveSTTProvider {
   declare public config: NativeSTTConfig;
 
   /**
-   * NativeSTT manages its own audio capture via the `SpeechRecognition` API.
+   * NativeSTT covers both `'input'` and `'stt'` pipeline roles.
    *
    * @remarks
-   * When this flag is `true`, CompositeVoice will **not** set up
-   * `AudioCapture`. The browser's `SpeechRecognition` API handles
-   * microphone access and audio processing internally.
+   * The browser's `SpeechRecognition` API handles microphone access
+   * and transcription internally, so this provider fills both the input
+   * capture and speech-to-text slots in the pipeline.
    */
-  public override readonly managedAudio = true;
+  public override readonly roles: readonly ProviderRole[] = ['input', 'stt'];
 
   /** The underlying browser `SpeechRecognition` instance. */
   private recognition: SpeechRecognition | null = null;
@@ -519,8 +520,8 @@ export class NativeSTT extends LiveSTTProvider {
    * `SpeechRecognition` API and does not accept external audio data.
    *
    * @remarks
-   * CompositeVoice should **not** call this method when
-   * {@link managedAudio} is `true`. Any invocation is silently ignored.
+   * CompositeVoice should **not** call this method because NativeSTT
+   * covers the `'input'` role internally. Any invocation is silently ignored.
    *
    * @param _chunk - Audio chunk (unused).
    */
