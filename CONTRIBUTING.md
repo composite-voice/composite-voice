@@ -39,7 +39,7 @@ Not all contributions are code. Here's what's genuinely valued, regardless of wh
 **With code:**
 
 - **Fix a bug** — ideally with a test that would have caught it before your fix.
-- **Add a new provider** — new STT, LLM, or TTS backends are the heart of what makes this SDK useful. See [Adding a provider](#adding-a-provider) for the full walkthrough.
+- **Add a new provider** — new STT, LLM, TTS, audio input, or audio output backends are the heart of what makes this SDK useful. See [Adding a provider](#adding-a-provider) for the full walkthrough.
 - **Improve test coverage** — especially error paths, reconnection logic, and edge cases at boundaries. The happy path is usually tested; the rest is where bugs actually hide.
 - **Performance improvements** — please include before/after benchmarks or a reproduction that demonstrates the impact.
 
@@ -133,23 +133,22 @@ The examples import the SDK from `dist/`, so you need to build before running th
 pnpm dev
 
 # terminal 2 — serves the example at http://localhost:3000
-pnpm example:00-native-anthropic-native:dev
+pnpm example:00-minimal-voice-agent:dev
 ```
 
 Available example servers:
 
 ```bash
-pnpm example:00-native-anthropic-native:dev       # NativeSTT + AnthropicLLM + NativeTTS
-pnpm example:01-deepgram-anthropic-deepgram:dev   # DeepgramSTT + AnthropicLLM + DeepgramTTS
-pnpm example:02-conversation-history:dev          # multi-turn conversation with history
-pnpm example:03-eager-pipeline:dev                # streaming TTS before LLM finishes
-pnpm example:04-proxy-server:dev                  # server-side proxy, zero browser keys
+pnpm example:00-minimal-voice-agent:dev        # NativeSTT + AnthropicLLM + NativeTTS (3-provider)
+pnpm example:01-conversation-history:dev       # multi-turn conversation with history
+pnpm example:10-proxy-server:dev               # server-side proxy, zero browser keys
+pnpm example:20-deepgram-pipeline:dev          # full 5-provider Deepgram pipeline
 ```
 
 Each example needs its own `.env` file with API credentials. Copy the sample template and fill in your keys:
 
 ```bash
-cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
+cp examples/00-minimal-voice-agent/sample.env examples/00-minimal-voice-agent/.env
 # open .env and add your keys — it's gitignored, so it won't get committed
 ```
 
@@ -159,35 +158,37 @@ cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-n
 
 ```
 src/
-├── CompositeVoice.ts          # main orchestrator — wires STT, LLM, and TTS together
+├── CompositeVoice.ts          # main orchestrator — wires the 5-role pipeline together
 ├── core/
-│   ├── audio/                 # AudioCapture (microphone input), AudioPlayer (speech output)
+│   ├── audio/                 # AudioCapture (microphone), AudioPlayer (speakers)
 │   ├── events/                # type-safe EventEmitter
+│   ├── pipeline/              # AudioBufferQueue, AudioHeaderCache, resolveProviders()
 │   ├── state/                 # agent state machine (idle → listening → thinking → speaking)
-│   └── types/                 # shared TypeScript types and interfaces
+│   └── types/                 # shared TypeScript types, interfaces, and role definitions
 ├── providers/
 │   ├── base/                  # abstract base classes — the contracts each provider must fulfil
+│   ├── input/                 # audio input providers (MicrophoneInput, BufferInput)
 │   ├── stt/                   # speech-to-text providers (NativeSTT, DeepgramSTT, ...)
 │   ├── llm/                   # language model providers (AnthropicLLM, OpenAILLM, ...)
-│   └── tts/                   # text-to-speech providers (NativeTTS, DeepgramTTS, ...)
+│   ├── tts/                   # text-to-speech providers (NativeTTS, DeepgramTTS, ...)
+│   └── output/                # audio output providers (BrowserAudioOutput, NullOutput)
 ├── proxy/                     # server-side proxy middleware (keeps API keys off the browser)
-└── utils/                     # shared utility functions
+└── utils/                     # shared utility functions (audio format detection, errors, etc.)
 
 tests/
 ├── unit/                      # unit tests, mirroring the src/ directory structure
-├── integration/               # end-to-end pipeline tests (full STT → LLM → TTS cycle)
+├── integration/               # end-to-end pipeline tests (race condition, multi-role, config)
 ├── mocks/                     # shared mock providers, stubs, and fake responses
 └── setup.ts                   # browser API mocks — AudioContext, WebSocket, MediaStream, etc.
 
 examples/
-├── 00-native-anthropic-native/       # minimal setup using only browser-native APIs
-├── 01-deepgram-anthropic-deepgram/   # production-quality STT + TTS via Deepgram
-├── 02-conversation-history/          # multi-turn conversation with accumulated context
-├── 03-eager-pipeline/                # start speaking before the LLM finishes (lower latency)
-└── 04-proxy-server/                  # full proxy setup — no API keys in the browser
+├── 00-minimal-voice-agent/            # minimal setup using only browser-native APIs
+├── 20-deepgram-pipeline/              # full 5-provider pipeline via Deepgram
+├── 10-proxy-server/                   # full proxy setup — no API keys in the browser
+└── ...                                # 28 examples covering different provider combinations
 ```
 
-The most useful files to read before making changes to the core pipeline are `CompositeVoice.ts` and the base classes in `src/providers/base/`. If you're adding or modifying a provider, start with an existing provider in the same category.
+The most useful files to read before making changes to the core pipeline are `CompositeVoice.ts`, the role definitions in `src/core/types/roles.ts`, and the base classes in `src/providers/base/`. If you're adding or modifying a provider, start with an existing provider in the same category.
 
 ---
 
@@ -354,19 +355,57 @@ pnpm test:coverage     # full suite with coverage report in coverage/
 
 ## Adding a provider
 
-New providers are the most impactful contribution you can make to CompositeVoice. Every new STT, LLM, or TTS backend makes the SDK more useful to more people. Here's the complete process.
+New providers are the most impactful contribution you can make to CompositeVoice. Every new input, STT, LLM, TTS, or output backend makes the SDK more useful to more people. Here's the complete process.
 
-### 1. Create the provider file
+### Understanding the 5-role pipeline
+
+CompositeVoice uses a 5-role pipeline architecture. Every provider declares which roles it covers via a `roles` property:
+
+```
+[input] -> InputQueue -> [stt] -> [llm] -> [tts] -> OutputQueue -> [output]
+```
+
+| Role     | Purpose                                     | Interface              |
+| -------- | ------------------------------------------- | ---------------------- |
+| `input`  | Captures audio from a source (mic, buffer)  | `AudioInputProvider`   |
+| `stt`    | Converts audio to text                      | `LiveSTTProvider` / `RestSTTProvider` |
+| `llm`    | Generates a text response                   | `LLMProvider`          |
+| `tts`    | Converts text to audio                      | `LiveTTSProvider` / `RestTTSProvider` |
+| `output` | Plays audio to a destination (speakers, file) | `AudioOutputProvider` |
+
+A single provider can cover multiple roles. For example, `NativeSTT` covers both `input` and `stt` because the Web Speech API manages its own microphone internally. Similarly, `NativeTTS` covers `tts` and `output` because `SpeechSynthesis` handles both synthesis and playback.
+
+### 1. Declare the `roles` property
+
+**Every provider must declare its roles.** This is how the SDK knows where to place your provider in the pipeline. Set the `roles` property as a `readonly` array of `ProviderRole` values:
+
+```typescript
+import type { ProviderRole } from 'composite-voice';
+
+// Single-role provider (most common)
+public readonly roles: readonly ProviderRole[] = ['stt'];
+
+// Multi-role provider (when the underlying API manages its own I/O)
+public readonly roles: readonly ProviderRole[] = ['input', 'stt'];
+```
+
+The `resolveProviders()` function reads `roles` from each provider in the `providers` array and assigns them to pipeline slots. If a role is covered twice, the SDK throws a `ConfigurationError` naming both conflicting providers.
+
+### 2. Create the provider file
 
 Place your implementation in the correct category:
 
 ```
+src/providers/input/your-provider/YourProviderInput.ts
 src/providers/stt/your-provider/YourProviderSTT.ts
 src/providers/llm/your-provider/YourProviderLLM.ts
 src/providers/tts/your-provider/YourProviderTTS.ts
+src/providers/output/your-provider/YourProviderOutput.ts
 ```
 
-### 2. Choose the right base class
+### 3. Choose the right base class or interface
+
+**For STT, LLM, and TTS providers,** extend the appropriate base class:
 
 | Category | Connection type       | Base class        |
 | -------- | --------------------- | ----------------- |
@@ -378,61 +417,152 @@ src/providers/tts/your-provider/YourProviderTTS.ts
 | TTS      | WebSocket / streaming | `LiveTTSProvider` |
 | TTS      | HTTP REST             | `RestTTSProvider` |
 
-### 3. Implement the required abstract methods
+These base classes set their `roles` property automatically (e.g., `BaseSTTProvider` sets `roles = ['stt']`). Override `roles` only if your provider covers additional roles.
 
-Each base class declares abstract methods you must implement — `onInitialize`, `onDispose`, `startCapture`, `startSpeaking`, and so on depending on category. TypeScript will tell you if you're missing something at compile time. Don't implement anything beyond what the interface requires unless it's needed to make the provider work correctly.
+**For input and output providers,** implement the interface directly:
 
-### 4. Study the reference implementations
+| Category | Interface              | Required methods                                                |
+| -------- | ---------------------- | --------------------------------------------------------------- |
+| Input    | `AudioInputProvider`   | `start()`, `stop()`, `pause()`, `resume()`, `isActive()`, `onAudio(callback)`, `getMetadata()` |
+| Output   | `AudioOutputProvider`  | `configure(metadata)`, `enqueue(chunk)`, `flush()`, `stop()`, `pause()`, `resume()`, `isPlaying()`, `onPlaybackStart(cb)`, `onPlaybackEnd(cb)`, `onPlaybackError(cb)` |
+
+Input and output providers also need the `BaseProvider` lifecycle methods (`initialize()`, `dispose()`, `isReady()`).
+
+### 4. Implement the `AudioInputProvider` interface (input providers)
+
+If you're adding a new audio input source (e.g., a file reader, a WebRTC stream, a hardware device), implement `AudioInputProvider`:
+
+```typescript
+import type { AudioInputProvider, AudioChunk, AudioMetadata, ProviderType } from 'composite-voice';
+import type { ProviderRole } from 'composite-voice';
+
+class MyCustomInput implements AudioInputProvider {
+  public readonly type: ProviderType = 'rest';
+  public readonly roles: readonly ProviderRole[] = ['input'];
+
+  private callback?: (chunk: AudioChunk) => void;
+  private active = false;
+
+  async initialize() { /* set up resources */ }
+  async dispose() { /* release resources */ }
+  isReady() { return true; }
+
+  start() { this.active = true; /* begin capture */ }
+  stop() { this.active = false; /* end capture */ }
+  pause() { /* pause capture */ }
+  resume() { /* resume capture */ }
+  isActive() { return this.active; }
+
+  onAudio(callback: (chunk: AudioChunk) => void) {
+    this.callback = callback;
+  }
+
+  getMetadata(): AudioMetadata {
+    return { sampleRate: 16000, encoding: 'linear16', channels: 1, bitDepth: 16 };
+  }
+}
+```
+
+Key points:
+- `onAudio(callback)` is called by the orchestrator _before_ `start()`. Store the callback and invoke it whenever a new audio chunk is available.
+- `getMetadata()` describes the audio format. The SDK uses this to auto-configure the STT provider's encoding and sample rate.
+- For server-side providers, avoid any browser dependencies (`navigator`, `window`, `AudioContext`). See `BufferInput` as a reference.
+
+### 5. Implement the `AudioOutputProvider` interface (output providers)
+
+If you're adding a new audio output destination (e.g., a file writer, a WebRTC sink, a hardware device), implement `AudioOutputProvider`:
+
+```typescript
+import type { AudioOutputProvider, AudioChunk, AudioMetadata, ProviderType } from 'composite-voice';
+import type { ProviderRole } from 'composite-voice';
+
+class MyCustomOutput implements AudioOutputProvider {
+  public readonly type: ProviderType = 'rest';
+  public readonly roles: readonly ProviderRole[] = ['output'];
+
+  async initialize() { /* set up resources */ }
+  async dispose() { /* release resources */ }
+  isReady() { return true; }
+
+  configure(metadata: AudioMetadata) { /* set up playback format */ }
+  enqueue(chunk: AudioChunk) { /* buffer chunk for playback */ }
+  async flush() { /* wait for all queued audio to finish */ }
+  stop() { /* stop playback immediately */ }
+  pause() { /* pause playback */ }
+  resume() { /* resume playback */ }
+  isPlaying() { return false; }
+
+  onPlaybackStart(callback: () => void) { /* store callback */ }
+  onPlaybackEnd(callback: () => void) { /* store callback */ }
+  onPlaybackError(callback: (error: Error) => void) { /* store callback */ }
+}
+```
+
+Key points:
+- `configure(metadata)` is called once when the TTS emits format metadata. Use it to set up sample rate, encoding, etc.
+- `enqueue(chunk)` is called for each chunk of synthesized audio. Chunks arrive in order.
+- `flush()` should resolve when the last enqueued chunk has finished playing.
+- For server-side providers that discard audio, see `NullOutput` — all methods are no-ops.
+
+### 6. Study the reference implementations
 
 Before writing your own, read at least one existing provider in the same category:
 
-- `src/providers/stt/native/NativeSTT.ts` — the simplest possible STT, no external dependencies, good starting point
+- `src/providers/input/MicrophoneInput.ts` — browser microphone input wrapping AudioCapture
+- `src/providers/input/BufferInput.ts` — server-side push-based input (zero browser dependencies)
+- `src/providers/stt/native/NativeSTT.ts` — multi-role (`input`+`stt`), no external dependencies
 - `src/providers/stt/deepgram/DeepgramSTT.ts` — WebSocket with reconnection logic and backoff
 - `src/providers/llm/anthropic/AnthropicLLM.ts` — HTTP streaming, abort signal handling, token accumulation
 - `src/providers/tts/deepgram/DeepgramTTS.ts` — WebSocket streaming TTS with audio buffering
+- `src/providers/output/BrowserAudioOutput.ts` — browser speaker output wrapping AudioPlayer
+- `src/providers/output/NullOutput.ts` — server-side no-op output
 
 Pattern-matching an existing provider will save you from a lot of the subtle requirements that aren't obvious from the type signatures alone.
 
-### 5. Add the SDK as a peer dependency
+### 7. Add the SDK as a peer dependency
 
 If your provider needs a third-party SDK (e.g., `@assemblyai/streaming-sdk`), add it as an **optional peer dependency** in `package.json` — not as a regular dependency. Users should only need to install it if they actually use your provider.
 
-### 6. Export the provider
+### 8. Export the provider
 
 Add the export to the correct category index file:
 
+- `src/providers/input/index.ts`
 - `src/providers/stt/index.ts`
 - `src/providers/llm/index.ts`
 - `src/providers/tts/index.ts`
+- `src/providers/output/index.ts`
 
 And add it to the top-level export in `src/index.ts`.
 
-### 7. Write tests
+### 9. Write tests
 
 Create a test file at `tests/unit/providers/<category>/YourProvider.test.ts`. At minimum, cover:
 
 - Successful initialisation and disposal (no leaks, no dangling listeners)
-- The happy path: transcription, LLM response, or speech output as appropriate
+- The happy path: audio capture, transcription, LLM response, speech output, or playback as appropriate
 - Error handling — connection failure, non-2xx API response, aborted request
 - Reconnection behaviour, if your provider supports it
+- That `roles` is declared correctly
 
 Use the existing mock infrastructure in `tests/mocks/` for WebSocket and HTTP stubs — check what's already there before writing your own.
 
-### 8. Document it
+### 10. Document it
 
 - Add a row to the providers table in the main README
 - Add the required environment variables to `sample.env` in any examples that use your provider
 - Add configuration documentation if there are options that aren't obvious
-- Add a new example under `examples/` if your provider introduces patterns that aren't demonstrated elsewhere (e.g., a new reconnection strategy, a new streaming mode)
+- Add a new example under `examples/` if your provider introduces patterns that aren't demonstrated elsewhere (e.g., a new input source, a new streaming mode)
 
 ### Provider checklist
 
 - [ ] Implementation file in `src/providers/<category>/<name>/`
-- [ ] Correct base class extended
-- [ ] All abstract methods implemented
+- [ ] `roles` property declared with correct role(s)
+- [ ] Correct base class extended or interface implemented
+- [ ] All abstract/interface methods implemented
 - [ ] Exported from category index and top-level index
 - [ ] Peer dependency added if needed
-- [ ] Tests written covering happy path, errors, and disposal
+- [ ] Tests written covering happy path, errors, disposal, and roles declaration
 - [ ] README providers table updated
 - [ ] `sample.env` entries added for required API keys
 - [ ] Example added if new patterns are introduced
