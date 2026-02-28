@@ -1,5 +1,44 @@
 # Changelog
 
+## [Unreleased]
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Redesigned SDK to use a 5-role pipeline architecture (`input`, `stt`, `llm`, `tts`, `output`). The `CompositeVoice` config now uses `providers: BaseProvider[]` array instead of `{ stt, llm, tts }` object. Audio I/O is promoted to first-class provider roles, enabling server-side (Node/Bun/Deno) usage and fixing a race condition where first audio frames were lost during STT WebSocket handshake.
+    - `ProviderConfig` interface with `{ stt, llm, tts }` shape removed
+    - `AudioConfig` interface and `audio` property removed from `CompositeVoiceConfig`
+    - `managedAudio` property removed from `BaseProvider` (replaced by `roles` array)
+
+### Features
+
+* **types:** add `ProviderRole`, `AudioInputProvider`, `AudioOutputProvider`, and `ResolvedPipeline` types for the 5-role pipeline
+* **types:** add `readonly roles: readonly ProviderRole[]` property to `BaseProvider` interface
+* **types:** add `AudioBufferQueueConfig` and `queue` config option to `CompositeVoiceConfig`
+* **providers:** add `MicrophoneInput` provider wrapping `AudioCapture` as first-class `input` role
+* **providers:** add `BrowserAudioOutput` provider wrapping `AudioPlayer` as first-class `output` role
+* **providers:** add `BufferInput` and `NullOutput` providers for server-side pipelines (zero browser dependencies)
+* **pipeline:** add `AudioBufferQueue` bounded FIFO queue with `drop-oldest`, `drop-newest`, and `block` overflow strategies
+* **pipeline:** add `AudioHeaderCache` for audio format detection and header caching on WebSocket reconnection
+* **pipeline:** add `resolveProviders()` function mapping flat provider array to `ResolvedPipeline` with auto-fill defaults
+* **pipeline:** add `configureSTTFromMetadata()` for auto-configuring STT encoding/sampleRate/channels from input metadata
+* **utils:** add `detectAudioFormat()` magic-byte format detection (WAV, OGG, MP3, AAC, WebM, FLAC, AIFF, MP4) and `extractHeader()` for format-specific header extraction
+* **events:** add `QueueOverflowEvent` (`queue.overflow`) and `QueueStatsEvent` (`queue.stats`) event types for pipeline health monitoring
+* **core:** add `getQueueStats()` public method on `CompositeVoice` for observing both queue states
+* **providers:** `NativeSTT` now implements `AudioInputProvider` (multi-role: `['input', 'stt']`)
+* **providers:** `NativeTTS` now implements `AudioOutputProvider` (multi-role: `['tts', 'output']`)
+
+### Bug Fixes
+
+* **core:** fix race condition where first audio frames were lost during STT WebSocket handshake — `AudioBufferQueue` now buffers audio while STT connects, then flushes in order when ready
+
+### Code Refactoring
+
+* **core:** refactor `CompositeVoice` orchestrator to use `ResolvedPipeline`, `AudioBufferQueue`, and `AudioHeaderCache` for the 5-role pipeline
+* **config:** replace `ProviderConfig { stt, llm, tts }` with `providers: BaseProvider[]` array-based config
+* **config:** remove `AudioConfig` interface — input/output configuration is now a provider constructor concern
+* **providers:** replace `managedAudio` property with `roles` array on all base provider classes
+* **examples:** update all examples to use `providers: [...]` array-based config format
+
 ## [0.0.1](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.1...composite-voice-v0.0.1) (2026-02-25)
 
 
