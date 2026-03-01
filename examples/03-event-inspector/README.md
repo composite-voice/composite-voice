@@ -15,6 +15,7 @@ A developer debugging tool that displays every SDK event in a filterable timelin
 - The complete event lifecycle: which events fire, in what order, and with what data
 - How to filter events by category for focused debugging
 - The timing relationship between STT, LLM, and TTS events
+- How to monitor pipeline health via `queue.overflow` and `queue.stats` events
 - How to diagnose provider issues using event data
 
 ---

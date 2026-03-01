@@ -204,6 +204,11 @@
       color: #94a3b8;
       border-color: rgba(148,163,184,0.25);
     }
+    .filter-chip[data-category="queue"] {
+      background: rgba(251,191,36,0.12);
+      color: #fbbf24;
+      border-color: rgba(251,191,36,0.25);
+    }
 
     /* Timeline */
     .timeline {
@@ -262,6 +267,7 @@
     .event-type.tts { color: #22c55e; }
     .event-type.agent { color: #3b82f6; }
     .event-type.audio { color: #94a3b8; }
+    .event-type.queue { color: #fbbf24; }
 
     .hint {
       text-align: center;
@@ -336,6 +342,10 @@
           <input type="checkbox" checked value="audio" />
           Audio
         </label>
+        <label class="filter-chip" data-category="queue">
+          <input type="checkbox" checked value="queue" />
+          Queue
+        </label>
       </div>
 
       <div class="timeline" id="timeline">
@@ -358,6 +368,7 @@
       'agent.ready', 'agent.stateChange', 'agent.error',
       'audio.capture.start', 'audio.capture.stop', 'audio.capture.error',
       'audio.playback.start', 'audio.playback.end', 'audio.playback.error',
+      'queue.overflow', 'queue.stats',
     ];
 
     // ─── UI Elements ───────────────────────────────────────────────────────────
@@ -389,7 +400,7 @@
     let events = [];     // { time, type, category, data, element }
     let llmChunkAccumulator = { chars: 0, lastRow: null, text: '' };
 
-    const activeFilters = new Set(['transcription', 'llm', 'tts', 'agent', 'audio']);
+    const activeFilters = new Set(['transcription', 'llm', 'tts', 'agent', 'audio', 'queue']);
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
     const setUIState = (state) => {
@@ -410,6 +421,7 @@
       if (eventType.startsWith('tts.'))           return 'tts';
       if (eventType.startsWith('agent.'))         return 'agent';
       if (eventType.startsWith('audio.'))         return 'audio';
+      if (eventType.startsWith('queue.'))         return 'queue';
       return 'unknown';
     };
 
@@ -474,6 +486,11 @@
           return 'playback ended';
         case 'audio.playback.error':
           return data.error?.message ?? 'playback error';
+
+        case 'queue.overflow':
+          return `${data.queueName}: ${data.droppedChunks} dropped, ${data.currentSize} buffered`;
+        case 'queue.stats':
+          return `${data.queueName}: ${data.size} buffered, ${data.totalEnqueued} in, ${data.totalDequeued} out`;
 
         default:
           try { return escapeHtml(JSON.stringify(data).slice(0, 120)); }
@@ -607,23 +624,25 @@
       btnInit.disabled = true;
 
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: new AnthropicLLM({
-          proxyUrl: `${window.location.origin}/proxy/anthropic`,
-          model: 'claude-haiku-4-5-20251001',
-          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
-          maxTokens: 200,
-        }),
+          new AnthropicLLM({
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model: 'claude-haiku-4-5-20251001',
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: 200,
+          }),
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
 
       // ── Subscribe to ALL events for the timeline ─────────────────────────
