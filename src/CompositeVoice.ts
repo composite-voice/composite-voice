@@ -456,7 +456,29 @@ export class CompositeVoice {
         this.pipeline.tts,
         this.pipeline.output,
       ]);
-      await Promise.all([...uniqueProviders].map((p) => p.initialize()));
+
+      // Initialize providers sequentially so we can roll back on failure.
+      // If provider N fails, providers 0..N-1 are disposed to avoid
+      // leaving partially-initialized state.
+      const initialized: BaseProvider[] = [];
+      try {
+        for (const provider of uniqueProviders) {
+          await provider.initialize();
+          initialized.push(provider);
+        }
+      } catch (initError) {
+        this.logger.warn(
+          `Provider initialization failed — disposing ${initialized.length} already-initialized provider(s)`
+        );
+        for (const p of initialized) {
+          try {
+            await p.dispose();
+          } catch (disposeError) {
+            this.logger.warn('Error disposing provider during rollback', disposeError);
+          }
+        }
+        throw initError;
+      }
 
       this.setupProviders();
 
@@ -715,7 +737,10 @@ export class CompositeVoice {
         this.eagerAbortController.abort();
         this.eagerAbortController = null;
         this.eagerText = null;
-        void this.processLLM(text);
+        void this.processLLM(text).catch((err) => {
+          this.logger.error('LLM processing error after eager cancellation', err);
+          this.emitAgentError(err as Error, 'processLLM');
+        });
       } else {
         // Accept the preflight response even though text changed beyond threshold
         this.logger.debug(
@@ -727,7 +752,10 @@ export class CompositeVoice {
       }
     } else {
       // No eager generation — normal path
-      void this.processLLM(text);
+      void this.processLLM(text).catch((err) => {
+        this.logger.error('LLM processing error', err);
+        this.emitAgentError(err as Error, 'processLLM');
+      });
     }
   }
 
