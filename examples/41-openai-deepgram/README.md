@@ -4,9 +4,11 @@ Full production stack combining OpenAI's LLM with Deepgram's STT and TTS. Proves
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
+| **Input** | `MicrophoneInput` | MediaStream API | All modern browsers |
 | **STT** | `DeepgramSTT` — nova-3 | WebSocket | All modern browsers |
 | **LLM** | `OpenAILLM` — gpt-4o-mini | HTTP streaming | All |
 | **TTS** | `DeepgramTTS` — aura-2-thalia-en | WebSocket, 24 kHz | All modern browsers |
+| **Output** | `BrowserAudioOutput` | Web Audio API | All modern browsers |
 
 ---
 
