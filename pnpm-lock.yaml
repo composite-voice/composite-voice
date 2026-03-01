@@ -367,6 +367,19 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.0.3)(lightningcss@1.31.1)(terser@5.44.1)
 
+  examples/06-advanced-config:
+    dependencies:
+      '@anthropic-ai/sdk':
+        specifier: '>=0.67.0'
+        version: 0.67.0(zod@3.25.76)
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@25.0.3)(lightningcss@1.31.1)(terser@5.44.1)
+
   examples/10-proxy-server:
     dependencies:
       '@lukeocodes/composite-voice':
