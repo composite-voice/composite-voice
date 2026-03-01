@@ -2,11 +2,11 @@
 
 Proves SDK extensibility by implementing a custom LLM provider from scratch. The `MockLLM` extends `BaseLLMProvider` and runs entirely in the browser — zero API keys needed.
 
-| | Provider | What it uses | Browser support |
-|-|----------|--------------|-----------------|
-| **STT** | `NativeSTT` | Web Speech API | Chrome, Edge |
+| Role | Provider | What it uses | Browser support |
+|------|----------|--------------|-----------------|
+| **Input + STT** | `NativeSTT` | Web Speech API | Chrome, Edge |
 | **LLM** | `MockLLM` (custom) | In-browser mock responses | All |
-| **TTS** | `NativeTTS` | SpeechSynthesis API | All modern browsers |
+| **TTS + Output** | `NativeTTS` | SpeechSynthesis API | All modern browsers |
 
 ---
 
@@ -36,8 +36,14 @@ Open [http://localhost:3012](http://localhost:3012) in Chrome or Edge.
 ## The custom provider pattern
 
 ```javascript
-import { BaseLLMProvider } from '@lukeocodes/composite-voice';
+import {
+  CompositeVoice,
+  NativeSTT,
+  NativeTTS,
+  BaseLLMProvider,
+} from '@lukeocodes/composite-voice';
 
+// Custom LLM — extend BaseLLMProvider (inherits roles: ['llm'])
 class MockLLM extends BaseLLMProvider {
   async onInitialize() { /* connect to your backend */ }
   async onDispose() { /* clean up */ }
@@ -57,6 +63,15 @@ class MockLLM extends BaseLLMProvider {
     };
   }
 }
+
+// Use with the providers array — NativeSTT and NativeTTS are multi-role
+const agent = new CompositeVoice({
+  providers: [
+    new NativeSTT(),   // [input + stt]
+    new MockLLM(),     // [llm]
+    new NativeTTS(),   // [tts + output]
+  ],
+});
 ```
 
 ---

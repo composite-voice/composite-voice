@@ -444,20 +444,22 @@
       //   NativeTTS  — browser SpeechSynthesis API   (free, all browsers)
       //
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({         // [input + stt]
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: new MockLLM({
-          systemPrompt: 'You are a helpful voice assistant running in the browser.',
-        }),
+          new MockLLM({           // [llm]
+            systemPrompt: 'You are a helpful voice assistant running in the browser.',
+          }),
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({         // [tts + output]
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
 
       // ── 2. Subscribe to events ────────────────────────────────────────────
