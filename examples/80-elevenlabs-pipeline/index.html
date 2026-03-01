@@ -328,6 +328,8 @@
             DeepgramSTT,
             AnthropicLLM,
             ElevenLabsTTS,
+            MicrophoneInput,
+            BrowserAudioOutput,
         } from '@lukeocodes/composite-voice';
 
         let agent = null;
@@ -389,31 +391,35 @@
 
             try {
                 agent = new CompositeVoice({
-                    stt: new DeepgramSTT({
-                        proxyUrl: `${window.location.origin}/proxy/deepgram`,
-                        language: 'en-US',
-                        options: {
-                            model: 'nova-3',
-                            smartFormat: true,
-                            punctuation: true,
-                            interimResults: true,
-                            endpointing: 300,
-                            vadEvents: true,
-                        },
-                    }),
-                    llm: new AnthropicLLM({
-                        proxyUrl: `${window.location.origin}/proxy/anthropic`,
-                        model: 'claude-sonnet-4-20250514',
-                        systemPrompt: 'You are a helpful voice assistant. Keep responses concise and conversational — two to three sentences at most.',
-                        maxTokens: 200,
-                        stream: true,
-                    }),
-                    tts: new ElevenLabsTTS({
-                        proxyUrl: `${window.location.origin}/proxy/elevenlabs`,
-                        voiceId: '21m00Tcm4TlvDq8ikWAM',
-                        model: 'eleven_turbo_v2_5',
-                        outputFormat: 'pcm_24000',
-                    }),
+                    providers: [
+                        new MicrophoneInput(),
+                        new DeepgramSTT({
+                            proxyUrl: `${window.location.origin}/proxy/deepgram`,
+                            language: 'en-US',
+                            options: {
+                                model: 'nova-3',
+                                smartFormat: true,
+                                punctuation: true,
+                                interimResults: true,
+                                endpointing: 300,
+                                vadEvents: true,
+                            },
+                        }),
+                        new AnthropicLLM({
+                            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+                            model: 'claude-sonnet-4-20250514',
+                            systemPrompt: 'You are a helpful voice assistant. Keep responses concise and conversational — two to three sentences at most.',
+                            maxTokens: 200,
+                            stream: true,
+                        }),
+                        new ElevenLabsTTS({
+                            proxyUrl: `${window.location.origin}/proxy/elevenlabs`,
+                            voiceId: '21m00Tcm4TlvDq8ikWAM',
+                            model: 'eleven_turbo_v2_5',
+                            outputFormat: 'pcm_24000',
+                        }),
+                        new BrowserAudioOutput(),
+                    ],
                     logging: { enabled: true, level: 'info' },
                 });
 
