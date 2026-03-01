@@ -372,23 +372,23 @@
 
     function createAgent(model) {
       return new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
-
-        llm: new AnthropicLLM({
-          proxyUrl: `${window.location.origin}/proxy/anthropic`,
-          model,
-          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
-          maxTokens: 200,
-        }),
-
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+        providers: [
+          new NativeSTT({              // [input + stt]
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
+          new AnthropicLLM({            // [llm]
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model,
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: 200,
+          }),
+          new NativeTTS({               // [tts + output]
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
     }
 

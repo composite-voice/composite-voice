@@ -2,11 +2,11 @@
 
 Side-by-side comparison of Claude models — Haiku, Sonnet, and Opus. See how model choice affects response quality, latency, and cost.
 
-| | Provider | What it uses | Browser support |
-|-|----------|--------------|-----------------|
-| **STT** | `NativeSTT` | Web Speech API | Chrome, Edge |
+| Role | Provider | What it uses | Browser support |
+|------|----------|--------------|-----------------|
+| **Input + STT** | `NativeSTT` | Web Speech API | Chrome, Edge |
 | **LLM** | `AnthropicLLM` | Selectable Claude model | All |
-| **TTS** | `NativeTTS` | SpeechSynthesis API | All modern browsers |
+| **TTS + Output** | `NativeTTS` | SpeechSynthesis API | All modern browsers |
 
 ---
 
