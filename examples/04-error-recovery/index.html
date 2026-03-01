@@ -455,18 +455,20 @@
       });
 
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: llmInstance,
+          llmInstance,
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
 
         autoRecover: true,
       });
