@@ -432,25 +432,27 @@
       btnInit.disabled = true;
 
       agent = new CompositeVoice({
-        stt: new NativeSTT({
-          language: 'en-US',
-          continuous: true,
-          interimResults: true,
-        }),
+        providers: [
+          new NativeSTT({          // [input + stt]
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
 
-        llm: new AnthropicLLM({
-          proxyUrl: `${window.location.origin}/proxy/anthropic`,
-          model: 'claude-haiku-4-5-20251001',
-          systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
-          maxTokens: config.maxTokens,
-          temperature: config.temperature,
-          topP: config.topP,
-        }),
+          new AnthropicLLM({       // [llm]
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model: 'claude-haiku-4-5-20251001',
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: config.maxTokens,
+            temperature: config.temperature,
+            topP: config.topP,
+          }),
 
-        tts: new NativeTTS({
-          rate: 1.0,
-          preferLocal: true,
-        }),
+          new NativeTTS({          // [tts + output]
+            rate: 1.0,
+            preferLocal: true,
+          }),
+        ],
       });
 
       // ── Events ──────────────────────────────────────────────────────────────
