@@ -268,6 +268,48 @@ export class CompositeVoice {
   // Conversation history (when enabled via config)
   private conversationHistory: LLMMessage[] = [];
 
+  // Audio output mute state (TTS still runs but audio is not played)
+  private _outputMuted = false;
+
+  // Input mute state — tracked explicitly so we can report it to the LLM
+  // even when capture state machine transitions happen for other reasons
+  private _inputMuted = false;
+
+  /**
+   * Build an I/O context system message that tells the LLM about the current
+   * interaction modality. This is prepended to the messages array so the LLM
+   * can adapt its response style.
+   */
+  private buildIOContextMessage(modality: 'voice' | 'text'): LLMMessage {
+    const inputMode = this._inputMuted ? 'text' : 'voice';
+    const outputMode = this._outputMuted ? 'text' : 'voice';
+
+    const parts: string[] = [];
+
+    if (inputMode === 'voice') {
+      parts.push('The user is speaking to you through a microphone (speech-to-text). You can hear them.');
+    } else {
+      parts.push('The user is typing to you. Their microphone is off, so you cannot hear them.');
+    }
+
+    if (outputMode === 'voice') {
+      parts.push('Your response will be spoken aloud via text-to-speech. The user can hear you. Keep responses concise and conversational. Avoid markdown, code blocks, or long lists — the user is listening, not reading.');
+    } else {
+      parts.push('Your response will be displayed as text only. The user cannot hear you. You may use markdown formatting, code blocks, links, and structured content.');
+    }
+
+    if (modality !== inputMode) {
+      // Edge case: user types while mic is on, or speaks while mic is "muted"
+      // (shouldn't normally happen, but be explicit)
+      parts.push(`Note: this specific message was ${modality === 'text' ? 'typed' : 'spoken'}.`);
+    }
+
+    return {
+      role: 'system',
+      content: `[I/O Context] ${parts.join(' ')}`,
+    };
+  }
+
   // Eager LLM pipeline state (preflight / speculative generation)
   private eagerAbortController: AbortController | null = null;
   private eagerText: string | null = null;
@@ -514,14 +556,8 @@ export class CompositeVoice {
         return;
       }
 
-      // Determine whether this result marks a complete utterance.
-      // speechFinal is set by providers that distinguish segment-final
-      // (isFinal) from utterance-final (speechFinal).
-      // For providers that don't set speechFinal, fall back to isFinal.
-      const isUtteranceFinal = result.speechFinal ?? result.isFinal;
-
-      if (isUtteranceFinal && result.text.trim()) {
-        // ── Utterance complete ─────────────────────────────────────────────
+      if (result.utteranceComplete && result.text.trim()) {
+        // ── Utterance complete — provider says "send to LLM now" ─────────
         this.emitEvent({
           type: 'transcription.speechFinal',
           text: result.text,
@@ -541,7 +577,7 @@ export class CompositeVoice {
 
         this.handleSpeechFinal(result.text);
       } else if (result.isFinal) {
-        // ── Mid-utterance segment finalised (Deepgram is_final, not speech_final) ──
+        // ── Segment finalised but not utterance-complete ─────────────────
         // Emit for display/caption purposes but do NOT trigger LLM.
         this.emitEvent({
           type: 'transcription.final',
@@ -755,7 +791,7 @@ export class CompositeVoice {
    * @see {@link CompositeVoice.processTTS | processTTS} for REST TTS synthesis.
    * @see {@link CompositeVoice.finalizeLiveTTS | finalizeLiveTTS} for Live TTS finalization.
    */
-  private async processLLM(text: string, signal?: AbortSignal): Promise<void> {
+  private async processLLM(text: string, signal?: AbortSignal, modality: 'voice' | 'text' = 'voice'): Promise<void> {
     // Only process if we're in a valid state (listening or error)
     // Ignore transcriptions that come in after stopping
     if (!this.agentStateMachine.isIn('listening', 'error')) {
@@ -786,16 +822,18 @@ export class CompositeVoice {
       const useHistory = historyConfig?.enabled === true;
 
       // Build message list and get response iterable
+      const ioContext = this.buildIOContextMessage(modality);
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
-        this.conversationHistory.push({ role: 'user', content: text });
+        this.conversationHistory.push({ role: 'user', content: text, modality });
         // Trim to maxTurns (each turn = 1 user msg + 1 assistant msg = 2 entries)
         const maxTurns = historyConfig?.maxTurns ?? 0;
         if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
           this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
         }
+        // Prepend I/O context (not stored in history — ephemeral per request)
         responseIterable = await llm.generateFromMessages(
-          this.conversationHistory,
+          [ioContext, ...this.conversationHistory],
           signal ? { signal } : undefined
         );
       } else {
@@ -810,6 +848,11 @@ export class CompositeVoice {
 
       let fullResponse = '';
       let abortedMidStream = false;
+
+      // Ensure Live TTS WebSocket is connected before streaming begins
+      if (isLiveTTS(tts) && !this._outputMuted) {
+        await tts.connect();
+      }
 
       // Stream LLM response
       this.processingStateMachine.setStreaming();
@@ -828,8 +871,8 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
-        // If TTS is Live (WebSocket), send chunks in real-time
-        if (isLiveTTS(tts)) {
+        // If TTS is Live (WebSocket), send chunks in real-time (unless output muted)
+        if (isLiveTTS(tts) && !this._outputMuted) {
           tts.sendText(chunk);
         }
       }
@@ -873,12 +916,13 @@ export class CompositeVoice {
         this.conversationHistory.push({ role: 'assistant', content: fullResponse });
       }
 
-      // REST TTS - send full response
-      if (isRestTTS(tts)) {
-        await this.processTTS(fullResponse);
-      } else if (isLiveTTS(tts)) {
-        // Live TTS: finalize synthesis and wait for audio playback to complete
-        await this.finalizeLiveTTS(fullResponse);
+      // TTS — skip entirely when output is muted (text events still emitted above)
+      if (!this._outputMuted) {
+        if (isRestTTS(tts)) {
+          await this.processTTS(fullResponse);
+        } else if (isLiveTTS(tts)) {
+          await this.finalizeLiveTTS(fullResponse);
+        }
       }
 
       // Processing complete, reset to idle
@@ -1480,6 +1524,236 @@ export class CompositeVoice {
       this.logger.error('Failed to stop speaking', error);
       throw error;
     }
+  }
+
+  /**
+   * Send a text message directly to the LLM, bypassing speech-to-text.
+   *
+   * @remarks
+   * This allows users to type a message that enters the same pipeline as
+   * spoken input. The message is added to conversation history with
+   * `modality: 'text'` so the LLM can distinguish typed input from
+   * transcribed speech and adapt its response style accordingly.
+   *
+   * If audio output is not muted, the LLM response will also be spoken
+   * via TTS. Use {@link muteOutput} to get text-only responses.
+   *
+   * @param text - The user's typed message.
+   *
+   * @example
+   * ```typescript
+   * // Send a typed message while the agent is listening
+   * await agent.sendMessage('What is the weather like?');
+   *
+   * // Listen for the response
+   * agent.on('llm.complete', ({ text }) => {
+   *   console.log('Response:', text);
+   * });
+   * ```
+   */
+  async sendMessage(text: string): Promise<void> {
+    this.assertInitialized();
+
+    if (!text.trim()) return;
+
+    // processLLM guards on 'listening' | 'error' state, but sendMessage
+    // should also work when input is muted (agent state = 'ready')
+    const state = this.agentStateMachine.getState();
+    if (state === 'ready') {
+      // Temporarily satisfy the guard by marking processing directly
+      await this.processLLMFromText(text);
+    } else {
+      await this.processLLM(text, undefined, 'text');
+    }
+  }
+
+  /**
+   * Process a text message through the LLM without requiring 'listening' state.
+   * Used by sendMessage() when the agent is in 'ready' state (e.g. input muted).
+   */
+  private async processLLMFromText(text: string): Promise<void> {
+    if (this.processingStateMachine.getState() === 'error') {
+      this.processingStateMachine.setIdle();
+    }
+
+    this.processingStateMachine.setProcessing();
+
+    this.emitEvent({
+      type: 'llm.start',
+      prompt: text,
+      timestamp: Date.now(),
+    });
+
+    try {
+      const { llm, tts } = this;
+      const historyConfig = this.config.conversationHistory;
+      const useHistory = historyConfig?.enabled === true;
+
+      const ioContext = this.buildIOContextMessage('text');
+      let responseIterable: AsyncIterable<string>;
+      if (useHistory) {
+        this.conversationHistory.push({ role: 'user', content: text, modality: 'text' });
+        const maxTurns = historyConfig?.maxTurns ?? 0;
+        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
+          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
+        }
+        responseIterable = await llm.generateFromMessages(
+          [ioContext, ...this.conversationHistory],
+        );
+      } else {
+        responseIterable = await llm.generate(text);
+      }
+
+      // Ensure Live TTS WebSocket is connected before streaming begins
+      if (isLiveTTS(tts) && !this._outputMuted) {
+        await tts.connect();
+      }
+
+      this.processingStateMachine.setStreaming();
+
+      let fullResponse = '';
+      for await (const chunk of responseIterable) {
+        fullResponse += chunk;
+        this.emitEvent({
+          type: 'llm.chunk',
+          chunk,
+          accumulated: fullResponse,
+          timestamp: Date.now(),
+        });
+
+        if (isLiveTTS(tts) && !this._outputMuted) {
+          tts.sendText(chunk);
+        }
+      }
+
+      this.processingStateMachine.setComplete();
+
+      this.emitEvent({
+        type: 'llm.complete',
+        text: fullResponse,
+        timestamp: Date.now(),
+      });
+
+      if (useHistory && fullResponse) {
+        this.conversationHistory.push({ role: 'assistant', content: fullResponse });
+      }
+
+      if (!this._outputMuted) {
+        if (isRestTTS(tts)) {
+          await this.processTTS(fullResponse);
+        } else if (isLiveTTS(tts)) {
+          await this.finalizeLiveTTS(fullResponse);
+        }
+      }
+
+      this.processingStateMachine.setIdle();
+    } catch (error) {
+      this.processingStateMachine.setError();
+      this.emitAgentError(error as Error, 'processLLMFromText');
+    }
+  }
+
+  /**
+   * Mute audio input (microphone), pausing speech capture and STT processing.
+   *
+   * @remarks
+   * The agent remains initialized and can still receive text input via
+   * {@link sendMessage}. Call {@link unmuteInput} to resume voice capture.
+   *
+   * @example
+   * ```typescript
+   * agent.muteInput();
+   * // User can still type via sendMessage()
+   * await agent.sendMessage('Hello');
+   * agent.unmuteInput(); // resume mic
+   * ```
+   */
+  muteInput(): void {
+    this.assertInitialized();
+    this._inputMuted = true;
+
+    const captureState = this.captureStateMachine.getState();
+    if (captureState !== 'active') {
+      this.logger.debug('muteInput() called but capture not active', { captureState });
+      return;
+    }
+
+    this.captureStateMachine.setPaused();
+
+    if (!this.isMultiRoleInput) {
+      this.inputQueue.stopDraining();
+      this.pipeline.input.pause();
+    }
+  }
+
+  /**
+   * Unmute audio input (microphone), resuming speech capture and STT processing.
+   *
+   * @see {@link muteInput}
+   */
+  async unmuteInput(): Promise<void> {
+    this.assertInitialized();
+    this._inputMuted = false;
+
+    const captureState = this.captureStateMachine.getState();
+    if (captureState !== 'paused') {
+      this.logger.debug('unmuteInput() called but capture not paused', { captureState });
+      return;
+    }
+
+    if (!this.isMultiRoleInput) {
+      this.pipeline.input.resume();
+    }
+
+    // Reconnect STT if it's a live provider
+    const { stt } = this;
+    if (isLiveSTT(stt)) {
+      await stt.connect();
+      const header = this.headerCache.getHeader();
+      if (header) stt.sendAudio(header);
+      this.inputQueue.startDraining((chunk: { data: ArrayBuffer }) => stt.sendAudio(chunk.data));
+    }
+
+    this.captureStateMachine.setActive();
+  }
+
+  /**
+   * Mute audio output (speaker), suppressing TTS playback.
+   *
+   * @remarks
+   * LLM responses still stream and emit `llm.chunk` / `llm.complete` events,
+   * but audio will not be played. This is useful when the user prefers to
+   * read responses as text.
+   *
+   * @see {@link unmuteOutput}
+   */
+  muteOutput(): void {
+    this.assertInitialized();
+    this._outputMuted = true;
+  }
+
+  /**
+   * Unmute audio output (speaker), resuming TTS playback for future responses.
+   *
+   * @see {@link muteOutput}
+   */
+  unmuteOutput(): void {
+    this.assertInitialized();
+    this._outputMuted = false;
+  }
+
+  /**
+   * Whether audio output (TTS playback) is currently muted.
+   */
+  get isOutputMuted(): boolean {
+    return this._outputMuted;
+  }
+
+  /**
+   * Whether audio input (microphone) is currently muted.
+   */
+  get isInputMuted(): boolean {
+    return this._inputMuted;
   }
 
   /**

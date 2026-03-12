@@ -603,6 +603,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
             text: message.text ?? '',
             isFinal: true,
             speechFinal: true,
+            utteranceComplete: true,
           });
           break;
 
@@ -622,6 +623,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
             text,
             isFinal: true,
             speechFinal: true,
+            utteranceComplete: true,
             ...(confidence !== undefined && { confidence }),
             metadata: { words: message.words },
           });

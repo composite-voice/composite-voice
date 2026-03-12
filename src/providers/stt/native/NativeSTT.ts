@@ -285,6 +285,7 @@ export class NativeSTT extends LiveSTTProvider {
         isFinal,
         // SpeechRecognition emits one result per utterance — isFinal === speechFinal
         speechFinal: isFinal,
+        utteranceComplete: isFinal,
         confidence,
         metadata: {
           resultIndex: event.resultIndex,

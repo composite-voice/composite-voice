@@ -287,11 +287,32 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Accumulates `is_final` transcript segments within an utterance.
    *
    * @remarks
-   * Deepgram may split one utterance into multiple `is_final` chunks before
-   * emitting `speech_final`. We buffer them so we can hand the complete
-   * utterance text to CompositeVoice as a single `speechFinal` result.
+   * When endpointing is enabled, Deepgram may split one utterance into
+   * multiple `is_final` chunks before emitting `speech_final`. We buffer
+   * them so we can hand the complete utterance text to CompositeVoice as
+   * a single `utteranceComplete` result.
+   *
+   * When endpointing is disabled, each `is_final` is a standalone segment
+   * and the buffer is flushed immediately.
    */
   private utteranceBuffer: string[] = [];
+
+  /**
+   * Whether endpointing (speech_final detection) is active for this session.
+   *
+   * @remarks
+   * When `true`, Deepgram sends `speech_final: true` on the last segment
+   * of an utterance. We buffer `is_final` segments and wait for `speech_final`.
+   *
+   * When `false`, Deepgram never sends `speech_final: true`, so each
+   * `is_final: true` result is treated as a complete utterance.
+   */
+  private get endpointingEnabled(): boolean {
+    const ep = this.config.options?.endpointing;
+    // endpointing is enabled if it's a positive number or not explicitly false/0
+    // Default in buildConnectionUrl is false, so if not set we check what we sent
+    return ep !== false && ep !== 0 && ep !== undefined;
+  }
 
   /**
    * Create a new DeepgramSTT provider.
@@ -579,8 +600,20 @@ export class DeepgramSTT extends LiveSTTProvider {
   /**
    * Process a V1 `Results` message from Deepgram.
    *
-   * Handles interim results, final segments, and speech_final utterance
-   * completion.
+   * Handles three configurations:
+   *
+   * 1. **Endpointing enabled** (`endpointing` > 0):
+   *    Deepgram sends `speech_final: true` when it detects silence.
+   *    Multiple `is_final` segments may arrive before `speech_final`.
+   *    We buffer them and only emit `utteranceComplete` on `speech_final`.
+   *
+   * 2. **Endpointing disabled, interim_results on** (default):
+   *    Deepgram never sends `speech_final: true`. Each `is_final: true`
+   *    result is a standalone completed segment → `utteranceComplete`.
+   *
+   * 3. **Endpointing disabled, interim_results off**:
+   *    Every result is `is_final: true`. Each is a complete segment
+   *    → `utteranceComplete`.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleResults(data: any): void {
@@ -592,52 +625,8 @@ export class DeepgramSTT extends LiveSTTProvider {
     const isFinal = data.is_final ?? false;
     const speechFinal = data.speech_final ?? false;
 
-    if (isFinal) {
-      // Accumulate this segment into the current utterance
-      if (transcript) {
-        this.utteranceBuffer.push(transcript);
-      }
-
-      if (speechFinal) {
-        // Utterance complete — emit with the fully accumulated text
-        const fullText = this.utteranceBuffer.join(' ').trim();
-        this.utteranceBuffer = [];
-
-        this.logger.debug('Deepgram speech_final — full utterance', { fullText });
-
-        // Always emit the final-segment event first so interim displays update
-        if (transcript) {
-          this.emitTranscription({
-            text: transcript,
-            isFinal: true,
-            speechFinal: false,
-            confidence,
-            metadata: { speechFinal: false, duration: data.duration },
-          });
-        }
-
-        // Emit the complete utterance as the speech-final result
-        this.emitTranscription({
-          text: fullText,
-          isFinal: true,
-          speechFinal: true,
-          confidence,
-          metadata: { speechFinal: true, duration: data.duration },
-        });
-      } else {
-        // Mid-utterance final segment — emit for display but not for LLM
-        if (transcript) {
-          this.emitTranscription({
-            text: transcript,
-            isFinal: true,
-            speechFinal: false,
-            confidence,
-            metadata: { speechFinal: false, duration: data.duration },
-          });
-        }
-      }
-    } else {
-      // Interim result — pass through as-is for real-time display
+    if (!isFinal) {
+      // ── Interim result — pass through for real-time display ────────────
       if (transcript) {
         this.emitTranscription({
           text: transcript,
@@ -646,27 +635,118 @@ export class DeepgramSTT extends LiveSTTProvider {
           metadata: { duration: data.duration },
         });
       }
+      return;
+    }
+
+    // ── is_final: true ───────────────────────────────────────────────────
+
+    if (!this.endpointingEnabled) {
+      // No endpointing → each is_final is a complete utterance.
+      // No buffering needed — emit directly with utteranceComplete.
+      if (transcript) {
+        this.emitTranscription({
+          text: transcript,
+          isFinal: true,
+          speechFinal: true,
+          utteranceComplete: true,
+          confidence,
+          metadata: { duration: data.duration },
+        });
+      }
+      return;
+    }
+
+    // ── Endpointing enabled — buffer segments until speech_final ─────────
+
+    if (transcript) {
+      this.utteranceBuffer.push(transcript);
+    }
+
+    if (speechFinal) {
+      // Utterance complete — flush the buffer
+      const fullText = this.utteranceBuffer.join(' ').trim();
+      this.utteranceBuffer = [];
+
+      this.logger.debug('Deepgram speech_final — full utterance', { fullText });
+
+      // Emit the segment first so interim displays update
+      if (transcript) {
+        this.emitTranscription({
+          text: transcript,
+          isFinal: true,
+          speechFinal: false,
+          confidence,
+          metadata: { speechFinal: false, duration: data.duration },
+        });
+      }
+
+      // Emit the complete utterance — this triggers LLM processing
+      if (fullText) {
+        this.emitTranscription({
+          text: fullText,
+          isFinal: true,
+          speechFinal: true,
+          utteranceComplete: true,
+          confidence,
+          metadata: { speechFinal: true, duration: data.duration },
+        });
+      }
+    } else {
+      // Mid-utterance final segment — emit for display but not for LLM
+      if (transcript) {
+        this.emitTranscription({
+          text: transcript,
+          isFinal: true,
+          speechFinal: false,
+          confidence,
+          metadata: { speechFinal: false, duration: data.duration },
+        });
+      }
     }
   }
 
   /**
    * Process a V1 `UtteranceEnd` event.
+   *
+   * @remarks
+   * Sent when `utterance_end_ms` is configured and Deepgram detects a
+   * sufficient gap between transcribed words. This acts as a fallback
+   * utterance boundary — particularly useful in noisy environments where
+   * `speech_final` may not fire because the VAD can't detect silence.
+   *
+   * If the utterance buffer has accumulated text that hasn't been flushed
+   * by a `speech_final`, we flush it here with `utteranceComplete: true`.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleUtteranceEnd(data: any): void {
     this.logger.debug('Utterance end', data);
 
-    const result: TranscriptionResult = {
+    // Flush any buffered segments that speech_final didn't catch
+    if (this.utteranceBuffer.length > 0) {
+      const fullText = this.utteranceBuffer.join(' ').trim();
+      this.utteranceBuffer = [];
+
+      if (fullText) {
+        this.logger.debug('UtteranceEnd flushing buffer', { fullText });
+        this.emitTranscription({
+          text: fullText,
+          isFinal: true,
+          speechFinal: true,
+          utteranceComplete: true,
+          confidence: 1,
+          metadata: { event: 'utterance_end', data },
+        });
+        return;
+      }
+    }
+
+    // No buffered text — emit as informational event only
+    this.emitTranscription({
       text: '',
       isFinal: true,
       confidence: 1,
-      metadata: {
-        event: 'utterance_end',
-        data,
-      },
-    };
-
-    this.emitTranscription(result);
+      metadata: { event: 'utterance_end', data },
+    });
   }
 
   /**

@@ -402,6 +402,7 @@ export class AssemblyAISTT extends LiveSTTProvider {
               text: message.text,
               isFinal: true,
               speechFinal: true,
+              utteranceComplete: true,
               confidence: message.confidence,
               metadata: {
                 audioStart: message.audio_start,

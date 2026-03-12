@@ -242,12 +242,32 @@ export interface TranscriptionResult {
    * For Deepgram: `true` when `speech_final=true` (the speaker has stopped talking).
    * For NativeSTT and other providers that emit one result per utterance: equals {@link TranscriptionResult.isFinal | isFinal}.
    *
-   * CompositeVoice uses this (falling back to {@link TranscriptionResult.isFinal | isFinal}) to decide when to
-   * trigger LLM processing. Multi-segment providers (Deepgram) may emit
-   * several `isFinal: true` chunks for a single utterance -- only the last one
-   * has `speechFinal: true`.
+   * Multi-segment providers (Deepgram) may emit several `isFinal: true`
+   * chunks for a single utterance -- only the last one has `speechFinal: true`.
+   *
+   * @deprecated Use {@link TranscriptionResult.utteranceComplete | utteranceComplete} instead.
+   * This field is retained for informational/display purposes but is no longer
+   * used by CompositeVoice to trigger LLM processing.
    */
   speechFinal?: boolean;
+
+  /**
+   * Whether this result should trigger the next pipeline stage (LLM).
+   *
+   * @remarks
+   * This is the single flag CompositeVoice checks to decide when to send
+   * transcribed text to the LLM. The STT provider is responsible for setting
+   * this — it knows its own end-of-utterance semantics.
+   *
+   * - **DeepgramSTT**: `true` when `speech_final=true` (after buffering all
+   *   `is_final` segments into a complete utterance).
+   * - **NativeSTT**: `true` when `isFinal=true` (one result per utterance).
+   * - **AssemblyAI**: `true` on `FinalTranscript` messages.
+   * - **ElevenLabs**: `true` on `committed_transcript` / `final_transcript`.
+   *
+   * If not set, CompositeVoice will NOT trigger LLM processing for this result.
+   */
+  utteranceComplete?: boolean;
 
   /**
    * Whether this is a preflight/eager-end-of-turn signal.
@@ -634,13 +654,26 @@ export interface LLMMessage {
    *
    * @remarks
    * - `'system'` - System instructions (typically the first message)
-   * - `'user'` - User input (transcribed speech)
+   * - `'user'` - User input (transcribed speech or typed text)
    * - `'assistant'` - Assistant response (LLM output)
    */
   role: 'system' | 'user' | 'assistant';
 
   /** The text content of the message. */
   content: string;
+
+  /**
+   * How the message was produced.
+   *
+   * @remarks
+   * - `'voice'` - Transcribed from speech via STT (default for user messages)
+   * - `'text'` - Typed by the user via `sendMessage()`
+   *
+   * This is included in the conversation history so the LLM can adapt its
+   * response style (e.g., shorter for voice, richer formatting for text).
+   * Only meaningful for `role: 'user'` messages.
+   */
+  modality?: 'voice' | 'text';
 }
 
 /**

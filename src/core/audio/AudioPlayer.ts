@@ -350,10 +350,33 @@ export class AudioPlayer {
           await this.waitForMinimumBuffer();
         }
 
-        const chunk = this.audioQueue.shift();
-        if (!chunk) continue;
+        // Drain all available chunks and concatenate into a single buffer
+        // to eliminate gaps between individual chunk playback
+        const chunks: AudioChunk[] = [];
+        while (this.audioQueue.length > 0) {
+          const chunk = this.audioQueue.shift();
+          if (chunk) chunks.push(chunk);
+        }
 
-        await this.playChunk(chunk);
+        if (chunks.length === 1) {
+          await this.playChunk(chunks[0]!);
+        } else if (chunks.length > 1) {
+          const totalBytes = chunks.reduce((sum, c) => sum + c.data.byteLength, 0);
+          const merged = new Uint8Array(totalBytes);
+          let offset = 0;
+          for (const c of chunks) {
+            merged.set(new Uint8Array(c.data), offset);
+            offset += c.data.byteLength;
+          }
+          const mergedChunk: AudioChunk = {
+            data: merged.buffer,
+            timestamp: chunks[0]!.timestamp,
+          };
+          if (chunks[0]!.metadata) {
+            mergedChunk.metadata = chunks[0]!.metadata;
+          }
+          await this.playChunk(mergedChunk);
+        }
       }
 
       this.state = 'idle';
