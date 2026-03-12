@@ -84,8 +84,8 @@ export type ProcessingStateCallback = (
  */
 const PROCESSING_TRANSITIONS: Record<ProcessingState, ProcessingState[]> = {
   idle: ['processing', 'error'],
-  processing: ['streaming', 'complete', 'error'],
-  streaming: ['complete', 'error'],
+  processing: ['streaming', 'complete', 'idle', 'error'],
+  streaming: ['complete', 'idle', 'error'],
   complete: ['idle'],
   error: ['idle'],
 };
@@ -273,6 +273,9 @@ export class SimpleProcessingStateMachine {
    *   listed in {@link PROCESSING_TRANSITIONS}.
    */
   private transitionTo(newState: ProcessingState): void {
+    // No-op if already in the target state
+    if (this.currentState === newState) return;
+
     if (!this.canTransitionTo(newState)) {
       throw new Error(`Invalid processing state transition: ${this.currentState} -> ${newState}`);
     }

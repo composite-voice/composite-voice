@@ -314,6 +314,13 @@ export class CompositeVoice {
   private eagerAbortController: AbortController | null = null;
   private eagerText: string | null = null;
 
+  /** AbortController for the current LLM generation (non-eager). */
+  private llmAbortController: AbortController | null = null;
+
+  /** Monotonic generation ID — incremented on each processLLM call so stale
+   *  generations can detect they've been superseded by a barge-in. */
+  private llmGenerationId = 0;
+
   private initialized = false;
 
   /**
@@ -539,6 +546,41 @@ export class CompositeVoice {
 
     // Setup STT provider callbacks (all STT providers have onTranscription)
     stt.onTranscription((result) => {
+      // ── Barge-in: interrupt playback when user starts speaking ──────────
+      if ((this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) && result.text?.trim()) {
+        this.logger.debug('Barge-in detected — stopping playback');
+        // Synchronously abort LLM + reset state machines so processLLM
+        // can start immediately in this same callback
+        if (this.llmAbortController) {
+          this.llmAbortController.abort();
+          this.llmAbortController = null;
+        }
+        if (this.eagerAbortController) {
+          this.eagerAbortController.abort();
+          this.eagerAbortController = null;
+          this.eagerText = null;
+        }
+        // Stop output immediately (sync)
+        if (!this.isMultiRoleOutput) {
+          this.outputQueue.clear();
+          this.pipeline.output.stop();
+        }
+        // Reset state machines so agent can process new input
+        const ps = this.playbackStateMachine.getState();
+        if (ps !== 'idle' && ps !== 'error') {
+          try { this.playbackStateMachine.setStopped(); } catch { /* ignore */ }
+          try { this.playbackStateMachine.setIdle(); } catch { /* ignore */ }
+        }
+        const prs = this.processingStateMachine.getState();
+        if (prs !== 'idle') {
+          try { this.processingStateMachine.setIdle(); } catch { /* ignore */ }
+        }
+        // Disconnect TTS in background (async, don't block)
+        if (isLiveTTS(tts)) {
+          void tts.disconnect();
+        }
+      }
+
       if (result.isPreflight) {
         // ── Preflight / eager end-of-turn ──────────────────────────────────
         // DeepgramFlux signals early completion before speech_final.
@@ -792,6 +834,9 @@ export class CompositeVoice {
    * @see {@link CompositeVoice.finalizeLiveTTS | finalizeLiveTTS} for Live TTS finalization.
    */
   private async processLLM(text: string, signal?: AbortSignal, modality: 'voice' | 'text' = 'voice'): Promise<void> {
+    // Tag this generation so we can detect if it's been superseded by barge-in
+    const generationId = ++this.llmGenerationId;
+
     // Only process if we're in a valid state (listening or error)
     // Ignore transcriptions that come in after stopping
     if (!this.agentStateMachine.isIn('listening', 'error')) {
@@ -821,6 +866,12 @@ export class CompositeVoice {
       const historyConfig = this.config.conversationHistory;
       const useHistory = historyConfig?.enabled === true;
 
+      // Create an abort controller for this generation (used by barge-in)
+      const llmController = new AbortController();
+      this.llmAbortController = llmController;
+      // Use the eager signal if provided, otherwise use our own
+      const activeSignal = signal ?? llmController.signal;
+
       // Build message list and get response iterable
       const ioContext = this.buildIOContextMessage(modality);
       let responseIterable: AsyncIterable<string>;
@@ -834,14 +885,14 @@ export class CompositeVoice {
         // Prepend I/O context (not stored in history — ephemeral per request)
         responseIterable = await llm.generateFromMessages(
           [ioContext, ...this.conversationHistory],
-          signal ? { signal } : undefined
+          { signal: activeSignal }
         );
       } else {
-        responseIterable = await llm.generate(text, signal ? { signal } : undefined);
+        responseIterable = await llm.generate(text, { signal: activeSignal });
       }
 
       // Check if aborted before we start streaming (generate() may have taken time)
-      if (signal?.aborted) {
+      if (activeSignal.aborted) {
         this.processingStateMachine.setIdle();
         return;
       }
@@ -858,7 +909,7 @@ export class CompositeVoice {
       this.processingStateMachine.setStreaming();
 
       for await (const chunk of responseIterable) {
-        if (signal?.aborted) {
+        if (activeSignal.aborted) {
           abortedMidStream = true;
           break;
         }
@@ -877,9 +928,17 @@ export class CompositeVoice {
         }
       }
 
+      // If this generation was superseded by barge-in, bail out silently.
+      // The barge-in already cleaned up state machines and started a new generation.
+      if (generationId !== this.llmGenerationId) {
+        this.logger.debug('LLM generation superseded by barge-in — bailing out');
+        return;
+      }
+
+      this.llmAbortController = null;
+
       if (abortedMidStream) {
-        // Eager generation was cancelled mid-stream.
-        // If Live TTS received partial text, we need to reset it.
+        // Generation was cancelled mid-stream (eager, not barge-in).
         this.logger.debug('LLM generation aborted mid-stream — resetting state');
         if (isLiveTTS(tts) && this.playbackStateMachine.getState() !== 'idle') {
           try {
@@ -894,7 +953,6 @@ export class CompositeVoice {
             this.playbackStateMachine.setIdle();
           }
         }
-        // Stop output provider and clear output queue for separate output
         if (!this.isMultiRoleOutput) {
           this.outputQueue.clear();
           this.pipeline.output.stop();
@@ -926,10 +984,14 @@ export class CompositeVoice {
       }
 
       // Processing complete, reset to idle
-      this.processingStateMachine.setIdle();
+      if (generationId === this.llmGenerationId) {
+        this.processingStateMachine.setIdle();
+      }
     } catch (error) {
+      // If superseded by barge-in, don't touch state
+      if (generationId !== this.llmGenerationId) return;
+
       if ((error as Error).name === 'AbortError') {
-        // Expected during eager cancellation — reset quietly
         this.logger.debug('LLM generation aborted via signal');
         this.processingStateMachine.setIdle();
         return;
@@ -1491,13 +1553,24 @@ export class CompositeVoice {
   async stopSpeaking(): Promise<void> {
     this.assertInitialized();
 
-    if (!this.agentStateMachine.is('speaking')) {
-      this.logger.debug('stopSpeaking() called but not currently speaking');
+    if (!this.agentStateMachine.is('speaking') && !this.agentStateMachine.is('thinking')) {
+      this.logger.debug('stopSpeaking() called but not currently speaking or thinking');
       return;
     }
 
     try {
       const { tts } = this;
+
+      // Abort in-flight LLM generation
+      if (this.llmAbortController) {
+        this.llmAbortController.abort();
+        this.llmAbortController = null;
+      }
+      if (this.eagerAbortController) {
+        this.eagerAbortController.abort();
+        this.eagerAbortController = null;
+        this.eagerText = null;
+      }
 
       // Stop output provider and clear output queue (for separate output)
       if (!this.isMultiRoleOutput) {
@@ -1514,6 +1587,16 @@ export class CompositeVoice {
         try {
           this.playbackStateMachine.setStopped();
           this.playbackStateMachine.setIdle();
+        } catch {
+          // ignore invalid transitions
+        }
+      }
+
+      // Reset processing state so agent returns to listening/ready
+      const processingState = this.processingStateMachine.getState();
+      if (processingState !== 'idle') {
+        try {
+          this.processingStateMachine.setIdle();
         } catch {
           // ignore invalid transitions
         }
@@ -1556,6 +1639,11 @@ export class CompositeVoice {
 
     if (!text.trim()) return;
 
+    // Barge-in: interrupt if agent is currently speaking or thinking
+    if (this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) {
+      await this.stopSpeaking();
+    }
+
     // processLLM guards on 'listening' | 'error' state, but sendMessage
     // should also work when input is muted (agent state = 'ready')
     const state = this.agentStateMachine.getState();
@@ -1572,6 +1660,8 @@ export class CompositeVoice {
    * Used by sendMessage() when the agent is in 'ready' state (e.g. input muted).
    */
   private async processLLMFromText(text: string): Promise<void> {
+    const generationId = ++this.llmGenerationId;
+
     if (this.processingStateMachine.getState() === 'error') {
       this.processingStateMachine.setIdle();
     }
@@ -1589,6 +1679,10 @@ export class CompositeVoice {
       const historyConfig = this.config.conversationHistory;
       const useHistory = historyConfig?.enabled === true;
 
+      // Create an abort controller for this generation (used by barge-in)
+      const llmController = new AbortController();
+      this.llmAbortController = llmController;
+
       const ioContext = this.buildIOContextMessage('text');
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
@@ -1599,9 +1693,10 @@ export class CompositeVoice {
         }
         responseIterable = await llm.generateFromMessages(
           [ioContext, ...this.conversationHistory],
+          { signal: llmController.signal },
         );
       } else {
-        responseIterable = await llm.generate(text);
+        responseIterable = await llm.generate(text, { signal: llmController.signal });
       }
 
       // Ensure Live TTS WebSocket is connected before streaming begins
@@ -1613,6 +1708,7 @@ export class CompositeVoice {
 
       let fullResponse = '';
       for await (const chunk of responseIterable) {
+        if (llmController.signal.aborted) break;
         fullResponse += chunk;
         this.emitEvent({
           type: 'llm.chunk',
@@ -1624,6 +1720,21 @@ export class CompositeVoice {
         if (isLiveTTS(tts) && !this._outputMuted) {
           tts.sendText(chunk);
         }
+      }
+
+      // If superseded by barge-in, bail out
+      if (generationId !== this.llmGenerationId) {
+        this.logger.debug('LLM generation (text) superseded by barge-in');
+        return;
+      }
+
+      this.llmAbortController = null;
+
+      // If aborted mid-stream, clean up and return
+      if (llmController.signal.aborted) {
+        this.logger.debug('LLM generation aborted');
+        this.processingStateMachine.setIdle();
+        return;
       }
 
       this.processingStateMachine.setComplete();
@@ -1646,8 +1757,18 @@ export class CompositeVoice {
         }
       }
 
-      this.processingStateMachine.setIdle();
+      if (generationId === this.llmGenerationId) {
+        this.processingStateMachine.setIdle();
+      }
     } catch (error) {
+      if (generationId !== this.llmGenerationId) return;
+
+      if ((error as Error).name === 'AbortError') {
+        this.logger.debug('LLM generation aborted via signal');
+        this.llmAbortController = null;
+        this.processingStateMachine.setIdle();
+        return;
+      }
       this.processingStateMachine.setError();
       this.emitAgentError(error as Error, 'processLLMFromText');
     }

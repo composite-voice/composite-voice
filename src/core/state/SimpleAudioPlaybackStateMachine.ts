@@ -277,6 +277,8 @@ export class SimpleAudioPlaybackStateMachine {
    *   listed in {@link PLAYBACK_TRANSITIONS}.
    */
   private transitionTo(newState: PlaybackState): void {
+    if (this.currentState === newState) return;
+
     if (!this.canTransitionTo(newState)) {
       throw new Error(`Invalid playback state transition: ${this.currentState} -> ${newState}`);
     }
