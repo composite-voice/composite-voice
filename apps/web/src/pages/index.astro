@@ -55,26 +55,31 @@ const features = [
 ];
 
 const providers = {
-  "Speech-to-Text": ["Deepgram", "AssemblyAI", "Web Speech API"],
+  "Speech-to-Text": ["Deepgram", "AssemblyAI", "ElevenLabs", "Web Speech API"],
   "Large Language Models": ["Anthropic", "OpenAI", "Groq", "Google Gemini", "Mistral", "WebLLM"],
   "Text-to-Speech": ["Deepgram", "OpenAI", "ElevenLabs", "Cartesia", "Web Speech API"],
 };
 
-const exampleCode = `import { CompositeVoice } from "@lukeocodes/composite-voice";
-import { DeepgramSTT } from "@lukeocodes/composite-voice/stt";
-import { AnthropicLLM } from "@lukeocodes/composite-voice/llm";
-import { DeepgramTTS } from "@lukeocodes/composite-voice/tts";
+const exampleCode = `import {
+  CompositeVoice,
+  DeepgramSTT,
+  AnthropicLLM,
+  DeepgramTTS,
+} from "@lukeocodes/composite-voice";
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ model: "nova-3" }),
-  llm: new AnthropicLLM({ model: "claude-sonnet-4-20250514" }),
-  tts: new DeepgramTTS({ model: "aura-asteria-en" }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: "/api/proxy/deepgram" }),
+    new AnthropicLLM({ proxyUrl: "/api/proxy/anthropic", model: "claude-sonnet-4-20250514" }),
+    new DeepgramTTS({ proxyUrl: "/api/proxy/deepgram" }),
+  ],
 });
 
-voice.on("transcript", (text) => console.log("User:", text));
-voice.on("response", (text) => console.log("AI:", text));
+voice.on("transcription.speechFinal", ({ text }) => console.log("User:", text));
+voice.on("llm.complete", ({ text }) => console.log("AI:", text));
 
-await voice.start();`;
+await voice.initialize();
+await voice.startListening();`;
 ---
 
 <Layout>

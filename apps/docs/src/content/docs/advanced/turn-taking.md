@@ -26,9 +26,11 @@ The default is `'auto'`.
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
+    new NativeTTS(),
+  ],
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
   },
@@ -49,7 +51,7 @@ In practice, this means:
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
     autoStrategy: 'conservative',
@@ -65,7 +67,7 @@ Only pauses for provider combinations explicitly listed in `alwaysPauseCombinati
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
     autoStrategy: 'aggressive',
@@ -81,7 +83,7 @@ Attempts to detect echo cancellation support at runtime by checking the browser'
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
     autoStrategy: 'detect',
@@ -93,7 +95,7 @@ The detect strategy checks two things:
 1. Whether the STT provider uses MediaDevices (SpeechRecognition API providers always get paused regardless of browser support)
 2. Whether the browser supports the required audio processing constraints
 
-This is the most adaptive strategy, but note that it checks browser **capability**, not whether echo cancellation is actually working well with the user's hardware. Laptops with poor speaker/microphone isolation may still produce echo even when the browser reports support.
+This is the most adaptive strategy, but it checks browser **capability**, not whether echo cancellation works with the user's hardware. Laptops with poor speaker/microphone isolation may still produce echo even when the browser reports support.
 
 ### The `alwaysPauseCombinations` list
 
@@ -114,7 +116,7 @@ You can override this list to add your own known-bad combinations:
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
     autoStrategy: 'aggressive',
@@ -142,7 +144,7 @@ const agent = new CompositeVoice({
 Barge-in is the ability for the user to interrupt the agent while it is speaking. How barge-in works depends on the turn-taking configuration:
 
 **When `pauseCaptureOnPlayback` resolves to `true`:**
-The microphone is paused during playback. The user cannot interrupt the agent by speaking -- they must wait for the agent to finish. This prevents echo but disables natural interruption.
+The microphone is paused during playback. The user must wait for the agent to finish before speaking. This prevents echo but disables natural interruption.
 
 **When `pauseCaptureOnPlayback` resolves to `false`:**
 The microphone stays active during playback (full-duplex mode). If the user speaks while the agent is talking, the STT provider picks up their speech and fires transcription events. You can use these events to implement barge-in by calling `stopSpeaking()`:
@@ -165,7 +167,7 @@ Whether barge-in is available depends on the STT provider. With [DeepgramSTT](/g
 **Default (recommended starting point):**
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   // turnTaking is optional -- these are the defaults:
   turnTaking: {
     pauseCaptureOnPlayback: 'auto',
@@ -183,20 +185,22 @@ const agent = new CompositeVoice({
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    apiKey: 'your-deepgram-key',
-    options: { model: 'nova-3', interimResults: true, endpointing: 300 },
-  }),
-  llm: new AnthropicLLM({
-    apiKey: 'your-anthropic-key',
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant.',
-    maxTokens: 200,
-  }),
-  tts: new DeepgramTTS({
-    apiKey: 'your-deepgram-key',
-    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
-  }),
+  providers: [
+    new DeepgramSTT({
+      apiKey: 'your-deepgram-key',
+      options: { model: 'nova-3', interimResults: true, endpointing: 300 },
+    }),
+    new AnthropicLLM({
+      apiKey: 'your-anthropic-key',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant.',
+      maxTokens: 200,
+    }),
+    new DeepgramTTS({
+      apiKey: 'your-deepgram-key',
+      options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+    }),
+  ],
   turnTaking: {
     pauseCaptureOnPlayback: false,  // full-duplex -- DeepgramSTT handles echo cancellation
   },
@@ -213,7 +217,7 @@ agent.on('transcription.interim', async ({ text }) => {
 **Always-safe mode for unknown environments:**
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   turnTaking: {
     pauseCaptureOnPlayback: true,  // always pause -- no echo, no barge-in
   },
@@ -246,7 +250,7 @@ The SDK logs its decision at the `debug` log level. Enable debug logging to see 
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: { enabled: true, level: 'debug' },
 });
 // Console: "Turn-taking: Auto mode with conservative strategy (DeepgramSTT + DeepgramTTS)"

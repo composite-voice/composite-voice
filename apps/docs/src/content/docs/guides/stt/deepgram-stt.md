@@ -11,11 +11,9 @@ Use DeepgramSTT for production voice pipelines that need high accuracy, word-lev
 ## Prerequisites
 
 - A [Deepgram](https://deepgram.com) API key
-- The `@deepgram/sdk` peer dependency installed:
+- No additional peer dependencies required
 
-```bash
-npm install @deepgram/sdk
-```
+DeepgramSTT connects through a raw native WebSocket managed by the SDK's built-in `WebSocketManager`.
 
 For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
@@ -25,22 +23,25 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    options: {
-      model: 'nova-3',
-      smartFormat: true,
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      options: {
+        model: 'nova-3',
+        smartFormat: true,
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -54,7 +55,7 @@ await agent.start();
 | `options.model` | `string` | `'nova-3'` | Transcription model (see model table below) |
 | `options.smartFormat` | `boolean` | `true` | Auto-punctuation and formatting |
 | `options.punctuation` | `boolean` | `true` | Add punctuation to results |
-| `options.endpointing` | `boolean \| number` | `10` | Milliseconds of silence before end-of-speech (`false` to disable) |
+| `options.endpointing` | `boolean \| number` | `false` | Milliseconds of silence before end-of-speech (`false` to disable) |
 | `options.diarize` | `boolean` | `false` | Speaker identification (V1 only) |
 | `options.keywords` | `string[]` | -- | Boost recognition of specific terms (with optional weight, e.g. `'Deepgram:2'`) |
 | `options.vadEvents` | `boolean` | `false` | Emit `SpeechStarted` events (V1 only) |
@@ -88,44 +89,47 @@ V1 uses an event-streaming model with `Results` events containing `is_final` and
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    interimResults: true,
-    options: {
-      model: 'nova-3',
-      smartFormat: true,
-      punctuation: true,
-      endpointing: 300,
-      keywords: ['CompositeVoice'],
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      interimResults: true,
+      options: {
+        model: 'nova-3',
+        smartFormat: true,
+        punctuation: true,
+        endpointing: 300,
+        keywords: ['CompositeVoice'],
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   // eagerLLM requires DeepgramFlux — see the DeepgramFlux guide for eager pipeline setup
   conversationHistory: { enabled: true, maxTurns: 10 },
   logging: { enabled: true, level: 'info' },
 });
 
-agent.on('transcription:final', (event) => {
+agent.on('transcription.final', (event) => {
   console.log('User said:', event.text);
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your Deepgram key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically.
-- **Install the peer dependency.** DeepgramSTT dynamically imports `@deepgram/sdk` at initialization. If the package is missing, you get a clear error with install instructions.
+- **No peer dependencies.** DeepgramSTT uses a raw native WebSocket, not the `@deepgram/sdk`. No extra packages to install.
 - **Utterance buffering.** Deepgram may split one utterance into multiple `is_final` segments before emitting `speech_final`. DeepgramSTT buffers these segments and delivers the complete utterance text when `speechFinal: true`.
 - **No preflight signals.** DeepgramSTT (V1/Nova) does not emit preflight/eager end-of-turn events. For the eager LLM pipeline, use [DeepgramFlux](/guides/stt/deepgram-flux) instead.
 - **Connection timeout.** The WebSocket connection defaults to a 10-second timeout. Adjust with `timeout` in the config if your network is slow.

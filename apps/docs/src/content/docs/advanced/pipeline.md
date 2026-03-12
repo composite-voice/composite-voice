@@ -5,19 +5,19 @@ order: 1
 ---
 
 ### The voice pipeline
-CompositeVoice connects three provider stages into a streaming pipeline:
+CompositeVoice connects five pipeline roles into a streaming pipeline:
 
 ```
-Microphone → STT → LLM → TTS → Speaker
+Input → STT → LLM → TTS → Output
 ```
 
-Audio flows left to right. Each stage processes its input incrementally and passes results downstream:
+Audio flows left to right. Each role processes its input incrementally and passes results downstream:
 
-1. **AudioCapture** opens the microphone and delivers PCM chunks (default: 16kHz, 100ms per chunk)
-2. **STT** receives audio chunks and emits transcription results (interim and final)
-3. **LLM** receives the final transcript and streams text tokens
-4. **TTS** receives text tokens as they arrive and streams audio chunks
-5. **AudioPlayer** buffers and plays audio through the speakers
+1. **Input** captures audio and delivers PCM chunks to the pipeline. Built-in providers: `MicrophoneInput` (opens the browser microphone, default 16kHz, 100ms per chunk) and `BufferInput` (accepts programmatic audio buffers).
+2. **STT** receives audio chunks and emits transcription results (interim and final).
+3. **LLM** receives the final transcript and streams text tokens.
+4. **TTS** receives text tokens as they arrive and streams audio chunks.
+5. **Output** buffers and plays audio through the speakers. Built-in providers: `BrowserAudioOutput` (Web Audio API playback) and `NullOutput` (discards audio, useful for testing).
 
 ### State machine
 The SDK tracks a high-level agent state derived from three sub-states: capture, processing, and playback.
@@ -37,7 +37,7 @@ The SDK tracks a high-level agent state derived from three sub-states: capture, 
 
 Subscribe to state changes:
 ```typescript
-voice.on('agent:stateChange', ({ state }) => {
+voice.on('agent.stateChange', ({ state }) => {
   // Update your UI based on the current state
 });
 ```
@@ -62,7 +62,7 @@ Audio playback: ░░░░░░░░░░░░░░░░░░███�
 The eager pipeline reduces latency further by starting LLM generation before the final transcript arrives.
 
 **How it works:**
-1. The [DeepgramFlux](/guides/stt/deepgram-flux) provider detects likely end-of-speech and fires a `transcription:preflight` event
+1. The [DeepgramFlux](/guides/stt/deepgram-flux) provider detects likely end-of-speech and fires a `transcription.preflight` event
 2. The SDK immediately sends the current transcript to the LLM
 3. If the user keeps speaking, the SDK cancels the in-flight LLM request and restarts with the updated text
 4. If the preflight was correct (user stopped speaking), the LLM response is already 100-300ms ahead
@@ -103,15 +103,17 @@ The SDK uses [textSimilarity](/api/functions/textsimilarity) to compare prefligh
 
 ```typescript
 const voice = new CompositeVoice({
-  stt: new DeepgramFlux({
-    proxyUrl: '/api/proxy/deepgram',
-    options: {
-      model: 'flux-general-en',
-      eagerEotThreshold: 0.5,
-    },
-  }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramFlux({
+      proxyUrl: '/api/proxy/deepgram',
+      options: {
+        model: 'flux-general-en',
+        eagerEotThreshold: 0.5,
+      },
+    }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
@@ -123,7 +125,7 @@ const voice = new CompositeVoice({
 **Requirements:** [DeepgramFlux](/guides/stt/deepgram-flux) with a Flux model (e.g. `flux-general-en`). [DeepgramSTT](/guides/stt/deepgram-stt) (V1/Nova) does not emit preflight signals. Other STT providers do not emit preflight events.
 
 ### Custom providers
-Extend the base classes to add your own STT, LLM, or TTS provider.
+Extend the base classes to add your own input, STT, LLM, TTS, or output provider.
 
 **Custom LLM provider:**
 ```typescript
@@ -204,17 +206,23 @@ class MyTTS extends LiveTTSProvider {
 **Provider hierarchy:**
 ```
 BaseProvider
+├── BaseInputProvider     ← audio input (implement startCapture, stopCapture)
+│   ├── MicrophoneInput   ← browser microphone via getUserMedia
+│   └── BufferInput       ← programmatic audio buffers
 ├── BaseSTTProvider
 │   ├── LiveSTTProvider    ← WebSocket STT (implement connect, sendAudio, disconnect)
 │   └── RestSTTProvider    ← REST STT (implement transcribe)
 ├── BaseLLMProvider        ← all LLMs (implement generate, generateFromMessages)
-└── BaseTTSProvider
-    ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendText, finalize, disconnect)
-    └── RestTTSProvider    ← REST TTS (implement synthesize)
+├── BaseTTSProvider
+│   ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendText, finalize, disconnect)
+│   └── RestTTSProvider    ← REST TTS (implement synthesize)
+└── BaseOutputProvider    ← audio output (implement playAudio, stopPlayback)
+    ├── BrowserAudioOutput ← Web Audio API playback
+    └── NullOutput         ← discards audio (testing)
 ```
 
 ### Audio internals
 
-**AudioCapture** wraps `navigator.mediaDevices.getUserMedia()` with a ScriptProcessorNode (or AudioWorklet where supported). It delivers fixed-size PCM chunks at the configured sample rate and chunk duration.
+**MicrophoneInput** wraps `navigator.mediaDevices.getUserMedia()` with a ScriptProcessorNode (or AudioWorklet where supported). It delivers fixed-size PCM chunks at the configured sample rate and chunk duration.
 
-**AudioPlayer** uses a Web Audio API AudioContext with buffering. It accumulates audio chunks until `minBufferDuration` is reached, then begins playback. When `smoothing` is enabled, it crossfades between chunks to eliminate clicks.
+**BrowserAudioOutput** uses a Web Audio API AudioContext with buffering. It accumulates audio chunks until `minBufferDuration` is reached, then begins playback. When `smoothing` is enabled, it crossfades between chunks to eliminate clicks.

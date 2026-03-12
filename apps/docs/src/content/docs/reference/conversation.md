@@ -12,9 +12,7 @@ CompositeVoice maintains a conversation history that gives the LLM context from 
 
 ```typescript
 const voice = new CompositeVoice({
-  stt: ...,
-  llm: ...,
-  tts: ...,
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: true,   // default: false
     maxTurns: 10,    // default: 0 (unlimited)
@@ -95,7 +93,7 @@ Use this when switching topics or resetting a conversation without disposing the
 
 ```typescript
 const voice = new CompositeVoice({
-  // ...providers
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: false,  // each utterance is independent (default)
   },

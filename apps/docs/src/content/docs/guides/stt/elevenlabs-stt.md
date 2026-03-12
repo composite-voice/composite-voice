@@ -21,20 +21,23 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 import { CompositeVoice, ElevenLabsSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new ElevenLabsSTT({
-    proxyUrl: '/api/proxy/elevenlabs',
-    model: 'scribe_v2_realtime',
-    audioFormat: 'pcm_16000',
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new ElevenLabsSTT({
+      proxyUrl: '/api/proxy/elevenlabs',
+      model: 'scribe_v2_realtime',
+      audioFormat: 'pcm_16000',
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -48,14 +51,14 @@ await agent.start();
 | `audioFormat` | `string` | `'pcm_16000'` | Audio encoding format (see table below) |
 | `language` | `string` | -- | Language code (BCP 47 or ISO 639-3). Omit for auto-detection |
 | `commitStrategy` | `'vad' \| 'manual'` | `'vad'` | How utterance boundaries are determined |
-| `vadSilenceThresholdSecs` | `number` | `1.5` | Seconds of silence before VAD commits |
-| `vadThreshold` | `number` | `0.4` | VAD sensitivity (0.0 to 1.0) |
-| `minSpeechDurationMs` | `number` | `100` | Minimum speech duration before detection |
-| `minSilenceDurationMs` | `number` | `100` | Minimum silence duration before segment ends |
+| `vadSilenceThresholdSecs` | `number` | -- | Seconds of silence before VAD commits |
+| `vadThreshold` | `number` | -- | VAD sensitivity (0.0 to 1.0) |
+| `minSpeechDurationMs` | `number` | -- | Minimum speech duration before detection |
+| `minSilenceDurationMs` | `number` | -- | Minimum silence duration before segment ends |
 | `includeTimestamps` | `boolean` | `false` | Include word-level timestamps in results |
 | `includeLanguageDetection` | `boolean` | `false` | Include detected language in results |
 | `previousText` | `string` | -- | Context text for the model (first chunk only, max ~50 chars) |
-| `enableLogging` | `boolean` | `true` | When `false`, enables zero-retention mode |
+| `enableLogging` | `boolean` | -- | When `false`, enables zero-retention mode |
 | `interimResults` | `boolean` | `true` | Emit partial transcripts while the user speaks |
 | `timeout` | `number` | `10000` | Connection timeout in milliseconds |
 
@@ -102,39 +105,41 @@ Omit the `language` option entirely to enable auto-detection (90+ languages).
 import { CompositeVoice, ElevenLabsSTT, AnthropicLLM, ElevenLabsTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new ElevenLabsSTT({
-    proxyUrl: '/api/proxy/elevenlabs',
-    model: 'scribe_v2_realtime',
-    audioFormat: 'pcm_16000',
-    language: 'en',
-    commitStrategy: 'vad',
-    includeTimestamps: true,
-    vadSilenceThresholdSecs: 1.5,
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
-  }),
-  tts: new ElevenLabsTTS({
-    proxyUrl: '/api/proxy/elevenlabs',
-    voiceId: '21m00Tcm4TlvDq8ikWAM',
-    modelId: 'eleven_turbo_v2_5',
-  }),
+  providers: [
+    new ElevenLabsSTT({
+      proxyUrl: '/api/proxy/elevenlabs',
+      model: 'scribe_v2_realtime',
+      audioFormat: 'pcm_16000',
+      language: 'en',
+      commitStrategy: 'vad',
+      includeTimestamps: true,
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
+    }),
+    new ElevenLabsTTS({
+      proxyUrl: '/api/proxy/elevenlabs',
+      voiceId: '21m00Tcm4TlvDq8ikWAM',
+      modelId: 'eleven_turbo_v2_5',
+    }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
   logging: { enabled: true, level: 'info' },
 });
 
-agent.on('transcription:final', (event) => {
+agent.on('transcription.final', (event) => {
   console.log('User said:', event.text);
 });
 
-agent.on('response:text', (event) => {
+agent.on('response.text', (event) => {
   console.log('Assistant:', event.text);
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips and gotchas

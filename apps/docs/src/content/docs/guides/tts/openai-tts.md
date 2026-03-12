@@ -21,20 +21,23 @@ npm install openai
 import { CompositeVoice, NativeSTT, AnthropicLLM, OpenAITTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new OpenAITTS({
-    proxyUrl: '/api/proxy/openai',
-    model: 'tts-1',
-    voice: 'nova',
-    responseFormat: 'mp3',
-  }),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new OpenAITTS({
+      proxyUrl: '/api/proxy/openai',
+      model: 'tts-1',
+      voice: 'nova',
+      responseFormat: 'mp3',
+    }),
+  ],
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Configuration options
@@ -81,18 +84,21 @@ const tts = new OpenAITTS({
 });
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts,
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    tts,
+  ],
 });
 
-voice.on('tts:start', () => console.log('Speaking...'));
-voice.on('tts:end', () => console.log('Done speaking'));
+voice.on('tts.start', () => console.log('Speaking...'));
+voice.on('tts.end', () => console.log('Done speaking'));
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Model selection

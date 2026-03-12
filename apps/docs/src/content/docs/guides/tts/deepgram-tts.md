@@ -9,11 +9,9 @@ Use DeepgramTTS for low-latency streaming speech synthesis. Text flows over a pe
 ## Prerequisites
 
 - A [Deepgram API key](https://console.deepgram.com/) or a CompositeVoice proxy server
-- Install the peer dependency:
+- No additional peer dependencies required
 
-```bash
-npm install @deepgram/sdk
-```
+DeepgramTTS connects through a raw native WebSocket managed by the SDK's built-in `WebSocketManager`.
 
 ## Basic setup
 
@@ -21,20 +19,23 @@ npm install @deepgram/sdk
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-    sampleRate: 24000,
-    outputFormat: 'linear16',
-  }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+      sampleRate: 24000,
+      outputFormat: 'linear16',
+    }),
+  ],
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Configuration options
@@ -48,8 +49,6 @@ await voice.start();
 | `outputFormat` | `string` | `'linear16'` | Audio encoding: `linear16`, `mulaw`, or `alaw` |
 | `options.model` | `string` | Falls back to `voice` | Overrides the voice model |
 | `options.encoding` | `string` | Falls back to `outputFormat` | Overrides the encoding |
-| `options.container` | `string` | `'none'` | Container format: `'none'` (raw) or `'wav'` |
-| `options.bitRate` | `number` | -- | Bit rate for encoded formats |
 
 ### Available voices
 
@@ -76,19 +75,22 @@ const tts = new DeepgramTTS({
 });
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts,
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    tts,
+  ],
   logging: { enabled: true, level: 'debug' },
 });
 
-voice.on('tts:start', () => console.log('Speaking...'));
-voice.on('tts:end', () => console.log('Done speaking'));
+voice.on('tts.start', () => console.log('Speaking...'));
+voice.on('tts.end', () => console.log('Done speaking'));
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Streaming lifecycle
@@ -118,7 +120,7 @@ await tts.disconnect();      // Close WebSocket
 
 - Use `proxyUrl` in production to keep your API key server-side. Pass `apiKey` only during local development.
 - Aura 2 voices deliver better quality than Aura 1. Use `aura-2-thalia-en` as a starting point.
-- Set `container: 'none'` (the default) for WebSocket streaming. Use `'wav'` only when you need a self-contained file.
+- DeepgramTTS uses raw native WebSocket, not `@deepgram/sdk`. No extra packages to install.
 - DeepgramTTS emits metadata events with sample rate and encoding information. Use these to configure downstream audio processing.
 
 ## Further reading

@@ -4,6 +4,10 @@ description: Low-latency real-time speech recognition with eager end-of-turn sig
 order: 3
 ---
 
+:::caution[Currently Disabled]
+DeepgramFlux is currently **disabled** and will throw an error on construction. The V2 Flux API integration is not yet available. This guide documents the intended API for when it becomes available.
+:::
+
 Use DeepgramFlux for the lowest-latency voice pipelines. It connects to Deepgram's V2 (Flux) streaming API, which delivers turn-based transcription with eager end-of-turn signals — the key ingredient for the [eager LLM pipeline](/advanced/pipeline#eager-llm-pipeline).
 
 ## Prerequisites
@@ -23,22 +27,24 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramFlux({
-    proxyUrl: '/api/proxy/deepgram',
-    options: {
-      model: 'flux-general-en',
-      eagerEotThreshold: 0.5,
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramFlux({
+      proxyUrl: '/api/proxy/deepgram',
+      options: {
+        model: 'flux-general-en',
+        eagerEotThreshold: 0.5,
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
@@ -46,7 +52,8 @@ const agent = new CompositeVoice({
   },
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -120,9 +127,11 @@ Enable the eager pipeline in CompositeVoice:
 
 ```typescript
 const agent = new CompositeVoice({
-  stt,
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    stt,
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
@@ -139,27 +148,29 @@ The `similarityThreshold` controls how different the final text can be from the 
 import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramFlux({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    options: {
-      model: 'flux-general-en',
-      eagerEotThreshold: 0.5,
-      eotThreshold: 0.7,
-      eotTimeoutMs: 5000,
-      keyterms: ['CompositeVoice'],
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramFlux({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      options: {
+        model: 'flux-general-en',
+        eagerEotThreshold: 0.5,
+        eotThreshold: 0.7,
+        eotTimeoutMs: 5000,
+        keyterms: ['CompositeVoice'],
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
@@ -169,15 +180,16 @@ const agent = new CompositeVoice({
   logging: { enabled: true, level: 'info' },
 });
 
-agent.on('transcription:preflight', (event) => {
+agent.on('transcription.preflight', (event) => {
   console.log('Eager end-of-turn:', event.text);
 });
 
-agent.on('transcription:speechFinal', (event) => {
+agent.on('transcription.speechFinal', (event) => {
   console.log('Confirmed:', event.text);
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips and gotchas

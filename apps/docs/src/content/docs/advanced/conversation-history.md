@@ -6,7 +6,7 @@ order: 4
 
 ### What conversation history does
 
-By default, each user utterance is sent to the LLM in isolation. The agent has no memory of what was said before -- every turn starts fresh.
+By default, the SDK sends each user utterance to the LLM in isolation. The agent has no memory of what was said before -- every turn starts fresh.
 
 When conversation history is enabled, the SDK accumulates user and assistant messages across turns and sends them to the LLM as context. This gives the agent multi-turn memory within a session:
 
@@ -27,14 +27,16 @@ Pass the `conversationHistory` option when creating the agent:
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new AnthropicLLM({
-    apiKey: 'sk-ant-...',
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Remember everything the user tells you.',
-    maxTokens: 300,
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new AnthropicLLM({
+      apiKey: 'sk-ant-...',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Remember everything the user tells you.',
+      maxTokens: 300,
+    }),
+    new NativeTTS(),
+  ],
   conversationHistory: {
     enabled: true,
     maxTurns: 10,
@@ -62,7 +64,7 @@ Turn 2:  { role: 'user', content: 'What is 2 + 2?' }
          { role: 'assistant', content: 'That equals 4.' }
 ```
 
-With `maxTurns: 10`, the history array holds up to 20 messages (10 user + 10 assistant). The user message is added to the history before the LLM request is sent, so the LLM always sees the current utterance in context.
+With `maxTurns: 10`, the history array holds up to 20 messages (10 user + 10 assistant). The SDK adds the user message to the history before sending the LLM request, so the LLM always sees the current utterance in context.
 
 ### How trimming works
 
@@ -89,15 +91,15 @@ Turn 5:  history = [u1, a1, u2, a2, u3, a3, u4, a4, u5, a5]       → 5 turns
 Turn 6:  history = [u2, a2, u3, a3, u4, a4, u5, a5, u6, a6]       → 5 turns (u1/a1 dropped)
 ```
 
-Setting `maxTurns: 0` disables trimming entirely. The history grows without limit until you call `clearHistory()` or dispose the agent. Use this with caution -- very long histories increase LLM token usage and latency.
+Setting `maxTurns: 0` disables trimming entirely. The history grows without limit until you call `clearHistory()` or dispose the agent -- long histories increase LLM token usage and latency.
 
 ### System prompts and history
 
-The system prompt is configured on the LLM provider, not in the conversation history. When conversation history is enabled, the SDK sends the accumulated `user` and `assistant` messages to the LLM's `generateFromMessages()` method. The LLM provider prepends the system prompt automatically.
+You configure the system prompt on the LLM provider, not in the conversation history. When conversation history is enabled, the SDK sends the accumulated `user` and `assistant` messages to the LLM's `generateFromMessages()` method, and the LLM provider prepends the system prompt automatically.
 
-For example, with `AnthropicLLM`, the system prompt is extracted from the message array and passed as Anthropic's top-level `system` parameter. With OpenAI-compatible providers, it is included as the first message with `role: 'system'`.
+For example, `AnthropicLLM` extracts the system prompt from the message array and passes it as Anthropic's top-level `system` parameter. OpenAI-compatible providers include it as the first message with `role: 'system'`.
 
-The system prompt is not part of the conversation history array. It does not count toward `maxTurns` and is never trimmed. It is always included in every LLM request, regardless of history length.
+Because the system prompt lives outside the conversation history array, it does not count toward `maxTurns`, is never trimmed, and appears in every LLM request regardless of history length.
 
 ```typescript
 const llm = new AnthropicLLM({
@@ -108,7 +110,7 @@ const llm = new AnthropicLLM({
 });
 
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });
 
@@ -151,15 +153,17 @@ After clearing, the agent continues to accumulate new turns if `conversationHist
 **Basic multi-turn agent with NativeSTT:**
 ```typescript
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US', continuous: true, interimResults: true }),
-  llm: new AnthropicLLM({
-    apiKey: 'sk-ant-...',
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a friendly voice assistant. Remember everything discussed.',
-    maxTokens: 300,
-    temperature: 0.7,
-  }),
-  tts: new NativeTTS({ rate: 1.0 }),
+  providers: [
+    new NativeSTT({ language: 'en-US', continuous: true, interimResults: true }),
+    new AnthropicLLM({
+      apiKey: 'sk-ant-...',
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a friendly voice assistant. Remember everything discussed.',
+      maxTokens: 300,
+      temperature: 0.7,
+    }),
+    new NativeTTS({ rate: 1.0 }),
+  ],
   conversationHistory: {
     enabled: true,
     maxTurns: 10,
@@ -177,28 +181,30 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    language: 'en-US',
-    options: {
-      model: 'nova-3',
-      smartFormat: true,
-      interimResults: true,
-      endpointing: 300,
-      vadEvents: true,
-    },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a concise voice assistant. Keep responses to two sentences.',
-    maxTokens: 300,
-    temperature: 0.7,
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      language: 'en-US',
+      options: {
+        model: 'nova-3',
+        smartFormat: true,
+        interimResults: true,
+        endpointing: 300,
+        vadEvents: true,
+      },
+    }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a concise voice assistant. Keep responses to two sentences.',
+      maxTokens: 300,
+      temperature: 0.7,
+    }),
+    new DeepgramTTS({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+    }),
+  ],
   conversationHistory: {
     enabled: true,
     maxTurns: 10,
@@ -209,7 +215,7 @@ const agent = new CompositeVoice({
 **Short memory for quick Q&A (3 turns):**
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   conversationHistory: {
     enabled: true,
     maxTurns: 3,  // only remember the last 3 exchanges
@@ -222,7 +228,7 @@ This is useful for voice agents that handle transactional queries where deep con
 **Unlimited history for long-form conversations:**
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   conversationHistory: {
     enabled: true,
     maxTurns: 0,  // no limit -- history grows until cleared or disposed

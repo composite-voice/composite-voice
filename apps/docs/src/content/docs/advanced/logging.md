@@ -12,7 +12,7 @@ Logging is disabled by default. Enable it through the `logging` option when crea
 import { CompositeVoice } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'info',
@@ -66,7 +66,7 @@ During development, set the level to `'debug'` to see the full internal trace --
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'debug',
@@ -97,7 +97,7 @@ import pino from 'pino';
 const log = pino({ level: 'debug' });
 
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'debug',
@@ -115,7 +115,7 @@ Forward SDK logs to an external service for production observability:
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'warn', // only capture warnings and errors in production
@@ -165,7 +165,7 @@ function createSDKLogger() {
 }
 
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'info',

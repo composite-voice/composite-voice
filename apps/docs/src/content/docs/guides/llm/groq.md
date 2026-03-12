@@ -23,16 +23,19 @@ Groq's API is OpenAI-compatible, so the `openai` package handles all communicati
 import { CompositeVoice, GroqLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new GroqLLM({
-    proxyUrl: '/api/proxy/groq',
-    model: 'llama-3.3-70b-versatile',
-    systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new GroqLLM({
+      proxyUrl: '/api/proxy/groq',
+      model: 'llama-3.3-70b-versatile',
+      systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -71,27 +74,30 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    options: { model: 'nova-3', smartFormat: true },
-  }),
-  llm: new GroqLLM({
-    proxyUrl: '/api/proxy/groq',
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.7,
-    maxTokens: 256,
-    systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      options: { model: 'nova-3', smartFormat: true },
+    }),
+    new GroqLLM({
+      proxyUrl: '/api/proxy/groq',
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      maxTokens: 256,
+      systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
   eagerLLM: { enabled: true },
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips

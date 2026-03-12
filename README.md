@@ -275,10 +275,11 @@ const agent = new CompositeVoice({
 
 | Provider        | Transport      | Browser support     | Peer dependency |
 | --------------- | -------------- | ------------------- | --------------- |
-| `NativeSTT`     | Web Speech API | Chrome, Edge        | None            |
-| `DeepgramSTT`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
-| `DeepgramFlux`  | WebSocket      | All modern browsers | `@deepgram/sdk` |
-| `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
+| `NativeSTT`      | Web Speech API | Chrome, Edge        | None            |
+| `DeepgramSTT`    | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `DeepgramFlux`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `AssemblyAISTT`  | WebSocket      | All modern browsers | None            |
+| `ElevenLabsSTT`  | WebSocket      | All modern browsers | None            |
 
 **`NativeSTT` options:**
 
@@ -310,6 +311,8 @@ new DeepgramSTT({
 
 **`DeepgramFlux` options (V2/Flux — supports eager LLM):**
 
+> **Note:** DeepgramFlux is currently disabled and throws on construction. It requires `@deepgram/sdk` V5 (`listen.v2` API), which is not yet stable. Use `DeepgramSTT` with Nova models instead. The class is preserved for future re-enablement when the V5 SDK stabilizes.
+
 ```typescript
 new DeepgramFlux({
   apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
@@ -330,6 +333,19 @@ new AssemblyAISTT({
   sampleRate: 16000, // audio sample rate in Hz
   wordBoost: ['CompositeVoice'], // boost recognition of specific words
   interimResults: true, // partial transcripts while speaking
+});
+```
+
+**`ElevenLabsSTT` options:**
+
+```typescript
+new ElevenLabsSTT({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  model: 'scribe_v2_realtime', // default model
+  audioFormat: 'pcm_16000', // audio format
+  language: 'en', // BCP 47, ISO 639-1, or ISO 639-3
+  commitStrategy: 'vad', // 'vad' (default) or 'manual'
+  includeTimestamps: true, // word-level timestamps
 });
 ```
 
@@ -1073,20 +1089,21 @@ For a full implementation guide, see [CONTRIBUTING.md](./CONTRIBUTING.md#adding-
 
 ## Examples
 
-27 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
+29 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
 
-### Getting started (00–05)
+### Getting started (00–06)
 
 Browser-native providers and core SDK patterns. Only an Anthropic API key is required for most examples.
 
-| #                                         | What it demonstrates                    | API keys needed | Port |
-| ----------------------------------------- | --------------------------------------- | --------------- | ---- |
-| [00](./examples/00-minimal-voice-agent/)  | Minimum viable voice agent              | Anthropic       | 3000 |
-| [01](./examples/01-conversation-history/) | Multi-turn conversation memory          | Anthropic       | 3001 |
-| [02](./examples/02-system-persona/)       | System prompt persona configuration     | Anthropic       | 3002 |
-| [03](./examples/03-event-inspector/)      | Full event timeline and debugging       | Anthropic       | 3003 |
-| [04](./examples/04-error-recovery/)       | Error simulation and automatic recovery | Anthropic       | 3004 |
-| [05](./examples/05-turn-taking/)          | Turn-taking strategy visualization      | Anthropic       | 3005 |
+| #                                         | What it demonstrates                    | API keys needed      | Port |
+| ----------------------------------------- | --------------------------------------- | -------------------- | ---- |
+| [00](./examples/00-minimal-voice-agent/)  | Minimum viable voice agent              | Anthropic            | 3000 |
+| [01](./examples/01-conversation-history/) | Multi-turn conversation memory          | Anthropic            | 3001 |
+| [02](./examples/02-system-persona/)       | System prompt persona configuration     | Anthropic            | 3002 |
+| [03](./examples/03-event-inspector/)      | Full event timeline and debugging       | Anthropic            | 3003 |
+| [04](./examples/04-error-recovery/)       | Error simulation and automatic recovery | Anthropic            | 3004 |
+| [05](./examples/05-turn-taking/)          | Turn-taking strategy visualization      | Anthropic            | 3005 |
+| [06](./examples/06-advanced-config/)      | Advanced config — multi-role and 5-provider patterns with queue options | Anthropic + Deepgram | 3006 |
 
 ### Production patterns (10–13)
 
@@ -1154,13 +1171,14 @@ Real-time transcription with word-level timing.
 | ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
 | [70](./examples/70-assemblyai-pipeline/) | AssemblyAI STT + Claude + Deepgram TTS | AssemblyAI + Anthropic + Deepgram | 3070 |
 
-### ElevenLabs (80)
+### ElevenLabs (80–81)
 
-Ultra-low-latency streaming TTS with natural voices.
+Ultra-low-latency streaming TTS and real-time STT with natural voices.
 
-| #                                        | What it demonstrates                   | API keys needed                   | Port |
-| ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
-| [80](./examples/80-elevenlabs-pipeline/) | ElevenLabs TTS + Deepgram STT + Claude | ElevenLabs + Deepgram + Anthropic | 3080 |
+| #                                        | What it demonstrates                        | API keys needed                   | Port |
+| ---------------------------------------- | ------------------------------------------- | --------------------------------- | ---- |
+| [80](./examples/80-elevenlabs-pipeline/) | ElevenLabs TTS + Deepgram STT + Claude      | ElevenLabs + Deepgram + Anthropic | 3080 |
+| [81](./examples/81-elevenlabs-stt/)      | ElevenLabs STT (Scribe V2) standalone demo  | ElevenLabs                        | 3081 |
 
 ### Cartesia (90)
 
@@ -1198,6 +1216,7 @@ pnpm example:02-system-persona:dev               # http://localhost:3002
 pnpm example:03-event-inspector:dev              # http://localhost:3003
 pnpm example:04-error-recovery:dev               # http://localhost:3004
 pnpm example:05-turn-taking:dev                  # http://localhost:3005
+pnpm example:06-advanced-config:dev              # http://localhost:3006
 
 # Production patterns
 pnpm example:10-proxy-server:dev                 # http://localhost:3010
@@ -1232,6 +1251,7 @@ pnpm example:70-assemblyai-pipeline:dev          # http://localhost:3070
 
 # ElevenLabs
 pnpm example:80-elevenlabs-pipeline:dev          # http://localhost:3080
+pnpm example:81-elevenlabs-stt:dev               # http://localhost:3081
 
 # Cartesia
 pnpm example:90-cartesia-pipeline:dev            # http://localhost:3090
@@ -1247,15 +1267,15 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
-| ------------- | ------------- | ----------- | ------------ | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
-| Chrome / Edge | Full          | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
-| Firefox       | Not supported | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
-| Safari        | Limited       | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
+| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
+| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
+| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
+| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
+| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
 
 `NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) and REST-based providers (OpenAI) work across all modern browsers.
 
-For cross-browser production deployments, use `DeepgramSTT` or `AssemblyAISTT` for STT, and any cloud TTS provider.
+For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 
 ---
 

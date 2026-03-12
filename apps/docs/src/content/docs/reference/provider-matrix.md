@@ -4,7 +4,26 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 17 provider classes. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 11 provider companies across 17 provider classes, plus 4 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+
+### Audio Input / Output (Pipeline I/O)
+
+These providers handle the `input` and `output` roles in the 5-role pipeline. They are not tied to any vendor.
+
+| | MicrophoneInput | BufferInput | BrowserAudioOutput | NullOutput |
+|---|---|---|---|---|
+| **Role** | `input` | `input` | `output` | `output` |
+| **Environment** | Browser | Node/Bun/Deno | Browser | Node/Bun/Deno |
+| **Peer dependency** | None | None | None | None |
+| **Description** | Wraps `getUserMedia` + `AudioContext` for browser microphone capture | Accepts pushed `ArrayBuffer` data for server-side pipelines | Wraps `AudioContext` for browser speaker playback | Silently discards audio — for server-side pipelines |
+
+**MicrophoneInput** buffers audio frames in the input queue while the STT WebSocket connects, then flushes them in order — no audio is ever lost. **BufferInput** does the same for programmatic audio sources.
+
+**BrowserAudioOutput** handles `AudioContext` resumption and buffers frames in the output queue during speaker setup. **NullOutput** discards all audio — use it for server-side pipelines where there are no speakers.
+
+> Multi-role providers like `NativeSTT` (input+stt) and `NativeTTS` (tts+output) cover multiple pipeline roles. When using them, you do not need separate input or output providers.
+
+---
 
 ### Deepgram
 

@@ -93,6 +93,25 @@ LLM text streams to TTS as it arrives. Each `llm.chunk` forwards its text to the
 | `audio.playback.end` | `{}` | Audio playback finished |
 | `audio.playback.error` | `{ error: Error }` | Playback error |
 
+### Queue events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `queue.overflow` | `{ queueName: string, droppedChunks: number, strategy: string, currentSize: number, maxSize: number }` | Queue exceeded `maxSize`, chunks were dropped according to the overflow strategy |
+| `queue.stats` | `{ queueName: string, size: number, totalEnqueued: number, totalDequeued: number, totalDropped: number, oldestChunkAge: number \| null }` | Pipeline health snapshot — useful for monitoring buffer pressure |
+
+Queue events fire on the input and output buffer queues. Subscribe to `queue.overflow` to detect when audio frames are being dropped, and `queue.stats` for real-time monitoring of pipeline health.
+
+```typescript
+voice.on('queue.overflow', ({ queueName, droppedChunks, strategy, currentSize, maxSize }) => {
+  console.warn(`Queue "${queueName}" dropped ${droppedChunks} chunks (strategy: ${strategy}, ${currentSize}/${maxSize})`);
+});
+
+voice.on('queue.stats', ({ queueName, size, totalEnqueued, totalDequeued, totalDropped, oldestChunkAge }) => {
+  console.log(`Queue "${queueName}": ${size} buffered, ${totalEnqueued} enqueued, ${totalDropped} dropped`);
+});
+```
+
 ### Event flow diagram
 
 ```

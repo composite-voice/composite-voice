@@ -20,19 +20,22 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 import { CompositeVoice, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new AssemblyAISTT({
-    proxyUrl: '/api/proxy/assemblyai',
-    sampleRate: 16000,
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new AssemblyAISTT({
+      proxyUrl: '/api/proxy/assemblyai',
+      sampleRate: 16000,
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -55,32 +58,35 @@ See the [API reference](/api/classes/assemblyaistt) for the full list.
 import { CompositeVoice, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new AssemblyAISTT({
-    proxyUrl: '/api/proxy/assemblyai',
-    sampleRate: 16000,
-    language: 'en',
-    wordBoost: ['CompositeVoice', 'Deepgram', 'AssemblyAI'],
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
-  }),
-  tts: new NativeTTS({ voiceLang: 'en-US' }),
+  providers: [
+    new AssemblyAISTT({
+      proxyUrl: '/api/proxy/assemblyai',
+      sampleRate: 16000,
+      language: 'en',
+      wordBoost: ['CompositeVoice', 'Deepgram', 'AssemblyAI'],
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
+    }),
+    new NativeTTS({ voiceLang: 'en-US' }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
   logging: { enabled: true, level: 'info' },
 });
 
-agent.on('transcription:final', (event) => {
+agent.on('transcription.final', (event) => {
   console.log('User said:', event.text);
 });
 
-agent.on('response:text', (event) => {
+agent.on('response.text', (event) => {
   console.log('Assistant:', event.text);
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips and gotchas

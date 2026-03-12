@@ -23,57 +23,59 @@ The simplest pipeline uses browser-native speech recognition and synthesis -- ze
 ```typescript
 import {
   CompositeVoice,
-  NativeSTT,
   AnthropicLLM,
-  NativeTTS,
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+  ],
 });
 ```
+
+Only the LLM provider is required. When input+STT are omitted, the SDK defaults to `NativeSTT` (which covers both the `input` and `stt` pipeline roles). When TTS+output are omitted, it defaults to `NativeTTS` (covering `tts` and `output`).
 
 The `proxyUrl` keeps your Anthropic API key on the server. The browser never sees it. See [Secure your API key](#secure-your-api-key-with-the-server-proxy) below.
 
 ## Listen for events
 
-CompositeVoice uses an event-driven architecture. Subscribe to the events you care about before calling `start()`.
+Subscribe to events before calling `initialize()`.
 
 ```typescript
-voice.on('agent:stateChange', ({ state }) => {
+voice.on('agent.stateChange', ({ state }) => {
   console.log('State:', state);
   // idle -> ready -> listening -> thinking -> speaking
 });
 
-voice.on('transcription:speechFinal', ({ text }) => {
+voice.on('transcription.speechFinal', ({ text }) => {
   console.log('User:', text);
 });
 
-voice.on('llm:complete', ({ text }) => {
+voice.on('llm.complete', ({ text }) => {
   console.log('Assistant:', text);
 });
 
-voice.on('agent:error', ({ error }) => {
+voice.on('agent.error', ({ error }) => {
   console.error('Error:', error.message);
 });
 ```
 
 The state machine drives the UI. When the agent enters `listening`, show a recording indicator. When it enters `thinking`, show a loading spinner. When it enters `speaking`, animate the assistant avatar.
 
-## Start and stop
+## Initialize and start listening
 
 ```typescript
-await voice.start();  // Requests microphone permission, opens connections
+await voice.initialize();      // Initializes all providers
+await voice.startListening();  // Requests microphone, opens connections
 // ... user speaks, assistant responds ...
-await voice.stop();   // Releases microphone, closes connections
+await voice.stopListening();   // Releases microphone, closes connections
+await voice.dispose();         // Tears down all providers and releases resources
 ```
 
-`start()` returns a Promise that resolves once the microphone is active and all providers are connected. `stop()` tears everything down and releases all resources.
+`initialize()` resolves once all providers are ready. `startListening()` resolves once the microphone is active and streaming. `dispose()` releases all resources.
 
 ## Secure your API key with the server proxy
 
@@ -114,12 +116,14 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
 });
 ```
 

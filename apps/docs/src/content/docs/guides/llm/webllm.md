@@ -22,18 +22,21 @@ npm install @mlc-ai/web-llm
 import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new WebLLMLLM({
-    model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-    systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
-    onLoadProgress: ({ progress, text }) => {
-      console.log(`Loading: ${Math.round(progress * 100)}% - ${text}`);
-    },
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new WebLLMLLM({
+      model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+      systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
+      onLoadProgress: ({ progress, text }) => {
+        console.log(`Loading: ${Math.round(progress * 100)}% - ${text}`);
+      },
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -68,22 +71,25 @@ import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from '@lukeocodes/com
 const statusEl = document.getElementById('status')!;
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new WebLLMLLM({
-    model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-    systemPrompt: 'You are a helpful local assistant. Answer briefly.',
-    onLoadProgress: ({ progress, text }) => {
-      statusEl.textContent = `Loading model: ${Math.round(progress * 100)}% - ${text}`;
-    },
-    chatOpts: {
-      context_window_size: 2048,
-    },
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new WebLLMLLM({
+      model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+      systemPrompt: 'You are a helpful local assistant. Answer briefly.',
+      onLoadProgress: ({ progress, text }) => {
+        statusEl.textContent = `Loading model: ${Math.round(progress * 100)}% - ${text}`;
+      },
+      chatOpts: {
+        context_window_size: 2048,
+      },
+    }),
+    new NativeTTS(),
+  ],
 });
 
 statusEl.textContent = 'Initializing...';
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 statusEl.textContent = 'Ready - speak now';
 ```
 
@@ -92,7 +98,7 @@ statusEl.textContent = 'Ready - speak now';
 - **First load downloads the model.** Model weights are 100 MB or more. The browser caches them for subsequent loads, but the first visit takes significant time. Always wire `onLoadProgress` to a loading indicator.
 - **Show a progress bar.** The `onLoadProgress` callback provides `progress` (0--1), `timeElapsed` (seconds), and a human-readable `text` description.
 - **WebGPU is required.** If the user's browser lacks WebGPU support, initialization fails. Check for `navigator.gpu` before creating the provider.
-- **`dispose()` frees GPU memory.** Call `agent.stop()` when the user leaves to release VRAM via `engine.unload()`.
+- **`dispose()` frees GPU memory.** Call `await agent.dispose()` when the user leaves to release VRAM via `engine.unload()`.
 - **Abort uses `engine.interruptGenerate()`.** Unlike server-side providers that cancel HTTP requests, WebLLM interrupts the local inference loop directly.
 - **No API key or proxy needed.** WebLLMLLM is the only LLM provider that runs without any server infrastructure.
 

@@ -6,7 +6,7 @@ order: 2
 
 ## Full configuration shape
 
-Pass a configuration object to the `CompositeVoice` constructor. Only the three providers are required; everything else has sensible defaults.
+Pass a configuration object to the `CompositeVoice` constructor. Only the `providers` array is required (with at minimum an LLM provider); everything else has sensible defaults.
 
 ```typescript
 import {
@@ -17,26 +17,24 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  // Required -- one of each provider type
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  // Required -- provider instances for the 5-role pipeline
+  // Each provider declares its roles (input, stt, llm, tts, output).
+  // Uncovered input+stt defaults to NativeSTT; uncovered tts+output defaults to NativeTTS.
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
 
-  // Audio capture and playback
-  audio: {
+  // Audio buffer queues between pipeline stages
+  queue: {
     input: {
-      sampleRate: 16000,         // Hz (default: 16000)
-      format: 'pcm',            // 'pcm' | 'opus' | 'mp3' | 'wav' | 'webm' (default: 'pcm')
-      channels: 1,              // mono (default: 1)
-      chunkDuration: 100,       // ms per audio chunk (default: 100)
-      echoCancellation: true,   // browser echo cancellation (default: true)
-      noiseSuppression: true,   // browser noise suppression (default: true)
-      autoGainControl: true,    // browser auto gain (default: true)
+      maxSize: 1000,                  // max buffered chunks (default: 1000)
+      overflowStrategy: 'drop-oldest', // 'drop-oldest' | 'drop-newest' | 'block' (default: 'drop-oldest')
     },
     output: {
-      bufferSize: 4096,          // samples per buffer (default: 4096)
-      minBufferDuration: 200,    // ms before playback starts (default: 200)
-      enableSmoothing: true,     // crossfade between chunks (default: true)
+      maxSize: 1000,
+      overflowStrategy: 'drop-oldest',
     },
   },
 
@@ -54,7 +52,7 @@ const voice = new CompositeVoice({
 
   // Eager LLM -- speculative generation from preflight signals
   eagerLLM: {
-    enabled: false,             // requires DeepgramFlux provider
+    enabled: false,             // requires DeepgramFlux provider (currently disabled)
     cancelOnTextChange: true,   // cancel and restart if text diverges (default: true)
     similarityThreshold: 0.8,   // 0-1 word-overlap threshold (default: 0.8)
   },
@@ -79,13 +77,15 @@ const voice = new CompositeVoice({
 });
 ```
 
+Configure audio capture and playback settings on the input and output providers directly, not on the top-level config. For example, `MicrophoneInput` accepts `sampleRate`, `echoCancellation`, `noiseSuppression`, and `autoGainControl`. `BrowserAudioOutput` accepts `bufferSize`, `minBufferDuration`, and `enableSmoothing`. See [Audio](/advanced/audio) for details.
+
 ## Turn-taking strategies
 
 Turn-taking controls whether the SDK pauses microphone capture while the agent speaks. This prevents the agent's own audio from being re-transcribed, which would create a feedback loop.
 
 **`pauseCaptureOnPlayback: 'auto'`** (default) -- The SDK picks the best approach based on your provider combination and the `autoStrategy` setting.
 
-**`autoStrategy: 'conservative'`** (default) -- Pauses the microphone whenever TTS plays. Prevents all echo but means the user cannot interrupt the agent mid-sentence.
+**`autoStrategy: 'conservative'`** (default) -- Pauses the microphone whenever TTS plays. Prevents all echo but means the user must wait for the agent to finish before speaking.
 
 **`autoStrategy: 'aggressive'`** -- Only pauses for known echo-prone combinations (e.g., NativeSTT + NativeTTS). Allows user interruption with most cloud provider pairs.
 
@@ -106,9 +106,11 @@ When `enabled: true`, each STT final result and LLM response is appended to an i
 
 ```typescript
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
   conversationHistory: {
     enabled: true,
     maxTurns: 20,
@@ -123,7 +125,7 @@ voice.clearHistory();
 
 The eager LLM pipeline reduces perceived latency by 100-300ms through speculative generation.
 
-Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, which connects to Deepgram's V2 API and emits preflight/eager end-of-turn signals. [DeepgramSTT](/guides/stt/deepgram-stt) (V1/Nova) does not support preflight. When the STT detects end-of-speech early, it fires a `transcription:preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
+Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, which connects to Deepgram's V2 API and emits preflight/eager end-of-turn signals. [DeepgramSTT](/guides/stt/deepgram-stt) (V1/Nova) does not support preflight. When the STT detects end-of-speech early, it fires a `transcription.preflight` event. The SDK starts LLM generation immediately -- before the final transcript arrives.
 
 If `cancelOnTextChange` is `true` and the final transcript differs beyond `similarityThreshold` (default: 0.8), the speculative generation is cancelled via `AbortSignal` and restarted with the confirmed text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 
@@ -131,15 +133,17 @@ If `cancelOnTextChange` is `true` and the final transcript differs beyond `simil
 import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramFlux({
-    proxyUrl: '/api/proxy/deepgram',
-    options: {
-      model: 'flux-general-en',
-      eagerEotThreshold: 0.5,
-    },
-  }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramFlux({
+      proxyUrl: '/api/proxy/deepgram',
+      options: {
+        model: 'flux-general-en',
+        eagerEotThreshold: 0.5,
+      },
+    }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
   eagerLLM: {
     enabled: true,
     cancelOnTextChange: true,
@@ -148,13 +152,15 @@ const voice = new CompositeVoice({
 });
 ```
 
+> **Note:** DeepgramFlux is currently disabled and will throw on construction. It is preserved for future re-enablement when the Deepgram V2 SDK stabilizes.
+
 ## Logging
 
 Enable debug logging during development to trace every event, provider message, and state transition:
 
 ```typescript
 const voice = new CompositeVoice({
-  // ...providers
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'debug',
@@ -177,7 +183,7 @@ Supply a custom logger function to route SDK logs into your own logging infrastr
 
 ```typescript
 const voice = new CompositeVoice({
-  // ...providers
+  providers: [/* ...your providers */],
   logging: {
     enabled: true,
     level: 'debug',
