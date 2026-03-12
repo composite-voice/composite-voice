@@ -47,5 +47,11 @@ jobs:
               run: pnpm run type-check
               continue-on-error: true
 
+            - name: Build SDK
+              run: pnpm run build
+
             - name: Run tests
               run: pnpm run test:coverage
+
+            - name: Check examples compile against SDK
+              run: pnpm run check:examples

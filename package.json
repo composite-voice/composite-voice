@@ -55,6 +55,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"*.md\" \"*.json\" \"*.js\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"*.md\" \"*.json\" \"*.js\"",
     "type-check": "tsc --noEmit",
+    "check:examples": "bash scripts/check-examples.sh",
     "prepublishOnly": "pnpm run format && pnpm run build && pnpm run test",
     "prepare": "husky",
     "example:00-minimal-voice-agent:dev": "pnpm --filter @lukeocodes/composite-voice-example-00-minimal-voice-agent dev",

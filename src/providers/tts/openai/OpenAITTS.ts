@@ -18,6 +18,7 @@ import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
+import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type OpenAI = typeof import('openai').default;
@@ -251,41 +252,30 @@ export class OpenAITTS extends RestTTSProvider {
       );
     }
 
-    try {
-      // Dynamically import OpenAI SDK (peer dependency)
-      const OpenAIModule = await import('openai');
-      const OpenAI = OpenAIModule.default;
+    // Dynamically import OpenAI SDK (peer dependency)
+    const OpenAI = await importPeerDep<typeof import('openai').default>(
+      'openai',
+      'OpenAITTS',
+    );
 
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+    const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+    const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
 
-      // Initialize OpenAI client
-      this.client = new OpenAI({
-        apiKey,
-        organization: this.config.organizationId,
-        baseURL,
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-      });
+    // Initialize OpenAI client
+    this.client = new OpenAI({
+      apiKey,
+      organization: this.config.organizationId,
+      baseURL,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      dangerouslyAllowBrowser: true,
+    });
 
-      this.logger.info('OpenAI TTS initialized', {
-        model: this.config.model ?? 'tts-1',
-        voice: this.config.voice ?? 'alloy',
-        responseFormat: this.config.responseFormat ?? 'mp3',
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'OpenAITTS',
-          new Error(
-            'OpenAI SDK not found. Install with: npm install openai\n' +
-              'The OpenAI SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('OpenAITTS', error as Error);
-    }
+    this.logger.info('OpenAI TTS initialized', {
+      model: this.config.model ?? 'tts-1',
+      voice: this.config.voice ?? 'alloy',
+      responseFormat: this.config.responseFormat ?? 'mp3',
+    });
   }
 
   /**

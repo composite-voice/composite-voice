@@ -29,6 +29,7 @@ import type {
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
+import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type AnthropicSDK = typeof import('@anthropic-ai/sdk').default;
@@ -235,41 +236,30 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
       );
     }
 
-    try {
-      // Dynamically import Anthropic SDK (peer dependency)
-      const AnthropicModule = await import('@anthropic-ai/sdk');
-      const Anthropic = AnthropicModule.default;
+    // Dynamically import Anthropic SDK (peer dependency)
+    const Anthropic = await importPeerDep<typeof import('@anthropic-ai/sdk').default>(
+      '@anthropic-ai/sdk',
+      'AnthropicLLM',
+    );
 
-      // When using a proxy, point the SDK at the proxy URL with a dummy key.
-      // The proxy server injects the real Anthropic API key.
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+    // When using a proxy, point the SDK at the proxy URL with a dummy key.
+    // The proxy server injects the real Anthropic API key.
+    const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+    const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
 
-      // Initialize Anthropic client
-      this.client = new Anthropic({
-        apiKey,
-        baseURL,
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-      });
+    // Initialize Anthropic client
+    this.client = new Anthropic({
+      apiKey,
+      baseURL,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      dangerouslyAllowBrowser: true,
+    });
 
-      this.logger.info('Anthropic LLM initialized', {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'AnthropicLLM',
-          new Error(
-            'Anthropic SDK not found. Install with: npm install @anthropic-ai/sdk\n' +
-              'The Anthropic SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('AnthropicLLM', error as Error);
-    }
+    this.logger.info('Anthropic LLM initialized', {
+      model: this.config.model,
+      stream: this.config.stream ?? true,
+    });
   }
 
   /**

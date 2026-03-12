@@ -30,6 +30,7 @@ import type {
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
+import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type OpenAI = typeof import('openai').default;
@@ -242,40 +243,29 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
       );
     }
 
-    try {
-      // Dynamically import OpenAI SDK (peer dependency)
-      const OpenAIModule = await import('openai');
-      const OpenAI = OpenAIModule.default;
+    // Dynamically import OpenAI SDK (peer dependency)
+    const OpenAI = await importPeerDep<typeof import('openai').default>(
+      'openai',
+      this.providerName,
+    );
 
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+    const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+    const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
 
-      // Initialize OpenAI-compatible client
-      this.client = new OpenAI({
-        apiKey,
-        baseURL,
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-        ...this.buildClientOptions(),
-      });
+    // Initialize OpenAI-compatible client
+    this.client = new OpenAI({
+      apiKey,
+      baseURL,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      dangerouslyAllowBrowser: true,
+      ...this.buildClientOptions(),
+    });
 
-      this.logger.info(`${this.providerName} initialized`, {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          this.providerName,
-          new Error(
-            'OpenAI SDK not found. Install with: npm install openai\n' +
-              'The OpenAI SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError(this.providerName, error as Error);
-    }
+    this.logger.info(`${this.providerName} initialized`, {
+      model: this.config.model,
+      stream: this.config.stream ?? true,
+    });
   }
 
   /**

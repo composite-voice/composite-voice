@@ -51,6 +51,7 @@ import { InvalidStateError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
+import { trimConversationHistory } from './utils/conversationHistory';
 import { resolveProviders } from './core/pipeline/resolveProviders';
 import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
 import type { QueueStats } from './core/pipeline/AudioBufferQueue';
@@ -885,10 +886,11 @@ export class CompositeVoice {
 
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality });
-        const maxTurns = historyConfig?.maxTurns ?? 0;
-        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
-          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
-        }
+        // Trim history using token-aware trimming (preserves system messages by default)
+        this.conversationHistory = trimConversationHistory(
+          this.conversationHistory,
+          historyConfig,
+        );
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -1737,10 +1739,10 @@ export class CompositeVoice {
 
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality: 'text' });
-        const maxTurns = historyConfig?.maxTurns ?? 0;
-        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
-          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
-        }
+        this.conversationHistory = trimConversationHistory(
+          this.conversationHistory,
+          historyConfig,
+        );
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -2323,6 +2325,23 @@ export class CompositeVoice {
   clearHistory(): void {
     this.conversationHistory = [];
     this.logger.debug('Conversation history cleared');
+  }
+
+  /**
+   * Trims conversation history based on `maxTurns` and/or `maxTokens` config.
+   *
+   * @remarks
+   * Delegates to {@link trimConversationHistory} for the actual trimming logic.
+   * See that function for details on system message preservation, turn-based
+   * trimming, and token-based trimming.
+   *
+   * @internal
+   */
+  private trimHistory(): void {
+    const historyConfig = this.config.conversationHistory;
+    if (!historyConfig) return;
+
+    this.conversationHistory = trimConversationHistory(this.conversationHistory, historyConfig);
   }
 
   /**
