@@ -37,6 +37,8 @@
 
 import { buildRoutes, matchHttpRouteByProvider } from '../utils/routing';
 import type { CompositeVoiceProxyConfig } from '../types';
+import { createRateLimiter } from '../utils/rateLimit';
+import type { RateLimiter } from '../utils/rateLimit';
 
 /**
  * Minimal Next.js Request type -- avoids a hard dependency on `next`.
@@ -107,6 +109,13 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
 } {
   const routes = buildRoutes(config);
   const prefix = config.pathPrefix ?? '/proxy';
+  const security = config.security;
+
+  // Initialise rate limiter if configured
+  let rateLimiter: RateLimiter | undefined;
+  if (security?.rateLimit) {
+    rateLimiter = createRateLimiter(security.rateLimit);
+  }
 
   async function handle(req: NextRequest, ctx: RouteContext): Promise<Response> {
     // Resolve params whether they're a promise (Next.js 15+) or plain object
@@ -128,6 +137,35 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
       return new Response(null, { status: 204, headers });
     }
 
+    // --- Security checks ---
+
+    // Rate limiting (use X-Forwarded-For or fall back to header-derived IP)
+    if (rateLimiter) {
+      const forwarded = req.headers.get('x-forwarded-for');
+      const ip = forwarded ? forwarded.split(',')[0]?.trim() || 'unknown' : 'unknown';
+      if (!rateLimiter.check(ip)) {
+        return new Response(
+          JSON.stringify({ error: 'rate_limit_exceeded', message: 'Too many requests' }),
+          { status: 429, headers: { 'content-type': 'application/json' } }
+        );
+      }
+    }
+
+    // Authentication
+    if (security?.authenticate) {
+      const headerRecord: Record<string, string | string[] | undefined> = {};
+      req.headers.forEach((value, key) => {
+        headerRecord[key] = value;
+      });
+      const allowed = await security.authenticate({ headers: headerRecord, url: req.url });
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ error: 'unauthorized', message: 'Authentication failed' }),
+          { status: 401, headers: { 'content-type': 'application/json' } }
+        );
+      }
+    }
+
     // Match provider from first path segment after prefix
     const afterPrefix = url.slice(prefix.length + 1); // e.g. 'anthropic/v1/messages'
     const slashIdx = afterPrefix.indexOf('/');
@@ -140,6 +178,17 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
         status: 404,
         headers: { 'content-type': 'application/json' },
       });
+    }
+
+    // Body size check via Content-Length header
+    if (security?.maxBodySize !== undefined) {
+      const contentLength = parseInt(req.headers.get('content-length') ?? '', 10);
+      if (!isNaN(contentLength) && contentLength > security.maxBodySize) {
+        return new Response(
+          JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }),
+          { status: 413, headers: { 'content-type': 'application/json' } }
+        );
+      }
     }
 
     const targetUrl = `${route.targetBase}${apiPath}`;

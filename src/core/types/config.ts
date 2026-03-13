@@ -569,6 +569,27 @@ export interface CompositeVoiceConfig {
   eagerLLM?: EagerLLMConfig;
 
   /**
+   * Pipeline tuning options.
+   *
+   * @remarks
+   * Controls flow between pipeline stages. Currently supports backpressure
+   * between LLM and Live TTS providers.
+   */
+  pipeline?: {
+    /**
+     * Maximum text chunks buffered between LLM and TTS before pausing LLM generation.
+     *
+     * @remarks
+     * Only applies to Live (WebSocket) TTS providers. REST TTS receives the
+     * full response at once and is unaffected. When not set, no backpressure
+     * is applied (default behavior).
+     *
+     * @defaultValue undefined (no limit)
+     */
+    maxPendingChunks?: number;
+  };
+
+  /**
    * Whether to enable automatic error recovery.
    *
    * @remarks

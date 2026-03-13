@@ -57,6 +57,7 @@ import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
 import type { QueueStats } from './core/pipeline/AudioBufferQueue';
 import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
 import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
+import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -329,6 +330,8 @@ export class CompositeVoice {
    *  generations can detect they've been superseded by a barge-in. */
   private llmGenerationId = 0;
 
+  // LLM→TTS backpressure (when config.pipeline.maxPendingChunks is set)
+  private ttsBackpressure: TTSBackpressure | null = null;
 
   private initialized = false;
 
@@ -415,6 +418,12 @@ export class CompositeVoice {
 
     // Create header cache for WebSocket reconnection
     this.headerCache = new AudioHeaderCache();
+
+    // Setup LLM→TTS backpressure (opt-in via config)
+    const maxPending = config.pipeline?.maxPendingChunks;
+    if (maxPending && maxPending > 0) {
+      this.ttsBackpressure = new TTSBackpressure(maxPending);
+    }
 
     // Setup logging
     const loggingConfig = { ...DEFAULT_LOGGING_CONFIG, ...config.logging };
@@ -655,6 +664,7 @@ export class CompositeVoice {
         // Multi-role tts===output: no queue needed, TTS handles playback internally.
         // Track playback state for agent state machine derivation.
         tts.onAudio((chunk) => {
+          this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -676,6 +686,7 @@ export class CompositeVoice {
       } else {
         // Separate TTS and output: wire audio through output queue
         tts.onAudio((chunk) => {
+          this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -976,7 +987,13 @@ export class CompositeVoice {
         // Skip entirely once a code block is detected — the response contains a
         // skill invocation and shouldn't be spoken
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
-          tts.sendText(chunk);
+          if (this.ttsBackpressure) {
+            await this.ttsBackpressure.waitForCapacity();
+            tts.sendText(chunk);
+            this.ttsBackpressure.acquire();
+          } else {
+            tts.sendText(chunk);
+          }
         }
       }
 
@@ -1623,6 +1640,9 @@ export class CompositeVoice {
         this.eagerAbortController = null;
         this.eagerText = null;
       }
+
+      // Reset backpressure so stale waitForCapacity promises don't block
+      this.ttsBackpressure?.reset();
 
       // Stop output provider and clear output queue (for separate output)
       if (!this.isMultiRoleOutput) {

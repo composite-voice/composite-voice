@@ -270,6 +270,7 @@ export type { DetectedAudioFormat } from './utils/index';
 export {
   AudioBufferQueue,
   AudioHeaderCache,
+  TTSBackpressure,
   resolveProviders,
   configureSTTFromMetadata,
 } from './core/pipeline/index';
