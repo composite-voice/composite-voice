@@ -1,5 +1,88 @@
 # Changelog
 
+## [0.1.0](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.1...composite-voice-v0.1.0) (2026-03-13)
+
+
+### Features
+
+* add barge-in support with generation tracking ([cbae4af](https://github.com/lukeocodes/composite-voice/commit/cbae4af82d157303d5b59b0547de23658f7c974f))
+* add brand identity system, site infrastructure, and docs restructure ([9a47b63](https://github.com/lukeocodes/composite-voice/commit/9a47b6349edaf9b53510106ee94f484752840d8d))
+* add full brand asset pipeline with manifest and OG wordmark ([ef45771](https://github.com/lukeocodes/composite-voice/commit/ef4577113de60a1d4aa1fb9ffd06d401dbfc55f3))
+* add tool use support for LLM providers ([8de2f75](https://github.com/lukeocodes/composite-voice/commit/8de2f75075b6095bfec8d73c110b2b31ff61915b))
+* add utteranceComplete flag, auto-connect TTS, and batch audio playback ([da2224b](https://github.com/lukeocodes/composite-voice/commit/da2224b7baae15fd1417874f43bece46d8556b7b))
+* **deepgram:** migrate to SDK V5 and add similarity-based eager pipeline ([57251b5](https://github.com/lukeocodes/composite-voice/commit/57251b5a7f76c4c835105f2354bbab89833f70e9))
+* ralph-tui-5mp.1 - US-001: Define core types and roles ([141d37f](https://github.com/lukeocodes/composite-voice/commit/141d37f9071aacb9d0115ea75bd7a564b8953561))
+* ralph-tui-5mp.10 - US-010: Update CompositeVoice orchestrator ([c02a59c](https://github.com/lukeocodes/composite-voice/commit/c02a59c5ad225ec392d671ddc8fe18630654a6b0))
+* ralph-tui-5mp.11 - US-011: Update CompositeVoiceConfig type ([946c9ce](https://github.com/lukeocodes/composite-voice/commit/946c9ce5f4ad342a8dde8a2dca25cd7e437aaf19))
+* ralph-tui-5mp.12 - US-012: Update public exports ([b5a3bca](https://github.com/lukeocodes/composite-voice/commit/b5a3bcae4554abfa89a4ed070d5d51907cf42b9d))
+* ralph-tui-5mp.13 - US-013: Add queue event types ([79f1365](https://github.com/lukeocodes/composite-voice/commit/79f1365f38bf9b630601e4e7f883ead1622a37fe))
+* ralph-tui-5mp.14 - US-014: Integration tests - race condition fix ([50a0dd0](https://github.com/lukeocodes/composite-voice/commit/50a0dd0f2ba6af2cb7301ca1075fee51d85dfc5b))
+* ralph-tui-5mp.15 - US-015: Integration tests - multi-role and array config ([8729b01](https://github.com/lukeocodes/composite-voice/commit/8729b01d8b756aa551a2550d094930bdd886e262))
+* ralph-tui-5mp.16 - US-016: Update example 01-native-speech ([a05af18](https://github.com/lukeocodes/composite-voice/commit/a05af18ad0c5f0f615ebcfdb83ac247ace89ca2f))
+* ralph-tui-5mp.17 - US-017: Update example 02-openai-llm ([d4dba5e](https://github.com/lukeocodes/composite-voice/commit/d4dba5ebd00175345f5f107c19085a8c6303b92b))
+* ralph-tui-5mp.18 - US-018: Update example 03-webllm ([99b32e7](https://github.com/lukeocodes/composite-voice/commit/99b32e75804867863297479722f1e349f7514037))
+* ralph-tui-5mp.19 - US-019: Update example 04-custom-tts ([a0cfd79](https://github.com/lukeocodes/composite-voice/commit/a0cfd79077c292f5bb917d0eb368d5322399f088))
+* ralph-tui-5mp.2 - US-002: Implement AudioBufferQueue ([92c1944](https://github.com/lukeocodes/composite-voice/commit/92c1944708c9601b38bd27e0690392b3db6e8b5a))
+* ralph-tui-5mp.20 - US-020: Update example 05-deepgram-audio ([e972e70](https://github.com/lukeocodes/composite-voice/commit/e972e70231f3a7beccd6f66808dbb62c7447b911))
+* ralph-tui-5mp.21 - US-021: Update example 06-custom-ui ([ee6fa44](https://github.com/lukeocodes/composite-voice/commit/ee6fa44009428813726de49b722bc29a5112a525))
+* ralph-tui-5mp.22 - US-022: Update example 07-conversation-history ([8c5d06a](https://github.com/lukeocodes/composite-voice/commit/8c5d06a6d21eb30307aea1122b22a4cdbee83576))
+* ralph-tui-5mp.23 - US-023: Update example 08-eager-llm ([6b3dd08](https://github.com/lukeocodes/composite-voice/commit/6b3dd08670e9e7fd470eabd1765c74c834d0e2b1))
+* ralph-tui-5mp.24 - US-024: Update example 09-turn-taking ([57bafb1](https://github.com/lukeocodes/composite-voice/commit/57bafb1f508159d01200bbab890565190b0b0551))
+* ralph-tui-5mp.25 - US-025: Update example 10-proxy-server ([2fa6afb](https://github.com/lukeocodes/composite-voice/commit/2fa6afbdf1590ffa4fb5a0a2b429c931ccaea5f8))
+* ralph-tui-5mp.26 - US-026: Update example 11-deepgram-tts ([86e2fe7](https://github.com/lukeocodes/composite-voice/commit/86e2fe75e963e8701f630c0f32096b6e1b89c0cf))
+* ralph-tui-5mp.27 - US-027: Update example 12-deepgram-stt ([4308781](https://github.com/lukeocodes/composite-voice/commit/4308781969551b8946b7f20f676a2651953c2b80))
+* ralph-tui-5mp.28 - US-028: Update example 13-deepgram-stt-tts ([fd22ca2](https://github.com/lukeocodes/composite-voice/commit/fd22ca28766163176fa17decf36a1f791126ee90))
+* ralph-tui-5mp.29 - US-029: Update example 14-assemblyai-stt ([d6475ec](https://github.com/lukeocodes/composite-voice/commit/d6475ec39dd75d607d1444ac7214b1261f1ff9ea))
+* ralph-tui-5mp.3 - US-003: Implement format detection and header cache ([8092b48](https://github.com/lukeocodes/composite-voice/commit/8092b486b8ddfdc09a5ce7400e19db017d3d5dfa))
+* ralph-tui-5mp.30 - US-030: Update example 15-elevenlabs-tts ([7f11242](https://github.com/lukeocodes/composite-voice/commit/7f1124233b885c75adbbf78def8f7a6f6620a582))
+* ralph-tui-5mp.32 - US-032: Update example 17-deepgram-stt-openai-tts ([e1016b1](https://github.com/lukeocodes/composite-voice/commit/e1016b147f7216ac4cb770ea46ed6c1d8ba4dc6d))
+* ralph-tui-5mp.33 - US-033: Update example 18-native-stt-deepgram-tts ([9f63d55](https://github.com/lukeocodes/composite-voice/commit/9f63d5537d0f402d5e20d3bfd2010da70dab7fc6))
+* ralph-tui-5mp.34 - US-034: Update example 19-custom-stt ([7746d76](https://github.com/lukeocodes/composite-voice/commit/7746d76a2420f237d9151c194dad7bd7fdd11437))
+* ralph-tui-5mp.4 - US-004: Implement MicrophoneInput provider ([6308ba6](https://github.com/lukeocodes/composite-voice/commit/6308ba661fc5a850e1817cec4e9cae829380aa3a))
+* ralph-tui-5mp.40 - US-040: Update example 25-events ([3097520](https://github.com/lukeocodes/composite-voice/commit/30975201430d79b51a4c71b9e8d6163afa56ad66))
+* ralph-tui-5mp.41 - US-041: Update example 26-error-handling ([526ff91](https://github.com/lukeocodes/composite-voice/commit/526ff91802f4f01bbfb377b8992be264399fbfa6))
+* ralph-tui-5mp.42 - US-042: Update example 27-streaming ([18a5172](https://github.com/lukeocodes/composite-voice/commit/18a5172ad1de08c780265697cbed58408b51abcd))
+* ralph-tui-5mp.43 - US-043: Update example 28-advanced-config ([708c476](https://github.com/lukeocodes/composite-voice/commit/708c476b4c4ed7cdb3a53b32468f8858e6360943))
+* ralph-tui-5mp.44 - US-044: Update README.md ([b42a0c7](https://github.com/lukeocodes/composite-voice/commit/b42a0c7659be371fd2ae7813bf5a47ffe56c1896))
+* ralph-tui-5mp.45 - US-045: Update CHANGELOG.md ([88361af](https://github.com/lukeocodes/composite-voice/commit/88361af421e6d332a884a2a15262af6ba450d039))
+* ralph-tui-5mp.46 - US-046: Update CONTRIBUTING.md ([a207f01](https://github.com/lukeocodes/composite-voice/commit/a207f01be4068ed3078f5c06b93365d606510b7c))
+* ralph-tui-5mp.47 - US-047: Update AGENTS.md ([477930b](https://github.com/lukeocodes/composite-voice/commit/477930b15c6dc3e8a5dde3f52e435c6050c46114))
+* ralph-tui-5mp.5 - US-005: Implement BrowserAudioOutput provider ([86a55b7](https://github.com/lukeocodes/composite-voice/commit/86a55b7536bc49e59da79e1d3a6e8bdbb21127f1))
+* ralph-tui-5mp.6 - US-006: Implement BufferInput and NullOutput ([12ad6e1](https://github.com/lukeocodes/composite-voice/commit/12ad6e1dd9b9dbbea4f9719e90239a4547c31418))
+* ralph-tui-5mp.7 - US-007: Implement provider resolution algorithm ([cab3bee](https://github.com/lukeocodes/composite-voice/commit/cab3bee63fddd53dbd512a87572ed3f3eae6f4c0))
+* ralph-tui-5mp.8 - US-008: Implement STT metadata auto-configuration ([0ea29d8](https://github.com/lukeocodes/composite-voice/commit/0ea29d8400e76fcd15b03b8e35f8a51aaf05a072))
+* ralph-tui-5mp.9 - US-009: Adapt NativeSTT and NativeTTS to multi-role ([678a727](https://github.com/lukeocodes/composite-voice/commit/678a7278058736150f6968d3d4a1d38b48638967))
+* ralph-tui-za5.2 - US-002: Implement ElevenLabsSTT provider core ([840c9bf](https://github.com/lukeocodes/composite-voice/commit/840c9bf9f2a01d5b61b31a678cec35d800985090))
+* ralph-tui-za5.3 - US-003: Implement authentication — API key, proxy, and token ([9e58844](https://github.com/lukeocodes/composite-voice/commit/9e588442e59d42e41eabb92d2a9e69ee9ec53784))
+* ralph-tui-za5.4 - US-004: Implement transcription message handling ([c43fa56](https://github.com/lukeocodes/composite-voice/commit/c43fa56a67d3601531b4c4501a95bfb81c15ab98))
+* ralph-tui-za5.5 - US-005: Implement commit strategy support ([7ee0e19](https://github.com/lukeocodes/composite-voice/commit/7ee0e1954d22bc556b4389562705677874f3fe59))
+* ralph-tui-za5.6 - US-006: Implement language code auto-detection and mapping ([4587f1e](https://github.com/lukeocodes/composite-voice/commit/4587f1e5abbfc3773687dd4b97a9843f1bc91baf))
+* ralph-tui-za5.7 - US-007: Add proxy routing for ElevenLabs STT ([2582f6e](https://github.com/lukeocodes/composite-voice/commit/2582f6e4ecf58c424803f40ddab1ad567f2a6ed0))
+* ralph-tui-za5.8 - US-008: Write unit tests for ElevenLabsSTT ([2f98f56](https://github.com/lukeocodes/composite-voice/commit/2f98f56a1a6a0da44976f0a667a66b4dd0ae8fb4))
+* ralph-tui-za5.9 - US-009: Create ElevenLabsSTT example app ([106ce28](https://github.com/lukeocodes/composite-voice/commit/106ce289119a10a26de9f2225a180cb454891716))
+* **ui:** add adaptive iconmark with rounded background for favicon ([4e3711e](https://github.com/lukeocodes/composite-voice/commit/4e3711efdf7d426d8393d9bde27e4ecf879812df))
+* **ui:** add adaptive wordmark SVG via satori ([07c7e74](https://github.com/lukeocodes/composite-voice/commit/07c7e74808b1645815ffcdaec261caaf52e07af1))
+* **ui:** extract VersionPill component and style breadcrumbs ([6ac294d](https://github.com/lukeocodes/composite-voice/commit/6ac294de6457bf8222f8cb54ac220a88c405acc1))
+* **ui:** generate lettermark SVG from Inter Bold via satori ([7356658](https://github.com/lukeocodes/composite-voice/commit/7356658937978a292384ad8fbc451d09627a1957))
+
+
+### Bug Fixes
+
+* **ci:** remove registry-url from npm OIDC publish step ([8e4c87d](https://github.com/lukeocodes/composite-voice/commit/8e4c87d160a5650665008603383bf561bad0b12f))
+* **docs:** correct Deepgram V1/V2 model info and feature attribution ([1ed1e01](https://github.com/lukeocodes/composite-voice/commit/1ed1e01c91246817908063794c6aa90f80b3fab1))
+* **native-stt:** auto-restart recognition on unexpected end, document browser limits ([1ea6091](https://github.com/lukeocodes/composite-voice/commit/1ea6091c22a67bb21c335ea06266232ee5e02eb4))
+
+
+### Documentation
+
+* add advanced feature docs, provider matrix, and dynamic examples page ([c75e64a](https://github.com/lukeocodes/composite-voice/commit/c75e64ac6b17879b24225cf35e41408543d68e4c))
+* add comprehensive documentation with provider guides and collapsible nav ([f2a0992](https://github.com/lukeocodes/composite-voice/commit/f2a0992b96a8e3d1f7e5f517fd3fa29ff93fff8a))
+* add ElevenLabsSTT guide and update provider references ([426b64a](https://github.com/lukeocodes/composite-voice/commit/426b64aef8bd3ec5b6166aa6c33f80bc3bc830af))
+* add FAQ and troubleshooting reference page ([1e40dce](https://github.com/lukeocodes/composite-voice/commit/1e40dce0aea199fd20f4da86ed09d9d2a1f0a050))
+* prioritize Deepgram in production stacks and add provider cross-links ([08c82b0](https://github.com/lukeocodes/composite-voice/commit/08c82b07983cab185beb75612f54b0dcbd370e9a))
+* refine eager pipeline timing diagrams ([794c81b](https://github.com/lukeocodes/composite-voice/commit/794c81bf282c160ff64cb179bedee01513bf1c9d))
+* update examples and guides for DeepgramFlux, fix SDK option naming ([012b3c1](https://github.com/lukeocodes/composite-voice/commit/012b3c1b1f92b42a9ab10653c9d478c0d627bd55))
+
 ## [Unreleased]
 
 ### ⚠ BREAKING CHANGES
