@@ -540,6 +540,22 @@ export interface CompositeVoiceConfig {
   autoRecover?: boolean;
 
   /**
+   * Tool use configuration for LLM function calling.
+   *
+   * @remarks
+   * When provided, the LLM can invoke tools during generation. Text output
+   * is streamed to TTS as usual, while tool calls are handled via the
+   * `onToolCall` callback. After tool execution, the LLM is called again
+   * with the tool result to generate a natural language follow-up.
+   *
+   * Requires the LLM provider to implement `ToolAwareLLMProvider`.
+   */
+  tools?: {
+    definitions: import('./providers').LLMToolDefinition[];
+    onToolCall: (toolCall: import('./providers').LLMToolCall) => Promise<import('./providers').LLMToolResult>;
+  };
+
+  /**
    * Additional custom configuration for provider-specific or application-specific needs.
    *
    * @remarks

@@ -23,6 +23,9 @@ import type {
   LLMProviderConfig,
   LLMGenerationOptions,
   LLMMessage,
+  LLMToolDefinition,
+  LLMStreamChunk,
+  ToolAwareLLMProvider,
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
@@ -185,7 +188,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * @see {@link BaseLLMProvider} for the abstract base class.
  * @see {@link OpenAILLM} for the OpenAI alternative.
  */
-export class AnthropicLLM extends BaseLLMProvider {
+export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvider {
   declare public config: AnthropicLLMConfig;
   private client: AnthropicInstance | null = null;
 
@@ -359,13 +362,19 @@ export class AnthropicLLM extends BaseLLMProvider {
     const shouldStream = this.config.stream ?? true;
 
     // Extract system message (Anthropic uses a top-level system param)
+    // Combine config.systemPrompt with any inline system messages (deduplicating)
     const systemMessages = messages.filter((m) => m.role === 'system');
     const userMessages = messages.filter((m) => m.role !== 'system');
 
-    const system =
-      systemMessages.length > 0
-        ? systemMessages.map((m) => m.content).join('\n')
-        : this.config.systemPrompt;
+    const parts: string[] = [];
+    if (this.config.systemPrompt) parts.push(this.config.systemPrompt);
+    for (const sm of systemMessages) {
+      // Don't duplicate if the system message IS the config prompt
+      if (sm.content !== this.config.systemPrompt) {
+        parts.push(sm.content);
+      }
+    }
+    const system = parts.length > 0 ? parts.join('\n\n') : undefined;
 
     // Convert to Anthropic message format
     const anthropicMessages: MessageParam[] = userMessages.map((msg) => ({
@@ -530,6 +539,160 @@ export class AnthropicLLM extends BaseLLMProvider {
             throw err;
           }
           logger.error('Anthropic non-streaming request failed', error);
+          throw error;
+        }
+      },
+    };
+  }
+
+  /**
+   * Generate a response with tool use support.
+   *
+   * @remarks
+   * Returns an async iterable of `LLMStreamChunk` — text chunks go to TTS,
+   * tool_call chunks go to the tool executor. The `done` chunk signals the
+   * stop reason so the caller knows whether to send tool results and re-call.
+   */
+  async generateWithTools(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
+  ): Promise<AsyncIterable<LLMStreamChunk>> {
+    this.assertReady();
+    if (!this.client) throw new Error('Anthropic client not initialized');
+
+    const mergedOptions = this.mergeOptions(options);
+
+    // Extract system messages (Anthropic uses top-level system param)
+    const systemMessages = messages.filter((m) => m.role === 'system');
+    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
+
+    const parts: string[] = [];
+    if (this.config.systemPrompt) parts.push(this.config.systemPrompt);
+    if (systemMessages.length > 0) parts.push(...systemMessages.map((m) => m.content));
+    const system = parts.length > 0 ? parts.join('\n\n') : undefined;
+
+    // Convert messages to Anthropic format, handling tool messages
+    const anthropicMessages: MessageParam[] = nonSystemMessages.map((msg) => {
+      if (msg.role === 'assistant' && msg.toolCalls?.length) {
+        // Assistant message with tool use — create content blocks
+        const content: Array<{ type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }> = [];
+        if (msg.content) content.push({ type: 'text', text: msg.content });
+        for (const tc of msg.toolCalls) {
+          content.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.arguments });
+        }
+        return { role: 'assistant' as const, content };
+      }
+      if (msg.role === 'tool') {
+        // Tool result — Anthropic uses role: 'user' with tool_result content
+        return {
+          role: 'user' as const,
+          content: [{
+            type: 'tool_result' as const,
+            tool_use_id: msg.toolCallId!,
+            content: msg.content,
+            ...(msg.toolCallId ? {} : {}),
+          }],
+        };
+      }
+      return { role: msg.role as 'user' | 'assistant', content: msg.content };
+    });
+
+    // Convert tool definitions to Anthropic format
+    const tools = options?.tools?.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: {
+        type: 'object' as const,
+        properties: t.parameters.properties,
+        required: t.parameters.required ?? null,
+      },
+    }));
+
+    const client = this.client;
+    const config = this.config;
+    const logger = this.logger;
+    const signal = mergedOptions.signal;
+
+    return {
+      async *[Symbol.asyncIterator]() {
+        if (signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+
+        try {
+          logger.debug('Starting Anthropic tool-aware streaming request', {
+            model: config.model,
+            messageCount: anthropicMessages.length,
+            toolCount: tools?.length ?? 0,
+          });
+
+          const streamParams = {
+            model: config.model,
+            max_tokens: mergedOptions.maxTokens ?? config.maxTokens ?? 1024,
+            messages: anthropicMessages,
+            ...(system ? { system } : {}),
+            ...(tools?.length ? { tools } : {}),
+            ...(mergedOptions.temperature !== undefined ? { temperature: mergedOptions.temperature } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(mergedOptions.stopSequences ? { stop_sequences: mergedOptions.stopSequences } : {}),
+            ...(mergedOptions.extra ?? {}),
+          };
+
+          const stream = signal
+            ? client.messages.stream(streamParams, { signal })
+            : client.messages.stream(streamParams);
+
+          // Track active tool call state during streaming
+          let activeToolId = '';
+          let activeToolName = '';
+          let activeToolArgs = '';
+
+          for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
+            if (signal?.aborted) break;
+
+            if (event.type === 'content_block_start') {
+              const block = (event as unknown as { content_block: { type: string; id?: string; name?: string } }).content_block;
+              if (block.type === 'tool_use') {
+                activeToolId = block.id ?? '';
+                activeToolName = block.name ?? '';
+                activeToolArgs = '';
+                yield { type: 'tool_call_start', toolCall: { id: activeToolId, name: activeToolName } };
+              }
+            } else if (event.type === 'content_block_delta') {
+              const delta = (event as unknown as { delta: { type: string; text?: string; partial_json?: string } }).delta;
+              if (delta.type === 'text_delta' && delta.text) {
+                yield { type: 'text', text: delta.text };
+              } else if (delta.type === 'input_json_delta' && delta.partial_json) {
+                activeToolArgs += delta.partial_json;
+                yield { type: 'tool_call_delta', toolCallId: activeToolId, argumentsDelta: delta.partial_json };
+              }
+            } else if (event.type === 'content_block_stop') {
+              if (activeToolId) {
+                yield { type: 'tool_call_end', toolCallId: activeToolId };
+                activeToolId = '';
+              }
+            } else if (event.type === 'message_delta') {
+              const messageDelta = event as unknown as { delta: { stop_reason?: string } };
+              const reason = messageDelta.delta?.stop_reason;
+              if (reason) {
+                yield {
+                  type: 'done',
+                  stopReason: reason as 'end_turn' | 'tool_use' | 'stop_sequence' | 'max_tokens',
+                };
+              }
+            }
+          }
+
+          logger.debug('Anthropic tool-aware streaming request completed');
+        } catch (error) {
+          if (signal?.aborted || (error as Error).name === 'AbortError') {
+            const err = new Error('AbortError');
+            err.name = 'AbortError';
+            throw err;
+          }
+          logger.error('Anthropic tool-aware streaming request failed', error);
           throw error;
         }
       },

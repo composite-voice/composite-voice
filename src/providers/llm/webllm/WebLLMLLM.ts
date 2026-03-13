@@ -364,11 +364,13 @@ export class WebLLMLLM extends BaseLLMProvider {
     const mergedOptions = this.mergeOptions(options);
     const shouldStream = this.config.stream ?? true;
 
-    // WebLLM uses the OpenAI chat format — system messages are passed inline
-    const webllmMessages: ChatCompletionMessageParam[] = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // WebLLM uses the OpenAI chat format — filter tool messages (not supported)
+    const webllmMessages: ChatCompletionMessageParam[] = messages
+      .filter((msg) => msg.role !== 'tool')
+      .map((msg) => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      }));
 
     if (shouldStream) {
       return this.streamResponse(webllmMessages, mergedOptions);

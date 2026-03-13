@@ -385,11 +385,13 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
     }
     const shouldStream = this.config.stream ?? true;
 
-    // Convert messages to OpenAI format
-    const openaiMessages: ChatCompletionMessageParam[] = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // Convert messages to OpenAI format (filter out tool messages — not yet supported)
+    const openaiMessages: ChatCompletionMessageParam[] = messages
+      .filter((msg) => msg.role !== 'tool')
+      .map((msg) => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      }));
 
     if (shouldStream) {
       return this.streamResponse(openaiMessages, mergedOptions);

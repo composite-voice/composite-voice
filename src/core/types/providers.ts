@@ -656,8 +656,9 @@ export interface LLMMessage {
    * - `'system'` - System instructions (typically the first message)
    * - `'user'` - User input (transcribed speech or typed text)
    * - `'assistant'` - Assistant response (LLM output)
+   * - `'tool'` - Tool execution result (sent back after a tool call)
    */
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
 
   /** The text content of the message. */
   content: string;
@@ -674,6 +675,12 @@ export interface LLMMessage {
    * Only meaningful for `role: 'user'` messages.
    */
   modality?: 'voice' | 'text';
+
+  /** Tool calls requested by the assistant (on assistant messages). */
+  toolCalls?: LLMToolCall[];
+
+  /** The tool call ID this result belongs to (on tool messages). */
+  toolCallId?: string;
 }
 
 /**
@@ -838,6 +845,92 @@ export interface LLMProvider extends BaseProvider {
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>>;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Tool Use Types (Provider-Agnostic)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Schema for a single tool parameter.
+ */
+export interface LLMToolParameterSchema {
+  type: 'string' | 'number' | 'boolean' | 'integer';
+  description?: string;
+  enum?: string[];
+}
+
+/**
+ * Definition of a tool the LLM can invoke.
+ *
+ * @remarks
+ * Provider-agnostic — converted to Anthropic, OpenAI, etc. format by each provider.
+ */
+export interface LLMToolDefinition {
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, LLMToolParameterSchema>;
+    required?: string[];
+  };
+}
+
+/**
+ * A tool invocation emitted by the LLM.
+ */
+export interface LLMToolCall {
+  /** Provider-assigned ID (Anthropic: content block id, OpenAI: tool_call.id) */
+  id: string;
+  /** Tool name (maps to skill/function name) */
+  name: string;
+  /** Parsed arguments from the LLM */
+  arguments: Record<string, unknown>;
+}
+
+/**
+ * Result sent back to the LLM after executing a tool.
+ */
+export interface LLMToolResult {
+  /** Must match the LLMToolCall.id */
+  toolCallId: string;
+  /** Serialized result content */
+  content: string;
+  /** Whether the tool execution failed */
+  isError?: boolean;
+}
+
+/**
+ * Discriminated union for streaming chunks from tool-aware generation.
+ *
+ * @remarks
+ * `text` chunks go to TTS; `tool_call_*` chunks go to the tool executor.
+ * The `done` chunk signals the end of the response with a stop reason.
+ */
+export type LLMStreamChunk =
+  | { type: 'text'; text: string }
+  | { type: 'tool_call_start'; toolCall: { id: string; name: string } }
+  | { type: 'tool_call_delta'; toolCallId: string; argumentsDelta: string }
+  | { type: 'tool_call_end'; toolCallId: string }
+  | { type: 'done'; stopReason: 'end_turn' | 'tool_use' | 'stop_sequence' | 'max_tokens' };
+
+/**
+ * LLM provider with optional tool use support.
+ *
+ * @remarks
+ * Extends LLMProvider with an optional `generateWithTools` method. Providers
+ * that don't support tool use simply don't implement this method, and the
+ * orchestrator falls back to text-only generation.
+ */
+export interface ToolAwareLLMProvider extends LLMProvider {
+  /**
+   * Generate with tool support. Returns a richer streaming type that
+   * separates text from tool invocations.
+   */
+  generateWithTools(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
+  ): Promise<AsyncIterable<LLMStreamChunk>>;
 }
 
 /**

@@ -221,7 +221,8 @@ describe('AnthropicLLM', () => {
 
       expect(mockMessagesStream).toHaveBeenCalledWith(
         expect.objectContaining({
-          system: 'Custom system prompt',
+          // Config systemPrompt + inline system message are combined (deduped)
+          system: 'You are a helpful assistant.\n\nCustom system prompt',
           messages: [{ role: 'user', content: 'Hello' }],
         })
       );

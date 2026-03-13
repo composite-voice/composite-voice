@@ -36,6 +36,8 @@ import type {
   LiveTTSProvider,
   RestTTSProvider,
   LLMMessage,
+  LLMToolCall,
+  ToolAwareLLMProvider,
   ResolvedPipeline,
   BaseProvider,
 } from './core/types/providers';
@@ -99,6 +101,11 @@ function isLiveTTS(provider: TTSProvider): provider is LiveTTSProvider {
  */
 function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
   return provider.type === 'rest';
+}
+
+/** Type guard: does this LLM provider support tool use? */
+function isToolAware(provider: LLMProvider): provider is ToolAwareLLMProvider {
+  return typeof (provider as ToolAwareLLMProvider).generateWithTools === 'function';
 }
 
 /**
@@ -320,6 +327,7 @@ export class CompositeVoice {
   /** Monotonic generation ID — incremented on each processLLM call so stale
    *  generations can detect they've been superseded by a barge-in. */
   private llmGenerationId = 0;
+
 
   private initialized = false;
 
@@ -874,15 +882,49 @@ export class CompositeVoice {
 
       // Build message list and get response iterable
       const ioContext = this.buildIOContextMessage(modality);
-      let responseIterable: AsyncIterable<string>;
+
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality });
-        // Trim to maxTurns (each turn = 1 user msg + 1 assistant msg = 2 entries)
         const maxTurns = historyConfig?.maxTurns ?? 0;
         if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
           this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
         }
-        // Prepend I/O context (not stored in history — ephemeral per request)
+      }
+
+      // Tool-aware path: delegate to tool loop which handles TTS internally
+      if (this.config.tools && isToolAware(llm) && useHistory) {
+        this.processingStateMachine.setStreaming();
+        const msgs = [ioContext, ...this.conversationHistory];
+        const fullResponse = await this.processLLMToolLoop(msgs, activeSignal, generationId);
+
+        if (generationId !== this.llmGenerationId) return;
+        if (activeSignal.aborted) { this.processingStateMachine.setIdle(); return; }
+        this.llmAbortController = null;
+
+        this.processingStateMachine.setComplete();
+        this.emitEvent({ type: 'llm.complete', text: fullResponse, timestamp: Date.now() });
+
+        if (useHistory && fullResponse) {
+          this.conversationHistory.push({ role: 'assistant', content: fullResponse });
+        }
+
+        if (!this._outputMuted && fullResponse.trim()) {
+          if (isLiveTTS(tts)) {
+            await this.finalizeLiveTTS(fullResponse);
+          } else if (isRestTTS(tts)) {
+            await this.processTTS(fullResponse);
+          }
+        }
+
+        if (generationId === this.llmGenerationId) {
+          this.processingStateMachine.setIdle();
+        }
+        return;
+      }
+
+      // Text-only fallback path
+      let responseIterable: AsyncIterable<string>;
+      if (useHistory) {
         responseIterable = await llm.generateFromMessages(
           [ioContext, ...this.conversationHistory],
           { signal: activeSignal }
@@ -907,6 +949,7 @@ export class CompositeVoice {
 
       // Stream LLM response
       this.processingStateMachine.setStreaming();
+      let hasCodeBlock = false;
 
       for await (const chunk of responseIterable) {
         if (activeSignal.aborted) {
@@ -922,8 +965,15 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
+        // Stop streaming to TTS as soon as we detect a code block (e.g. ```skill)
+        if (!hasCodeBlock && fullResponse.includes('```')) {
+          hasCodeBlock = true;
+        }
+
         // If TTS is Live (WebSocket), send chunks in real-time (unless output muted)
-        if (isLiveTTS(tts) && !this._outputMuted) {
+        // Skip entirely once a code block is detected — the response contains a
+        // skill invocation and shouldn't be spoken
+        if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
           tts.sendText(chunk);
         }
       }
@@ -975,7 +1025,7 @@ export class CompositeVoice {
       }
 
       // TTS — skip entirely when output is muted (text events still emitted above)
-      if (!this._outputMuted) {
+      if (!this._outputMuted && !hasCodeBlock) {
         if (isRestTTS(tts)) {
           await this.processTTS(fullResponse);
         } else if (isLiveTTS(tts)) {
@@ -1684,13 +1734,50 @@ export class CompositeVoice {
       this.llmAbortController = llmController;
 
       const ioContext = this.buildIOContextMessage('text');
-      let responseIterable: AsyncIterable<string>;
+
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality: 'text' });
         const maxTurns = historyConfig?.maxTurns ?? 0;
         if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
           this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
         }
+      }
+
+      // Tool-aware path: delegate to tool loop which handles TTS internally
+      if (this.config.tools && isToolAware(llm) && useHistory) {
+        this.processingStateMachine.setProcessing();
+        this.processingStateMachine.setStreaming();
+        const msgs = [ioContext, ...this.conversationHistory];
+        const fullResponse = await this.processLLMToolLoop(msgs, llmController.signal, generationId);
+
+        if (generationId !== this.llmGenerationId) return;
+        this.llmAbortController = null;
+
+        this.processingStateMachine.setComplete();
+        this.emitEvent({ type: 'llm.complete', text: fullResponse, timestamp: Date.now() });
+
+        if (useHistory && fullResponse) {
+          this.conversationHistory.push({ role: 'assistant', content: fullResponse });
+        }
+
+        // Finalize TTS for the follow-up text
+        if (!this._outputMuted && fullResponse.trim()) {
+          if (isLiveTTS(tts)) {
+            await this.finalizeLiveTTS(fullResponse);
+          } else if (isRestTTS(tts)) {
+            await this.processTTS(fullResponse);
+          }
+        }
+
+        if (generationId === this.llmGenerationId) {
+          this.processingStateMachine.setIdle();
+        }
+        return;
+      }
+
+      // Text-only fallback path
+      let responseIterable: AsyncIterable<string>;
+      if (useHistory) {
         responseIterable = await llm.generateFromMessages(
           [ioContext, ...this.conversationHistory],
           { signal: llmController.signal },
@@ -1705,6 +1792,7 @@ export class CompositeVoice {
       }
 
       this.processingStateMachine.setStreaming();
+      let hasCodeBlock = false;
 
       let fullResponse = '';
       for await (const chunk of responseIterable) {
@@ -1717,7 +1805,11 @@ export class CompositeVoice {
           timestamp: Date.now(),
         });
 
-        if (isLiveTTS(tts) && !this._outputMuted) {
+        if (!hasCodeBlock && fullResponse.includes('```')) {
+          hasCodeBlock = true;
+        }
+
+        if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
           tts.sendText(chunk);
         }
       }
@@ -1749,7 +1841,7 @@ export class CompositeVoice {
         this.conversationHistory.push({ role: 'assistant', content: fullResponse });
       }
 
-      if (!this._outputMuted) {
+      if (!this._outputMuted && !hasCodeBlock) {
         if (isRestTTS(tts)) {
           await this.processTTS(fullResponse);
         } else if (isLiveTTS(tts)) {
@@ -1772,6 +1864,120 @@ export class CompositeVoice {
       this.processingStateMachine.setError();
       this.emitAgentError(error as Error, 'processLLMFromText');
     }
+  }
+
+  /**
+   * Process an LLM call with tool support. Handles the tool_use → execute → resume loop.
+   *
+   * @returns The full text response from the LLM (may be empty if only tool calls occurred).
+   */
+  private async processLLMToolLoop(
+    messages: LLMMessage[],
+    signal: AbortSignal,
+    _generationId: number,
+  ): Promise<string> {
+    const { llm, tts } = this;
+    if (!isToolAware(llm) || !this.config.tools) {
+      throw new Error('processLLMToolLoop called but LLM does not support tools');
+    }
+
+    const toolConfig = this.config.tools;
+    let fullText = '';
+    let toolCalls: LLMToolCall[] = [];
+    let activeToolArgs = '';
+    let activeToolName = '';
+    let activeToolId = '';
+
+    // Ensure Live TTS WebSocket is connected before streaming begins
+    if (isLiveTTS(tts) && !this._outputMuted) {
+      await tts.connect();
+    }
+
+    const responseIterable = await llm.generateWithTools(messages, {
+      signal,
+      tools: toolConfig.definitions,
+    });
+
+    for await (const chunk of responseIterable) {
+      if (signal.aborted) break;
+
+      if (chunk.type === 'text') {
+        fullText += chunk.text;
+        this.emitEvent({ type: 'llm.chunk', chunk: chunk.text, accumulated: fullText, timestamp: Date.now() });
+        // Only text goes to TTS — tool calls are silent
+        if (isLiveTTS(tts) && !this._outputMuted) {
+          tts.sendText(chunk.text);
+        }
+      } else if (chunk.type === 'tool_call_start') {
+        activeToolId = chunk.toolCall.id;
+        activeToolName = chunk.toolCall.name;
+        activeToolArgs = '';
+      } else if (chunk.type === 'tool_call_delta') {
+        activeToolArgs += chunk.argumentsDelta;
+      } else if (chunk.type === 'tool_call_end') {
+        // Parse the accumulated args
+        try {
+          const args = activeToolArgs ? JSON.parse(activeToolArgs) : {};
+          const tc: LLMToolCall = { id: activeToolId, name: activeToolName, arguments: args };
+          toolCalls.push(tc);
+        } catch {
+          this.logger.error('Failed to parse tool call arguments', { raw: activeToolArgs });
+        }
+        activeToolArgs = '';
+      } else if (chunk.type === 'done') {
+        if (chunk.stopReason === 'tool_use' && toolCalls.length > 0) {
+          // Finalize TTS for any text emitted before the tool call
+          if (fullText.trim() && !this._outputMuted) {
+            if (isLiveTTS(tts)) {
+              await this.finalizeLiveTTS(fullText);
+            } else if (isRestTTS(tts)) {
+              await this.processTTS(fullText);
+            }
+          }
+
+          // Add assistant message with tool calls to history
+          const assistantMsg: LLMMessage = { role: 'assistant', content: fullText, toolCalls };
+          messages.push(assistantMsg);
+
+          // Execute each tool and collect results
+          for (const tc of toolCalls) {
+            this.emitEvent({ type: 'llm.chunk', chunk: '', accumulated: fullText, timestamp: Date.now() });
+            const result = await toolConfig.onToolCall(tc);
+            messages.push({ role: 'tool', content: result.content, toolCallId: result.toolCallId });
+          }
+
+          // Reset for the follow-up call
+          const textBeforeTools = fullText;
+          fullText = '';
+          toolCalls = [];
+
+          // Re-call the LLM with tool results — it will generate a spoken follow-up
+          if (isLiveTTS(tts) && !this._outputMuted) {
+            await tts.connect();
+          }
+
+          const followUp = await llm.generateWithTools(messages, {
+            signal,
+            tools: toolConfig.definitions,
+          });
+
+          for await (const chunk2 of followUp) {
+            if (signal.aborted) break;
+            if (chunk2.type === 'text') {
+              fullText += chunk2.text;
+              this.emitEvent({ type: 'llm.chunk', chunk: chunk2.text, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
+              if (isLiveTTS(tts) && !this._outputMuted) {
+                tts.sendText(chunk2.text);
+              }
+            }
+            // If the follow-up also has tool calls, we'd need recursion,
+            // but for now we handle a single tool round-trip
+          }
+        }
+      }
+    }
+
+    return fullText;
   }
 
   /**

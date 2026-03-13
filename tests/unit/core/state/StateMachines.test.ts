@@ -221,8 +221,8 @@ describe('SimpleProcessingStateMachine', () => {
   });
 
   it('should throw on invalid transition', () => {
-    // idle → streaming is not valid
-    expect(() => sm.setStreaming()).toThrow('Invalid processing state transition');
+    // idle → complete is not valid
+    expect(() => sm.setComplete()).toThrow('Invalid processing state transition');
   });
 
   it('should notify callbacks on state change', () => {

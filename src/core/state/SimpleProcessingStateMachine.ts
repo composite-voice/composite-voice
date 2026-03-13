@@ -83,10 +83,10 @@ export type ProcessingStateCallback = (
  * to `idle`, enabling a clean restart.
  */
 const PROCESSING_TRANSITIONS: Record<ProcessingState, ProcessingState[]> = {
-  idle: ['processing', 'error'],
+  idle: ['processing', 'streaming', 'error'],
   processing: ['streaming', 'complete', 'idle', 'error'],
   streaming: ['complete', 'idle', 'error'],
-  complete: ['idle'],
+  complete: ['idle', 'processing'],
   error: ['idle'],
 };
 
