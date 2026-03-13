@@ -275,3 +275,19 @@ export {
   configureSTTFromMetadata,
 } from './core/pipeline/index';
 export type { QueueStats, DrainCallback, OverflowCallback } from './core/pipeline/index';
+
+// Collaborator classes (extracted from CompositeVoice for modularity)
+export {
+  ConversationManager,
+  TurnTakingController,
+  EagerLLMController,
+  AudioRouter,
+} from './core/collaborators/index';
+export type { ReconcileResult } from './core/collaborators/index';
+
+// Recovery orchestrator
+export { RecoveryOrchestrator } from './core/RecoveryOrchestrator';
+export type { RecoveryStrategy, RecoveryEvent } from './core/RecoveryOrchestrator';
+
+// Provider event adapter (optional debugging utility)
+export { ProviderEventAdapter } from './core/ProviderEventAdapter';

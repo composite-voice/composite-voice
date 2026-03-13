@@ -616,6 +616,17 @@ export interface CompositeVoiceConfig {
   };
 
   /**
+   * Recovery strategy configuration for automatic error recovery.
+   *
+   * @remarks
+   * Only applies when `autoRecover` is `true`. Controls the backoff behavior
+   * when the SDK attempts to recover from provider errors.
+   *
+   * @see {@link RecoveryStrategy}
+   */
+  recovery?: import('../RecoveryOrchestrator').RecoveryStrategy;
+
+  /**
    * Additional custom configuration for provider-specific or application-specific needs.
    *
    * @remarks

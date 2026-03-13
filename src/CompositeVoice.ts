@@ -2348,23 +2348,6 @@ export class CompositeVoice {
   }
 
   /**
-   * Trims conversation history based on `maxTurns` and/or `maxTokens` config.
-   *
-   * @remarks
-   * Delegates to {@link trimConversationHistory} for the actual trimming logic.
-   * See that function for details on system message preservation, turn-based
-   * trimming, and token-based trimming.
-   *
-   * @internal
-   */
-  private trimHistory(): void {
-    const historyConfig = this.config.conversationHistory;
-    if (!historyConfig) return;
-
-    this.conversationHistory = trimConversationHistory(this.conversationHistory, historyConfig);
-  }
-
-  /**
    * Checks whether the SDK has been successfully initialized.
    *
    * @remarks

@@ -107,6 +107,7 @@ export abstract class BaseTTSProvider extends BaseProvider {
    * @param callback - Function invoked with each {@link AudioChunk}.
    */
   onAudio(callback: (chunk: AudioChunk) => void): void {
+    this.logger.debug('Audio callback registered');
     this.audioCallback = callback;
   }
 
@@ -122,6 +123,7 @@ export abstract class BaseTTSProvider extends BaseProvider {
    *   available.
    */
   onMetadata(callback: (metadata: AudioMetadata) => void): void {
+    this.logger.debug('Metadata callback registered');
     this.metadataCallback = callback;
   }
 
