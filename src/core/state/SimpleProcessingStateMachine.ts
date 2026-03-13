@@ -31,8 +31,11 @@ import type { Logger } from '../../utils/logger';
  *
  * ```
  * idle -> processing -> streaming -> complete -> idle  (normal flow)
- *            |                          ^
- *            +--------------------------+  (non-streaming: processing -> complete)
+ *   |          |            |           |
+ *   |          |            |           +-> processing  (tool loops without going through idle)
+ *   |          |            +-> idle        (barge-in cancellation)
+ *   |          +-> idle                     (barge-in cancellation)
+ *   +-> streaming                           (direct, for tool loops)
  *
  * Any state -> error -> idle  (error recovery)
  * ```
@@ -67,20 +70,25 @@ export type ProcessingStateCallback = (
  *
  * The transition graph:
  *
- * | From         | Allowed Targets                   |
- * |--------------|-----------------------------------|
- * | `idle`       | `processing`, `error`             |
- * | `processing` | `streaming`, `complete`, `error`  |
- * | `streaming`  | `complete`, `error`               |
- * | `complete`   | `idle`                            |
- * | `error`      | `idle`                            |
+ * | From         | Allowed Targets                          |
+ * |--------------|------------------------------------------|
+ * | `idle`       | `processing`, `streaming`, `error`       |
+ * | `processing` | `streaming`, `complete`, `idle`, `error` |
+ * | `streaming`  | `complete`, `idle`, `error`              |
+ * | `complete`   | `idle`, `processing`                     |
+ * | `error`      | `idle`                                   |
  *
  * Note that `processing` can transition directly to `complete` for non-streaming
  * LLM providers (e.g. OpenAI non-streaming mode). Streaming providers will
  * typically go through `processing` -> `streaming` -> `complete`.
  *
- * Both `complete` and `error` are terminal-like states that can only cycle back
- * to `idle`, enabling a clean restart.
+ * Relaxed transitions for advanced scenarios:
+ * - `idle` -> `streaming`: direct transition for tool loops
+ * - `processing` -> `idle`: barge-in cancellation
+ * - `streaming` -> `idle`: barge-in cancellation
+ * - `complete` -> `processing`: tool loops without going through `idle`
+ *
+ * The `error` state can only cycle back to `idle`, enabling a clean restart.
  */
 const PROCESSING_TRANSITIONS: Record<ProcessingState, ProcessingState[]> = {
   idle: ['processing', 'streaming', 'error'],
@@ -142,8 +150,9 @@ export class SimpleProcessingStateMachine {
    * Transitions to the `'idle'` state.
    *
    * @remarks
-   * Valid from `'complete'` or `'error'` only. Used to reset the machine for a
-   * new processing cycle.
+   * Valid from `'complete'`, `'error'`, `'processing'`, or `'streaming'`. Used
+   * to reset the machine for a new processing cycle, or for barge-in cancellation
+   * during active processing/streaming.
    *
    * @throws Error if the current state does not allow transitioning to `'idle'`.
    */
@@ -155,8 +164,8 @@ export class SimpleProcessingStateMachine {
    * Transitions to the `'processing'` state.
    *
    * @remarks
-   * Valid from `'idle'` only. Indicates that a request has been sent to the LLM
-   * and the system is awaiting a response.
+   * Valid from `'idle'` or `'complete'` (for tool loops). Indicates that a
+   * request has been sent to the LLM and the system is awaiting a response.
    *
    * @throws Error if the current state does not allow transitioning to `'processing'`.
    */
@@ -168,9 +177,10 @@ export class SimpleProcessingStateMachine {
    * Transitions to the `'streaming'` state.
    *
    * @remarks
-   * Valid from `'processing'` only. Indicates the LLM has begun streaming
-   * response tokens or chunks. This state is skipped by non-streaming LLM
-   * providers, which transition directly from `'processing'` to `'complete'`.
+   * Valid from `'processing'` or `'idle'` (direct, for tool loops). Indicates
+   * the LLM has begun streaming response tokens or chunks. This state is
+   * skipped by non-streaming LLM providers, which transition directly from
+   * `'processing'` to `'complete'`.
    *
    * @throws Error if the current state does not allow transitioning to `'streaming'`.
    */
@@ -183,8 +193,10 @@ export class SimpleProcessingStateMachine {
    *
    * @remarks
    * Valid from `'processing'` or `'streaming'`. Indicates the LLM response has
-   * been fully received. From `'complete'`, only
-   * {@link SimpleProcessingStateMachine.setIdle | setIdle()} is allowed.
+   * been fully received. From `'complete'`,
+   * {@link SimpleProcessingStateMachine.setIdle | setIdle()} or
+   * {@link SimpleProcessingStateMachine.setProcessing | setProcessing()} (for
+   * tool loops) are allowed.
    *
    * @throws Error if the current state does not allow transitioning to `'complete'`.
    */
@@ -196,7 +208,7 @@ export class SimpleProcessingStateMachine {
    * Transitions to the `'error'` state.
    *
    * @remarks
-   * Valid from any state except `'complete'` and `'error'` itself. Indicates a
+   * Valid from `'idle'`, `'processing'`, or `'streaming'`. Indicates a
    * processing failure. From `'error'`, only
    * {@link SimpleProcessingStateMachine.setIdle | setIdle()} is allowed.
    *

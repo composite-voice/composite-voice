@@ -95,6 +95,48 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+## Tool use / function calling
+
+AnthropicLLM implements the `ToolAwareLLMProvider` interface, enabling the LLM to call functions during generation. Text output streams to TTS as usual, while tool calls are handled via an async callback. After tool execution, the SDK automatically re-calls the LLM with the tool result so it can generate a natural language follow-up.
+
+Configure tools on the top-level `CompositeVoice` config:
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-sonnet-4-6' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+  tools: {
+    definitions: [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' },
+          },
+          required: ['location'],
+        },
+      },
+    ],
+    onToolCall: async (toolCall) => {
+      if (toolCall.name === 'get_weather') {
+        const weather = await fetchWeather(toolCall.arguments.location);
+        return { toolCallId: toolCall.id, content: JSON.stringify(weather) };
+      }
+      return { toolCallId: toolCall.id, content: 'Unknown tool' };
+    },
+  },
+});
+```
+
+Tool calls are transparent to the event stream -- you still receive the same `llm.chunk` and `llm.complete` events. The tool execution loop runs internally: when the LLM emits a `tool_use` stop reason, the SDK calls your `onToolCall` handler, appends the result to the conversation, and re-invokes the LLM.
+
+> **Note:** Only AnthropicLLM supports tool use currently. Other LLM providers (OpenAILLM, WebLLMLLM) will ignore the `tools` config.
+
 ## Tips
 
 - **`maxTokens` is required.** Anthropic's API rejects requests without it. The provider defaults to `1024`, but for voice applications, lower values (128--512) produce faster responses.

@@ -63,7 +63,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **LLM features:** Streaming via SSE, system prompts extracted to top-level `system` parameter (Anthropic API convention), `maxTokens` required (default 1024), AbortSignal cancellation for the eager pipeline, temperature and topP controls.
 
-**Models:** claude-haiku-4-5 (fastest), claude-sonnet-4-5 (balanced), claude-opus-4-5 (most capable).
+**Models:** claude-haiku-4-5 (fastest), claude-sonnet-4-6 (balanced), claude-opus-4-6 (most capable).
 
 **Guides:** [AnthropicLLM](/guides/llm/anthropic) · **Examples:** [00](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent), [30](https://github.com/lukeocodes/composite-voice/tree/main/examples/30-anthropic-models), [31](https://github.com/lukeocodes/composite-voice/tree/main/examples/31-anthropic-streaming-config)
 

@@ -195,7 +195,8 @@ const agent = new CompositeVoice({
     }),
     new DeepgramSTT({
       apiKey: 'your-deepgram-key',
-      options: { model: 'nova-3', interimResults: true, endpointing: 300 },
+      interimResults: true,
+      options: { model: 'nova-3', endpointing: 300 },
     }),
     new AnthropicLLM({
       apiKey: 'your-anthropic-key',

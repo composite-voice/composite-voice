@@ -86,6 +86,10 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+## Utterance completion
+
+NativeSTT emits one result per utterance. When the Web Speech API fires a final result, NativeSTT sets both `isFinal: true` and `utteranceComplete: true` on the `TranscriptionResult`. The `utteranceComplete` flag is what CompositeVoice uses to trigger LLM processing.
+
 ## Tips and gotchas
 
 - **Browser support is limited.** Chrome and Edge have full support. Safari offers partial support via `webkitSpeechRecognition`. Firefox does not support the Web Speech API at all.

@@ -185,10 +185,10 @@ const agent = new CompositeVoice({
     new DeepgramSTT({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
       language: 'en-US',
+      interimResults: true,
       options: {
         model: 'nova-3',
         smartFormat: true,
-        interimResults: true,
         endpointing: 300,
         vadEvents: true,
       },

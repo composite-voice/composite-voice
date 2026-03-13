@@ -142,6 +142,10 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+## Utterance completion
+
+ElevenLabsSTT sets `utteranceComplete: true` when the server sends a committed or final transcript (depending on the commit strategy). This is the flag CompositeVoice checks to trigger LLM processing -- interim transcripts do not advance the pipeline.
+
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your ElevenLabs key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically. The proxy shares the same `elevenlabsApiKey` with [ElevenLabsTTS](/guides/tts/elevenlabs-tts).

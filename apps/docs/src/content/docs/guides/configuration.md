@@ -40,8 +40,10 @@ const voice = new CompositeVoice({
 
   // Conversation history
   conversationHistory: {
-    enabled: true,    // maintain multi-turn context (default: false)
-    maxTurns: 10,     // 0 = unlimited (default: 0)
+    enabled: true,              // maintain multi-turn context (default: false)
+    maxTurns: 10,               // 0 = unlimited (default: 0)
+    maxTokens: 4000,            // approximate token budget for history (default: unlimited)
+    preserveSystemMessages: true, // keep system messages during trimming (default: true)
   },
 
   // Turn-taking -- how the SDK handles the mic during TTS playback
@@ -57,8 +59,21 @@ const voice = new CompositeVoice({
     similarityThreshold: 0.8,   // 0-1 word-overlap threshold (default: 0.8)
   },
 
+  // Pipeline tuning
+  pipeline: {
+    maxPendingChunks: 10,  // LLM→TTS backpressure: pause LLM when this many chunks are buffered (Live TTS only)
+  },
+
   // Error recovery
   autoRecover: true,   // attempt to recover from provider errors automatically
+
+  // Recovery backoff (only applies when autoRecover is true)
+  recovery: {
+    maxAttempts: 3,          // max recovery attempts before giving up (default: 3)
+    initialDelay: 1000,      // ms before first recovery attempt (default: 1000)
+    backoffMultiplier: 2,    // delay multiplier per attempt (default: 2)
+    maxDelay: 10000,         // ms ceiling for backoff (default: 10000)
+  },
 
   // Reconnection backoff for WebSocket providers
   reconnection: {
@@ -100,8 +115,10 @@ Turn-taking controls whether the SDK pauses microphone capture while the agent s
 When `enabled: true`, each STT final result and LLM response is appended to an internal message history. The full history is sent to the LLM on every turn, giving the model multi-turn context.
 
 - A "turn" equals one user message plus one assistant response
-- `maxTurns` limits how many turns the SDK retains; set `0` for unlimited
-- When `maxTurns` is exceeded, the oldest turn is dropped
+- `maxTurns` limits how many turns the SDK retains; set `0` for unlimited. When exceeded, the oldest turn is dropped
+- `maxTokens` sets an approximate token budget (using a `ceil(text.length / 4)` heuristic); oldest non-system turns are dropped when the budget is exceeded
+- When both `maxTurns` and `maxTokens` are set, the more restrictive limit wins
+- `preserveSystemMessages` (default: `true`) keeps system messages from being removed during trimming, ensuring system instructions are always present in the LLM context
 - Call `voice.clearHistory()` to reset the conversation at any time
 
 ```typescript
@@ -153,6 +170,40 @@ const voice = new CompositeVoice({
 ```
 
 > **Note:** DeepgramFlux is currently disabled and will throw on construction. It is preserved for future re-enablement when the Deepgram V2 SDK stabilizes.
+
+## Tool use
+
+When the LLM provider supports tool use (currently [AnthropicLLM](/guides/llm/anthropic) only), you can define tools on the top-level config. The `onToolCall` callback is async -- return a `LLMToolResult` with the serialized result content.
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [/* ...your providers */],
+  tools: {
+    definitions: [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' },
+          },
+          required: ['location'],
+        },
+      },
+    ],
+    onToolCall: async (toolCall) => {
+      // toolCall has: id, name, arguments
+      const result = await yourToolHandler(toolCall.name, toolCall.arguments);
+      return { toolCallId: toolCall.id, content: JSON.stringify(result) };
+    },
+  },
+});
+```
+
+The SDK handles the tool loop internally: when the LLM emits a tool call, the SDK executes your callback, feeds the result back to the LLM, and the LLM generates a spoken follow-up. Text output streams to TTS normally throughout the process.
+
+See the [Anthropic guide](/guides/llm/anthropic#tool-use--function-calling) for a full walkthrough.
 
 ## Logging
 

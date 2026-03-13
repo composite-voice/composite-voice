@@ -13,7 +13,7 @@ Use DeepgramSTT for production voice pipelines that need high accuracy, word-lev
 - A [Deepgram](https://deepgram.com) API key
 - No additional peer dependencies required
 
-DeepgramSTT connects through a raw native WebSocket managed by the SDK's built-in `WebSocketManager`.
+DeepgramSTT connects through a raw native `WebSocket` connection that it manages directly.
 
 For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
@@ -126,11 +126,15 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+## How utterance completion works
+
+DeepgramSTT buffers `is_final` segments from the Deepgram WebSocket and emits the complete utterance text when `speech_final` arrives. Internally, this sets `utteranceComplete: true` on the `TranscriptionResult`, which is the flag CompositeVoice checks to trigger LLM processing. The older `speechFinal` field is still present on transcription events for display purposes but is deprecated for pipeline triggering -- `utteranceComplete` is now the canonical signal.
+
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your Deepgram key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically.
 - **No peer dependencies.** DeepgramSTT uses a raw native WebSocket, not the `@deepgram/sdk`. No extra packages to install.
-- **Utterance buffering.** Deepgram may split one utterance into multiple `is_final` segments before emitting `speech_final`. DeepgramSTT buffers these segments and delivers the complete utterance text when `speechFinal: true`.
+- **Utterance buffering.** Deepgram may split one utterance into multiple `is_final` segments before emitting `speech_final`. DeepgramSTT buffers these segments and delivers the complete utterance text when `utteranceComplete: true`.
 - **No preflight signals.** DeepgramSTT (V1/Nova) does not emit preflight/eager end-of-turn events. For the eager LLM pipeline, use [DeepgramFlux](/guides/stt/deepgram-flux) instead.
 - **Connection timeout.** The WebSocket connection defaults to a 10-second timeout. Adjust with `timeout` in the config if your network is slow.
 

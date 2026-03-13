@@ -89,6 +89,10 @@ await agent.initialize();
 await agent.startListening();
 ```
 
+## Utterance completion
+
+AssemblyAISTT sets `utteranceComplete: true` on `FinalTranscript` messages from the AssemblyAI WebSocket. This is the flag CompositeVoice checks to trigger LLM processing -- interim/partial transcripts do not trigger the pipeline.
+
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your AssemblyAI key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically.

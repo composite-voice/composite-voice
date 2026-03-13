@@ -219,7 +219,7 @@ import { AnthropicLLM } from '@lukeocodes/composite-voice';
 
 const llm = new AnthropicLLM({
   proxyUrl: '/api/proxy/anthropic',
-  model: 'claude-haiku-4-5',    // claude-haiku-4-5, claude-sonnet-4-5, claude-opus-4-5
+  model: 'claude-haiku-4-5',    // claude-haiku-4-5, claude-sonnet-4-6, claude-opus-4-6
   maxTokens: 1024,               // required (default: 1024)
 });
 ```
