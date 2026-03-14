@@ -29,6 +29,10 @@ class MockSTTProvider extends BaseSTTProvider {
   protected async onInitialize(): Promise<void> {}
   protected async onDispose(): Promise<void> {}
 
+  processAudio(_chunk: ArrayBuffer): void {
+    // No-op for testing
+  }
+
   /** Expose emitTranscription for testing. */
   simulateTranscription(result: TranscriptionResult): void {
     this.emitTranscription(result);
@@ -43,6 +47,14 @@ class MockTTSProvider extends BaseTTSProvider {
 
   protected async onInitialize(): Promise<void> {}
   protected async onDispose(): Promise<void> {}
+
+  processChunk(_text: string): void {
+    // No-op for testing
+  }
+
+  async finalize(): Promise<void> {
+    // No-op for testing
+  }
 
   /** Expose emitAudio for testing. */
   simulateAudio(chunk: AudioChunk): void {

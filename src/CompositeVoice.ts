@@ -64,7 +64,7 @@ import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
  *
  * @remarks
  * Live STT providers stream audio in real-time over a WebSocket and support
- * `connect()`, `sendAudio()`, and `disconnect()` methods. REST STT providers,
+ * `connect()`, `processAudio()`, and `disconnect()` methods. REST STT providers,
  * by contrast, transcribe complete audio blobs via `transcribe()`.
  *
  * @param provider - The STT provider instance to check.
@@ -79,7 +79,7 @@ function isLiveSTT(provider: STTProvider): provider is LiveSTTProvider {
  *
  * @remarks
  * Live TTS providers stream synthesized audio chunks in real-time over a
- * WebSocket and support `connect()`, `sendText()`, `finalize()`, and
+ * WebSocket and support `connect()`, `processChunk()`, `finalize()`, and
  * `disconnect()` methods. They also expose `onAudio()` and `onMetadata()`
  * callbacks for receiving audio data.
  *
@@ -107,7 +107,7 @@ function isRestTTS(provider: TTSProvider): provider is RestTTSProvider {
 
 /** Type guard: does this LLM provider support tool use? */
 function isToolAware(provider: LLMProvider): provider is ToolAwareLLMProvider {
-  return typeof (provider as ToolAwareLLMProvider).generateWithTools === 'function';
+  return typeof (provider as ToolAwareLLMProvider).processMessagesWithTools === 'function';
 }
 
 /**
@@ -599,7 +599,7 @@ export class CompositeVoice {
         }
       }
 
-      if (result.isPreflight) {
+      if (stt.isPreflight(result)) {
         // ── Preflight / eager end-of-turn ──────────────────────────────────
         // DeepgramFlux signals early completion before speech_final.
         this.emitEvent({
@@ -616,7 +616,7 @@ export class CompositeVoice {
         return;
       }
 
-      if (result.utteranceComplete && result.text.trim()) {
+      if (stt.isUtteranceComplete(result) && result.text.trim()) {
         // ── Utterance complete — provider says "send to LLM now" ─────────
         this.emitEvent({
           type: 'transcription.speechFinal',
@@ -636,7 +636,7 @@ export class CompositeVoice {
         } as CompositeVoiceEvent);
 
         this.handleSpeechFinal(result.text);
-      } else if (result.isFinal) {
+      } else if (stt.isFinal(result)) {
         // ── Segment finalised but not utterance-complete ─────────────────
         // Emit for display/caption purposes but do NOT trigger LLM.
         this.emitEvent({
@@ -664,6 +664,7 @@ export class CompositeVoice {
         // Multi-role tts===output: no queue needed, TTS handles playback internally.
         // Track playback state for agent state machine derivation.
         tts.onAudio((chunk) => {
+          if (!tts.isAudioReady(chunk)) return;
           this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
@@ -686,6 +687,7 @@ export class CompositeVoice {
       } else {
         // Separate TTS and output: wire audio through output queue
         tts.onAudio((chunk) => {
+          if (!tts.isAudioReady(chunk)) return;
           this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
@@ -840,7 +842,7 @@ export class CompositeVoice {
    * 2. Transitions the processing state machine to `processing`, then `streaming`.
    * 3. Builds the LLM request, optionally including conversation history.
    * 4. Streams response chunks, emitting `llm.chunk` events and forwarding
-   *    text to Live TTS providers via `sendText()`.
+   *    text to Live TTS providers via `processChunk()`.
    * 5. On completion, emits `llm.complete`, appends to conversation history,
    *    and triggers TTS synthesis (REST or Live finalization).
    * 6. Handles `AbortSignal` for eager pipeline cancellation at every stage,
@@ -938,15 +940,15 @@ export class CompositeVoice {
       // Text-only fallback path
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
-        responseIterable = await llm.generateFromMessages(
+        responseIterable = await llm.processMessages(
           [ioContext, ...this.conversationHistory],
           { signal: activeSignal }
         );
       } else {
-        responseIterable = await llm.generate(text, { signal: activeSignal });
+        responseIterable = await llm.processText(text, { signal: activeSignal });
       }
 
-      // Check if aborted before we start streaming (generate() may have taken time)
+      // Check if aborted before we start streaming (processMessages/processText may have taken time)
       if (activeSignal.aborted) {
         this.processingStateMachine.setIdle();
         return;
@@ -989,10 +991,10 @@ export class CompositeVoice {
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
           if (this.ttsBackpressure) {
             await this.ttsBackpressure.waitForCapacity();
-            tts.sendText(chunk);
+            tts.processChunk(chunk);
             this.ttsBackpressure.acquire();
           } else {
-            tts.sendText(chunk);
+            tts.processChunk(chunk);
           }
         }
       }
@@ -1165,10 +1167,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1185,10 +1187,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1231,10 +1233,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1264,7 +1266,7 @@ export class CompositeVoice {
    * @remarks
    * This is the Live TTS counterpart to {@link processTTS} for REST TTS. The
    * key difference is that audio chunks have already been arriving in real-time
-   * during LLM streaming (via `sendText()`), so this method only needs to:
+   * during LLM streaming (via `processChunk()`), so this method only needs to:
    *
    * 1. Optionally pause audio capture to prevent echo. For separate input
    *    providers, this stops queue draining and pauses the input.
@@ -1340,10 +1342,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1359,10 +1361,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1403,10 +1405,10 @@ export class CompositeVoice {
           if (!this.isMultiRoleInput) {
             const header = this.headerCache.getHeader();
             if (header) {
-              stt.sendAudio(header);
+              stt.processAudio(header);
             }
             this.inputQueue.startDraining((chunk: AudioChunk) => {
-              stt.sendAudio(chunk.data);
+              stt.processAudio(chunk.data);
             });
           }
         }
@@ -1506,7 +1508,7 @@ export class CompositeVoice {
         // 5. Start draining: flush all buffered chunks then switch to pass-through
         if (isLiveSTT(stt)) {
           this.inputQueue.startDraining((chunk: AudioChunk) => {
-            stt.sendAudio(chunk.data);
+            stt.processAudio(chunk.data);
           });
         }
       }
@@ -1800,12 +1802,12 @@ export class CompositeVoice {
       // Text-only fallback path
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
-        responseIterable = await llm.generateFromMessages(
+        responseIterable = await llm.processMessages(
           [ioContext, ...this.conversationHistory],
           { signal: llmController.signal },
         );
       } else {
-        responseIterable = await llm.generate(text, { signal: llmController.signal });
+        responseIterable = await llm.processText(text, { signal: llmController.signal });
       }
 
       // Ensure Live TTS WebSocket is connected before streaming begins
@@ -1832,7 +1834,7 @@ export class CompositeVoice {
         }
 
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
-          tts.sendText(chunk);
+          tts.processChunk(chunk);
         }
       }
 
@@ -1915,7 +1917,7 @@ export class CompositeVoice {
       await tts.connect();
     }
 
-    const responseIterable = await llm.generateWithTools(messages, {
+    const responseIterable = await llm.processMessagesWithTools(messages, {
       signal,
       tools: toolConfig.definitions,
     });
@@ -1928,7 +1930,7 @@ export class CompositeVoice {
         this.emitEvent({ type: 'llm.chunk', chunk: chunk.text, accumulated: fullText, timestamp: Date.now() });
         // Only text goes to TTS — tool calls are silent
         if (isLiveTTS(tts) && !this._outputMuted) {
-          tts.sendText(chunk.text);
+          tts.processChunk(chunk.text);
         }
       } else if (chunk.type === 'tool_call_start') {
         activeToolId = chunk.toolCall.id;
@@ -1973,12 +1975,12 @@ export class CompositeVoice {
           fullText = '';
           toolCalls = [];
 
-          // Re-call the LLM with tool results — it will generate a spoken follow-up
+          // Re-call the LLM with tool results — it will produce a spoken follow-up
           if (isLiveTTS(tts) && !this._outputMuted) {
             await tts.connect();
           }
 
-          const followUp = await llm.generateWithTools(messages, {
+          const followUp = await llm.processMessagesWithTools(messages, {
             signal,
             tools: toolConfig.definitions,
           });
@@ -1989,7 +1991,7 @@ export class CompositeVoice {
               fullText += chunk2.text;
               this.emitEvent({ type: 'llm.chunk', chunk: chunk2.text, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
               if (isLiveTTS(tts) && !this._outputMuted) {
-                tts.sendText(chunk2.text);
+                tts.processChunk(chunk2.text);
               }
             }
             // If the follow-up also has tool calls, we'd need recursion,
@@ -2059,8 +2061,8 @@ export class CompositeVoice {
     if (isLiveSTT(stt)) {
       await stt.connect();
       const header = this.headerCache.getHeader();
-      if (header) stt.sendAudio(header);
-      this.inputQueue.startDraining((chunk: { data: ArrayBuffer }) => stt.sendAudio(chunk.data));
+      if (header) stt.processAudio(header);
+      this.inputQueue.startDraining((chunk: { data: ArrayBuffer }) => stt.processAudio(chunk.data));
     }
 
     this.captureStateMachine.setActive();

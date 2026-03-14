@@ -195,10 +195,10 @@ describe('NativeSTT', () => {
     });
   });
 
-  describe('sendAudio()', () => {
+  describe('processAudio()', () => {
     it('should be a no-op and not throw', async () => {
       await provider.initialize();
-      expect(() => provider.sendAudio(new ArrayBuffer(100))).not.toThrow();
+      expect(() => provider.processAudio(new ArrayBuffer(100))).not.toThrow();
     });
   });
 

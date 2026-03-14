@@ -161,7 +161,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * });
  * await llm.initialize();
  *
- * const stream = await llm.generate('What is the speed of light?');
+ * const stream = await llm.processText('What is the speed of light?');
  * for await (const chunk of stream) {
  *   process.stdout.write(chunk);
  * }
@@ -179,7 +179,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * });
  * await llm.initialize();
  *
- * const stream = await llm.generate('Tell me a joke.');
+ * const stream = await llm.processText('Tell me a joke.');
  * for await (const chunk of stream) {
  *   document.getElementById('output')!.textContent += chunk;
  * }
@@ -275,35 +275,10 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   }
 
   /**
-   * Generate an LLM response from a single text prompt.
+   * Process a conversation and generate a response.
    *
    * @remarks
-   * Convenience wrapper that converts the prompt to a message array (prepending
-   * the system prompt if configured) and delegates to
-   * {@link AnthropicLLM.generateFromMessages | generateFromMessages}.
-   *
-   * @param prompt - The user's text prompt.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the client is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   */
-  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
-    const messages = this.promptToMessages(prompt);
-    return this.generateFromMessages(messages, options);
-  }
-
-  /**
-   * Generate an LLM response from a multi-turn conversation.
-   *
-   * @remarks
-   * This is the primary generation method. It extracts system messages from the
+   * This is the primary handler method. It extracts system messages from the
    * array and passes them as Anthropic's top-level `system` parameter (since
    * Anthropic does not accept `role: 'system'` inline). Remaining messages are
    * converted to the Anthropic `MessageParam` format.
@@ -332,13 +307,13 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    *   { role: 'user', content: 'Summarize the theory of relativity.' },
    * ];
    *
-   * const stream = await anthropicLLM.generateFromMessages(messages);
+   * const stream = await anthropicLLM.processMessages(messages);
    * for await (const chunk of stream) {
    *   process.stdout.write(chunk);
    * }
    * ```
    */
-  async generateFromMessages(
+  async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
@@ -536,14 +511,14 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   }
 
   /**
-   * Generate a response with tool use support.
+   * Process a conversation with tool use support.
    *
    * @remarks
    * Returns an async iterable of `LLMStreamChunk` — text chunks go to TTS,
    * tool_call chunks go to the tool executor. The `done` chunk signals the
    * stop reason so the caller knows whether to send tool results and re-call.
    */
-  async generateWithTools(
+  async processMessagesWithTools(
     messages: LLMMessage[],
     options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
   ): Promise<AsyncIterable<LLMStreamChunk>> {

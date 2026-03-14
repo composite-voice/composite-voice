@@ -221,7 +221,7 @@ describe('Array-based provider configuration', () => {
 
     it('resolves with live/WebSocket STT provider (MockLiveSTTProvider)', () => {
       const input = new MockInputProvider();
-      const stt = new MockLiveSTTProvider(); // WebSocket variant: connect/sendAudio/disconnect
+      const stt = new MockLiveSTTProvider(); // WebSocket variant: connect/processAudio/disconnect
       const llm = new MockLLMProvider();
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
@@ -394,7 +394,7 @@ describe('Array-based provider configuration', () => {
         async initialize() {}
         async dispose() {}
         isReady() { return true; }
-        // Missing both REST (transcribe, onTranscription) and live (connect, sendAudio, disconnect, onTranscription) methods
+        // Missing both REST (transcribe, onTranscription) and live (connect, processAudio, disconnect, onTranscription) methods
       }
 
       const input = new MockInputProvider();
@@ -422,7 +422,7 @@ describe('Array-based provider configuration', () => {
         async initialize() {}
         async dispose() {}
         isReady() { return true; }
-        // Missing: generate, generateFromMessages
+        // Missing: processMessages, processText
       }
 
       const input = new MockInputProvider();
@@ -450,7 +450,7 @@ describe('Array-based provider configuration', () => {
         async initialize() {}
         async dispose() {}
         isReady() { return true; }
-        // Missing both REST (synthesize) and live (connect, sendText, finalize, disconnect, onAudio, onMetadata)
+        // Missing both REST (synthesize) and live (connect, processChunk, finalize, disconnect, onAudio, onMetadata)
       }
 
       const input = new MockInputProvider();

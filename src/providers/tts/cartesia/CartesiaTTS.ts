@@ -585,7 +585,7 @@ export class CartesiaTTS extends LiveTTSProvider {
    *
    * @param chunk - The text to synthesize into speech.
    */
-  sendText(chunk: string): void {
+  protected sendTextToSocket(chunk: string): void {
     if (!this.isConnected || !this.wsManager) {
       this.logger.warn('Cannot send text: not connected');
       return;
@@ -635,7 +635,7 @@ export class CartesiaTTS extends LiveTTSProvider {
    *
    * @throws Rethrows any error that occurs during finalization.
    */
-  async finalize(): Promise<void> {
+  protected async finalizeSocket(): Promise<void> {
     if (!this.isConnected || !this.wsManager) {
       this.logger.warn('Cannot finalize: not connected');
       return;

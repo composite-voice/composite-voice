@@ -99,7 +99,7 @@ describe('OpenAILLM', () => {
     });
   });
 
-  describe('generate', () => {
+  describe('processText', () => {
     beforeEach(async () => {
       provider = new OpenAILLM(config);
       await provider.initialize();
@@ -109,7 +109,7 @@ describe('OpenAILLM', () => {
       const uninitProvider = new OpenAILLM(config);
 
       await expect(async () => {
-        await uninitProvider.generate('Hello');
+        await uninitProvider.processText('Hello');
       }).rejects.toThrow();
     });
 
@@ -128,7 +128,7 @@ describe('OpenAILLM', () => {
       // Access private client property for testing
       (provider as any).client = mockInstance;
 
-      const result = provider.generate('Hello', { temperature: 0.5 });
+      const result = provider.processText('Hello', { temperature: 0.5 });
       const iterator = await result;
       const chunks: string[] = [];
       for await (const chunk of iterator) {
@@ -157,7 +157,7 @@ describe('OpenAILLM', () => {
 
       (provider as any).client = mockInstance;
 
-      const result = await provider.generate('Test', { temperature: 0.9 });
+      const result = await provider.processText('Test', { temperature: 0.9 });
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 
@@ -168,7 +168,7 @@ describe('OpenAILLM', () => {
     });
   });
 
-  describe('generateFromMessages', () => {
+  describe('processMessages', () => {
     beforeEach(async () => {
       provider = new OpenAILLM(config);
       await provider.initialize();
@@ -195,7 +195,7 @@ describe('OpenAILLM', () => {
         { role: 'user' as const, content: 'Hello' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -229,7 +229,7 @@ describe('OpenAILLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -266,7 +266,7 @@ describe('OpenAILLM', () => {
         extra: { frequency_penalty: 0.5 },
       };
 
-      const result = await provider.generateFromMessages(messages, options);
+      const result = await provider.processMessages(messages, options);
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 

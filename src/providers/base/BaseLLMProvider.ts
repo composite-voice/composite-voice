@@ -21,7 +21,14 @@ import { Logger } from '../../utils/logger';
  * `BaseLLMProvider` extends {@link BaseProvider} and implements the
  * {@link LLMProvider} interface. It provides shared helpers for building
  * message arrays and merging generation options, while requiring subclasses
- * to implement the two generation methods.
+ * to implement the primary handler method `processMessages`.
+ *
+ * The handler/guard pattern:
+ *
+ * 1. **Handler methods** (`processMessages`, `processText`) receive data and
+ *    produce results as async iterables of text chunks.
+ * 2. **Guard methods** (`isToolCall`) allow the orchestrator to interpret
+ *    response chunks without coupling to provider-specific logic.
  *
  * All LLM providers communicate over REST (`type = 'rest'`) and follow a
  * **Receive Text -> Send Text** contract:
@@ -54,12 +61,7 @@ import { Logger } from '../../utils/logger';
  *   protected async onInitialize(): Promise<void> { }
  *   protected async onDispose(): Promise<void> { }
  *
- *   async generate(prompt: string, options?: LLMGenerationOptions) {
- *     const messages = this.promptToMessages(prompt);
- *     return this.generateFromMessages(messages, options);
- *   }
- *
- *   async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions) {
+ *   async *processMessages(messages: LLMMessage[], options?: LLMGenerationOptions) {
  *     const merged = this.mergeOptions(options);
  *     const response = await myApi.chat(messages, merged);
  *     yield response.text;
@@ -89,32 +91,17 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
     this.config = config;
   }
 
-  /**
-   * Generate a response from a single user prompt.
-   *
-   * @remarks
-   * **Interface: Receive Text -> Send Text.**
-   * This is the simplest way to get a completion. Implementations typically
-   * convert the prompt into a messages array (optionally prepending a system
-   * message) and delegate to {@link generateFromMessages}.
-   *
-   * @param prompt - The user's input text.
-   * @param options - Optional generation overrides (temperature, max tokens,
-   *   stop sequences, abort signal, etc.).
-   * @returns An `AsyncIterable` that yields text chunks as they arrive.
-   *
-   * @virtual
-   */
-  abstract generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>>;
+  // === HANDLER METHODS ===
 
   /**
-   * Generate a response from an array of conversation messages.
+   * Process a conversation and generate a response.
    *
    * @remarks
    * **Interface: Receive Text -> Send Text.**
-   * Use this method when you need multi-turn conversation support.
-   * The `messages` array can include `system`, `user`, and `assistant`
-   * roles to provide full conversational context.
+   * The primary handler method. Returns an `AsyncIterable` that yields text
+   * chunks. When streaming is enabled, multiple chunks are yielded as tokens
+   * arrive. When streaming is disabled, a single chunk containing the full
+   * response is yielded.
    *
    * @param messages - Ordered array of {@link LLMMessage} objects
    *   representing the conversation history.
@@ -123,10 +110,43 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
    *
    * @virtual
    */
-  abstract generateFromMessages(
+  abstract processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>>;
+
+  /**
+   * Process a single text prompt (convenience wrapper).
+   *
+   * @remarks
+   * Converts the prompt to a messages array (optionally prepending a system
+   * message from config) and delegates to {@link processMessages}.
+   *
+   * @param prompt - The user's input text.
+   * @param options - Optional generation overrides.
+   * @returns An `AsyncIterable` that yields text chunks as they arrive.
+   */
+  async processText(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    return this.processMessages(this.promptToMessages(prompt), options);
+  }
+
+  // === GUARD METHODS ===
+
+  /**
+   * Check whether a response chunk represents a tool call.
+   *
+   * @remarks
+   * The default implementation returns `false`. Tool-aware providers override
+   * this to detect tool invocations in the response stream.
+   *
+   * @param _chunk - A response chunk to inspect.
+   * @returns `true` when the chunk represents a tool call.
+   */
+  isToolCall(_chunk: unknown): boolean {
+    return false;
+  }
+
+  // === HELPERS ===
 
   /**
    * Convert a plain-text prompt into an {@link LLMMessage} array.
@@ -136,7 +156,7 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
    * `system` message. The prompt itself becomes a `user` message.
    *
    * @param prompt - The user's input text.
-   * @returns A messages array suitable for {@link generateFromMessages}.
+   * @returns A messages array suitable for {@link processMessages}.
    */
   protected promptToMessages(prompt: string): LLMMessage[] {
     const messages: LLMMessage[] = [];

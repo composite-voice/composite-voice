@@ -122,7 +122,7 @@ export interface NativeSTTConfig extends STTProviderConfig {
  * -- the browser's `SpeechRecognition` API directly accesses the microphone.
  * Because of this, the provider declares `roles: ['input', 'stt']` and
  * CompositeVoice will **not** set up a separate `AudioInputProvider`. The
- * {@link sendAudio} method is a no-op.
+ * {@link sendAudioToSocket} method is a no-op.
  *
  * **Transport:** WebSocket-like (browser-managed, extends {@link LiveSTTProvider})
  *
@@ -541,12 +541,14 @@ export class NativeSTT extends LiveSTTProvider {
    * CompositeVoice should **not** call this method because NativeSTT
    * covers the `'input'` role internally. Any invocation is silently ignored.
    *
+   * Called by the base class's `processAudio()` method.
+   *
    * @param _chunk - Audio chunk (unused).
    */
-  sendAudio(_chunk: ArrayBuffer): void {
+  protected sendAudioToSocket(_chunk: ArrayBuffer): void {
     // No-op: Native STT uses SpeechRecognition API which directly accesses the microphone
     // Audio flow: Microphone → SpeechRecognition API → onTranscription callback
-    this.logger.debug('sendAudio() called on native STT (no-op - browser manages audio capture)');
+    this.logger.debug('sendAudioToSocket() called on native STT (no-op - browser manages audio capture)');
   }
 
   // ── AudioInputProvider interface (multi-role: input + stt) ──────────

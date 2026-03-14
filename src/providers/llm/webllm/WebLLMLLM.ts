@@ -278,31 +278,6 @@ export class WebLLMLLM extends BaseLLMProvider {
   }
 
   /**
-   * Generate an LLM response from a single text prompt.
-   *
-   * @remarks
-   * Convenience wrapper that converts the prompt to a message array (prepending
-   * the system prompt if configured) and delegates to
-   * {@link WebLLMLLM.generateFromMessages | generateFromMessages}.
-   *
-   * @param prompt - The user's text prompt.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the engine is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   */
-  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
-    const messages = this.promptToMessages(prompt);
-    return this.generateFromMessages(messages, options);
-  }
-
-  /**
    * Generate an LLM response from a multi-turn conversation.
    *
    * @remarks
@@ -333,13 +308,13 @@ export class WebLLMLLM extends BaseLLMProvider {
    *   { role: 'user', content: 'What can you do offline?' },
    * ];
    *
-   * const stream = await webllm.generateFromMessages(messages);
+   * const stream = await webllm.processMessages(messages);
    * for await (const chunk of stream) {
    *   console.log(chunk);
    * }
    * ```
    */
-  async generateFromMessages(
+  async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {

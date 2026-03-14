@@ -199,7 +199,7 @@ describe('OpenAICompatibleLLM', () => {
     });
   });
 
-  describe('generate', () => {
+  describe('processText', () => {
     beforeEach(async () => {
       provider = new OpenAICompatibleLLM(config);
       await provider.initialize();
@@ -209,7 +209,7 @@ describe('OpenAICompatibleLLM', () => {
       const uninitProvider = new OpenAICompatibleLLM(config);
 
       await expect(async () => {
-        await uninitProvider.generate('Hello');
+        await uninitProvider.processText('Hello');
       }).rejects.toThrow();
     });
 
@@ -227,7 +227,7 @@ describe('OpenAICompatibleLLM', () => {
 
       (provider as any).client = mockInstance;
 
-      const result = await provider.generate('Hello');
+      const result = await provider.processText('Hello');
       const chunks: string[] = [];
       for await (const chunk of result) {
         chunks.push(chunk);
@@ -255,7 +255,7 @@ describe('OpenAICompatibleLLM', () => {
 
       (provider as any).client = mockInstance;
 
-      const result = await provider.generate('Test', { temperature: 0.9 });
+      const result = await provider.processText('Test', { temperature: 0.9 });
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 
@@ -266,7 +266,7 @@ describe('OpenAICompatibleLLM', () => {
     });
   });
 
-  describe('generateFromMessages', () => {
+  describe('processMessages', () => {
     beforeEach(async () => {
       provider = new OpenAICompatibleLLM(config);
       await provider.initialize();
@@ -293,7 +293,7 @@ describe('OpenAICompatibleLLM', () => {
         { role: 'user' as const, content: 'Hello' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -326,7 +326,7 @@ describe('OpenAICompatibleLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -363,7 +363,7 @@ describe('OpenAICompatibleLLM', () => {
         extra: { frequency_penalty: 0.5 },
       };
 
-      const result = await provider.generateFromMessages(messages, options);
+      const result = await provider.processMessages(messages, options);
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 
@@ -399,7 +399,7 @@ describe('OpenAICompatibleLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages, {
+      const result = await provider.processMessages(messages, {
         signal: abortController.signal,
       });
 
@@ -424,7 +424,7 @@ describe('OpenAICompatibleLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages, {
+      const result = await provider.processMessages(messages, {
         signal: abortController.signal,
       });
 
@@ -453,7 +453,7 @@ describe('OpenAICompatibleLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -480,7 +480,7 @@ describe('OpenAICompatibleLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages, {
+      const result = await provider.processMessages(messages, {
         signal: abortController.signal,
       });
       for await (const _chunk of result) {

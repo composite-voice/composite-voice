@@ -35,7 +35,7 @@ class SucceedingLLM implements LLMProvider {
     return true;
   }
 
-  async generate(prompt: string) {
+  async processText(prompt: string) {
     return {
       async *[Symbol.asyncIterator]() {
         yield `Response to: ${prompt}`;
@@ -43,16 +43,20 @@ class SucceedingLLM implements LLMProvider {
     };
   }
 
-  async generateFromMessages(_messages: LLMMessage[]) {
+  async processMessages(_messages: LLMMessage[]) {
     return {
       async *[Symbol.asyncIterator]() {
         yield 'Response from messages';
       },
     };
   }
+
+  isToolCall(_chunk: unknown): boolean {
+    return false;
+  }
 }
 
-/** An LLM provider that throws on generate(). */
+/** An LLM provider that throws on processText(). */
 class FailingGenerateLLM implements LLMProvider {
   type = 'rest' as const;
   roles = ['llm'] as const;
@@ -67,7 +71,7 @@ class FailingGenerateLLM implements LLMProvider {
     return true;
   }
 
-  async generate(_prompt: string, _options?: LLMGenerationOptions) {
+  async processText(_prompt: string, _options?: LLMGenerationOptions) {
     this.failCount++;
     if (this.failCount <= this.maxFailures) {
       throw new Error(`LLM generation failed (attempt ${this.failCount})`);
@@ -79,8 +83,12 @@ class FailingGenerateLLM implements LLMProvider {
     };
   }
 
-  async generateFromMessages(_messages: LLMMessage[], _options?: LLMGenerationOptions) {
-    return this.generate('from-messages', _options);
+  async processMessages(_messages: LLMMessage[], _options?: LLMGenerationOptions) {
+    return this.processText('from-messages', _options);
+  }
+
+  isToolCall(_chunk: unknown): boolean {
+    return false;
   }
 }
 
@@ -98,15 +106,18 @@ class FailingInitLLM implements LLMProvider {
     return false;
   }
 
-  async generate() {
+  async processText() {
     return {
       async *[Symbol.asyncIterator]() {
         yield 'test';
       },
     };
   }
-  async generateFromMessages() {
-    return this.generate();
+  async processMessages() {
+    return this.processText();
+  }
+  isToolCall(_chunk: unknown): boolean {
+    return false;
   }
 }
 

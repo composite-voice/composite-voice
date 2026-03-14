@@ -112,10 +112,10 @@ export class TurnTakingController {
       if (!isMultiRoleInput) {
         const header = headerCache.getHeader();
         if (header) {
-          stt.sendAudio(header);
+          stt.processAudio(header);
         }
         inputQueue.startDraining((chunk: AudioChunk) => {
-          (stt as LiveSTTProvider).sendAudio(chunk.data);
+          (stt as LiveSTTProvider).processAudio(chunk.data);
         });
       }
     }
@@ -151,10 +151,10 @@ export class TurnTakingController {
       if (!isMultiRoleInput) {
         const header = headerCache.getHeader();
         if (header) {
-          stt.sendAudio(header);
+          stt.processAudio(header);
         }
         inputQueue.startDraining((chunk: AudioChunk) => {
-          (stt as LiveSTTProvider).sendAudio(chunk.data);
+          (stt as LiveSTTProvider).processAudio(chunk.data);
         });
       }
     }

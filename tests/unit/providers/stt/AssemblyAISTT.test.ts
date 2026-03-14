@@ -257,7 +257,7 @@ describe('AssemblyAISTT', () => {
       view[2] = 67; // 'C'
       view[3] = 68; // 'D'
 
-      provider.sendAudio(audioChunk);
+      provider.processAudio(audioChunk);
 
       expect(mockWsManager.send).toHaveBeenCalledWith(JSON.stringify({ audio_data: btoa('ABCD') }));
     });
@@ -265,7 +265,7 @@ describe('AssemblyAISTT', () => {
     it('should send multiple audio chunks', () => {
       const chunks = [new ArrayBuffer(512), new ArrayBuffer(512), new ArrayBuffer(512)];
 
-      chunks.forEach((chunk) => provider.sendAudio(chunk));
+      chunks.forEach((chunk) => provider.processAudio(chunk));
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(3);
     });
@@ -275,12 +275,12 @@ describe('AssemblyAISTT', () => {
       await disconnectedProvider.initialize();
 
       const audioChunk = new ArrayBuffer(1024);
-      disconnectedProvider.sendAudio(audioChunk);
+      disconnectedProvider.processAudio(audioChunk);
 
       // send should not have been called for the disconnected provider
       // (mockWsManager.send may have been called during connect setup)
       const sendCallsBefore = mockWsManager.send.mock.calls.length;
-      disconnectedProvider.sendAudio(audioChunk);
+      disconnectedProvider.processAudio(audioChunk);
       expect(mockWsManager.send.mock.calls.length).toBe(sendCallsBefore);
 
       await disconnectedProvider.dispose();
@@ -293,7 +293,7 @@ describe('AssemblyAISTT', () => {
 
       const audioChunk = new ArrayBuffer(1024);
       // Should not throw
-      expect(() => provider.sendAudio(audioChunk)).not.toThrow();
+      expect(() => provider.processAudio(audioChunk)).not.toThrow();
     });
   });
 

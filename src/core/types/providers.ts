@@ -375,6 +375,9 @@ export interface STTProviderConfig extends BaseProviderConfig {
  * {@link RestSTTProvider.onTranscription | onTranscription} callback, matching the same
  * pattern used by live providers for a consistent API.
  *
+ * REST STT providers expose guard methods that the orchestrator uses to interpret
+ * transcription results, and a `transcribe` method for batch processing.
+ *
  * @example
  * ```typescript
  * class MyRestSTT implements RestSTTProvider {
@@ -395,6 +398,13 @@ export interface STTProviderConfig extends BaseProviderConfig {
  *     this.callback?.({ text: result, isFinal: true });
  *   }
  *
+ *   processAudio(chunk: ArrayBuffer) { /* no-op for REST *\/ }
+ *
+ *   isUtteranceComplete(result: TranscriptionResult) { return result.utteranceComplete === true; }
+ *   isPreflight(result: TranscriptionResult) { return result.isPreflight === true; }
+ *   isInterim(result: TranscriptionResult) { return !result.isFinal; }
+ *   isFinal(result: TranscriptionResult) { return result.isFinal === true; }
+ *
  *   onTranscription(callback: (result: TranscriptionResult) => void) {
  *     this.callback = callback;
  *   }
@@ -414,6 +424,14 @@ export interface RestSTTProvider extends BaseProvider {
   config: STTProviderConfig;
 
   /**
+   * Process a raw audio chunk. For REST providers this is typically a no-op;
+   * use {@link RestSTTProvider.transcribe | transcribe} for batch processing.
+   *
+   * @param chunk - Raw audio data as an ArrayBuffer
+   */
+  processAudio(chunk: ArrayBuffer): void;
+
+  /**
    * Transcribe a complete audio blob.
    *
    * @remarks
@@ -425,6 +443,40 @@ export interface RestSTTProvider extends BaseProvider {
    * @throws Error if the provider is not initialized or the API request fails
    */
   transcribe(audio: Blob): Promise<void>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Is this result a complete utterance ready for LLM processing?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when the utterance is complete
+   */
+  isUtteranceComplete(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this a preflight/eager end-of-turn signal?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is a preflight signal
+   */
+  isPreflight(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this an interim (partial, non-final) result?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is an interim result
+   */
+  isInterim(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this a final segment (but not necessarily utterance-complete)?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is a final segment
+   */
+  isFinal(result: TranscriptionResult): boolean;
 
   /**
    * Register a callback for transcription results.
@@ -443,11 +495,14 @@ export interface RestSTTProvider extends BaseProvider {
  *
  * @remarks
  * Implements real-time streaming transcription over a persistent connection.
- * Audio chunks are sent incrementally via {@link LiveSTTProvider.sendAudio | sendAudio},
+ * Audio chunks are sent via {@link LiveSTTProvider.processAudio | processAudio},
  * and transcription results arrive asynchronously via the
  * {@link LiveSTTProvider.onTranscription | onTranscription} callback.
  *
- * The typical lifecycle is: `initialize()` -\> `connect()` -\> `sendAudio()` (repeated) -\> `disconnect()` -\> `dispose()`
+ * Guard methods allow the orchestrator to interpret each transcription result
+ * without coupling to provider-specific logic.
+ *
+ * The typical lifecycle is: `initialize()` -\> `connect()` -\> `processAudio()` (repeated) -\> `disconnect()` -\> `dispose()`
  *
  * @example
  * ```typescript
@@ -458,10 +513,15 @@ export interface RestSTTProvider extends BaseProvider {
  *
  *   async initialize() { /* ... *\/ }
  *   async connect() { /* open WebSocket *\/ }
- *   sendAudio(chunk: ArrayBuffer) { /* send chunk over WS *\/ }
+ *   processAudio(chunk: ArrayBuffer) { /* send chunk over WS *\/ }
  *   async disconnect() { /* close WebSocket *\/ }
  *   async dispose() { /* ... *\/ }
  *   isReady() { return true; }
+ *
+ *   isUtteranceComplete(result: TranscriptionResult) { return result.utteranceComplete === true; }
+ *   isPreflight(result: TranscriptionResult) { return result.isPreflight === true; }
+ *   isInterim(result: TranscriptionResult) { return !result.isFinal; }
+ *   isFinal(result: TranscriptionResult) { return result.isFinal === true; }
  *
  *   onTranscription(callback: (result: TranscriptionResult) => void) {
  *     this.callback = callback;
@@ -486,7 +546,7 @@ export interface LiveSTTProvider extends BaseProvider {
    *
    * @remarks
    * Must be called after {@link BaseProvider.initialize | initialize} and before
-   * {@link LiveSTTProvider.sendAudio | sendAudio}. For WebSocket providers, this
+   * {@link LiveSTTProvider.processAudio | processAudio}. For WebSocket providers, this
    * opens the WebSocket connection.
    *
    * @throws Error if the connection cannot be established
@@ -494,15 +554,15 @@ export interface LiveSTTProvider extends BaseProvider {
   connect(): Promise<void>;
 
   /**
-   * Send an audio chunk for real-time transcription.
+   * Send a raw audio chunk for real-time transcription.
    *
    * @remarks
-   * CompositeVoice calls this method with audio data captured from the microphone.
-   * The chunk is sent to the transcription service over the established connection.
+   * The orchestrator calls this method with audio data captured from the
+   * microphone. The provider forwards the data over the WebSocket connection.
    *
    * @param chunk - Raw audio data as an ArrayBuffer
    */
-  sendAudio(chunk: ArrayBuffer): void;
+  processAudio(chunk: ArrayBuffer): void;
 
   /**
    * Disconnect from the streaming transcription service.
@@ -512,6 +572,40 @@ export interface LiveSTTProvider extends BaseProvider {
    * {@link LiveSTTProvider.connect | connect} again.
    */
   disconnect(): Promise<void>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Is this result a complete utterance ready for LLM processing?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when the utterance is complete
+   */
+  isUtteranceComplete(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this a preflight/eager end-of-turn signal?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is a preflight signal
+   */
+  isPreflight(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this an interim (partial, non-final) result?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is an interim result
+   */
+  isInterim(result: TranscriptionResult): boolean;
+
+  /**
+   * Is this a final segment (but not necessarily utterance-complete)?
+   *
+   * @param result - The transcription result to check
+   * @returns `true` when this is a final segment
+   */
+  isFinal(result: TranscriptionResult): boolean;
 
   /**
    * Register a callback for transcription results.
@@ -762,8 +856,12 @@ export interface LLMGenerationOptions {
  *
  * @remarks
  * Defines the contract for LLM providers in the CompositeVoice pipeline. The provider
- * receives transcribed text (or a message history) and produces a text response,
- * either as a complete string or as a stream of tokens via an async iterable.
+ * receives transcribed text (or a message history) and produces a text response as
+ * a stream of tokens via an async iterable.
+ *
+ * The handler/guard pattern is used:
+ * - **Handler methods** (`processMessages`, `processText`) receive data and produce results.
+ * - **Guard methods** (`isToolCall`) allow the orchestrator to interpret response chunks.
  *
  * For voice applications, streaming ({@link LLMProviderConfig.stream | stream: true}) is
  * strongly recommended as it allows TTS synthesis to begin before the full response
@@ -780,15 +878,16 @@ export interface LLMGenerationOptions {
  *   async dispose() { /* ... *\/ }
  *   isReady() { return true; }
  *
- *   async *generate(prompt: string, options?: LLMGenerationOptions) {
- *     const response = await callMyAPI(prompt, options);
- *     yield response;
- *   }
- *
- *   async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions) {
+ *   async *processMessages(messages: LLMMessage[], options?: LLMGenerationOptions) {
  *     const response = await callMyAPI(messages, options);
  *     yield response;
  *   }
+ *
+ *   async processText(prompt: string, options?: LLMGenerationOptions) {
+ *     return this.processMessages([{ role: 'user', content: prompt }], options);
+ *   }
+ *
+ *   isToolCall(chunk: unknown) { return false; }
  * }
  * ```
  *
@@ -805,31 +904,16 @@ export interface LLMProvider extends BaseProvider {
    */
   config: LLMProviderConfig;
 
-  /**
-   * Generate a response from a single user prompt.
-   *
-   * @remarks
-   * Returns an async iterable that yields text chunks. When streaming is enabled,
-   * multiple chunks are yielded as tokens arrive. When streaming is disabled,
-   * a single chunk containing the full response is yielded.
-   *
-   * @param prompt - The user's text input (typically transcribed speech)
-   * @param options - Optional generation parameters that override provider defaults
-   * @returns An async iterable of text chunks
-   *
-   * @throws Error if the provider is not initialized
-   * @throws AbortError if the generation is cancelled via {@link LLMGenerationOptions.signal | options.signal}
-   */
-  generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>>;
+  // === HANDLER METHODS ===
 
   /**
-   * Generate a response from a multi-turn conversation.
+   * Process a conversation and generate a response.
    *
    * @remarks
-   * Used when {@link ConversationHistoryConfig} is enabled. The messages array
-   * includes the system prompt, previous conversation turns, and the latest
-   * user input. Returns an async iterable of text chunks, same as
-   * {@link LLMProvider.generate | generate}.
+   * The primary handler method. Returns an async iterable that yields text
+   * chunks. When streaming is enabled, multiple chunks are yielded as tokens
+   * arrive. When streaming is disabled, a single chunk containing the full
+   * response is yielded.
    *
    * @param messages - Array of conversation messages including history
    * @param options - Optional generation parameters that override provider defaults
@@ -841,10 +925,40 @@ export interface LLMProvider extends BaseProvider {
    * @see {@link LLMMessage} for the message format
    * @see {@link ConversationHistoryConfig} for history configuration
    */
-  generateFromMessages(
+  processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>>;
+
+  /**
+   * Process a single text prompt (convenience wrapper around processMessages).
+   *
+   * @remarks
+   * Converts the prompt to a messages array (optionally prepending a system
+   * message from config) and delegates to {@link LLMProvider.processMessages | processMessages}.
+   *
+   * @param prompt - The user's text input (typically transcribed speech)
+   * @param options - Optional generation parameters that override provider defaults
+   * @returns An async iterable of text chunks
+   *
+   * @throws Error if the provider is not initialized
+   * @throws AbortError if the generation is cancelled via {@link LLMGenerationOptions.signal | options.signal}
+   */
+  processText(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Check whether a response chunk represents a tool call.
+   *
+   * @remarks
+   * The default implementation returns `false`. Tool-aware providers override
+   * this to detect tool invocations in the response stream.
+   *
+   * @param chunk - A response chunk to inspect
+   * @returns `true` when the chunk represents a tool call
+   */
+  isToolCall(chunk: unknown): boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -918,16 +1032,20 @@ export type LLMStreamChunk =
  * LLM provider with optional tool use support.
  *
  * @remarks
- * Extends LLMProvider with an optional `generateWithTools` method. Providers
- * that don't support tool use simply don't implement this method, and the
- * orchestrator falls back to text-only generation.
+ * Extends LLMProvider with a `processMessagesWithTools` method. Providers
+ * that don't support tool use simply don't implement this interface, and the
+ * orchestrator falls back to text-only generation via `processMessages`.
  */
 export interface ToolAwareLLMProvider extends LLMProvider {
   /**
-   * Generate with tool support. Returns a richer streaming type that
-   * separates text from tool invocations.
+   * Process a conversation with tool support. Returns a richer streaming type
+   * that separates text from tool invocations.
+   *
+   * @param messages - Array of conversation messages including history
+   * @param options - Optional generation parameters, including tool definitions
+   * @returns An async iterable of {@link LLMStreamChunk} objects
    */
-  generateWithTools(
+  processMessagesWithTools(
     messages: LLMMessage[],
     options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
   ): Promise<AsyncIterable<LLMStreamChunk>>;
@@ -1013,9 +1131,12 @@ export interface TTSProviderConfig extends BaseProviderConfig {
  * REST-based text-to-speech provider interface.
  *
  * @remarks
- * Implements single-request synthesis where the complete text is sent and a
- * complete audio Blob is returned. Suitable for short utterances where
- * streaming latency is not critical.
+ * Implements single-request synthesis where complete text is sent and a
+ * complete audio Blob is returned. Uses the handler/guard pattern:
+ *
+ * - `processChunk` accumulates text for synthesis.
+ * - `finalize` sends the accumulated text to the REST API and returns audio.
+ * - `isAudioReady` is a guard for checking audio chunk validity.
  *
  * @example
  * ```typescript
@@ -1027,6 +1148,10 @@ export interface TTSProviderConfig extends BaseProviderConfig {
  *   async initialize() { /* ... *\/ }
  *   async dispose() { /* ... *\/ }
  *   isReady() { return true; }
+ *
+ *   processChunk(text: string) { /* accumulate text *\/ }
+ *   async finalize() { /* synthesize accumulated text *\/ }
+ *   isAudioReady(chunk: AudioChunk) { return chunk.data.byteLength > 0; }
  *
  *   async synthesize(text: string): Promise<Blob> {
  *     const audioData = await callMyAPI(text);
@@ -1047,8 +1172,34 @@ export interface RestTTSProvider extends BaseProvider {
    */
   config: TTSProviderConfig;
 
+  // === HANDLER METHODS ===
+
+  /**
+   * Process a text chunk for synthesis.
+   *
+   * @remarks
+   * For REST providers, this typically accumulates text into a buffer.
+   * The actual synthesis happens in {@link RestTTSProvider.finalize | finalize}.
+   *
+   * @param text - A piece of text to synthesize
+   */
+  processChunk(text: string): void;
+
+  /**
+   * Finalize synthesis — flush remaining audio.
+   *
+   * @remarks
+   * For REST providers, this triggers the actual API call with the accumulated
+   * text and emits the resulting audio.
+   */
+  finalize(): Promise<void>;
+
   /**
    * Synthesize text into a complete audio Blob.
+   *
+   * @remarks
+   * The underlying batch synthesis method. Called by {@link RestTTSProvider.finalize | finalize}
+   * with the accumulated text.
    *
    * @param text - The text to synthesize into speech
    * @returns A Blob containing the synthesized audio data
@@ -1056,19 +1207,35 @@ export interface RestTTSProvider extends BaseProvider {
    * @throws Error if the provider is not initialized or the API request fails
    */
   synthesize(text: string): Promise<Blob>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Is this audio chunk ready for playback?
+   *
+   * @param chunk - The audio chunk to check
+   * @returns `true` when the chunk has valid audio data
+   */
+  isAudioReady(chunk: AudioChunk): boolean;
 }
 
 /**
  * Live (WebSocket-based) text-to-speech provider interface.
  *
  * @remarks
- * Implements real-time streaming synthesis over a persistent connection. Text chunks
- * are sent incrementally via {@link LiveTTSProvider.sendText | sendText}, and audio chunks
- * arrive asynchronously via the {@link LiveTTSProvider.onAudio | onAudio} callback. This
- * enables low-latency voice output where TTS synthesis begins before the LLM has
- * finished generating the full response.
+ * Implements real-time streaming synthesis over a persistent connection. Text
+ * chunks are sent incrementally via {@link LiveTTSProvider.processChunk | processChunk},
+ * and audio chunks arrive asynchronously via the
+ * {@link LiveTTSProvider.onAudio | onAudio} callback. This enables low-latency
+ * voice output where TTS synthesis begins before the LLM has finished generating
+ * the full response.
  *
- * The typical lifecycle is: `initialize()` -\> `connect()` -\> `sendText()` (repeated) -\> `finalize()` -\> `disconnect()` -\> `dispose()`
+ * The handler/guard pattern is used:
+ * - `processChunk` sends text to the WebSocket for incremental synthesis.
+ * - `finalize` flushes remaining audio.
+ * - `isAudioReady` is a guard for checking audio chunk validity.
+ *
+ * The typical lifecycle is: `initialize()` -\> `connect()` -\> `processChunk()` (repeated) -\> `finalize()` -\> `disconnect()` -\> `dispose()`
  *
  * @example
  * ```typescript
@@ -1079,11 +1246,13 @@ export interface RestTTSProvider extends BaseProvider {
  *
  *   async initialize() { /* ... *\/ }
  *   async connect() { /* open WebSocket *\/ }
- *   sendText(chunk: string) { /* send text over WS *\/ }
+ *   processChunk(text: string) { /* send text over WS *\/ }
  *   async finalize() { /* flush remaining text *\/ }
  *   async disconnect() { /* close WebSocket *\/ }
  *   async dispose() { /* ... *\/ }
  *   isReady() { return true; }
+ *
+ *   isAudioReady(chunk: AudioChunk) { return chunk.data.byteLength > 0; }
  *
  *   onAudio(callback: (chunk: AudioChunk) => void) {
  *     this.audioCallback = callback;
@@ -1113,29 +1282,32 @@ export interface LiveTTSProvider extends BaseProvider {
    *
    * @remarks
    * Must be called after {@link BaseProvider.initialize | initialize} and before
-   * {@link LiveTTSProvider.sendText | sendText}. For WebSocket providers, this
+   * {@link LiveTTSProvider.processChunk | processChunk}. For WebSocket providers, this
    * opens the WebSocket connection.
    *
    * @throws Error if the connection cannot be established
    */
   connect(): Promise<void>;
 
+  // === HANDLER METHODS ===
+
   /**
-   * Send a text chunk for real-time synthesis.
+   * Process a text chunk for incremental synthesis.
    *
    * @remarks
-   * CompositeVoice calls this method with text tokens as they arrive from the LLM.
-   * The provider sends them to the synthesis service over the established connection.
+   * The orchestrator calls this method with text tokens as they arrive from
+   * the LLM. The provider sends them to the synthesis service over the
+   * established WebSocket connection.
    *
-   * @param chunk - Text to synthesize
+   * @param text - Text to synthesize
    */
-  sendText(chunk: string): void;
+  processChunk(text: string): void;
 
   /**
    * Signal that all text has been sent and the provider should flush remaining audio.
    *
    * @remarks
-   * Called after the last {@link LiveTTSProvider.sendText | sendText} call to ensure
+   * Called after the last {@link LiveTTSProvider.processChunk | processChunk} call to ensure
    * all buffered text is processed and the final audio chunks are emitted.
    */
   finalize(): Promise<void>;
@@ -1148,6 +1320,18 @@ export interface LiveTTSProvider extends BaseProvider {
    * {@link LiveTTSProvider.connect | connect} again.
    */
   disconnect(): Promise<void>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Is this audio chunk ready for playback?
+   *
+   * @param chunk - The audio chunk to check
+   * @returns `true` when the chunk has valid audio data
+   */
+  isAudioReady(chunk: AudioChunk): boolean;
+
+  // === CALLBACKS ===
 
   /**
    * Register a callback for receiving synthesized audio chunks.

@@ -168,7 +168,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
       if (security?.authenticate) {
         const allowed = await security.authenticate({
           headers: req.headers as Record<string, string | string[] | undefined>,
-          url: req.url,
+          ...(req.url !== undefined && { url: req.url }),
         });
         if (!allowed) {
           res.statusCode = 401;
@@ -189,7 +189,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
         const targetUrl = `${route.targetBase}${targetPath}`;
 
         return forwardHttpRequest(req, res, targetUrl, route.authHeaders, {
-          maxBodySize: security?.maxBodySize,
+          ...(security?.maxBodySize !== undefined && { maxBodySize: security.maxBodySize }),
         });
       })
       .catch((err: unknown) => next(err));
@@ -217,7 +217,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
         if (security?.authenticate) {
           const allowed = await security.authenticate({
             headers: req.headers as Record<string, string | string[] | undefined>,
-            url: req.url,
+            ...(req.url !== undefined && { url: req.url }),
           });
           if (!allowed) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -237,7 +237,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
           const targetUrl = `${route.targetBase}${targetPath}`;
 
           return proxyWebSocket(req, socket, head, targetUrl, route.authHeaders, {
-            maxWsMessageSize: security?.maxWsMessageSize,
+            ...(security?.maxWsMessageSize !== undefined && { maxWsMessageSize: security.maxWsMessageSize }),
           });
         })
         .catch((err: Error) => {

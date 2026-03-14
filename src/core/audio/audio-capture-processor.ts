@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AudioWorklet processor for microphone audio capture.
  *

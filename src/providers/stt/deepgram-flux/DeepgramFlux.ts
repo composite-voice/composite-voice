@@ -83,7 +83,7 @@ export class DeepgramFlux extends LiveSTTProvider {
     throw new Error('DeepgramFlux is disabled');
   }
 
-  sendAudio(): void {
+  protected sendAudioToSocket(): void {
     throw new Error('DeepgramFlux is disabled');
   }
 

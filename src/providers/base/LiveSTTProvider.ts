@@ -16,17 +16,22 @@ import { Logger } from '../../utils/logger';
  *
  * @remarks
  * `LiveSTTProvider` extends {@link BaseSTTProvider} with a WebSocket
- * streaming lifecycle: **connect**, **sendAudio**, and **disconnect**.
+ * streaming lifecycle: **connect**, **processAudio**, and **disconnect**.
  * This is the base class you should extend when building a real-time
  * STT provider that receives a continuous audio stream over a persistent
  * connection.
  *
+ * The `processAudio` handler method (inherited from {@link BaseSTTProvider}
+ * as abstract) is implemented here to delegate to the abstract
+ * {@link sendAudioToSocket} method, which subclasses must implement to
+ * forward audio data over the WebSocket.
+ *
  * The typical data flow is:
  *
  * ```
- * Microphone -> AudioCapture -> sendAudio(chunk) -> WebSocket -> STT Engine
- *                                                                   |
- * CompositeVoice <- onTranscription(result) <--- emitTranscription <-+
+ * Microphone -> AudioCapture -> processAudio(chunk) -> WebSocket -> STT Engine
+ *                                                                      |
+ * CompositeVoice <- onTranscription(result) <--- emitTranscription <--+
  * ```
  *
  * **Inheritance hierarchy:**
@@ -68,7 +73,7 @@ import { Logger } from '../../utils/logger';
  *     };
  *   }
  *
- *   sendAudio(chunk: ArrayBuffer): void {
+ *   sendAudioToSocket(chunk: ArrayBuffer): void {
  *     this.ws?.send(chunk);
  *   }
  *
@@ -79,7 +84,7 @@ import { Logger } from '../../utils/logger';
  * }
  * ```
  *
- * @see {@link BaseSTTProvider} for the shared STT callback mechanism
+ * @see {@link BaseSTTProvider} for the shared STT callback and guard mechanism
  * @see {@link RestSTTProvider} for batch/file-based STT
  * @see {@link DeepgramSTT} for a concrete WebSocket STT implementation
  * @see {@link AssemblyAISTT} for another concrete WebSocket STT implementation
@@ -110,19 +115,33 @@ export abstract class LiveSTTProvider extends BaseSTTProvider implements ILiveST
   abstract connect(): Promise<void>;
 
   /**
-   * Send a raw audio chunk to the STT service for real-time transcription.
+   * Process a raw audio chunk by sending it over the WebSocket.
    *
    * @remarks
-   * CompositeVoice calls this method with audio data captured from the
-   * microphone. The provider should forward the data over the WebSocket
-   * connection. For providers that manage their own audio (e.g.
-   * {@link NativeSTT}), this method is a no-op.
+   * This is the handler method called by the orchestrator. It delegates to
+   * {@link sendAudioToSocket}, which subclasses implement to forward audio
+   * data over the WebSocket connection. For providers that manage their own
+   * audio (e.g. {@link NativeSTT}), `sendAudioToSocket` is a no-op.
+   *
+   * @param chunk - Raw audio data as an `ArrayBuffer`.
+   */
+  processAudio(chunk: ArrayBuffer): void {
+    this.sendAudioToSocket(chunk);
+  }
+
+  /**
+   * Send a raw audio chunk over the WebSocket connection.
+   *
+   * @remarks
+   * Subclasses implement this to forward audio data to the STT service.
+   * For providers that manage their own audio capture (e.g. NativeSTT),
+   * this method is a no-op.
    *
    * @param chunk - Raw audio data as an `ArrayBuffer`.
    *
    * @virtual
    */
-  abstract sendAudio(chunk: ArrayBuffer): void;
+  protected abstract sendAudioToSocket(chunk: ArrayBuffer): void;
 
   /**
    * Close the WebSocket connection to the streaming STT service.

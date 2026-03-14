@@ -476,7 +476,7 @@ describe('ElevenLabsSTT', () => {
       view[2] = 67; // 'C'
       view[3] = 68; // 'D'
 
-      provider.sendAudio(audioChunk);
+      provider.processAudio(audioChunk);
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(1);
       const sent = JSON.parse(mockWsManager.send.mock.calls[0]![0] as string);
@@ -500,19 +500,19 @@ describe('ElevenLabsSTT', () => {
       const chunk = new ArrayBuffer(2);
 
       // First chunk: should include previous_text
-      ctxProvider.sendAudio(chunk);
+      ctxProvider.processAudio(chunk);
       const firstMsg = JSON.parse(mockWsManager.send.mock.calls[0]![0] as string);
       expect(firstMsg.previous_text).toBe('some context here');
 
       // Second chunk: should NOT include previous_text
-      ctxProvider.sendAudio(chunk);
+      ctxProvider.processAudio(chunk);
       const secondMsg = JSON.parse(mockWsManager.send.mock.calls[1]![0] as string);
       expect(secondMsg.previous_text).toBeUndefined();
     });
 
     it('should not include previous_text when not configured', () => {
       const chunk = new ArrayBuffer(2);
-      provider.sendAudio(chunk);
+      provider.processAudio(chunk);
 
       const sent = JSON.parse(mockWsManager.send.mock.calls[0]![0] as string);
       expect(sent.previous_text).toBeUndefined();
@@ -528,7 +528,7 @@ describe('ElevenLabsSTT', () => {
       await hiResProvider.connect();
       mockWsManager.send.mockClear();
 
-      hiResProvider.sendAudio(new ArrayBuffer(2));
+      hiResProvider.processAudio(new ArrayBuffer(2));
 
       const sent = JSON.parse(mockWsManager.send.mock.calls[0]![0] as string);
       expect(sent.sample_rate).toBe(44100);
@@ -536,7 +536,7 @@ describe('ElevenLabsSTT', () => {
 
     it('should send multiple audio chunks', () => {
       const chunks = [new ArrayBuffer(128), new ArrayBuffer(128), new ArrayBuffer(128)];
-      chunks.forEach((chunk) => provider.sendAudio(chunk));
+      chunks.forEach((chunk) => provider.processAudio(chunk));
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(3);
     });
@@ -545,11 +545,11 @@ describe('ElevenLabsSTT', () => {
       const disconnectedProvider = new ElevenLabsSTT({ apiKey: 'test-key' }, logger);
       await disconnectedProvider.initialize();
 
-      disconnectedProvider.sendAudio(new ArrayBuffer(128));
+      disconnectedProvider.processAudio(new ArrayBuffer(128));
 
       // send should not be called (aside from any prior calls)
       const callCount = mockWsManager.send.mock.calls.length;
-      disconnectedProvider.sendAudio(new ArrayBuffer(128));
+      disconnectedProvider.processAudio(new ArrayBuffer(128));
       expect(mockWsManager.send.mock.calls.length).toBe(callCount);
     });
 
@@ -559,7 +559,7 @@ describe('ElevenLabsSTT', () => {
       });
 
       const audioChunk = new ArrayBuffer(128);
-      expect(() => provider.sendAudio(audioChunk)).not.toThrow();
+      expect(() => provider.processAudio(audioChunk)).not.toThrow();
     });
   });
 

@@ -99,7 +99,7 @@ class StubLiveSTT {
   isReady() { return true; }
 
   async connect() {}
-  sendAudio(_chunk: ArrayBuffer) {}
+  processAudio(_chunk: ArrayBuffer) {}
   async disconnect() {}
   onTranscription(_cb: (result: TranscriptionResult) => void) {}
 }
@@ -128,11 +128,11 @@ class StubLLM {
   async dispose() {}
   isReady() { return true; }
 
-  async generate(_prompt: string) {
+  async processText(_prompt: string) {
     return { async *[Symbol.asyncIterator]() { yield 'hello'; } };
   }
-  async generateFromMessages() {
-    return this.generate('');
+  async processMessages() {
+    return this.processText('');
   }
 }
 
@@ -147,7 +147,7 @@ class StubLiveTTS {
   isReady() { return true; }
 
   async connect() {}
-  sendText(_chunk: string) {}
+  processChunk(_chunk: string) {}
   async finalize() {}
   async disconnect() {}
   onAudio(_cb: (chunk: AudioChunk) => void) {}
@@ -213,7 +213,7 @@ class StubInputSTT {
 
   // LiveSTTProvider methods
   async connect() {}
-  sendAudio(_chunk: ArrayBuffer) {}
+  processAudio(_chunk: ArrayBuffer) {}
   async disconnect() {}
   onTranscription(_cb: (result: TranscriptionResult) => void) {}
 }
@@ -475,7 +475,7 @@ describe('resolveProviders', () => {
         initialize: async () => {},
         dispose: async () => {},
         isReady: () => true,
-        // Missing: transcribe/onTranscription (REST) and connect/sendAudio/disconnect/onTranscription (live)
+        // Missing: transcribe/onTranscription (REST) and connect/processAudio/disconnect/onTranscription (live)
       };
       const input = new StubInput();
       const llm = new StubLLM();
@@ -494,7 +494,7 @@ describe('resolveProviders', () => {
         initialize: async () => {},
         dispose: async () => {},
         isReady: () => true,
-        // Missing: generate, generateFromMessages
+        // Missing: processMessages, processText
       };
       const inputStt = new StubInputSTT();
       const ttsOutput = new StubTTSOutput();
@@ -512,7 +512,7 @@ describe('resolveProviders', () => {
         initialize: async () => {},
         dispose: async () => {},
         isReady: () => true,
-        // Missing: synthesize (REST) and connect/sendText/finalize/disconnect/onAudio/onMetadata (live)
+        // Missing: synthesize (REST) and connect/processChunk/finalize/disconnect/onAudio/onMetadata (live)
       };
       const inputStt = new StubInputSTT();
       const llm = new StubLLM();

@@ -227,14 +227,14 @@ describe('DeepgramSTT', () => {
       await connectProvider();
 
       const audioChunk = new ArrayBuffer(1024);
-      provider.sendAudio!(audioChunk);
+      provider.processAudio(audioChunk);
 
       expect(mockWs.send).toHaveBeenCalledWith(audioChunk);
     });
 
     it('should not send audio when not connected', () => {
       const audioChunk = new ArrayBuffer(1024);
-      provider.sendAudio!(audioChunk);
+      provider.processAudio(audioChunk);
 
       expect(mockWs?.send).not.toHaveBeenCalled();
     });
@@ -410,7 +410,7 @@ describe('DeepgramSTT', () => {
       await connectProvider();
 
       const chunks = [new ArrayBuffer(512), new ArrayBuffer(512), new ArrayBuffer(512)];
-      chunks.forEach((chunk) => provider.sendAudio!(chunk));
+      chunks.forEach((chunk) => provider.processAudio(chunk));
 
       expect(mockWs.send).toHaveBeenCalledTimes(3);
     });

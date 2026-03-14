@@ -125,7 +125,7 @@ describe('AnthropicLLM', () => {
     });
   });
 
-  describe('generate', () => {
+  describe('processText', () => {
     beforeEach(async () => {
       provider = new AnthropicLLM(config);
       await provider.initialize();
@@ -133,11 +133,11 @@ describe('AnthropicLLM', () => {
 
     it('should throw if not initialized', async () => {
       const uninitProvider = new AnthropicLLM(config);
-      await expect(uninitProvider.generate('Hello')).rejects.toThrow();
+      await expect(uninitProvider.processText('Hello')).rejects.toThrow();
     });
 
     it('should include system prompt from config in messages', async () => {
-      const result = await provider.generate('Hello');
+      const result = await provider.processText('Hello');
       // Must iterate to execute the async generator
       for await (const _ of result) {
         // consume
@@ -150,7 +150,7 @@ describe('AnthropicLLM', () => {
     });
 
     it('should stream tokens from response', async () => {
-      const result = await provider.generate('Hello');
+      const result = await provider.processText('Hello');
       const chunks: string[] = [];
       for await (const chunk of result) {
         chunks.push(chunk);
@@ -159,7 +159,7 @@ describe('AnthropicLLM', () => {
     });
 
     it('should pass temperature and max_tokens to SDK', async () => {
-      const result = await provider.generate('Test', { temperature: 0.9, maxTokens: 200 });
+      const result = await provider.processText('Test', { temperature: 0.9, maxTokens: 200 });
       for await (const _ of result) {
         /* consume */
       }
@@ -173,7 +173,7 @@ describe('AnthropicLLM', () => {
     });
 
     it('should use config max_tokens as default', async () => {
-      const result = await provider.generate('Test');
+      const result = await provider.processText('Test');
       for await (const _ of result) {
         /* consume */
       }
@@ -186,7 +186,7 @@ describe('AnthropicLLM', () => {
     });
   });
 
-  describe('generateFromMessages', () => {
+  describe('processMessages', () => {
     beforeEach(async () => {
       provider = new AnthropicLLM(config);
       await provider.initialize();
@@ -199,7 +199,7 @@ describe('AnthropicLLM', () => {
         { role: 'user' as const, content: 'How are you?' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
       for await (const chunk of result) {
         chunks.push(chunk);
@@ -214,7 +214,7 @@ describe('AnthropicLLM', () => {
         { role: 'user' as const, content: 'Hello' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       for await (const _ of result) {
         /* consume */
       }
@@ -235,7 +235,7 @@ describe('AnthropicLLM', () => {
         { role: 'assistant' as const, content: 'Assistant response' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       for await (const _ of result) {
         /* consume */
       }
@@ -258,7 +258,7 @@ describe('AnthropicLLM', () => {
       });
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -275,7 +275,7 @@ describe('AnthropicLLM', () => {
 
     it('should pass stop sequences to SDK', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages, {
+      const result = await provider.processMessages(messages, {
         stopSequences: ['STOP', 'END'],
       });
       for await (const _ of result) {
@@ -291,7 +291,7 @@ describe('AnthropicLLM', () => {
 
     it('should pass model to SDK', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       for await (const _ of result) {
         /* consume */
       }

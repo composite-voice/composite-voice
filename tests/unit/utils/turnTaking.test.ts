@@ -20,7 +20,7 @@ function makeSTT(name: string): STTProvider {
     dispose: jest.fn(),
     isReady: jest.fn().mockReturnValue(true),
     connect: jest.fn(),
-    sendAudio: jest.fn(),
+    processAudio: jest.fn(),
     disconnect: jest.fn(),
     onTranscription: jest.fn(),
   };

@@ -236,7 +236,7 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com';
  * **Data flow:**
  *
  * ```
- * Microphone -> AudioCapture -> sendAudio(chunk) -> Deepgram WebSocket
+ * Microphone -> AudioCapture -> processAudio(chunk) -> Deepgram WebSocket
  *                                                       |
  * CompositeVoice <- onTranscription(result) <----------+
  * ```
@@ -776,9 +776,11 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Sends the audio data as a binary WebSocket frame. If the connection is
    * not open, the chunk is silently dropped and a warning is logged.
    *
+   * Called by the base class's `processAudio()` method.
+   *
    * @param chunk - Raw audio data captured from the microphone.
    */
-  sendAudio(chunk: ArrayBuffer): void {
+  protected sendAudioToSocket(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send audio: not connected');
       return;

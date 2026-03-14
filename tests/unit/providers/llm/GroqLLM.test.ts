@@ -192,7 +192,7 @@ describe('GroqLLM', () => {
     });
   });
 
-  describe('generate', () => {
+  describe('processText', () => {
     beforeEach(async () => {
       provider = new GroqLLM(config);
       await provider.initialize();
@@ -202,7 +202,7 @@ describe('GroqLLM', () => {
       const uninitProvider = new GroqLLM(config);
 
       await expect(async () => {
-        await uninitProvider.generate('Hello');
+        await uninitProvider.processText('Hello');
       }).rejects.toThrow();
     });
 
@@ -220,7 +220,7 @@ describe('GroqLLM', () => {
 
       (provider as any).client = mockInstance;
 
-      const result = provider.generate('Hello', { temperature: 0.5 });
+      const result = provider.processText('Hello', { temperature: 0.5 });
       const iterator = await result;
       const chunks: string[] = [];
       for await (const chunk of iterator) {
@@ -236,7 +236,7 @@ describe('GroqLLM', () => {
     });
   });
 
-  describe('generateFromMessages', () => {
+  describe('processMessages', () => {
     beforeEach(async () => {
       provider = new GroqLLM(config);
       await provider.initialize();
@@ -263,7 +263,7 @@ describe('GroqLLM', () => {
         { role: 'user' as const, content: 'Hello' },
       ];
 
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {
@@ -297,7 +297,7 @@ describe('GroqLLM', () => {
       (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.generateFromMessages(messages);
+      const result = await provider.processMessages(messages);
       const chunks: string[] = [];
 
       for await (const chunk of result) {

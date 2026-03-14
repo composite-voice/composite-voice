@@ -16,11 +16,20 @@ import { Logger } from '../../utils/logger';
  * `BaseSTTProvider` sits between {@link BaseProvider} and the two transport-
  * specific bases ({@link LiveSTTProvider} and {@link RestSTTProvider}). It
  * adds the **transcription callback** mechanism that all STT providers use to
- * deliver results back to the SDK core:
+ * deliver results back to the SDK core, along with **guard methods** that the
+ * orchestrator uses to interpret each transcription result.
  *
- * 1. The SDK (or consumer) registers a listener via {@link onTranscription}.
- * 2. Subclasses call {@link emitTranscription} whenever a transcription
- *    result is available (interim or final).
+ * The handler/guard pattern:
+ *
+ * 1. **Handler methods** (`processAudio`) receive data and do things.
+ * 2. **Guard methods** (`isUtteranceComplete`, `isPreflight`, `isInterim`,
+ *    `isFinal`) assert conditions on results and return boolean.
+ * 3. **Callbacks** (`onTranscription` / `emitTranscription`) deliver raw
+ *    results to the orchestrator.
+ *
+ * Guard methods have sensible defaults in this base class. Concrete providers
+ * override them when they have domain-specific logic (e.g., DeepgramSTT might
+ * override `isUtteranceComplete` based on endpointing config).
  *
  * **Inheritance hierarchy:**
  *
@@ -47,6 +56,10 @@ import { Logger } from '../../utils/logger';
  *
  *   protected async onInitialize(): Promise<void> { }
  *   protected async onDispose(): Promise<void> { }
+ *
+ *   processAudio(chunk: ArrayBuffer): void {
+ *     // Process audio data
+ *   }
  *
  *   async transcribe(audio: Blob): Promise<void> {
  *     const text = await myCustomEngine.recognize(audio);
@@ -83,6 +96,86 @@ export abstract class BaseSTTProvider extends BaseProvider {
     super(type, config, logger);
     this.config = config;
   }
+
+  // === HANDLER METHODS (receive data, do things) ===
+
+  /**
+   * Process a raw audio chunk.
+   *
+   * @remarks
+   * Called by the orchestrator to send audio for processing. For live
+   * providers this delegates to WebSocket send; for REST providers this
+   * is typically a no-op (use `transcribe` instead).
+   *
+   * @param chunk - Raw audio data as an `ArrayBuffer`.
+   *
+   * @virtual
+   */
+  abstract processAudio(chunk: ArrayBuffer): void;
+
+  // === GUARD METHODS (assert conditions, return boolean) ===
+
+  /**
+   * Is this result a complete utterance ready for LLM processing?
+   *
+   * @remarks
+   * The orchestrator calls this to decide when to send transcribed text
+   * to the LLM. Concrete providers override this when they have domain-
+   * specific endpointing logic (e.g., DeepgramSTT checks `speech_final`).
+   *
+   * @param result - The transcription result to check.
+   * @returns `true` when the utterance is complete.
+   */
+  isUtteranceComplete(result: TranscriptionResult): boolean {
+    return result.utteranceComplete === true;
+  }
+
+  /**
+   * Is this a preflight/eager end-of-turn signal?
+   *
+   * @remarks
+   * Used by the eager LLM pipeline for speculative generation. Only
+   * providers with preflight support (e.g., Deepgram Flux) need to
+   * override this.
+   *
+   * @param result - The transcription result to check.
+   * @returns `true` when this is a preflight signal.
+   */
+  isPreflight(result: TranscriptionResult): boolean {
+    return result.isPreflight === true;
+  }
+
+  /**
+   * Is this an interim (partial, non-final) result?
+   *
+   * @remarks
+   * Interim results update as the user speaks and are replaced by
+   * subsequent results. Useful for display but not for triggering
+   * downstream processing.
+   *
+   * @param result - The transcription result to check.
+   * @returns `true` when this is an interim result.
+   */
+  isInterim(result: TranscriptionResult): boolean {
+    return !result.isFinal;
+  }
+
+  /**
+   * Is this a final segment (but not necessarily utterance-complete)?
+   *
+   * @remarks
+   * A final segment represents committed text, but multi-segment providers
+   * (e.g., Deepgram) may emit several final segments for a single utterance.
+   * Only the last one will have `isUtteranceComplete` return `true`.
+   *
+   * @param result - The transcription result to check.
+   * @returns `true` when this is a final segment.
+   */
+  isFinal(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
+  }
+
+  // === CALLBACKS (provider -> orchestrator data delivery) ===
 
   /**
    * Register a callback to receive transcription results.

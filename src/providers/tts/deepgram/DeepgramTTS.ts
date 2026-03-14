@@ -131,8 +131,8 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com';
  * 1. Construct with {@link DeepgramTTSConfig}
  * 2. Call `initialize()` to validate configuration
  * 3. Call `connect()` to open the WebSocket connection
- * 4. Call `sendText()` to stream text for synthesis
- * 5. Call `finalize()` to flush remaining audio
+ * 4. Call `processChunk()` to stream text for synthesis
+ * 5. Call `finalize()` to flush remaining audio (delegates to `finalizeSocket()`)
  * 6. Call `disconnect()` to close the WebSocket
  * 7. Call `dispose()` to release all resources
  *
@@ -156,7 +156,7 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com';
  *   // Process audio chunk (e.g., feed to AudioPlayer)
  * });
  *
- * tts.sendText('Hello, world!');
+ * tts.processChunk('Hello, world!');
  * await tts.finalize();
  * await tts.disconnect();
  * ```
@@ -437,9 +437,11 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Deepgram processes the text incrementally and emits audio chunks.
    * If not connected, the call is silently ignored with a warning log.
    *
+   * Called by the base class's `processChunk()` method.
+   *
    * @param text - The text to synthesize into speech.
    */
-  sendText(text: string): void {
+  protected sendTextToSocket(text: string): void {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send text: not connected');
       return;
@@ -460,9 +462,11 @@ export class DeepgramTTS extends LiveTTSProvider {
    * has been processed and all resulting audio has been emitted. Waits for
    * the `Flushed` event or a 1-second timeout before resolving.
    *
+   * Called by the base class's `finalize()` method.
+   *
    * @throws Rethrows any error that occurs during finalization.
    */
-  async finalize(): Promise<void> {
+  protected async finalizeSocket(): Promise<void> {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot finalize: not connected');
       return;

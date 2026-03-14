@@ -238,7 +238,7 @@ describe('DeepgramTTS', () => {
     it('should send text chunks as JSON Speak messages', async () => {
       await connectProvider();
 
-      provider.sendText!('Hello, world!');
+      provider.processChunk('Hello, world!');
 
       expect(mockWs.send).toHaveBeenCalledWith(
         JSON.stringify({ type: 'Speak', text: 'Hello, world!' })
@@ -246,7 +246,7 @@ describe('DeepgramTTS', () => {
     });
 
     it('should not send text when not connected', () => {
-      provider.sendText!('Hello, world!');
+      provider.processChunk('Hello, world!');
       // Should not throw — just silently returns
     });
 
@@ -365,7 +365,7 @@ describe('DeepgramTTS', () => {
       await connectProvider();
 
       const chunks = ['Hello', ' ', 'world', '!'];
-      chunks.forEach((chunk) => provider.sendText!(chunk));
+      chunks.forEach((chunk) => provider.processChunk(chunk));
 
       expect(mockWs.send).toHaveBeenCalledTimes(4);
       chunks.forEach((chunk) => {
