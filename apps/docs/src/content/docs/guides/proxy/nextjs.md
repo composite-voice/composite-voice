@@ -93,9 +93,11 @@ Point HTTP providers at the proxy URL:
 import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
+    new NativeTTS(),
+  ],
 });
 ```
 

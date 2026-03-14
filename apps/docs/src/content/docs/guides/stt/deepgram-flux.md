@@ -104,7 +104,7 @@ Flux delivers transcription through `TurnInfo` events that map to the CompositeV
 | `Update` | `isFinal: false` | Partial transcript update (like interim results) |
 | `EagerEndOfTurn` | `isPreflight: true` | Early end-of-turn prediction — triggers eager LLM |
 | `TurnResumed` | `isFinal: false` | User resumed speaking after an eager end-of-turn |
-| `EndOfTurn` | `isFinal: true, speechFinal: true` | Confirmed end of utterance — triggers standard LLM |
+| `EndOfTurn` | `isFinal: true, speechFinal: true` | Confirmed end of utterance — sets `utteranceComplete: true`, triggering LLM processing |
 
 ## Eager LLM pipeline
 

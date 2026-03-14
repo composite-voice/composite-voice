@@ -27,7 +27,7 @@ The SDK tracks a high-level agent state derived from three sub-states: capture, 
 │ idle │──────────────→│ ready │────────────────→│ listening │
 └──────┘               └───────┘                  └─────┬─────┘
                                                         │
-                                              speechFinal detected
+                                           utteranceComplete detected
                                                         │
                                                         ▼
 ┌───────────┐   playback ends   ┌──────────┐   LLM starts   ┌──────────┐
@@ -45,7 +45,7 @@ voice.on('agent.stateChange', ({ state }) => {
 The state machine handles edge cases: if the user speaks while the assistant is still talking (barge-in), the pipeline cancels TTS playback and returns to `listening`.
 
 ### Streaming throughout
-The pipeline streams at every stage. The LLM does not wait for the complete transcript — it starts generating as soon as `speechFinal` fires. The TTS does not wait for the complete LLM response — it synthesizes each text chunk as it arrives. This reduces end-to-end latency from seconds to hundreds of milliseconds.
+The pipeline streams at every stage. The LLM does not wait for the complete transcript — it starts generating as soon as `utteranceComplete` is set on the transcription result. The TTS does not wait for the complete LLM response — it synthesizes each text chunk as it arrives. This reduces end-to-end latency from seconds to hundreds of milliseconds.
 
 ```
 Time ──────────────────────────────────────────────→
@@ -76,7 +76,7 @@ Time ─────────────────────────
 User speaks:    ████████████░░░░░░░░░░░░░░░░░░░░░░░
 STT interim:    ░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░
 STT final:      ░░░░░░░░████░░░░░░░░░░░░░░░░░░░░░░░
-                           ↑ speechFinal triggers LLM
+                           ↑ utteranceComplete triggers LLM
 LLM streaming:  ░░░░░░░░░░░░████████░░░░░░░░░░░░░░░
 TTS streaming:  ░░░░░░░░░░░░░░░████████░░░░░░░░░░░░
 Audio playback: ░░░░░░░░░░░░░░░░░░████████░░░░░░░░░
@@ -97,7 +97,7 @@ Audio playback: ░░░░░░░░░░░░░░░██████�
                         ↑──↑ ~200ms saved
 ```
 
-The preflight signal fires before `speechFinal` is confirmed. The LLM starts generating immediately — by the time `speechFinal` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs significantly from the preflight (below `similarityThreshold`), the SDK cancels the speculative response and restarts.
+The preflight signal fires before `utteranceComplete` is confirmed. The LLM starts generating immediately — by the time the final transcript with `utteranceComplete: true` arrives, the LLM is already 100-300ms into its response. If `cancelOnTextChange` is enabled and the final text differs significantly from the preflight (below `similarityThreshold`), the SDK cancels the speculative response and restarts.
 
 The SDK uses [textSimilarity](/api/functions/textsimilarity) to compare preflight and final transcripts — an order-aware word-overlap score from 0 to 1. If the score meets the `similarityThreshold` (default: 0.8), the response is kept.
 
