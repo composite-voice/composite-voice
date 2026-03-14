@@ -46,7 +46,7 @@ check_vite_example() {
 
   if [ ! -f "$html_file" ]; then
     printf "  ${YELLOW}SKIP${NC}  %-45s (no index.html)\n" "$example_name"
-    ((skipped++))
+    skipped=$((skipped + 1))
     return 0
   fi
 
@@ -93,7 +93,7 @@ PYEOF
   if ! grep -q '@lukeocodes/composite-voice' "$ts_file" 2>/dev/null; then
     rm -f "$ts_file"
     printf "  ${YELLOW}SKIP${NC}  %-45s (no SDK imports in HTML)\n" "$example_name"
-    ((skipped++))
+    skipped=$((skipped + 1))
     return 0
   fi
 
@@ -109,12 +109,12 @@ PYEOF
     --skipLibCheck \
     "__check_imports.ts" 2>&1); then
     printf "  ${GREEN}PASS${NC}  %-45s\n" "$example_name"
-    ((passed++))
+    passed=$((passed + 1))
   else
     printf "  ${RED}FAIL${NC}  %-45s\n" "$example_name"
     # Sanitize temp filename from error output for clarity
     echo "$output" | sed "s|__check_imports.ts|${example_name}/index.html (extracted)|g" | head -20 | sed 's/^/        /'
-    ((failed++))
+    failed=$((failed + 1))
     failed_names+=("$example_name")
   fi
 
@@ -216,11 +216,11 @@ PYEOF
     --skipLibCheck \
     "__check_ts_imports.ts" 2>&1); then
     printf "  ${GREEN}PASS${NC}  %-45s (%s)\n" "$example_name" "$label"
-    ((passed++))
+    passed=$((passed + 1))
   else
     printf "  ${RED}FAIL${NC}  %-45s (%s)\n" "$example_name" "$label"
     echo "$output" | sed "s|__check_ts_imports.ts|${example_name}/${label} (extracted)|g" | head -20 | sed 's/^/        /'
-    ((failed++))
+    failed=$((failed + 1))
     failed_names+=("$example_name ($label)")
   fi
 
@@ -260,7 +260,7 @@ for example_dir in "$EXAMPLES_DIR"/*/; do
   elif [ ! -f "$example_dir/tsconfig.json" ]; then
     # No HTML and no tsconfig — unusual, report it
     printf "  ${YELLOW}SKIP${NC}  %-45s (no index.html or tsconfig)\n" "$example_name"
-    ((skipped++))
+    skipped=$((skipped + 1))
   fi
 done
 
