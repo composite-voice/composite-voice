@@ -59,6 +59,8 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Agent states](#agent-states)
 - [Conversation history](#conversation-history)
 - [Eager LLM pipeline](#eager-llm-pipeline)
+- [Tool use / function calling](#tool-use--function-calling)
+- [Barge-in](#barge-in)
 - [Turn-taking](#turn-taking)
 - [Server-side proxy](#server-side-proxy)
 - [Server-side usage](#server-side-usage)
@@ -280,6 +282,8 @@ const agent = new CompositeVoice({
 | `DeepgramFlux`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
 | `AssemblyAISTT`  | WebSocket      | All modern browsers | None            |
 | `ElevenLabsSTT`  | WebSocket      | All modern browsers | None            |
+
+All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
 **`NativeSTT` options:**
 
@@ -538,7 +542,9 @@ const agent = new CompositeVoice({
   // Conversation memory (disabled by default)
   conversationHistory: {
     enabled: true,
-    maxTurns: 10, // 0 = unlimited; each turn = one user + assistant exchange
+    maxTurns: 10,                  // 0 = unlimited; each turn = one user + assistant exchange
+    maxTokens: 4000,               // approximate token budget (chars/4 heuristic)
+    preserveSystemMessages: true,  // keep system messages during trimming (default: true)
   },
 
   // Eager/speculative LLM generation (requires DeepgramFlux)
@@ -559,12 +565,28 @@ const agent = new CompositeVoice({
     level: 'info', // 'debug' | 'info' | 'warn' | 'error'
   },
 
+  // LLM→TTS backpressure
+  pipeline: {
+    maxPendingChunks: 10,  // pause LLM if TTS has 10+ unprocessed chunks
+  },
+
   // WebSocket reconnection (applies to Deepgram providers)
   reconnection: {
     maxAttempts: 5,
     initialDelay: 1000, // ms before first retry
     maxDelay: 30000, // cap on retry interval
     backoffMultiplier: 2, // exponential backoff factor
+  },
+
+  // Automatic error recovery
+  autoRecover: true,
+
+  // Recovery strategy (when autoRecover is true)
+  recovery: {
+    maxAttempts: 3,
+    initialDelay: 1000,
+    backoffMultiplier: 2,
+    maxDelay: 10000,
   },
 });
 ```
@@ -596,7 +618,7 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `transcription.start`       | —                       | Transcription session opened                                         |
 | `transcription.interim`     | `{ text, isFinal }`     | Partial transcript — updates word by word while the user is speaking |
 | `transcription.final`       | `{ text, isFinal }`     | Confirmed transcript segment                                         |
-| `transcription.speechFinal` | `{ text, speechFinal }` | Full utterance ended — triggers the LLM                              |
+| `transcription.speechFinal` | `{ text, speechFinal }` | Full utterance ended. The `utteranceComplete` flag on the transcription result is what triggers LLM processing. |
 | `transcription.preflight`   | `{ text, isPreflight }` | Early end-of-turn signal (DeepgramFlux only)                         |
 | `transcription.error`       | `{ error }`             | Transcription error                                                  |
 
@@ -761,6 +783,65 @@ The result is noticeably lower perceived latency on natural speech patterns wher
 
 ---
 
+## Tool use / function calling
+
+LLM providers that implement `ToolAwareLLMProvider` can invoke tools (function calls) during generation. Currently, `AnthropicLLM` supports this. Text output is streamed to TTS as usual, while tool calls are handled via the `onToolCall` callback. After tool execution, the LLM is called again with the tool result to generate a natural language follow-up.
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-sonnet-4-6' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+  tools: {
+    definitions: [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' },
+          },
+          required: ['location'],
+        },
+      },
+    ],
+    onToolCall: async (toolCall) => {
+      // Execute the tool and return the result
+      const weather = await fetchWeather(toolCall.arguments.location);
+      return { result: JSON.stringify(weather) };
+    },
+  },
+});
+```
+
+> **Note:** Only `AnthropicLLM` supports tools currently via the `ToolAwareLLMProvider` interface. Other LLM providers will ignore the `tools` configuration.
+
+---
+
+## Barge-in
+
+The SDK automatically interrupts the agent when the user speaks while the agent is in the `thinking` or `speaking` state. This is called **barge-in** — the user can cut in at any time without waiting for the agent to finish.
+
+When barge-in is triggered, the SDK:
+1. Aborts the in-flight LLM generation (via `AbortSignal`)
+2. Clears the TTS output queue
+3. Resets the TTS provider
+4. Transitions back to `listening` state
+
+Barge-in happens automatically when the STT provider detects speech during agent output. You can also trigger it programmatically:
+
+```typescript
+// Programmatic barge-in — immediately stop the agent and return to listening
+agent.stopSpeaking();
+```
+
+No configuration is required — barge-in is always active.
+
+---
+
 ## Turn-taking
 
 Turn-taking controls whether the microphone is paused while the AI is speaking. The right strategy depends on whether your audio setup provides echo cancellation.
@@ -875,6 +956,32 @@ const agent = new CompositeVoice({ providers: [stt, llm, tts] });
 ```
 
 See [Example 10](./examples/10-proxy-server/) for a complete production-ready setup.
+
+### Proxy security
+
+The proxy supports optional security middleware for rate limiting, body size limits, WebSocket message size limits, and custom authentication. All options are opt-in — when omitted, the proxy behaves identically to a proxy without the `security` field.
+
+```typescript
+const proxy = createExpressProxy({
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  security: {
+    rateLimit: { maxRequests: 100, windowMs: 60000 },
+    maxBodySize: 1024 * 1024,        // 1 MB
+    maxWsMessageSize: 64 * 1024,     // 64 KB
+    authenticate: (req) => {
+      return req.headers['x-api-token'] === process.env.APP_TOKEN;
+    },
+  },
+});
+```
+
+| Option             | What it does                                                                 |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `rateLimit`        | Per-IP request throttling. Requests over the limit receive `429 Too Many Requests`. |
+| `maxBodySize`      | Rejects HTTP bodies larger than the limit with `413 Payload Too Large`.       |
+| `maxWsMessageSize` | Closes WebSocket connections that send messages exceeding the limit (code 1009). |
+| `authenticate`     | Custom auth function — return `true` to allow, `false` to reject with `401`. Called for both HTTP requests and WebSocket upgrade requests. |
 
 ---
 

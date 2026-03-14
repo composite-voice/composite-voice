@@ -25,7 +25,7 @@ const features = [
   {
     icon: MicIcon,
     title: "Composable Pipeline",
-    description: "Mix and match STT, LLM, and TTS providers. Swap Deepgram for AssemblyAI or OpenAI for Anthropic — your pipeline, your choice.",
+    description: "Five-role pipeline with swappable input, STT, LLM, TTS, and output providers. Swap Deepgram for AssemblyAI or Anthropic for OpenAI — your pipeline, your choice.",
   },
   {
     icon: ZapIcon,
@@ -35,17 +35,17 @@ const features = [
   {
     icon: RefreshCwIcon,
     title: "Resilient Connections",
-    description: "WebSocket reconnection with exponential backoff. Graceful fallbacks keep voice sessions alive through network hiccups.",
+    description: "Pipeline-level error recovery and WebSocket reconnection with exponential backoff. Configurable retry strategies keep voice sessions alive.",
   },
   {
     icon: SlidersIcon,
     title: "Turn-Taking Strategies",
-    description: "Auto, conservative, aggressive, or detect — choose how the system handles conversational flow and interruptions.",
+    description: "Automatic barge-in, plus conservative, aggressive, or detect strategies. Users can interrupt mid-speech and the SDK handles generation tracking seamlessly.",
   },
   {
     icon: ShieldIcon,
     title: "Server-Side Proxy",
-    description: "Express, Next.js, and plain Node adapters keep API keys off the client. Zero-config proxy routing for any provider.",
+    description: "Express, Next.js, and plain Node adapters with built-in rate limiting, body size limits, and auth hooks. API keys stay server-side.",
   },
   {
     icon: PackageIcon,
