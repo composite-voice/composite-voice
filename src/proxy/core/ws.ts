@@ -83,10 +83,11 @@ async function loadWs(): Promise<{
  * messages bidirectionally.
  *
  * @remarks
- * Creates a `WebSocketServer` in no-server mode to complete the client-side
- * upgrade handshake, then opens a separate upstream WebSocket connection with
- * the provider's authentication headers. All messages, close events, and errors
- * are relayed between the two connections.
+ * Connects to the upstream provider **first**, then completes the client-side
+ * upgrade handshake only after the upstream WebSocket is open. This guarantees
+ * the bidirectional relay is fully established before the browser's `onopen`
+ * fires, preventing a race condition where early audio frames would be
+ * silently dropped because the relay handlers were not yet registered.
  *
  * Query parameters from the original client request are preserved and appended
  * to the upstream URL, so provider options (e.g., Deepgram `model`, `encoding`,
@@ -104,7 +105,7 @@ async function loadWs(): Promise<{
  *   Messages exceeding this close the client connection with code 1009 (Message Too Big).
  * @returns A promise that resolves once the WebSocket relay is fully established.
  *
- * @throws Terminates the client connection with close code 1011 if the upstream
+ * @throws Destroys the client socket with a 502 response if the upstream
  * connection fails to open.
  *
  * @example
@@ -138,50 +139,78 @@ export async function proxyWebSocket(
     headers: authHeaders,
   });
 
-  const wss: WsWebSocketServer = new WebSocketServer({ noServer: true });
+  // Wait for the upstream connection to open BEFORE completing the browser's
+  // WebSocket upgrade. This fixes a race condition where the browser receives
+  // the 101 response, starts sending audio frames, but the relay handlers
+  // are not yet registered — causing those frames to be silently dropped.
+  await new Promise<void>((resolve, reject) => {
+    // Handle upstream connection failure before the relay is established.
+    const onPreOpenError = (err: Error) => {
+      socket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+      socket.destroy();
+      reject(err);
+    };
+    upstreamWs.on('error', onPreOpenError);
 
-  wss.handleUpgrade(req, socket, head, (clientWs: WsWebSocket) => {
     upstreamWs.on('open', () => {
-      clientWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-        // Enforce message size limit on client → upstream messages
-        if (options?.maxWsMessageSize !== undefined) {
-          const size = getMessageSize(data);
-          if (size > options.maxWsMessageSize) {
-            clientWs.close(1009, 'Message Too Big');
-            upstreamWs.close(1000, 'Client message too big');
-            return;
+      // Upstream is ready — remove the pre-open error handler.
+      upstreamWs.removeListener('error', onPreOpenError);
+
+      // Now complete the browser's upgrade handshake.
+      const wss: WsWebSocketServer = new WebSocketServer({ noServer: true });
+      wss.handleUpgrade(req, socket, head, (clientWs: WsWebSocket) => {
+        // Both connections are open — set up bidirectional relay.
+
+        // Browser → Upstream
+        clientWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+          // Enforce message size limit on client → upstream messages
+          if (options?.maxWsMessageSize !== undefined) {
+            const size = getMessageSize(data);
+            if (size > options.maxWsMessageSize) {
+              clientWs.close(1009, 'Message Too Big');
+              upstreamWs.close(1000, 'Client message too big');
+              return;
+            }
           }
-        }
-        if (upstreamWs.readyState === WebSocket.OPEN) {
-          upstreamWs.send(data, { binary: isBinary });
-        }
-      });
+          if (upstreamWs.readyState === WebSocket.OPEN) {
+            upstreamWs.send(data, { binary: isBinary });
+          }
+        });
 
-      upstreamWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(data, { binary: isBinary });
-        }
-      });
+        // Upstream → Browser
+        upstreamWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(data, { binary: isBinary });
+          }
+        });
 
-      clientWs.on('close', (code: number, reason: Buffer) => {
-        if (upstreamWs.readyState === WebSocket.OPEN) {
-          upstreamWs.close(code, reason);
-        }
-      });
-      upstreamWs.on('close', (code: number, reason: Buffer) => {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.close(code, reason);
-        }
-      });
+        // Close coordination — only forward valid WebSocket close codes
+        // (1000 or 3000–4999). The `ws` library throws on invalid codes.
+        clientWs.on('close', (code: number, reason: Buffer) => {
+          if (upstreamWs.readyState === WebSocket.OPEN) {
+            if (code === 1000 || (code >= 3000 && code <= 4999)) {
+              upstreamWs.close(code, reason);
+            } else {
+              upstreamWs.close();
+            }
+          }
+        });
+        upstreamWs.on('close', (code: number, reason: Buffer) => {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            if (code === 1000 || (code >= 3000 && code <= 4999)) {
+              clientWs.close(code, reason);
+            } else {
+              clientWs.close();
+            }
+          }
+        });
 
-      clientWs.on('error', () => upstreamWs.terminate());
-      upstreamWs.on('error', () => clientWs.terminate());
-    });
+        // Error cleanup
+        clientWs.on('error', () => upstreamWs.terminate());
+        upstreamWs.on('error', () => clientWs.terminate());
 
-    upstreamWs.on('error', (err: Error) => {
-      if (clientWs.readyState === WebSocket.OPEN) {
-        clientWs.close(1011, err.message.slice(0, 123));
-      }
+        resolve();
+      });
     });
   });
 }

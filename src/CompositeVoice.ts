@@ -1588,11 +1588,14 @@ export class CompositeVoice {
           await stt.connect();
         }
 
-        // 5. Start draining: flush all buffered chunks then switch to pass-through
+        // 5. Start draining: flush buffered chunks then switch to pass-through.
+        //    Use paced mode to avoid overwhelming the WebSocket with a burst of
+        //    data — chunks are sent in small batches with event-loop yields
+        //    between each batch, giving the proxy/upstream time to relay.
         if (isLiveSTT(stt)) {
           this.inputQueue.startDraining((chunk: AudioChunk) => {
             stt.sendAudio(chunk.data);
-          });
+          }, { paced: true });
         }
       }
 

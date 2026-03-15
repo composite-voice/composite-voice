@@ -241,6 +241,9 @@ export class AudioBufferQueue {
   /** Overflow notification callback, set by {@link onOverflow}. */
   private overflowCallback: OverflowCallback | null = null;
 
+  /** Timer handle for paced drain batches, used for cancellation. */
+  private drainTimer: ReturnType<typeof setTimeout> | null = null;
+
   /**
    * Creates a new AudioBufferQueue.
    *
@@ -328,44 +331,93 @@ export class AudioBufferQueue {
    * during the connection attempt, followed by real-time pass-through of
    * subsequent chunks.
    *
-   * The flush is synchronous — all buffered chunks are delivered to the
-   * callback in FIFO order before this method returns. After flushing, the
-   * queue enters draining mode where {@link enqueue} passes chunks directly
-   * to the callback.
+   * **Immediate mode** (default): All buffered chunks are delivered to the
+   * callback synchronously in FIFO order before this method returns.
+   *
+   * **Paced mode** (`paced: true`): Buffered chunks are drained in small
+   * batches with event-loop yields between each batch. This prevents
+   * overwhelming the downstream WebSocket with a burst of data. During the
+   * paced drain, new chunks arriving via {@link enqueue} are appended to
+   * the buffer (maintaining FIFO order) and will be included in a
+   * subsequent batch. Once the buffer is empty the queue switches to
+   * pass-through mode automatically.
    *
    * If the queue is already draining, calling this method replaces the
    * existing callback.
    *
    * @param callback - Function to call for each chunk (buffered and future).
+   * @param options - Optional drain configuration.
+   * @param options.paced - When `true`, drain in batches with event-loop
+   *   yields between each batch instead of flushing synchronously.
+   *   Defaults to `false`.
+   * @param options.batchSize - Number of chunks per batch when paced.
+   *   Defaults to `50` (~150 ms of audio at typical 3 ms chunk intervals).
    *
    * @example
    * ```typescript
-   * // Buffer 5 chunks while STT connects
-   * for (const chunk of chunks) queue.enqueue(chunk);
-   *
-   * // STT ready — flush all 5 and switch to pass-through
-   * await stt.connect();
+   * // Immediate flush (original behavior)
    * queue.startDraining((chunk) => stt.sendAudio(chunk.data));
+   *
+   * // Paced catch-up drain
+   * queue.startDraining((chunk) => stt.sendAudio(chunk.data), { paced: true });
    * ```
    *
    * @see {@link stopDraining} to return to buffering mode
    */
-  startDraining(callback: DrainCallback): void {
+  startDraining(
+    callback: DrainCallback,
+    options?: { paced?: boolean; batchSize?: number },
+  ): void {
     this.drainCallback = callback;
-    this.draining = true;
 
-    // Flush all buffered chunks synchronously
-    while (this.buffer.length > 0) {
-      const chunk = this.buffer.shift()!;
-      this.dequeuedCount++;
-      callback(chunk);
+    // Cancel any pending paced drain from a previous call.
+    this.cancelPacedDrain();
+
+    if (!options?.paced || this.buffer.length === 0) {
+      // Immediate mode: synchronous flush + pass-through.
+      this.draining = true;
+
+      while (this.buffer.length > 0) {
+        const chunk = this.buffer.shift()!;
+        this.dequeuedCount++;
+        callback(chunk);
+      }
+
+      this.resolveBlocker();
+      return;
     }
 
-    // Resolve any blocked enqueue
-    if (this.blockResolver) {
-      this.blockResolver();
-      this.blockResolver = null;
-    }
+    // Paced mode: drain in batches, yielding to the event loop between each.
+    // During the drain, `this.draining` stays `false` so new chunks arriving
+    // via enqueue() are appended to the buffer end (preserving FIFO order).
+    const batchSize = options.batchSize ?? 50;
+
+    const drainBatch = () => {
+      // Guard: stopDraining() may have been called while we were yielding.
+      if (!this.drainCallback) return;
+
+      let sent = 0;
+      while (this.buffer.length > 0 && sent < batchSize) {
+        const chunk = this.buffer.shift()!;
+        this.dequeuedCount++;
+        this.drainCallback(chunk);
+        sent++;
+      }
+
+      if (this.buffer.length > 0) {
+        // More chunks to drain — schedule next batch.
+        this.drainTimer = setTimeout(drainBatch, 0);
+      } else {
+        // Buffer is empty — switch to pass-through.
+        this.drainTimer = null;
+        this.draining = true;
+        this.resolveBlocker();
+      }
+    };
+
+    // Kick off the first batch immediately (synchronously) so the consumer
+    // receives the earliest buffered chunks without an extra event-loop tick.
+    drainBatch();
   }
 
   /**
@@ -374,7 +426,7 @@ export class AudioBufferQueue {
    * @remarks
    * After calling this method, subsequent {@link enqueue} calls will buffer
    * chunks internally instead of passing them to the drain callback. The drain
-   * callback is cleared.
+   * callback is cleared. If a paced drain is in progress, it is cancelled.
    *
    * This is used during turn-taking: when the agent starts speaking, the
    * orchestrator stops draining the input queue (pauses STT) and resumes
@@ -383,6 +435,7 @@ export class AudioBufferQueue {
    * @see {@link startDraining} to resume draining
    */
   stopDraining(): void {
+    this.cancelPacedDrain();
     this.draining = false;
     this.drainCallback = null;
   }
@@ -494,5 +547,27 @@ export class AudioBufferQueue {
    */
   onOverflow(callback: OverflowCallback | null): void {
     this.overflowCallback = callback;
+  }
+
+  /**
+   * Cancel any in-progress paced drain timer.
+   * @internal
+   */
+  private cancelPacedDrain(): void {
+    if (this.drainTimer !== null) {
+      clearTimeout(this.drainTimer);
+      this.drainTimer = null;
+    }
+  }
+
+  /**
+   * Resolve a pending `'block'`-strategy enqueue if one exists.
+   * @internal
+   */
+  private resolveBlocker(): void {
+    if (this.blockResolver) {
+      this.blockResolver();
+      this.blockResolver = null;
+    }
   }
 }

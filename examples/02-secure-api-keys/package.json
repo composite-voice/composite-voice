@@ -5,7 +5,7 @@
   "description": "Secure API keys with Express proxy — DeepgramSTT + AnthropicLLM + DeepgramTTS via server-side key injection",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsx server.ts\" \"vite\"",
+    "dev": "concurrently \"tsx --env-file=../../.env server.ts\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -13,13 +13,16 @@
     "@lukeocodes/composite-voice": "workspace:*",
     "@lukeocodes/composite-voice-ui": "workspace:*",
     "express": "^4.21.0",
+    "ws": "^8.18.0",
     "concurrently": "^9.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.8",
     "@types/express": "^5.0.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.1.8",
     "tsx": "^4.0.0",
     "typescript": "^5.9.0",
     "vite": "^6.0.0"

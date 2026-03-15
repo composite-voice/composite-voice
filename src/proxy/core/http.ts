@@ -54,6 +54,11 @@ const SKIP_RESPONSE_HEADERS = new Set([
   'te',
   'trailer',
   'upgrade',
+  // Node.js fetch (undici) auto-decompresses gzip/br/deflate responses but
+  // the original Content-Encoding header remains in response.headers. If we
+  // forward it, the browser will attempt to decompress already-decompressed
+  // data, causing ERR_CONTENT_DECODING_FAILED.
+  'content-encoding',
 ]);
 
 /**
