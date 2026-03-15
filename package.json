@@ -1,6 +1,6 @@
 {
   "name": "@lukeocodes/composite-voice",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Extensible composite AI voice-agent browser SDK",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -161,7 +161,7 @@
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@fontsource/inter": "^5.2.8",
-"@resvg/resvg-js": "^2.6.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/dom-speech-recognition": "^0.0.7",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.30",
