@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 
@@ -8,12 +8,20 @@ export default function App() {
   const [agent, setAgent] = useState<CompositeVoice | null>(null);
 
   const handleInit = useCallback(async () => {
+    const PROXY = window.location.origin;
     const voice = new CompositeVoice({
       providers: [
-        new DeepgramSTT({ proxyUrl: '/proxy/deepgram', interimResults: true }),
-        new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: 'claude-haiku-4-5' }),
-        new DeepgramTTS({ proxyUrl: '/proxy/deepgram' }),
+        new MicrophoneInput(),
+        new DeepgramSTT({ proxyUrl: `${PROXY}/proxy/deepgram`, interimResults: true }),
+        new AnthropicLLM({
+          proxyUrl: `${PROXY}/proxy/anthropic`,
+          model: 'claude-haiku-4-5',
+          systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
+        }),
+        new DeepgramTTS({ proxyUrl: `${PROXY}/proxy/deepgram` }),
+        new BrowserAudioOutput(),
       ],
+      logging: { enabled: true, level: 'debug' },
     });
     agentRef.current = voice;
     setAgent(voice);
