@@ -204,18 +204,18 @@ import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeoco
 const agent = new CompositeVoice({
   providers: [
     new DeepgramSTT({
-      apiKey: 'your-deepgram-key',
+      proxyUrl: '/api/proxy/deepgram',
       interimResults: true,
       options: { model: 'nova-3', endpointing: 300 },
     }),
     new AnthropicLLM({
-      apiKey: 'your-anthropic-key',
-      model: 'claude-haiku-4-5-20251001',
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
       systemPrompt: 'You are a helpful voice assistant.',
       maxTokens: 200,
     }),
     new DeepgramTTS({
-      apiKey: 'your-deepgram-key',
+      proxyUrl: '/api/proxy/deepgram',
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
   ],

@@ -36,16 +36,17 @@ getUserMedia (MediaStream)
     |
 MediaStreamAudioSourceNode
     |
-ScriptProcessorNode (buffer processing)
+AudioWorkletNode (preferred, off-main-thread)
+  or ScriptProcessorNode (fallback for older browsers)
     |
 Downsample if hardware rate differs from config
     |
 Float32 -> Int16 PCM conversion
     |
-Callback delivers ArrayBuffer to STT provider
+ArrayBuffer delivered to STT provider via sendAudio()
 ```
 
-The SDK requests microphone access with the constraints you specify (sample rate, channel count, echo cancellation, noise suppression, automatic gain control). The SDK creates an `AudioContext` at the configured sample rate, and a `ScriptProcessorNode` processes audio in fixed-size buffers derived from the `chunkDuration` setting.
+The SDK requests microphone access with the constraints you specify (sample rate, channel count, echo cancellation, noise suppression, automatic gain control). It creates an `AudioContext` at the configured sample rate and uses an `AudioWorkletNode` for off-main-thread audio processing. If AudioWorklet is unavailable (older browsers, restricted environments), the SDK falls back to the deprecated `ScriptProcessorNode`. Both paths produce identical PCM output.
 
 If the hardware sample rate differs from your configured rate (e.g., the microphone captures at 48kHz but you configured 16kHz), the SDK automatically downsamples using sample-window averaging before converting to 16-bit PCM.
 
@@ -194,18 +195,18 @@ const agent = new CompositeVoice({
       autoGainControl: true,
     }),
     new DeepgramSTT({
-      apiKey: 'your-deepgram-key',
+      proxyUrl: '/api/proxy/deepgram',
       interimResults: true,
       options: { model: 'nova-3', endpointing: 300 },
     }),
     new AnthropicLLM({
-      apiKey: 'your-anthropic-key',
-      model: 'claude-haiku-4-5-20251001',
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
       systemPrompt: 'You are a helpful voice assistant.',
       maxTokens: 200,
     }),
     new DeepgramTTS({
-      apiKey: 'your-deepgram-key',
+      proxyUrl: '/api/proxy/deepgram',
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
     new BrowserAudioOutput({

@@ -249,6 +249,6 @@ Every provider exposes two types of standard methods:
 
 ### Audio internals
 
-**MicrophoneInput** wraps `navigator.mediaDevices.getUserMedia()` with a ScriptProcessorNode (or AudioWorklet where supported). It delivers fixed-size PCM chunks at the configured sample rate and chunk duration.
+**MicrophoneInput** wraps `navigator.mediaDevices.getUserMedia()` with an AudioWorkletNode (or ScriptProcessorNode as fallback in older browsers). It delivers fixed-size PCM chunks at the configured sample rate and chunk duration.
 
 **BrowserAudioOutput** uses a Web Audio API AudioContext with buffering. It accumulates audio chunks until `minBufferDuration` is reached, then begins playback. When `smoothing` is enabled, it crossfades between chunks to eliminate clicks.
