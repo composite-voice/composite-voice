@@ -29,7 +29,6 @@ import type {
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
-import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type AnthropicSDK = typeof import('@anthropic-ai/sdk').default;
@@ -69,31 +68,6 @@ type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').Message
  */
 export interface AnthropicLLMConfig extends LLMProviderConfig {
   /**
-   * Anthropic API key.
-   * Required when connecting directly to Anthropic.
-   * Omit when using `proxyUrl` -- the proxy server supplies the key.
-   *
-   * @defaultValue `undefined`
-   */
-  apiKey?: string;
-  /**
-   * URL of the CompositeVoice proxy server's Anthropic endpoint.
-   *
-   * @remarks
-   * When set, the Anthropic SDK sends requests to this URL instead of
-   * `https://api.anthropic.com`, allowing browsers to reach Anthropic through a
-   * same-origin proxy that injects the real API key server-side. A dummy API
-   * key (`'proxy'`) is used with the SDK.
-   *
-   * @defaultValue `undefined`
-   *
-   * @example
-   * ```ts
-   * proxyUrl: 'http://localhost:3000/api/proxy/anthropic'
-   * ```
-   */
-  proxyUrl?: string;
-  /**
    * Anthropic model identifier.
    *
    * @remarks
@@ -114,16 +88,6 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
    * @defaultValue `1024`
    */
   maxTokens?: number;
-  /**
-   * Base URL for the Anthropic API.
-   *
-   * @remarks
-   * For custom endpoints only. Use `proxyUrl` for the CompositeVoice proxy
-   * pattern. When neither is set, the SDK defaults to `https://api.anthropic.com`.
-   *
-   * @defaultValue `undefined` (SDK default: `'https://api.anthropic.com'`)
-   */
-  baseURL?: string;
   /**
    * Maximum number of retries for failed API requests.
    *
@@ -161,7 +125,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * });
  * await llm.initialize();
  *
- * const stream = await llm.processText('What is the speed of light?');
+ * const stream = await llm.generate('What is the speed of light?');
  * for await (const chunk of stream) {
  *   process.stdout.write(chunk);
  * }
@@ -179,7 +143,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * });
  * await llm.initialize();
  *
- * const stream = await llm.processText('Tell me a joke.');
+ * const stream = await llm.generate('Tell me a joke.');
  * for await (const chunk of stream) {
  *   document.getElementById('output')!.textContent += chunk;
  * }
@@ -229,37 +193,38 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    * `@anthropic-ai/sdk` package cannot be found (peer dependency not installed).
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'AnthropicLLM',
-        new Error('AnthropicLLM requires either "apiKey" or "proxyUrl" to be configured.')
-      );
+    this.assertAuth();
+
+    try {
+      // Dynamically import Anthropic SDK (peer dependency)
+      const AnthropicModule = await import('@anthropic-ai/sdk');
+      const Anthropic = AnthropicModule.default;
+
+      // Initialize Anthropic client
+      this.client = new Anthropic({
+        apiKey: this.resolveApiKey(),
+        baseURL: this.resolveBaseUrl(),
+        maxRetries: this.config.maxRetries ?? 3,
+        timeout: this.config.timeout ?? 60000,
+        dangerouslyAllowBrowser: true,
+      });
+
+      this.logger.info('Anthropic LLM initialized', {
+        model: this.config.model,
+        stream: this.config.stream ?? true,
+      });
+    } catch (error) {
+      if ((error as Error).message?.includes('Cannot find module')) {
+        throw new ProviderInitializationError(
+          'AnthropicLLM',
+          new Error(
+            'Anthropic SDK not found. Install with: npm install @anthropic-ai/sdk\n' +
+              'The Anthropic SDK is a peer dependency and must be installed separately.'
+          )
+        );
+      }
+      throw new ProviderInitializationError('AnthropicLLM', error as Error);
     }
-
-    // Dynamically import Anthropic SDK (peer dependency)
-    const Anthropic = await importPeerDep<typeof import('@anthropic-ai/sdk').default>(
-      '@anthropic-ai/sdk',
-      'AnthropicLLM',
-    );
-
-    // When using a proxy, point the SDK at the proxy URL with a dummy key.
-    // The proxy server injects the real Anthropic API key.
-    const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-    const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
-
-    // Initialize Anthropic client
-    this.client = new Anthropic({
-      apiKey,
-      baseURL,
-      maxRetries: this.config.maxRetries ?? 3,
-      timeout: this.config.timeout ?? 60000,
-      dangerouslyAllowBrowser: true,
-    });
-
-    this.logger.info('Anthropic LLM initialized', {
-      model: this.config.model,
-      stream: this.config.stream ?? true,
-    });
   }
 
   /**
@@ -275,10 +240,48 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   }
 
   /**
-   * Process a conversation and generate a response.
+   * Generate an LLM response from a single text prompt.
    *
    * @remarks
-   * This is the primary handler method. It extracts system messages from the
+   * Convenience wrapper that converts the prompt to a message array (prepending
+   * the system prompt if configured) and delegates to
+   * {@link AnthropicLLM.generateFromMessages | generateFromMessages}.
+   *
+   * @param prompt - The user's text prompt.
+   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
+   * @returns An async iterable that yields text chunks. When streaming is enabled
+   *   (the default), chunks arrive incrementally; otherwise, a single chunk
+   *   containing the full response is yielded.
+   *
+   * @throws {@link Error}
+   * Thrown if the provider has not been initialized or the client is unavailable.
+   *
+   * @throws `AbortError`
+   * Thrown if the provided `options.signal` is aborted before or during generation.
+   */
+  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    const messages = this.promptToMessages(prompt);
+    return this.generateFromMessages(messages, options);
+  }
+
+  /**
+   * Implement the abstract {@link BaseLLMProvider.processMessages} method.
+   *
+   * @remarks
+   * Delegates to {@link generateFromMessages}.
+   */
+  async processMessages(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>> {
+    return this.generateFromMessages(messages, options);
+  }
+
+  /**
+   * Generate an LLM response from a multi-turn conversation.
+   *
+   * @remarks
+   * This is the primary generation method. It extracts system messages from the
    * array and passes them as Anthropic's top-level `system` parameter (since
    * Anthropic does not accept `role: 'system'` inline). Remaining messages are
    * converted to the Anthropic `MessageParam` format.
@@ -307,13 +310,13 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    *   { role: 'user', content: 'Summarize the theory of relativity.' },
    * ];
    *
-   * const stream = await anthropicLLM.processMessages(messages);
+   * const stream = await anthropicLLM.generateFromMessages(messages);
    * for await (const chunk of stream) {
    *   process.stdout.write(chunk);
    * }
    * ```
    */
-  async processMessages(
+  async generateFromMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
@@ -511,14 +514,14 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   }
 
   /**
-   * Process a conversation with tool use support.
+   * Generate a response with tool use support.
    *
    * @remarks
    * Returns an async iterable of `LLMStreamChunk` — text chunks go to TTS,
    * tool_call chunks go to the tool executor. The `done` chunk signals the
    * stop reason so the caller knows whether to send tool results and re-call.
    */
-  async processMessagesWithTools(
+  async generateWithTools(
     messages: LLMMessage[],
     options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
   ): Promise<AsyncIterable<LLMStreamChunk>> {

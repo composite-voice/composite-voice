@@ -115,13 +115,25 @@ export abstract class LiveSTTProvider extends BaseSTTProvider implements ILiveST
   abstract connect(): Promise<void>;
 
   /**
+   * Send an audio chunk for real-time transcription.
+   *
+   * @remarks
+   * This is the public method required by the {@link ILiveSTTProvider} interface.
+   * It delegates to {@link sendAudioToSocket}, which subclasses implement to
+   * forward audio data over the WebSocket connection. For providers that manage
+   * their own audio (e.g. {@link NativeSTT}), `sendAudioToSocket` is a no-op.
+   *
+   * @param chunk - Raw audio data as an `ArrayBuffer`.
+   */
+  sendAudio(chunk: ArrayBuffer): void {
+    this.sendAudioToSocket(chunk);
+  }
+
+  /**
    * Process a raw audio chunk by sending it over the WebSocket.
    *
    * @remarks
-   * This is the handler method called by the orchestrator. It delegates to
-   * {@link sendAudioToSocket}, which subclasses implement to forward audio
-   * data over the WebSocket connection. For providers that manage their own
-   * audio (e.g. {@link NativeSTT}), `sendAudioToSocket` is a no-op.
+   * Legacy alias for {@link sendAudio}. Delegates to {@link sendAudioToSocket}.
    *
    * @param chunk - Raw audio data as an `ArrayBuffer`.
    */

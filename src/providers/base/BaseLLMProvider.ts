@@ -116,6 +116,40 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
   ): Promise<AsyncIterable<string>>;
 
   /**
+   * Generate a response from a single user prompt.
+   *
+   * @remarks
+   * Required by the {@link LLMProvider} interface. Subclasses must implement this.
+   *
+   * @param prompt - The user's text input.
+   * @param options - Optional generation overrides.
+   * @returns An async iterable of text chunks.
+   *
+   * @virtual
+   */
+  abstract generate(
+    prompt: string,
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>>;
+
+  /**
+   * Generate a response from a multi-turn conversation.
+   *
+   * @remarks
+   * Required by the {@link LLMProvider} interface. Subclasses must implement this.
+   *
+   * @param messages - Array of conversation messages including history.
+   * @param options - Optional generation overrides.
+   * @returns An async iterable of text chunks.
+   *
+   * @virtual
+   */
+  abstract generateFromMessages(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>>;
+
+  /**
    * Process a single text prompt (convenience wrapper).
    *
    * @remarks

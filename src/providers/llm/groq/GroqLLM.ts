@@ -125,7 +125,7 @@ export class GroqLLM extends OpenAICompatibleLLM {
     const finalConfig: GroqLLMConfig = {
       ...config,
       ...(resolvedKey !== undefined ? { apiKey: resolvedKey } : {}),
-      baseURL: config.baseURL ?? GROQ_DEFAULTS.baseURL,
+      endpoint: config.endpoint ?? GROQ_DEFAULTS.baseURL,
       model: config.model ?? GROQ_DEFAULTS.model,
     };
     super(finalConfig, logger);

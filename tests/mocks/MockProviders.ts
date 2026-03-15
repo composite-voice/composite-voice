@@ -121,8 +121,16 @@ export class MockLLMProvider implements LLMProvider {
     };
   }
 
+  async generate(prompt: string) {
+    return this.processText(prompt);
+  }
+
   async processMessages() {
     return this.processText('test');
+  }
+
+  async generateFromMessages() {
+    return this.processMessages();
   }
 
   isToolCall(_chunk: unknown): boolean {
@@ -512,7 +520,7 @@ export class MockLiveSTTProvider implements LiveSTTProvider {
   private connected = false;
   private transcriptionCallback?: (result: TranscriptionResult) => void;
 
-  /** Audio buffers received via processAudio(). */
+  /** Audio buffers received via processAudio()/sendAudio(). */
   public receivedAudio: ArrayBuffer[] = [];
 
   /** Configurable delay in ms for connect(). */
@@ -542,11 +550,15 @@ export class MockLiveSTTProvider implements LiveSTTProvider {
     this.connected = true;
   }
 
-  processAudio(chunk: ArrayBuffer) {
+  sendAudio(chunk: ArrayBuffer) {
     if (!this.connected) {
       throw new Error('MockLiveSTTProvider: not connected');
     }
     this.receivedAudio.push(chunk);
+  }
+
+  processAudio(chunk: ArrayBuffer) {
+    this.sendAudio(chunk);
   }
 
   async disconnect() {
@@ -612,7 +624,15 @@ export class FailingProvider implements LLMProvider {
     throw new Error('Generation failed');
   }
 
+  async generate(): Promise<AsyncIterable<string>> {
+    return this.processText();
+  }
+
   async processMessages(): Promise<AsyncIterable<string>> {
+    return this.processText();
+  }
+
+  async generateFromMessages(): Promise<AsyncIterable<string>> {
     return this.processText();
   }
 

@@ -257,4 +257,115 @@ export abstract class BaseProvider implements IBaseProvider {
       throw new Error(`${this.constructor.name} is not initialized. Call initialize() first.`);
     }
   }
+
+  /**
+   * Validate that auth is configured (either apiKey or proxyUrl).
+   *
+   * @remarks
+   * Call this in `onInitialize()` for any provider that requires external
+   * authentication. Native providers (NativeSTT, NativeTTS) and in-browser
+   * providers (WebLLM) should NOT call this method.
+   *
+   * @throws {@link ProviderInitializationError}
+   * Thrown when neither `apiKey` nor `proxyUrl` is set.
+   */
+  protected assertAuth(): void {
+    if (!this.config.apiKey && !this.config.proxyUrl) {
+      throw new ProviderInitializationError(
+        this.constructor.name,
+        new Error(`${this.constructor.name} requires either "apiKey" or "proxyUrl".`)
+      );
+    }
+  }
+
+  /**
+   * Whether the provider is in proxy mode.
+   *
+   * @returns `true` when {@link BaseProviderConfig.proxyUrl | proxyUrl} is set.
+   */
+  protected get isProxyMode(): boolean {
+    return !!this.config.proxyUrl;
+  }
+
+  /**
+   * Resolve the base URL for this provider.
+   *
+   * @remarks
+   * Priority: `proxyUrl` > `endpoint` > `defaultUrl`.
+   *
+   * For WebSocket providers (`this.type === 'websocket'`), the proxy URL's
+   * `http(s)` scheme is automatically converted to `ws(s)`.
+   *
+   * When no URL is configured and `defaultUrl` is `undefined`, the return
+   * value is `undefined` — this lets SDK-based providers (Anthropic, OpenAI)
+   * fall back to their own built-in defaults.
+   *
+   * @param defaultUrl - The provider's default API URL. Pass `undefined`
+   *   to let the underlying SDK use its own default.
+   * @returns The resolved URL, or `undefined` when all sources are unset.
+   */
+  protected resolveBaseUrl(defaultUrl?: string): string | undefined {
+    if (this.config.proxyUrl) {
+      return this.type === 'websocket'
+        ? this.config.proxyUrl.replace(/^http/, 'ws')
+        : this.config.proxyUrl;
+    }
+    return this.config.endpoint ?? defaultUrl;
+  }
+
+  /**
+   * Resolve the API key for this provider.
+   *
+   * @remarks
+   * Returns `'proxy'` in proxy mode so that SDK clients (which require a
+   * non-empty API key string) can be instantiated without the real key.
+   *
+   * @returns The configured API key, or `'proxy'` in proxy mode.
+   */
+  protected resolveApiKey(): string {
+    if (this.isProxyMode) return 'proxy';
+    return this.config.apiKey ?? '';
+  }
+
+  /**
+   * Resolve WebSocket subprotocol for authentication.
+   *
+   * @remarks
+   * Returns the subprotocol array for direct mode based on `authType`:
+   * - `'token'` → `['token', apiKey]` (Deepgram default)
+   * - `'bearer'` → `['bearer', apiKey]` (OAuth/Bearer tokens)
+   *
+   * Returns `undefined` in proxy mode (no client-side auth needed).
+   *
+   * @param defaultAuthType - The default auth type for this provider.
+   * @returns Subprotocol array for `new WebSocket(url, protocols)`, or `undefined`.
+   */
+  protected resolveWsProtocols(defaultAuthType: 'token' | 'bearer' = 'token'): string[] | undefined {
+    if (this.isProxyMode) return undefined;
+    const authType = this.config.authType ?? defaultAuthType;
+    const key = this.config.apiKey;
+    if (!key) return undefined;
+    return [authType, key];
+  }
+
+  /**
+   * Resolve Authorization header value for the configured auth type.
+   *
+   * @remarks
+   * Returns the header value for REST or server-side WebSocket connections:
+   * - `'token'` → `'Token <apiKey>'`
+   * - `'bearer'` → `'Bearer <apiKey>'`
+   *
+   * Returns `undefined` in proxy mode.
+   *
+   * @param defaultAuthType - The default auth type for this provider.
+   * @returns The `Authorization` header value, or `undefined` in proxy mode.
+   */
+  protected resolveAuthHeader(defaultAuthType: 'token' | 'bearer' = 'token'): string | undefined {
+    if (this.isProxyMode) return undefined;
+    const authType = this.config.authType ?? defaultAuthType;
+    const key = this.config.apiKey;
+    if (!key) return undefined;
+    return authType === 'bearer' ? `Bearer ${key}` : `Token ${key}`;
+  }
 }

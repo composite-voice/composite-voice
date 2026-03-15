@@ -295,15 +295,15 @@ describe('OpenAILLM', () => {
       expect((provider.getConfig() as OpenAILLMConfig).organizationId).toBe('org-123');
     });
 
-    it('should support custom base URL', async () => {
-      const configWithBaseURL: OpenAILLMConfig = {
+    it('should support custom endpoint', async () => {
+      const configWithEndpoint: OpenAILLMConfig = {
         ...config,
-        baseURL: 'https://custom.openai.com',
+        endpoint: 'https://custom.openai.com',
       };
-      provider = new OpenAILLM(configWithBaseURL);
+      provider = new OpenAILLM(configWithEndpoint);
       await provider.initialize();
 
-      expect((provider.getConfig() as OpenAILLMConfig).baseURL).toBe('https://custom.openai.com');
+      expect((provider.getConfig() as OpenAILLMConfig).endpoint).toBe('https://custom.openai.com');
     });
 
     it('should support custom max retries', async () => {

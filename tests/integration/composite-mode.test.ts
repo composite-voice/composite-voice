@@ -32,6 +32,10 @@ class MockLLMProvider implements LLMProvider {
     };
   }
 
+  async generate(prompt: string) {
+    return this.processText(prompt);
+  }
+
   async processMessages(messages: LLMMessage[]) {
     this.processMessagesCalls.push([...messages]);
     return {
@@ -39,6 +43,10 @@ class MockLLMProvider implements LLMProvider {
         yield 'Mock response from history';
       },
     };
+  }
+
+  async generateFromMessages(messages: LLMMessage[]) {
+    return this.processMessages(messages);
   }
 
   isToolCall(_chunk: unknown): boolean {
@@ -221,7 +229,13 @@ describe('Composite Mode Integration', () => {
             },
           };
         }
+        async generate() {
+          return this.processText();
+        }
         async processMessages() {
+          return this.processText();
+        }
+        async generateFromMessages() {
           return this.processText();
         }
         isToolCall(_chunk: unknown): boolean {

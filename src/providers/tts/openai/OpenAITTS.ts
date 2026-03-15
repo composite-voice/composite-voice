@@ -18,7 +18,6 @@ import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderInitializationError } from '../../../utils/errors';
-import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type OpenAI = typeof import('openai').default;
@@ -78,26 +77,6 @@ export type OpenAITTSFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
  */
 export interface OpenAITTSConfig extends TTSProviderConfig {
   /**
-   * OpenAI API key for direct authentication.
-   *
-   * @remarks
-   * Required when connecting directly to OpenAI (no proxy).
-   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
-   */
-  apiKey?: string;
-
-  /**
-   * URL of the CompositeVoice proxy server's OpenAI endpoint.
-   *
-   * @remarks
-   * When set, all API requests are routed through the proxy.
-   * The `apiKey` is not required on the client side.
-   *
-   * @example `'http://localhost:3001/api/proxy/openai'`
-   */
-  proxyUrl?: string;
-
-  /**
    * The TTS model to use.
    *
    * @remarks
@@ -140,17 +119,6 @@ export interface OpenAITTSConfig extends TTSProviderConfig {
    * @defaultValue `undefined`
    */
   organizationId?: string;
-
-  /**
-   * Base URL for the OpenAI API.
-   *
-   * @remarks
-   * Use this for custom API-compatible endpoints (e.g., Azure OpenAI).
-   * For CompositeVoice proxy routing, use `proxyUrl` instead.
-   *
-   * @defaultValue `undefined` (uses OpenAI's default endpoint)
-   */
-  baseURL?: string;
 
   /**
    * Maximum number of retries for failed API requests.
@@ -252,30 +220,41 @@ export class OpenAITTS extends RestTTSProvider {
       );
     }
 
-    // Dynamically import OpenAI SDK (peer dependency)
-    const OpenAI = await importPeerDep<typeof import('openai').default>(
-      'openai',
-      'OpenAITTS',
-    );
+    try {
+      // Dynamically import OpenAI SDK (peer dependency)
+      const OpenAIModule = await import('openai');
+      const OpenAI = OpenAIModule.default;
 
-    const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-    const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
+      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
 
-    // Initialize OpenAI client
-    this.client = new OpenAI({
-      apiKey,
-      organization: this.config.organizationId,
-      baseURL,
-      maxRetries: this.config.maxRetries ?? 3,
-      timeout: this.config.timeout ?? 60000,
-      dangerouslyAllowBrowser: true,
-    });
+      // Initialize OpenAI client
+      this.client = new OpenAI({
+        apiKey,
+        organization: this.config.organizationId,
+        baseURL,
+        maxRetries: this.config.maxRetries ?? 3,
+        timeout: this.config.timeout ?? 60000,
+        dangerouslyAllowBrowser: true,
+      });
 
-    this.logger.info('OpenAI TTS initialized', {
-      model: this.config.model ?? 'tts-1',
-      voice: this.config.voice ?? 'alloy',
-      responseFormat: this.config.responseFormat ?? 'mp3',
-    });
+      this.logger.info('OpenAI TTS initialized', {
+        model: this.config.model ?? 'tts-1',
+        voice: this.config.voice ?? 'alloy',
+        responseFormat: this.config.responseFormat ?? 'mp3',
+      });
+    } catch (error) {
+      if ((error as Error).message?.includes('Cannot find module')) {
+        throw new ProviderInitializationError(
+          'OpenAITTS',
+          new Error(
+            'OpenAI SDK not found. Install with: npm install openai\n' +
+              'The OpenAI SDK is a peer dependency and must be installed separately.'
+          )
+        );
+      }
+      throw new ProviderInitializationError('OpenAITTS', error as Error);
+    }
   }
 
   /**

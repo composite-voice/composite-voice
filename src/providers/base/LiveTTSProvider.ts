@@ -117,12 +117,24 @@ export abstract class LiveTTSProvider extends BaseTTSProvider implements ILiveTT
   abstract connect(): Promise<void>;
 
   /**
+   * Send a text chunk for real-time synthesis.
+   *
+   * @remarks
+   * This is the public method required by the {@link ILiveTTSProvider} interface.
+   * It delegates to {@link sendTextToSocket}, which subclasses implement to
+   * forward text over the WebSocket connection.
+   *
+   * @param chunk - Text to synthesize.
+   */
+  sendText(chunk: string): void {
+    this.sendTextToSocket(chunk);
+  }
+
+  /**
    * Process a text chunk by sending it over the WebSocket for synthesis.
    *
    * @remarks
-   * This is the handler method called by the orchestrator. It delegates to
-   * {@link sendTextToSocket}, which subclasses implement to forward text
-   * over the WebSocket connection.
+   * Legacy alias for {@link sendText}. Delegates to {@link sendTextToSocket}.
    *
    * @param text - A piece of text to synthesize.
    */

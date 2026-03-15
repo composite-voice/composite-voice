@@ -124,10 +124,10 @@ describe('MistralLLM', () => {
       );
     });
 
-    it('should allow overriding baseURL', async () => {
+    it('should allow overriding endpoint', async () => {
       const customConfig: MistralLLMConfig = {
         ...config,
-        baseURL: 'https://custom.mistral.endpoint/v1',
+        endpoint: 'https://custom.mistral.endpoint/v1',
       };
       provider = new MistralLLM(customConfig);
       await provider.initialize();

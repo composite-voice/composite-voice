@@ -325,14 +325,14 @@ describe('AnthropicLLM', () => {
       expect(provider.config.model).toBe('claude-opus-4-6');
     });
 
-    it('should support custom base URL', async () => {
-      const configWithBaseURL: AnthropicLLMConfig = {
+    it('should support custom endpoint', async () => {
+      const configWithEndpoint: AnthropicLLMConfig = {
         ...config,
-        baseURL: 'https://custom.anthropic.com',
+        endpoint: 'https://custom.anthropic.com',
       };
-      provider = new AnthropicLLM(configWithBaseURL);
+      provider = new AnthropicLLM(configWithEndpoint);
       await provider.initialize();
-      expect(provider.config.baseURL).toBe('https://custom.anthropic.com');
+      expect(provider.config.endpoint).toBe('https://custom.anthropic.com');
     });
 
     it('should support custom max retries', async () => {

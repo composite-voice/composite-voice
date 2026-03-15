@@ -43,12 +43,20 @@ class SucceedingLLM implements LLMProvider {
     };
   }
 
+  async generate(prompt: string) {
+    return this.processText(prompt);
+  }
+
   async processMessages(_messages: LLMMessage[]) {
     return {
       async *[Symbol.asyncIterator]() {
         yield 'Response from messages';
       },
     };
+  }
+
+  async generateFromMessages(messages: LLMMessage[]) {
+    return this.processMessages(messages);
   }
 
   isToolCall(_chunk: unknown): boolean {
@@ -83,8 +91,16 @@ class FailingGenerateLLM implements LLMProvider {
     };
   }
 
+  async generate(prompt: string, options?: LLMGenerationOptions) {
+    return this.processText(prompt, options);
+  }
+
   async processMessages(_messages: LLMMessage[], _options?: LLMGenerationOptions) {
     return this.processText('from-messages', _options);
+  }
+
+  async generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions) {
+    return this.processMessages(messages, options);
   }
 
   isToolCall(_chunk: unknown): boolean {
@@ -113,7 +129,13 @@ class FailingInitLLM implements LLMProvider {
       },
     };
   }
+  async generate() {
+    return this.processText();
+  }
   async processMessages() {
+    return this.processText();
+  }
+  async generateFromMessages() {
     return this.processText();
   }
   isToolCall(_chunk: unknown): boolean {

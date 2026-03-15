@@ -30,7 +30,7 @@ describe('OpenAICompatibleLLM', () => {
     config = {
       apiKey: 'test-api-key',
       model: 'gpt-4',
-      baseURL: 'https://api.example.com/v1',
+      endpoint: 'https://api.example.com/v1',
       temperature: 0.7,
       maxTokens: 1000,
       systemPrompt: 'You are a helpful assistant.',
@@ -503,7 +503,7 @@ describe('OpenAICompatibleLLM', () => {
       const groqConfig: OpenAICompatibleLLMConfig = {
         apiKey: 'groq-key',
         model: 'llama-3.3-70b-versatile',
-        baseURL: 'https://api.groq.com/openai/v1',
+        endpoint: 'https://api.groq.com/openai/v1',
       };
 
       const groqProvider = new GroqLLM(groqConfig);

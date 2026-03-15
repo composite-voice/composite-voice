@@ -124,10 +124,10 @@ describe('GeminiLLM', () => {
       );
     });
 
-    it('should allow overriding baseURL', async () => {
+    it('should allow overriding endpoint', async () => {
       const customConfig: GeminiLLMConfig = {
         ...config,
-        baseURL: 'https://custom.gemini.endpoint/v1',
+        endpoint: 'https://custom.gemini.endpoint/v1',
       };
       provider = new GeminiLLM(customConfig);
       await provider.initialize();

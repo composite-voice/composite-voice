@@ -124,10 +124,10 @@ describe('GroqLLM', () => {
       );
     });
 
-    it('should allow overriding baseURL', async () => {
+    it('should allow overriding endpoint', async () => {
       const customConfig: GroqLLMConfig = {
         ...config,
-        baseURL: 'https://custom.groq.endpoint/v1',
+        endpoint: 'https://custom.groq.endpoint/v1',
       };
       provider = new GroqLLM(customConfig);
       await provider.initialize();
