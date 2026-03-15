@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.3](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.2...composite-voice-v0.0.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* **ci:** add registry-url for npm OIDC trusted publishing ([19abfa7](https://github.com/lukeocodes/composite-voice/commit/19abfa75b3281e391b548997af0b187c12f4cb35))
+
+
+### Miscellaneous Chores
+
+* release 0.0.3 ([e0446ca](https://github.com/lukeocodes/composite-voice/commit/e0446ca3f1541480b8595800eb78619b170a8ee1))
+
 ## [0.0.2](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.1...composite-voice-v0.0.2) (2026-03-15)
 
 
