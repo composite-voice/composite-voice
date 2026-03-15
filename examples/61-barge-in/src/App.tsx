@@ -59,7 +59,7 @@ export default function App() {
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
-            systemPrompt: 'You are a helpful voice assistant. Give detailed responses of about 4-5 sentences so the user has time to interrupt you.',
+            systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown. Give detailed responses of about 4-5 sentences so the user has time to interrupt you.',
             maxTokens: 400,
           }),
           new DeepgramTTS({

@@ -440,9 +440,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -465,9 +471,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -490,9 +502,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -515,9 +533,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -540,9 +564,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -565,9 +595,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -590,9 +626,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -615,9 +657,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -640,9 +688,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -668,9 +722,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -696,9 +756,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -724,9 +790,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -752,9 +824,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -780,9 +858,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -808,9 +892,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -836,9 +926,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -994,9 +1090,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1019,9 +1121,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1044,9 +1152,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1069,9 +1183,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1094,9 +1214,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1119,9 +1245,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1144,9 +1276,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1169,9 +1307,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1194,9 +1338,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1219,9 +1369,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1244,9 +1400,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -1269,9 +1431,15 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.8
+        version: 4.2.1(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
       '@vitejs/plugin-react':
         specifier: ^4.3.0
         version: 4.7.0(vite@6.4.1(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.1))
+      tailwindcss:
+        specifier: ^4.1.8
+        version: 4.2.1
       typescript:
         specifier: ^5.9.0
         version: 5.9.3

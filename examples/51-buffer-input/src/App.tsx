@@ -73,7 +73,7 @@ export default function App() {
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
-            systemPrompt: 'You are a helpful voice assistant. Describe what you heard in the audio. Keep responses brief.',
+            systemPrompt: 'You are a helpful voice assistant. Describe what you heard in the audio. Respond in plain text only — no markdown. Keep responses brief.',
             maxTokens: 200,
           }),
           new NativeTTS({ rate: 1.0, preferLocal: true }),

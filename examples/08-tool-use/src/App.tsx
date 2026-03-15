@@ -165,7 +165,7 @@ export default function App() {
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
           model: 'claude-haiku-4-5',
-          systemPrompt: 'You are a helpful voice assistant with access to tools. Use tools when the user asks about weather, time, or math. Keep spoken responses concise.',
+          systemPrompt: 'You are a helpful voice assistant with access to tools. Use tools when the user asks about weather, time, or math. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
           maxTokens: 300,
         }),
         new NativeTTS({ rate: 1.0 }),

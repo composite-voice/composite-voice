@@ -33,7 +33,7 @@ const MODELS = [
 export default function App() {
   const [model, setModel] = useState('Llama-3.2-1B-Instruct-q4f16_1-MLC');
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are a helpful voice assistant running locally in the browser. Keep responses to two or three sentences.'
+    'You are a helpful voice assistant running locally in the browser. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.'
   );
   const [loadProgress, setLoadProgress] = useState<WebLLMLoadProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);

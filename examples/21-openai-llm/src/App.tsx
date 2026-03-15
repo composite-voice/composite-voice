@@ -31,7 +31,7 @@ export default function App() {
   const [temperature, setTemperature] = useState('0.7');
   const [maxTokens, setMaxTokens] = useState('200');
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are a helpful voice assistant. Keep responses to two or three sentences.'
+    'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.'
   );
   const agentRef = useRef<CompositeVoice | null>(null);
 
