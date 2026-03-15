@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 34 Cartesia TTS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #0d9488 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    .app { max-width: 720px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: #94a3b8; font-size: 0.875rem; margin-top: 6px; }
+
+    .badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+    .badge {
+      display: inline-block; padding: 4px 12px; font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 20px;
+    }
+    .badge.stt { color: #67e8f9; background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); }
+    .badge.llm { color: #c4b5fd; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); }
+    .badge.tts { color: #5eead4; background: rgba(20,184,166,0.15); border: 1px solid rgba(20,184,166,0.3); }
+
+    .state-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; flex-shrink: 0; transition: background 0.2s; }
+    [data-state="ready"]     .dot { background: #14b8a6; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #8b5cf6; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #5eead4; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.875rem; color: #94a3b8; }
+
+    .controls { display: flex; gap: 8px; margin-bottom: 24px; }
+    button {
+      flex: 1; padding: 10px 16px; font-size: 0.875rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      background: rgba(255,255,255,0.05); color: #e2e8f0; cursor: pointer; transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start { background: rgba(13,148,136,0.3); border-color: rgba(13,148,136,0.5); }
+    #btn-start:hover:not(:disabled) { background: rgba(13,148,136,0.5); }
+
+    .options-panel {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; padding: 16px; margin-bottom: 24px;
+    }
+    .options-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #5eead4; margin-bottom: 12px; }
+    .option-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .option-row:last-child { margin-bottom: 0; }
+    .option-label { font-size: 0.8rem; color: #94a3b8; min-width: 110px; }
+    .option-value { font-size: 0.8rem; color: #e2e8f0; min-width: 40px; text-align: right; }
+    select, input[type="range"] {
+      flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px; color: #e2e8f0; font-size: 0.8rem; padding: 6px 8px; cursor: pointer;
+    }
+    select option { background: #1e293b; color: #e2e8f0; }
+    input[type="range"] { padding: 0; height: 6px; }
+
+    .emotion-tags {
+      display: flex; flex-wrap: wrap; gap: 6px; flex: 1;
+    }
+    .emotion-tag {
+      padding: 4px 10px; font-size: 0.72rem; font-weight: 600;
+      border-radius: 14px; cursor: pointer; user-select: none;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: #94a3b8; transition: all 0.15s;
+    }
+    .emotion-tag.active { background: rgba(20,184,166,0.3); border-color: rgba(20,184,166,0.5); color: #5eead4; }
+
+    .field { margin-bottom: 16px; }
+    .field-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 8px; }
+    .panel {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 14px 16px; min-height: 64px; font-size: 0.9rem; line-height: 1.65; color: #cbd5e1;
+    }
+    .placeholder { color: #334155; font-style: italic; }
+    .interim { color: #64748b; }
+
+    .error {
+      display: none; margin-top: 16px; padding: 12px 16px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px; font-size: 0.85rem; color: #fca5a5; line-height: 1.5;
+    }
+    .error.visible { display: block; }
+    .hint { text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.15); margin-top: 16px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>CompositeVoice</h1>
+      <p class="tagline">34 Cartesia TTS &mdash; NativeSTT &middot; Anthropic Claude &middot; Cartesia Sonic</p>
+      <div class="badges">
+        <span class="badge stt">STT: Native (Web Speech API)</span>
+        <span class="badge llm">LLM: Anthropic Claude</span>
+        <span class="badge tts">TTS: Cartesia Sonic</span>
+      </div>
+    </header>
+
+    <div class="options-panel">
+      <div class="options-title">Cartesia TTS Options</div>
+      <div class="option-row">
+        <span class="option-label">Voice ID</span>
+        <select id="voice-select">
+          <option value="a0e99841-438c-4a64-b679-ae501e7d6091" selected>Barbershop Man</option>
+          <option value="bf991597-6c13-47e4-8a8c-8f2e3f0f8e3e">British Lady</option>
+          <option value="c8e21c8a-c3f4-4b2a-a3e4-3e2c8b8f8e3e">Friendly Sidekick</option>
+          <option value="87748186-23bb-4571-86ca-4e2eb22a7bca">Newsman</option>
+          <option value="eda5bbff-1ff1-4886-8ef1-4e69a77640a0">Storyteller Lady</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Model</span>
+        <select id="model-select">
+          <option value="sonic-2" selected>sonic-2 (latest, fastest)</option>
+          <option value="sonic-english">sonic-english</option>
+          <option value="sonic-multilingual">sonic-multilingual</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Emotions</span>
+        <div class="emotion-tags" id="emotion-tags">
+          <span class="emotion-tag" data-emotion="positivity">positivity</span>
+          <span class="emotion-tag" data-emotion="negativity">negativity</span>
+          <span class="emotion-tag" data-emotion="surprise">surprise</span>
+          <span class="emotion-tag" data-emotion="curiosity">curiosity</span>
+          <span class="emotion-tag" data-emotion="anger">anger</span>
+          <span class="emotion-tag" data-emotion="sadness">sadness</span>
+        </div>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Speed</span>
+        <select id="speed-select">
+          <option value="slowest">slowest</option>
+          <option value="slow">slow</option>
+          <option value="normal" selected>normal</option>
+          <option value="fast">fast</option>
+          <option value="fastest">fastest</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Language</span>
+        <select id="language-select">
+          <option value="en" selected>English</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="es">Spanish</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="root" data-state="idle">
+      <div class="state-bar">
+        <div class="dot"></div>
+        <span class="state-label" id="state-label">Idle &mdash; click Initialize</span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-init">Initialize</button>
+        <button id="btn-start" disabled>Start</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+
+      <div class="field">
+        <div class="field-label">You said</div>
+        <div class="panel" id="transcript">
+          <span class="placeholder">Your words will appear here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">AI response</div>
+        <div class="panel" id="response">
+          <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+  </div>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+
+    const root       = document.getElementById('root');
+    const stateLabel = document.getElementById('state-label');
+    const btnInit    = document.getElementById('btn-init');
+    const btnStart   = document.getElementById('btn-start');
+    const btnStop    = document.getElementById('btn-stop');
+    const transcript = document.getElementById('transcript');
+    const response   = document.getElementById('response');
+    const errorBox   = document.getElementById('error');
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => { errorBox.textContent = msg; errorBox.classList.add('visible'); };
+    const clearError = () => errorBox.classList.remove('visible');
+
+    // ── Emotion tag toggles ──────────────────────────────────────────────────
+    const emotionTags = document.querySelectorAll('.emotion-tag');
+    const activeEmotions = new Set();
+
+    emotionTags.forEach((tag) => {
+      tag.addEventListener('click', () => {
+        const emotion = tag.dataset.emotion;
+        if (activeEmotions.has(emotion)) {
+          activeEmotions.delete(emotion);
+          tag.classList.remove('active');
+        } else {
+          activeEmotions.add(emotion);
+          tag.classList.add('active');
+        }
+      });
+    });
+
+    let agent;
+
+    btnInit.addEventListener('click', async () => {
+      clearError();
+      btnInit.disabled = true;
+
+      const voiceId = document.getElementById('voice-select').value;
+      const modelId = document.getElementById('model-select').value;
+      const speed = document.getElementById('speed-select').value;
+      const language = document.getElementById('language-select').value;
+      const emotions = [...activeEmotions];
+
+      const ttsConfig = {
+        proxyUrl: `${window.location.origin}/proxy/cartesia`,
+        voiceId,
+        modelId,
+        outputEncoding: 'pcm_s16le',
+        outputSampleRate: 24000,
+        language,
+        speed,
+      };
+
+      // Add emotion tags if any are selected
+      if (emotions.length > 0) {
+        ttsConfig.emotions = emotions;
+      }
+
+      agent = new CompositeVoice({
+        providers: [
+          new NativeSTT({
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
+
+          new AnthropicLLM({
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model: 'claude-haiku-4-5-20251001',
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: 200,
+          }),
+
+          new CartesiaTTS(ttsConfig),
+
+          new BrowserAudioOutput(),
+        ],
+      });
+
+      agent.on('agent.stateChange', (e) => setUIState(e.state));
+
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      try {
+        await agent.initialize();
+        btnStart.disabled = false;
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+      }
+    });
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-30-native-tts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native TTS provider — NativeSTT + Anthropic Claude + NativeTTS with voice, rate, and pitch controls",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0"
+  }
+}

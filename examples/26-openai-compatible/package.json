@@ -1,0 +1,26 @@
+{
+  "name": "@lukeocodes/composite-voice-example-26-openai-compatible",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenAI-compatible LLM — NativeSTT + OpenAICompatibleLLM + NativeTTS, custom endpoint",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*",
+    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^6.0.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "openai": ">=6.5.0"
+  }
+}

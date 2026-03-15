@@ -1,29 +1,15 @@
 # CompositeVoice Examples
 
-Five standalone Vite apps that each demonstrate a distinct capability of the SDK. Work through them in order for a progressive learning path, or jump straight to the one that matches your use case.
-
----
-
-## At a glance
-
-| # | Example | Stack | What it introduces | API keys | Port |
-|---|---------|-------|--------------------|----------|------|
-| [00](./00-native-anthropic-native/) | Native STT + Anthropic + Native TTS | NativeSTT · AnthropicLLM · NativeTTS | The minimum viable setup — free STT and TTS, one API key | Anthropic only | 3000 |
-| [01](./01-deepgram-anthropic-deepgram/) | Deepgram + Anthropic + Deepgram | DeepgramSTT · AnthropicLLM · DeepgramTTS | Production WebSocket pipeline, real-time streaming, cross-browser | Deepgram + Anthropic | 3001 |
-| [02](./02-conversation-history/) | Conversation History | + `conversationHistory` | Multi-turn memory — the AI remembers earlier exchanges | Anthropic only | 3002 |
-| [03](./03-eager-pipeline/) | Eager Pipeline | + `eagerLLM` | Speculative generation — LLM starts before user finishes speaking | Deepgram + Anthropic | 3003 |
-| [04](./04-proxy-server/) | Server-Side Proxy | + proxy server | API keys stay on the server — zero secrets in the browser bundle | Server-side only | 3004 |
+Self-contained React + Vite apps that each demonstrate a specific SDK feature or provider combination. Work through them in order for a progressive learning path, or jump to the one that matches your use case.
 
 ---
 
 ## Prerequisites
 
 - **Node.js** 18 or later
-- **pnpm** — `npm install -g pnpm`
-- **Chrome or Edge** for NativeSTT examples (Web Speech API limitation — Firefox, Ungoogled Chromium, and Brave do not support `NativeSTT`)
-- API keys for the providers you need:
-  - [Anthropic](https://console.anthropic.com/) — required for examples 00, 01, 02, 03 (client-side), 04 (server-side)
-  - [Deepgram](https://console.deepgram.com/) — required for examples 01, 03 (client-side), 04 (server-side). Free tier available, no credit card required.
+- **pnpm** -- `npm install -g pnpm`
+- **Chrome or Edge** for NativeSTT examples (Web Speech API limitation)
+- API keys for the providers used by each example
 
 ---
 
@@ -35,103 +21,139 @@ From the repo root, install and build once:
 pnpm install && pnpm build
 ```
 
-> The examples import the compiled SDK from `dist/`. This build step is required before running any example. For active SDK development, run `pnpm dev` in a second terminal so `dist/` rebuilds on every save.
-
-Copy the env template for the example you want, fill in your keys, and start the dev server:
+Run any example using the generic script:
 
 ```bash
-# Example 00 — only needs an Anthropic key
-cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
-# edit .env and add ANTHROPIC_API_KEY=sk-ant-...
-pnpm example:00-native-anthropic-native:dev    # → http://localhost:3000
+pnpm example @lukeocodes/composite-voice-example-XX-name dev
 ```
 
-All five dev commands:
+Or navigate into the example directory:
 
 ```bash
-pnpm example:00-native-anthropic-native:dev      # → http://localhost:3000
-pnpm example:01-deepgram-anthropic-deepgram:dev  # → http://localhost:3001
-pnpm example:02-conversation-history:dev         # → http://localhost:3002
-pnpm example:03-eager-pipeline:dev               # → http://localhost:3003
-pnpm example:04-proxy-server:dev                 # → http://localhost:3004
+cd examples/XX-example-name
+pnpm dev
 ```
 
 ---
 
-## What each example teaches
+## Planned Examples
 
-### 00 — Native STT + Anthropic + Native TTS
+### Core SDK (00-09)
 
-The simplest possible voice agent. Browser-native speech recognition (Web Speech API), Claude for intelligence, and browser-native speech synthesis (SpeechSynthesis). One API key. No WebSockets.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 00 | Minimal Voice Agent | NativeSTT + AnthropicLLM + NativeTTS | Minimum viable setup, state machine basics |
+| 01 | Conversation History | + conversationHistory | Multi-turn memory, getHistory(), clearHistory() |
+| 02 | System Persona | + systemPrompt config | Custom personality, persona configuration |
+| 03 | Event Inspector | Event system | Full event stream visualization and debugging |
+| 04 | Error Recovery | Error handling | Graceful degradation, reconnection strategies |
+| 05 | Turn Taking | Turn-taking strategies | Auto, conservative, aggressive, detect modes |
 
-This is where to start if you want to understand how CompositeVoice wires providers together — the `idle → ready → listening → thinking → speaking` state machine, the event system, and the basic turn-taking lifecycle.
+### Infrastructure (10-19)
 
-**Best for:** First demo, learning the SDK, Chrome/Edge users who want zero setup friction.
+| # | Name | Stack | What it demonstrates |
+|---|------|-------|---------------------|
+| 10 | Express Proxy Server | Express + createExpressProxy | Server-side API key injection |
+| 11 | Next.js Proxy | Next.js adapter | Next.js API route integration |
+| 12 | Custom Provider | Base classes | Building your own STT/LLM/TTS provider |
+| 13 | Multi-Language | i18n config | Language and locale configuration |
 
-### 01 — Deepgram + Anthropic + Deepgram
+### Deepgram (20-29)
 
-The recommended production configuration. Real-time WebSocket STT via Deepgram nova-3, Claude, and 24 kHz streaming TTS. Works in Chrome, Edge, and Firefox.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 20 | Deepgram Pipeline | DeepgramSTT + AnthropicLLM + DeepgramTTS | Full Deepgram WebSocket pipeline |
+| 21 | Eager Pipeline | DeepgramFlux + eagerLLM | Speculative generation, reduced latency |
+| 22 | Deepgram Options | DeepgramSTT config | Model selection, language, encoding options |
+| 23 | Deepgram Voices | DeepgramTTS config | Voice selection, speech rate, pitch |
+| 24 | Deepgram Conversation History | Deepgram + history | Multi-turn with Deepgram pipeline |
 
-Swapping providers is one constructor change per provider — the core CompositeVoice setup is identical to example 00.
+### Anthropic (30-39)
 
-**Best for:** Production apps, Firefox support, better accuracy, more natural speech quality.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 30 | Anthropic Models | AnthropicLLM config | Model selection (Claude variants) |
+| 31 | Anthropic Streaming Config | AnthropicLLM streaming | Streaming configuration and chunk handling |
 
-### 02 — Conversation History
+### OpenAI (40-49)
 
-Adds multi-turn memory so the agent remembers what was said earlier in the session. Demonstrates the `conversationHistory` configuration, `getHistory()`, and `clearHistory()` — plus a chat-thread UI that renders the full conversation alongside the voice interaction.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 40 | OpenAI Pipeline | NativeSTT + OpenAILLM + NativeTTS | OpenAI as the LLM provider |
+| 41 | OpenAI + Deepgram | DeepgramSTT + OpenAILLM + DeepgramTTS | Mixed provider pipeline |
+| 42 | OpenAI TTS Pipeline | NativeSTT + OpenAILLM + OpenAITTS | OpenAI for both LLM and TTS |
 
-**Best for:** Q&A agents, assistants that track tasks, any use case that requires context across turns.
+### WebLLM (50-59)
 
-### 03 — Eager Pipeline
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 50 | WebLLM Pipeline | NativeSTT + WebLLMLLM + NativeTTS | Fully in-browser LLM, no API keys |
 
-Demonstrates speculative LLM generation using `DeepgramFlux` (V2 API). DeepgramFlux emits a `preflight` event slightly before `speech_final`. The SDK uses this to start the LLM early — if the final transcript is similar enough (controlled by `similarityThreshold`), the response continues uninterrupted; if it differs, generation restarts correctly.
+### Groq (60-69)
 
-A real-time event timeline in the UI makes the pipeline timing visible.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 60 | Groq Pipeline | NativeSTT + GroqLLM + NativeTTS | Groq as the LLM provider |
 
-**Best for:** Production apps where reducing perceived latency matters.
+### AssemblyAI (70-79)
 
-### 04 — Server-Side Proxy
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 70 | AssemblyAI Pipeline | AssemblyAISTT + AnthropicLLM + NativeTTS | AssemblyAI real-time STT |
 
-Keeps API keys completely off the client. An Express server injects credentials before forwarding requests to the AI providers. The browser uses `proxyUrl` instead of `apiKey` in every provider config — no secrets in the bundle.
+### ElevenLabs (80-89)
 
-Includes a complete `server.ts` using `createExpressProxy` from the SDK's proxy module.
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 80 | ElevenLabs Pipeline | NativeSTT + AnthropicLLM + ElevenLabsTTS | ElevenLabs WebSocket TTS |
+| 81 | ElevenLabs STT | ElevenLabsSTT + AnthropicLLM + ElevenLabsTTS | Full ElevenLabs pipeline |
 
-**Best for:** Any deployment where you must not expose API keys to end users.
+### Cartesia (90-99)
+
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 90 | Cartesia Pipeline | NativeSTT + AnthropicLLM + CartesiaTTS | Cartesia WebSocket TTS |
+
+### Gemini (100-109)
+
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 100 | Gemini Pipeline | NativeSTT + GeminiLLM + NativeTTS | Google Gemini as the LLM provider |
+
+### Mistral (110-119)
+
+| # | Name | Providers | What it demonstrates |
+|---|------|-----------|---------------------|
+| 110 | Mistral Pipeline | NativeSTT + MistralLLM + NativeTTS | Mistral as the LLM provider |
 
 ---
 
-## Scripts reference
+## Shared Infrastructure
 
-| Command | What it does | Port |
-|---------|--------------|------|
-| `pnpm example:00-native-anthropic-native:dev` | Dev server for example 00 | 3000 |
-| `pnpm example:00-native-anthropic-native:build` | Production build | — |
-| `pnpm example:00-native-anthropic-native:preview` | Preview production build | 3000 |
-| `pnpm example:01-deepgram-anthropic-deepgram:dev` | Dev server for example 01 | 3001 |
-| `pnpm example:01-deepgram-anthropic-deepgram:build` | Production build | — |
-| `pnpm example:01-deepgram-anthropic-deepgram:preview` | Preview production build | 3001 |
-| `pnpm example:02-conversation-history:dev` | Dev server for example 02 | 3002 |
-| `pnpm example:02-conversation-history:build` | Production build | — |
-| `pnpm example:03-eager-pipeline:dev` | Dev server for example 03 | 3003 |
-| `pnpm example:03-eager-pipeline:build` | Production build | — |
-| `pnpm example:04-proxy-server:dev` | Dev server for example 04 | 3004 |
-| `pnpm example:04-proxy-server:build` | Production build | — |
+The `_shared/` directory contains reusable pieces for all examples:
+
+- **`vite.config.factory.ts`** -- Shared Vite config with proxy setup for all supported providers
+- **`ExampleShell.tsx`** -- Consistent layout with navbar, theme toggle, and badge
+- **`VoiceAgent.tsx`** -- Reusable voice agent UI with state display, transcript, and response cards
+- **`main.tsx`** -- Standard React entry point
+- **`index.html`** -- HTML template (replace `%TITLE%`)
+- **`package.template.json`** -- Template for example `package.json` files
 
 ---
 
 ## Getting API keys
 
-**Anthropic** — all examples:
-
-1. Sign up at [console.anthropic.com](https://console.anthropic.com/) and generate a key
-2. Add it to the example's `.env`: `ANTHROPIC_API_KEY=sk-ant-...`
-
-**Deepgram** — examples 01, 03, and 04:
-
-1. Sign up free at [console.deepgram.com](https://console.deepgram.com/) — no credit card required
-2. Generate a key and add it to the example's `.env`: `DEEPGRAM_API_KEY=...`
-
-> All examples use Vite's dev proxy to inject API keys server-side — no secrets are bundled into the browser. See example 04 for an in-depth look at the proxy architecture.
+| Provider | URL | Used by |
+|----------|-----|---------|
+| Anthropic | [console.anthropic.com](https://console.anthropic.com/) | Most examples (LLM) |
+| Deepgram | [console.deepgram.com](https://console.deepgram.com/) | 20-24 (STT/TTS) |
+| OpenAI | [platform.openai.com](https://platform.openai.com/) | 40-42 (LLM/TTS) |
+| Groq | [console.groq.com](https://console.groq.com/) | 60 (LLM) |
+| AssemblyAI | [assemblyai.com](https://www.assemblyai.com/) | 70 (STT) |
+| ElevenLabs | [elevenlabs.io](https://elevenlabs.io/) | 80-81 (STT/TTS) |
+| Cartesia | [cartesia.ai](https://cartesia.ai/) | 90 (TTS) |
+| Gemini | [ai.google.dev](https://ai.google.dev/) | 100 (LLM) |
+| Mistral | [console.mistral.ai](https://console.mistral.ai/) | 110 (LLM) |
 
 ---
 
@@ -145,37 +167,19 @@ The SDK must be compiled before examples can import it:
 pnpm build
 ```
 
-For active development, run both in separate terminals:
-
-```bash
-# Terminal 1 — recompiles SDK on every save
-pnpm dev
-
-# Terminal 2 — serves the example
-pnpm example:00-native-anthropic-native:dev
-```
-
 **Microphone permission not prompted or denied**
 
-- Click any button on the page before speaking — browsers require a user gesture to grant mic access
+- Click any button on the page before speaking -- browsers require a user gesture
 - If previously denied, click the lock icon in the address bar and reset the permission
 - Microphone access requires `localhost` or HTTPS
 
-**NativeSTT does nothing (examples 00 and 02)**
+**NativeSTT does nothing**
 
-The Web Speech API is only fully supported in Chrome and Edge. De-Googled browsers like Ungoogled Chromium and Brave strip out Google's speech servers, so NativeSTT will silently fail. Switch to a WebSocket STT example (20+) for browser-agnostic speech recognition.
-
-**API key error at startup**
-
-Copy the example's `sample.env` to `.env` in the same directory and fill in the keys:
-
-```bash
-cp examples/00-native-anthropic-native/sample.env examples/00-native-anthropic-native/.env
-```
+The Web Speech API is only fully supported in Chrome and Edge. Use a WebSocket STT example (20+) for browser-agnostic speech recognition.
 
 ---
 
 ## Further reading
 
-- [Main README](../README.md) — complete SDK reference: all providers, configuration, events, and the proxy API
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — how to add a new provider, run the test suite, and submit a pull request
+- [Main README](../README.md) -- SDK reference, all providers, configuration, events, and proxy API
+- [CONTRIBUTING.md](../CONTRIBUTING.md) -- Adding providers, running tests, submitting PRs

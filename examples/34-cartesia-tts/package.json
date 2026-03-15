@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-34-cartesia-tts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cartesia TTS provider — NativeSTT + Anthropic Claude + Cartesia TTS with voiceId, modelId, emotions, speed, and language",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0"
+  }
+}

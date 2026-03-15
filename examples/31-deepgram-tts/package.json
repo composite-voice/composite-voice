@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-31-deepgram-tts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deepgram TTS provider — NativeSTT + Anthropic Claude + DeepgramTTS with voice, sampleRate, and format options",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@lukeocodes/composite-voice-example-42-node-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plain Node.js HTTP server proxy — createNodeProxy with handleRequest + attachWebSocket",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n proxy,vite -c blue,green \"PORT=3044 node --env-file=.env --import tsx/esm server.ts\" \"vite\"",
+    "dev:proxy": "PORT=3044 node --env-file=.env --import tsx/esm server.ts",
+    "dev:vite": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@lukeocodes/composite-voice": "workspace:*"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "tsx": "^4.0.0",
+    "vite": "^5.0.0",
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.67.0"
+  }
+}

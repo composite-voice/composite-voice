@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CompositeVoice — 32 OpenAI TTS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    .app { max-width: 720px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 32px; }
+    h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    .tagline { color: #94a3b8; font-size: 0.875rem; margin-top: 6px; }
+
+    .badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+    .badge {
+      display: inline-block; padding: 4px 12px; font-size: 0.72rem;
+      font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 20px;
+    }
+    .badge.stt { color: #67e8f9; background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); }
+    .badge.llm { color: #c4b5fd; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); }
+    .badge.tts { color: #6ee7b7; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); }
+
+    .state-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; flex-shrink: 0; transition: background 0.2s; }
+    [data-state="ready"]     .dot { background: #10b981; }
+    [data-state="listening"] .dot { background: #f59e0b; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="thinking"]  .dot { background: #8b5cf6; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="speaking"]  .dot { background: #6ee7b7; animation: pulse 1.2s ease-in-out infinite; }
+    [data-state="error"]     .dot { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .state-label { font-size: 0.875rem; color: #94a3b8; }
+
+    .controls { display: flex; gap: 8px; margin-bottom: 24px; }
+    button {
+      flex: 1; padding: 10px 16px; font-size: 0.875rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      background: rgba(255,255,255,0.05); color: #e2e8f0; cursor: pointer; transition: background 0.15s;
+    }
+    button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    #btn-start { background: rgba(16,185,129,0.3); border-color: rgba(16,185,129,0.5); }
+    #btn-start:hover:not(:disabled) { background: rgba(16,185,129,0.5); }
+
+    .options-panel {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; padding: 16px; margin-bottom: 24px;
+    }
+    .options-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6ee7b7; margin-bottom: 12px; }
+    .option-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .option-row:last-child { margin-bottom: 0; }
+    .option-label { font-size: 0.8rem; color: #94a3b8; min-width: 110px; }
+    .option-value { font-size: 0.8rem; color: #e2e8f0; min-width: 40px; text-align: right; }
+    select, input[type="range"] {
+      flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px; color: #e2e8f0; font-size: 0.8rem; padding: 6px 8px; cursor: pointer;
+    }
+    select option { background: #1e293b; color: #e2e8f0; }
+    input[type="range"] { padding: 0; height: 6px; }
+
+    .field { margin-bottom: 16px; }
+    .field-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 8px; }
+    .panel {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 14px 16px; min-height: 64px; font-size: 0.9rem; line-height: 1.65; color: #cbd5e1;
+    }
+    .placeholder { color: #334155; font-style: italic; }
+    .interim { color: #64748b; }
+
+    .error {
+      display: none; margin-top: 16px; padding: 12px 16px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px; font-size: 0.85rem; color: #fca5a5; line-height: 1.5;
+    }
+    .error.visible { display: block; }
+    .hint { text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.15); margin-top: 16px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1>CompositeVoice</h1>
+      <p class="tagline">32 OpenAI TTS &mdash; NativeSTT &middot; Anthropic Claude &middot; OpenAI TTS</p>
+      <div class="badges">
+        <span class="badge stt">STT: Native (Web Speech API)</span>
+        <span class="badge llm">LLM: Anthropic Claude</span>
+        <span class="badge tts">TTS: OpenAI</span>
+      </div>
+    </header>
+
+    <div class="options-panel">
+      <div class="options-title">OpenAI TTS Options</div>
+      <div class="option-row">
+        <span class="option-label">Model</span>
+        <select id="model-select">
+          <option value="tts-1" selected>tts-1 (fast, lower quality)</option>
+          <option value="tts-1-hd">tts-1-hd (slower, higher quality)</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Voice</span>
+        <select id="voice-select">
+          <option value="alloy">alloy (neutral)</option>
+          <option value="echo">echo (male, warm)</option>
+          <option value="fable">fable (British, storyteller)</option>
+          <option value="onyx">onyx (male, deep)</option>
+          <option value="nova" selected>nova (female, friendly)</option>
+          <option value="shimmer">shimmer (female, expressive)</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Format</span>
+        <select id="format-select">
+          <option value="mp3" selected>mp3</option>
+          <option value="opus">opus</option>
+          <option value="aac">aac</option>
+          <option value="flac">flac</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Speed</span>
+        <input type="range" id="speed-slider" min="0.25" max="4.0" step="0.25" value="1.0" />
+        <span class="option-value" id="speed-value">1.0</span>
+      </div>
+    </div>
+
+    <div id="root" data-state="idle">
+      <div class="state-bar">
+        <div class="dot"></div>
+        <span class="state-label" id="state-label">Idle &mdash; click Initialize</span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-init">Initialize</button>
+        <button id="btn-start" disabled>Start</button>
+        <button id="btn-stop" disabled>Stop</button>
+      </div>
+
+      <div class="field">
+        <div class="field-label">You said</div>
+        <div class="panel" id="transcript">
+          <span class="placeholder">Your words will appear here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">AI response</div>
+        <div class="panel" id="response">
+          <span class="placeholder">Claude&rsquo;s reply will stream here&hellip;</span>
+        </div>
+      </div>
+
+      <div class="error" id="error"></div>
+    </div>
+
+    <p class="hint">Chrome or Edge required &middot; Microphone permission needed</p>
+  </div>
+
+  <script type="module">
+    import { CompositeVoice, NativeSTT, AnthropicLLM, OpenAITTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+
+    const root       = document.getElementById('root');
+    const stateLabel = document.getElementById('state-label');
+    const btnInit    = document.getElementById('btn-init');
+    const btnStart   = document.getElementById('btn-start');
+    const btnStop    = document.getElementById('btn-stop');
+    const transcript = document.getElementById('transcript');
+    const response   = document.getElementById('response');
+    const errorBox   = document.getElementById('error');
+
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue  = document.getElementById('speed-value');
+
+    speedSlider.addEventListener('input', () => {
+      speedValue.textContent = speedSlider.value;
+    });
+
+    const STATE_LABELS = {
+      idle:      'Idle \u2014 click Initialize',
+      ready:     'Ready \u2014 click Start',
+      listening: 'Listening\u2026',
+      thinking:  'Thinking\u2026',
+      speaking:  'Speaking\u2026',
+      error:     'Error \u2014 see below',
+    };
+
+    const setUIState = (state) => {
+      root.dataset.state = state;
+      stateLabel.textContent = STATE_LABELS[state] ?? state;
+    };
+
+    const showError = (msg) => { errorBox.textContent = msg; errorBox.classList.add('visible'); };
+    const clearError = () => errorBox.classList.remove('visible');
+
+    let agent;
+
+    btnInit.addEventListener('click', async () => {
+      clearError();
+      btnInit.disabled = true;
+
+      const model = document.getElementById('model-select').value;
+      const voice = document.getElementById('voice-select').value;
+      const responseFormat = document.getElementById('format-select').value;
+      const speed = parseFloat(speedSlider.value);
+
+      agent = new CompositeVoice({
+        providers: [
+          new NativeSTT({
+            language: 'en-US',
+            continuous: true,
+            interimResults: true,
+          }),
+
+          new AnthropicLLM({
+            proxyUrl: `${window.location.origin}/proxy/anthropic`,
+            model: 'claude-haiku-4-5-20251001',
+            systemPrompt: 'You are a helpful voice assistant. Keep responses to two or three sentences.',
+            maxTokens: 200,
+          }),
+
+          new OpenAITTS({
+            proxyUrl: `${window.location.origin}/proxy/openai`,
+            model,
+            voice,
+            responseFormat,
+            speed,
+          }),
+
+          new BrowserAudioOutput(),
+        ],
+      });
+
+      agent.on('agent.stateChange', (e) => setUIState(e.state));
+
+      agent.on('transcription.interim', (e) => {
+        if (e.text.trim()) transcript.innerHTML = `<span class="interim">${e.text}</span>`;
+      });
+      agent.on('transcription.final', (e) => {
+        if (e.text.trim()) transcript.textContent = e.text;
+      });
+
+      agent.on('llm.start', () => { response.textContent = ''; });
+      agent.on('llm.chunk', (e) => { response.textContent += e.chunk; });
+
+      agent.on('agent.error', (e) => showError(e.error.message));
+      agent.on('llm.error', (e) => showError(`LLM: ${e.error.message}`));
+      agent.on('tts.error', (e) => showError(`TTS: ${e.error.message}`));
+
+      agent.on('agent.stateChange', (e) => {
+        if (e.previousState === 'error' && e.state !== 'error') clearError();
+      });
+
+      try {
+        await agent.initialize();
+        btnStart.disabled = false;
+        setUIState('ready');
+      } catch (err) {
+        showError(`Initialization failed: ${err.message}`);
+        btnInit.disabled = false;
+      }
+    });
+
+    btnStart.addEventListener('click', async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        await agent.startListening();
+        btnStop.disabled = false;
+      } catch (err) {
+        showError(`Could not start: ${err.message}`);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', async () => {
+      btnStop.disabled = true;
+      await agent.stopListening();
+      btnStart.disabled = false;
+    });
+  </script>
+</body>
+</html>
