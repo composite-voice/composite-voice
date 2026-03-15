@@ -137,16 +137,6 @@ describe('NativeSTT', () => {
       expect(mockRecognition.start).toHaveBeenCalled();
     });
 
-    it('should check microphone permission', async () => {
-      await provider.connect();
-      expect(mockGetUserMedia).toHaveBeenCalledWith({ audio: true });
-    });
-
-    it('should throw ProviderConnectionError when permission is denied', async () => {
-      mockGetUserMedia.mockRejectedValueOnce(new Error('Permission denied'));
-      await expect(provider.connect()).rejects.toThrow('Failed to connect to provider: NativeSTT');
-    });
-
     it('should reject after startTimeout if onstart never fires', async () => {
       const fastProvider = new NativeSTT({ startTimeout: 50 });
       await fastProvider.initialize();

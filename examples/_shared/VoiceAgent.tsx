@@ -67,10 +67,14 @@ export function VoiceAgent({ agent, onInit, onStart, onStop }: VoiceAgentProps) 
   }, [agent]);
 
   return (
-    <div className="space-y-4">
-      {error && <Alert variant="danger" title="Error">{error}</Alert>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {error && (
+        <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', color: '#991b1b' }}>
+          {error}
+        </div>
+      )}
 
-      <div className="flex gap-2 items-center">
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <Badge variant={STATE_COLORS[state] as any}>{state}</Badge>
         {!initialized ? (
           <Button onClick={handleInit}>Initialize</Button>
@@ -81,17 +85,17 @@ export function VoiceAgent({ agent, onInit, onStart, onStop }: VoiceAgentProps) 
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Card>
           <CardBody>
             <CardTitle>Transcript</CardTitle>
-            <p className="text-sm mt-2">{transcript || 'Waiting for speech...'}</p>
+            <p style={{ fontSize: '0.875rem', marginTop: '8px' }}>{transcript || 'Waiting for speech...'}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
             <CardTitle>Response</CardTitle>
-            <p className="text-sm mt-2">{response || 'Waiting for response...'}</p>
+            <p style={{ fontSize: '0.875rem', marginTop: '8px' }}>{response || 'Waiting for response...'}</p>
           </CardBody>
         </Card>
       </div>

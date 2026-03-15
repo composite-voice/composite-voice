@@ -52,6 +52,7 @@ import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
 import { trimConversationHistory } from './utils/conversationHistory';
+import { getBrowserAPISupport } from './utils/browserCapabilities';
 import { resolveProviders } from './core/pipeline/resolveProviders';
 import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
 import type { QueueStats } from './core/pipeline/AudioBufferQueue';
@@ -289,34 +290,98 @@ export class CompositeVoice {
    * interaction modality. This is prepended to the messages array so the LLM
    * can adapt its response style.
    */
-  private buildIOContextMessage(modality: 'voice' | 'text'): LLMMessage {
+  /**
+   * Check browser capabilities and log warnings for providers that may not work.
+   */
+  private checkBrowserCapabilities(): void {
+    const apis = getBrowserAPISupport();
+    const sttName = this.pipeline.stt.constructor.name;
+    const ttsName = this.pipeline.tts.constructor.name;
+
+    if (sttName === 'NativeSTT' && !apis.speechRecognition) {
+      this.logger.error(
+        'NativeSTT requires the Web Speech API (SpeechRecognition) which is not available in this browser. ' +
+        'Use DeepgramSTT or another cloud STT provider instead.'
+      );
+    }
+
+    if (ttsName === 'NativeTTS' && !apis.speechSynthesis) {
+      this.logger.error(
+        'NativeTTS requires the SpeechSynthesis API which is not available in this browser. ' +
+        'Use DeepgramTTS or another cloud TTS provider instead.'
+      );
+    }
+
+    if (!apis.audioContext) {
+      this.logger.warn('AudioContext is not available. Audio playback may not work.');
+    }
+
+    if (!apis.mediaDevices && (sttName === 'DeepgramSTT' || sttName === 'AssemblyAISTT' || sttName === 'ElevenLabsSTT')) {
+      this.logger.error(
+        `${sttName} requires navigator.mediaDevices.getUserMedia which is not available. ` +
+        'Are you on HTTPS? getUserMedia requires a secure context.'
+      );
+    }
+  }
+
+  private buildIOContextMessage(modality: 'voice' | 'text'): LLMMessage | null {
+    const ioConfig = this.config.ioContext;
+    if (ioConfig?.enabled === false) return null;
+
     const inputMode = this._inputMuted ? 'text' : 'voice';
     const outputMode = this._outputMuted ? 'text' : 'voice';
+    const format = ioConfig?.format ?? 'frontmatter';
+    const includeGuidance = ioConfig?.includeFormatGuidance !== false;
 
+    if (format === 'frontmatter') {
+      const lines = [
+        '---',
+        'sdk_context:',
+        `  input: ${inputMode}${inputMode === 'voice' ? ' (microphone → speech-to-text)' : ' (typed)'}`,
+        `  output: ${outputMode}${outputMode === 'voice' ? ' (text-to-speech → speaker)' : ' (displayed as text)'}`,
+      ];
+
+      if (modality !== inputMode) {
+        lines.push(`  this_message: ${modality === 'text' ? 'typed' : 'spoken'}`);
+      }
+
+      if (includeGuidance) {
+        if (outputMode === 'voice') {
+          lines.push('  format: plain text only, no markdown');
+          lines.push('  style: concise, conversational, natural sentences');
+        } else {
+          lines.push('  format: plain text, no markdown');
+          lines.push('  style: clear, well-structured sentences');
+        }
+      }
+
+      lines.push('---');
+
+      return { role: 'system', content: lines.join('\n') };
+    }
+
+    // Prose format (legacy)
     const parts: string[] = [];
 
     if (inputMode === 'voice') {
-      parts.push('The user is speaking to you through a microphone (speech-to-text). You can hear them.');
+      parts.push('The user is speaking to you through a microphone (speech-to-text).');
     } else {
-      parts.push('The user is typing to you. Their microphone is off, so you cannot hear them.');
+      parts.push('The user is typing to you.');
     }
 
-    if (outputMode === 'voice') {
-      parts.push('Your response will be spoken aloud via text-to-speech. The user can hear you. Keep responses concise and conversational. Avoid markdown, code blocks, or long lists — the user is listening, not reading.');
-    } else {
-      parts.push('Your response will be displayed as text only. The user cannot hear you. You may use markdown formatting, code blocks, links, and structured content.');
+    if (includeGuidance) {
+      if (outputMode === 'voice') {
+        parts.push('Your response will be spoken aloud via text-to-speech. Keep responses concise and conversational. Never use markdown, code blocks, bullet points, or numbered lists. Respond in plain, natural sentences.');
+      } else {
+        parts.push('Your response will be displayed as text. Keep responses clear and well-structured. Do not use markdown formatting. Respond in plain text.');
+      }
     }
 
     if (modality !== inputMode) {
-      // Edge case: user types while mic is on, or speaks while mic is "muted"
-      // (shouldn't normally happen, but be explicit)
       parts.push(`Note: this specific message was ${modality === 'text' ? 'typed' : 'spoken'}.`);
     }
 
-    return {
-      role: 'system',
-      content: `[I/O Context] ${parts.join(' ')}`,
-    };
+    return { role: 'system', content: parts.join(' ') };
   }
 
   // Eager LLM pipeline state (preflight / speculative generation)
@@ -515,6 +580,11 @@ export class CompositeVoice {
         this.processingStateMachine
       );
 
+      // Check browser capabilities and warn about potential issues
+      if (typeof window !== 'undefined') {
+        this.checkBrowserCapabilities();
+      }
+
       // Deduplicate multi-role provider instances (e.g., NativeSTT is both input + stt)
       const uniqueProviders = new Set<BaseProvider>([
         this.pipeline.input,
@@ -564,6 +634,19 @@ export class CompositeVoice {
 
     // Setup STT provider callbacks (all STT providers have onTranscription)
     stt.onTranscription((result) => {
+      // ── Error results from STT providers ──────────────────────────────
+      if (result.metadata?.error && !result.text?.trim()) {
+        const errorMsg = (result.metadata.message as string) || `STT error: ${result.metadata.error}`;
+        this.logger.error('STT provider error', errorMsg);
+        this.emitEvent({
+          type: 'transcription.error',
+          error: new Error(errorMsg),
+          timestamp: Date.now(),
+        } as CompositeVoiceEvent);
+        this.emitAgentError(new Error(errorMsg), 'stt', true);
+        return;
+      }
+
       // ── Barge-in: interrupt playback when user starts speaking ──────────
       if ((this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) && result.text?.trim()) {
         this.logger.debug('Barge-in detected — stopping playback');
@@ -909,7 +992,7 @@ export class CompositeVoice {
       // Tool-aware path: delegate to tool loop which handles TTS internally
       if (this.config.tools && isToolAware(llm) && useHistory) {
         this.processingStateMachine.setStreaming();
-        const msgs = [ioContext, ...this.conversationHistory];
+        const msgs = [...(ioContext ? [ioContext] : []), ...this.conversationHistory];
         const fullResponse = await this.processLLMToolLoop(msgs, activeSignal, generationId);
 
         if (generationId !== this.llmGenerationId) return;
@@ -941,7 +1024,7 @@ export class CompositeVoice {
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
         responseIterable = await llm.generateFromMessages(
-          [ioContext, ...this.conversationHistory],
+          [...(ioContext ? [ioContext] : []), ...this.conversationHistory],
           { signal: activeSignal }
         );
       } else {
@@ -1771,7 +1854,7 @@ export class CompositeVoice {
       if (this.config.tools && isToolAware(llm) && useHistory) {
         this.processingStateMachine.setProcessing();
         this.processingStateMachine.setStreaming();
-        const msgs = [ioContext, ...this.conversationHistory];
+        const msgs = [...(ioContext ? [ioContext] : []), ...this.conversationHistory];
         const fullResponse = await this.processLLMToolLoop(msgs, llmController.signal, generationId);
 
         if (generationId !== this.llmGenerationId) return;
@@ -1803,7 +1886,7 @@ export class CompositeVoice {
       let responseIterable: AsyncIterable<string>;
       if (useHistory) {
         responseIterable = await llm.generateFromMessages(
-          [ioContext, ...this.conversationHistory],
+          [...(ioContext ? [ioContext] : []), ...this.conversationHistory],
           { signal: llmController.signal },
         );
       } else {

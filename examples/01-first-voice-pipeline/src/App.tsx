@@ -11,10 +11,11 @@ export default function App() {
     const voice = new CompositeVoice({
       providers: [
         new AnthropicLLM({
-          proxyUrl: '/proxy/anthropic',
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
           model: 'claude-haiku-4-5',
         }),
       ],
+      logging: { enabled: true, level: 'debug' },
     });
     agentRef.current = voice;
     setAgent(voice);

@@ -558,6 +558,31 @@ export interface CompositeVoiceConfig {
   conversationHistory?: ConversationHistoryConfig;
 
   /**
+   * I/O context configuration.
+   *
+   * @remarks
+   * Controls the system message prepended to every LLM request that tells
+   * the model about the current input/output modality (voice vs text).
+   *
+   * - `enabled` (default: `true`) — include the I/O context message
+   * - `format` (`'frontmatter'` | `'prose'`, default: `'frontmatter'`) — how
+   *   the context is formatted in the system message
+   * - `includeFormatGuidance` (default: `true`) — include instructions about
+   *   response format (no markdown for voice, etc.)
+   *
+   * The frontmatter format uses YAML-style `---` delimiters so the context
+   * is structured and easy to inspect in conversation history.
+   */
+  ioContext?: {
+    /** Whether to include I/O context in LLM requests. @defaultValue true */
+    enabled?: boolean;
+    /** Format for the context message. @defaultValue 'frontmatter' */
+    format?: 'frontmatter' | 'prose';
+    /** Include response format guidance (no markdown, etc.). @defaultValue true */
+    includeFormatGuidance?: boolean;
+  };
+
+  /**
    * Eager LLM configuration.
    *
    * @remarks

@@ -228,8 +228,15 @@ export class NativeSTT extends LiveSTTProvider {
         .webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
-      this.logger.error('Web Speech API is not supported in this browser');
-      throw new Error('Web Speech API is not supported in this browser');
+      this.logger.error(
+        'Web Speech API is not supported in this browser. ' +
+        'NativeSTT requires SpeechRecognition (Chrome, Edge, Safari). ' +
+        'Chromium-based browsers without Google services (e.g., ungoogled-chromium) ' +
+        'will not work. Use DeepgramSTT or another cloud STT provider instead.'
+      );
+      throw new Error(
+        'Web Speech API is not supported in this browser. Use DeepgramSTT or another cloud STT provider instead.'
+      );
     }
 
     this.logger.debug('Creating SpeechRecognition instance');
@@ -293,6 +300,9 @@ export class NativeSTT extends LiveSTTProvider {
       };
 
       this.emitTranscription(transcriptionResult);
+
+      // Reset restart counter on successful result — proves recognition is working
+      this.restartCount = 0;
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -318,7 +328,13 @@ export class NativeSTT extends LiveSTTProvider {
       } else if (event.error === 'audio-capture') {
         errorMessage = 'No microphone found. Please connect a microphone and try again.';
       } else if (event.error === 'network') {
-        errorMessage = 'Network error occurred during speech recognition.';
+        errorMessage =
+          'Network error during speech recognition. The Web Speech API requires a connection ' +
+          'to Google\'s speech servers. This fails on browsers without Google services ' +
+          '(e.g., ungoogled-chromium, Brave with restrictions). Use DeepgramSTT or another ' +
+          'cloud STT provider instead.';
+        // Stop retrying — network errors won't resolve themselves
+        this.shouldBeListening = false;
       }
 
       this.logger.error(`Recognition error: ${event.error}`, errorMessage);
@@ -358,7 +374,9 @@ export class NativeSTT extends LiveSTTProvider {
         `Recognition ended unexpectedly — restarting (attempt ${this.restartCount}/${NativeSTT.MAX_RESTARTS})`
       );
 
-      // Small delay to avoid rapid-fire restart loops
+      // Delay before restart — increases with each attempt to avoid rapid-fire loops
+      const delay = Math.min(200 * Math.pow(2, this.restartCount - 1), 5000);
+      this.logger.debug(`Restarting in ${delay}ms`);
       setTimeout(() => {
         if (!this.shouldBeListening || !this.recognition) return;
         try {
@@ -366,37 +384,14 @@ export class NativeSTT extends LiveSTTProvider {
         } catch (error) {
           this.logger.error('Failed to restart recognition', error);
         }
-      }, 200);
+      }, delay);
     };
 
     this.recognition.onstart = () => {
-      this.restartCount = 0;
+      // Don't reset restartCount here — only reset after a successful result
+      // to prevent infinite restart loops when recognition ends immediately
       this.logger.info('✅ Recognition started - listening for speech...');
     };
-  }
-
-  /**
-   * Pre-check microphone permission via `getUserMedia`.
-   *
-   * @remarks
-   * The Web Speech API will request permission automatically when
-   * `start()` is called, but pre-checking allows for better error
-   * messages when permission is denied or no microphone is available.
-   *
-   * @returns `true` if microphone access was granted, `false` otherwise.
-   */
-  private async checkMicrophonePermission(): Promise<boolean> {
-    try {
-      // Try to get microphone access (will prompt user if needed)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop the stream immediately - we just needed permission
-      stream.getTracks().forEach((track) => track.stop());
-      this.logger.debug('Microphone permission granted');
-      return true;
-    } catch (error) {
-      this.logger.error('Microphone permission denied or not available', error);
-      return false;
-    }
   }
 
   /**
@@ -424,19 +419,6 @@ export class NativeSTT extends LiveSTTProvider {
     if (!this.recognition) {
       this.logger.error('Recognition object is null even though provider is initialized');
       throw new ProviderConnectionError('NativeSTT', new Error('Recognition not initialized'));
-    }
-
-    // Check microphone permission first
-    this.logger.debug('Checking microphone permission');
-    const hasPermission = await this.checkMicrophonePermission();
-    if (!hasPermission) {
-      this.logger.error('Microphone permission denied');
-      throw new ProviderConnectionError(
-        'NativeSTT',
-        new Error(
-          'Microphone permission denied. Please allow microphone access in your browser settings and try again.'
-        )
-      );
     }
 
     const startTimeoutMs = this.config.startTimeout ?? 5000;
