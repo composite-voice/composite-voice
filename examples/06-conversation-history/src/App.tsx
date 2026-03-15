@@ -49,9 +49,8 @@ export default function App() {
   useEffect(() => {
     if (!agentRef.current) return;
     const interval = setInterval(() => {
-      const mgr = (agentRef.current as any)?.conversationManager;
-      if (mgr?.getHistory) {
-        setHistory([...mgr.getHistory()]);
+      if (agentRef.current) {
+        setHistory(agentRef.current.getHistory());
       }
     }, 500);
     return () => clearInterval(interval);
