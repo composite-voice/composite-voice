@@ -122,8 +122,36 @@ The `OPTIONS` export handles preflight requests automatically.
 
 - **Environment variables.** Use Vercel's environment variable UI or your hosting provider's secret management. Never commit `.env.local`.
 - **Edge runtime.** The adapter uses `fetch` internally and works with both the Node.js and Edge runtimes. Add `export const runtime = 'edge';` to the route file if your deployment benefits from edge execution.
-- **Rate limiting.** Use Next.js middleware (`middleware.ts`) or Vercel's built-in rate limiting to protect the proxy route.
+- **Rate limiting.** Use the built-in `security.rateLimit` option (see below), Next.js middleware (`middleware.ts`), or Vercel's built-in rate limiting to protect the proxy route.
 - **Monitoring.** Log upstream errors in the route handler to catch provider outages early.
+
+## Security
+
+The proxy supports a built-in `security` configuration with rate limiting, body size limits, and custom authentication:
+
+```typescript
+const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  pathPrefix: '/api/proxy',
+  security: {
+    maxBodySize: 1_000_000,          // 1 MB max request body
+    rateLimit: {
+      maxRequests: 100,              // 100 requests per window per IP
+      windowMs: 60_000,              // 1-minute window
+    },
+    authenticate: (req) => {
+      return req.headers['x-api-key'] === process.env.APP_SECRET;
+    },
+  },
+});
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `security.maxBodySize` | `number` | `undefined` | Max HTTP request body in bytes (413 if exceeded) |
+| `security.rateLimit.maxRequests` | `number` | -- | Max requests per window per IP |
+| `security.rateLimit.windowMs` | `number` | `60000` | Rate limit window in milliseconds |
+| `security.authenticate` | `function` | `undefined` | Custom auth function; return `false` to reject with 401 |
 
 ## Further reading
 

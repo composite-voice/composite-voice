@@ -211,9 +211,9 @@ class MyTTS extends LiveTTSProvider {
 **Provider hierarchy:**
 ```
 BaseProvider
-├── BaseInputProvider     ← audio input (implement startCapture, stopCapture)
-│   ├── MicrophoneInput   ← browser microphone via getUserMedia
-│   └── BufferInput       ← programmatic audio buffers
+├── AudioInputProvider (interface)  ← audio input (implement startCapture, stopCapture)
+│   ├── MicrophoneInput             ← browser microphone via getUserMedia
+│   └── BufferInput                 ← programmatic audio buffers
 ├── BaseSTTProvider
 │   ├── LiveSTTProvider    ← WebSocket STT (implement connect, sendAudioToSocket, disconnect)
 │   └── RestSTTProvider    ← REST STT (implement transcribe)
@@ -221,7 +221,7 @@ BaseProvider
 ├── BaseTTSProvider
 │   ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendTextToSocket, finalizeSocket, disconnect)
 │   └── RestTTSProvider    ← REST TTS (implement synthesize)
-└── BaseOutputProvider    ← audio output (implement playAudio, stopPlayback)
+└── AudioOutputProvider (interface) ← audio output (implement playAudio, stopPlayback)
     ├── BrowserAudioOutput ← Web Audio API playback
     └── NullOutput         ← discards audio (testing)
 ```
@@ -251,4 +251,4 @@ Every provider exposes two types of standard methods:
 
 **MicrophoneInput** wraps `navigator.mediaDevices.getUserMedia()` with an AudioWorkletNode (or ScriptProcessorNode as fallback in older browsers). It delivers fixed-size PCM chunks at the configured sample rate and chunk duration.
 
-**BrowserAudioOutput** uses a Web Audio API AudioContext with buffering. It accumulates audio chunks until `minBufferDuration` is reached, then begins playback. When `smoothing` is enabled, it crossfades between chunks to eliminate clicks.
+**BrowserAudioOutput** uses a Web Audio API AudioContext with buffering. It accumulates audio chunks until `minBufferDuration` is reached, then begins playback. The `enableSmoothing` config option exists for future crossfade support between chunks, but the actual fade implementation is currently a placeholder -- chunks are played sequentially without crossfading.

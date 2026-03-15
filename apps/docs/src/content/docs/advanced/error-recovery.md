@@ -313,7 +313,8 @@ const agent = new CompositeVoice({
   providers: [
     new DeepgramSTT({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
-      options: { model: 'nova-3', interimResults: true },
+      interimResults: true,
+      options: { model: 'nova-3' },
     }),
     new AnthropicLLM({
       proxyUrl: `${window.location.origin}/proxy/anthropic`,

@@ -32,7 +32,8 @@ Some providers require an external SDK:
 |---|---|
 | [AnthropicLLM](/guides/llm/anthropic) | `@anthropic-ai/sdk` (>=0.67.0) |
 | [OpenAILLM](/guides/llm/openai), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [OpenAITTS](/guides/tts/openai-tts) | `openai` (>=6.5.0) |
-| [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts) | `@deepgram/sdk` (>=5.0.0-beta.1) |
+| [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramTTS](/guides/tts/deepgram-tts) | None (built-in WebSocket) |
+| [DeepgramFlux](/guides/stt/deepgram-flux) | `@deepgram/sdk` (>=5.0.0) |
 | [WebLLMLLM](/guides/llm/webllm) | `@mlc-ai/web-llm` (>=0.2.74) |
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | None (built-in WebSocket) |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | None (built-in WebSocket) |
@@ -43,7 +44,6 @@ Install what you need:
 ```bash
 npm install @anthropic-ai/sdk  # for AnthropicLLM
 npm install openai             # for OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, OpenAITTS
-npm install @deepgram/sdk      # for Deepgram providers
 npm install @mlc-ai/web-llm   # for WebLLM
 ```
 

@@ -30,7 +30,7 @@ const agent = new CompositeVoice({
   providers: [
     new NativeSTT({ language: 'en-US' }),
     new AnthropicLLM({
-      apiKey: 'sk-ant-...',
+      proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5-20251001',
       systemPrompt: 'You are a helpful voice assistant. Remember everything the user tells you.',
       maxTokens: 300,
@@ -46,12 +46,14 @@ const agent = new CompositeVoice({
 
 ### Configuration options
 
-The `ConversationHistoryConfig` interface has two properties:
+The `ConversationHistoryConfig` interface has four properties:
 
-| Property   | Type      | Default | Description                                                       |
-| ---------- | --------- | ------- | ----------------------------------------------------------------- |
-| `enabled`  | `boolean` | `false` | Whether conversation history is active.                           |
-| `maxTurns` | `number`  | `0`     | Maximum number of turns to retain. `0` means unlimited.           |
+| Property                  | Type      | Default     | Description                                                                                 |
+| ------------------------- | --------- | ----------- | ------------------------------------------------------------------------------------------- |
+| `enabled`                 | `boolean` | `false`     | Whether conversation history is active.                                                     |
+| `maxTurns`                | `number`  | `0`         | Maximum number of turns to retain. `0` means unlimited.                                     |
+| `maxTokens`               | `number`  | `undefined` | Approximate token budget for history (uses a `ceil(text.length / 4)` heuristic). When both `maxTurns` and `maxTokens` are set, the more restrictive limit wins. |
+| `preserveSystemMessages`  | `boolean` | `true`      | When `true`, system messages are never removed by trimming. They are separated before trimming and prepended back afterward. |
 
 ### How turns are counted
 
@@ -68,17 +70,29 @@ With `maxTurns: 10`, the history array holds up to 20 messages (10 user + 10 ass
 
 ### How trimming works
 
-When the history exceeds the `maxTurns` limit, the SDK drops the oldest turns to make room. The trimming happens right after the new user message is appended, before the LLM request is sent:
+When the history exceeds the configured limits, the SDK drops the oldest turns to make room. Trimming happens right after the new user message is appended, before the LLM request is sent. The SDK applies two trimming passes in order:
+
+1. **Turn-based trimming** (`maxTurns`): If `maxTurns > 0` and the non-system message count exceeds `maxTurns * 2`, the oldest messages are sliced off.
+2. **Token-based trimming** (`maxTokens`): If `maxTokens` is set, the SDK estimates token counts using a `ceil(text.length / 4)` heuristic and removes the oldest non-system messages until the total fits within the budget.
+
+When `preserveSystemMessages` is `true` (the default), system messages are separated before trimming and prepended back afterward -- they are never dropped.
 
 ```typescript
 // Internal logic (simplified):
 history.push({ role: 'user', content: text });
 
-if (maxTurns > 0 && history.length > maxTurns * 2) {
-  history = history.slice(-(maxTurns * 2));
+// Separate system messages when preserveSystemMessages is true
+const systemMessages = history.filter(m => m.role === 'system');
+let nonSystemMessages = history.filter(m => m.role !== 'system');
+
+// Apply maxTurns trimming
+if (maxTurns > 0 && nonSystemMessages.length > maxTurns * 2) {
+  nonSystemMessages = nonSystemMessages.slice(-(maxTurns * 2));
 }
 
-// Send the trimmed history to the LLM
+// Apply maxTokens trimming (removes oldest non-system messages until within budget)
+
+// Reassemble: system messages + remaining non-system messages
 ```
 
 The trimming preserves the most recent turns, which are the most relevant for conversational context. With `maxTurns: 5`, the flow looks like this:
@@ -103,7 +117,7 @@ Because the system prompt lives outside the conversation history array, it does 
 
 ```typescript
 const llm = new AnthropicLLM({
-  apiKey: 'sk-ant-...',
+  proxyUrl: '/api/proxy/anthropic',
   model: 'claude-haiku-4-5-20251001',
   systemPrompt: 'You are a helpful voice assistant. Keep responses to two sentences.',
   maxTokens: 200,
@@ -156,7 +170,7 @@ const agent = new CompositeVoice({
   providers: [
     new NativeSTT({ language: 'en-US', continuous: true, interimResults: true }),
     new AnthropicLLM({
-      apiKey: 'sk-ant-...',
+      proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5-20251001',
       systemPrompt: 'You are a friendly voice assistant. Remember everything discussed.',
       maxTokens: 300,

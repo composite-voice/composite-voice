@@ -24,6 +24,8 @@ const voice = new CompositeVoice({
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `false` | Accumulate turns and send them as context |
 | `maxTurns` | `number` | `0` | Maximum turns to retain; `0` means unlimited |
+| `maxTokens` | `number` | `undefined` | Approximate token budget for history (uses a `ceil(text.length / 4)` heuristic). When both `maxTurns` and `maxTokens` are set, the more restrictive limit wins. |
+| `preserveSystemMessages` | `boolean` | `true` | When `true`, system messages are never removed by turn-based or token-based trimming |
 
 ### How turns work
 

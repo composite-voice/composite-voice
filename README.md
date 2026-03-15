@@ -556,7 +556,8 @@ const agent = new CompositeVoice({
 
   // Turn-taking: whether to pause the mic during TTS playback
   turnTaking: {
-    strategy: 'auto', // 'auto' | 'conservative' | 'aggressive' | 'detect'
+    pauseCaptureOnPlayback: 'auto', // 'auto' | true | false (default: 'auto')
+    autoStrategy: 'conservative',   // 'conservative' | 'aggressive' | 'detect' (default: 'conservative')
   },
 
   // Logging
@@ -572,6 +573,7 @@ const agent = new CompositeVoice({
 
   // WebSocket reconnection (applies to Deepgram providers)
   reconnection: {
+    enabled: true,      // required — enables reconnection
     maxAttempts: 5,
     initialDelay: 1000, // ms before first retry
     maxDelay: 30000, // cap on retry interval
@@ -607,19 +609,19 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 
 | Event               | Payload                    | Description                                  |
 | ------------------- | -------------------------- | -------------------------------------------- |
-| `agent.ready`       | `{ state }`                | SDK initialized and ready to start listening |
+| `agent.ready`       | —                          | SDK initialized and ready to start listening |
 | `agent.stateChange` | `{ state, previousState }` | Agent moved to a new state                   |
-| `agent.error`       | `{ error }`                | System-level error                           |
+| `agent.error`       | `{ error, recoverable, context? }` | System-level error                    |
 
 ### Transcription events
 
 | Event                       | Payload                 | Description                                                          |
 | --------------------------- | ----------------------- | -------------------------------------------------------------------- |
 | `transcription.start`       | —                       | Transcription session opened                                         |
-| `transcription.interim`     | `{ text, isFinal }`     | Partial transcript — updates word by word while the user is speaking |
-| `transcription.final`       | `{ text, isFinal }`     | Confirmed transcript segment                                         |
-| `transcription.speechFinal` | `{ text, speechFinal }` | Full utterance ended. The `utteranceComplete` flag on the transcription result is what triggers LLM processing. |
-| `transcription.preflight`   | `{ text, isPreflight }` | Early end-of-turn signal (DeepgramFlux only)                         |
+| `transcription.interim`     | `{ text, confidence? }`     | Partial transcript — updates word by word while the user is speaking |
+| `transcription.final`       | `{ text, confidence? }`     | Confirmed transcript segment                                         |
+| `transcription.speechFinal` | `{ text, confidence? }` | Full utterance ended. The `utteranceComplete` flag on the transcription result is what triggers LLM processing. |
+| `transcription.preflight`   | `{ text, confidence? }` | Early end-of-turn signal (DeepgramFlux only)                         |
 | `transcription.error`       | `{ error }`             | Transcription error                                                  |
 
 ### LLM events
@@ -627,8 +629,8 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | Event          | Payload      | Description                        |
 | -------------- | ------------ | ---------------------------------- |
 | `llm.start`    | `{ prompt }` | LLM generation started             |
-| `llm.chunk`    | `{ chunk }`  | Text token received from the model |
-| `llm.complete` | `{ text }`   | Full response assembled            |
+| `llm.chunk`    | `{ chunk, accumulated }`  | Text token received from the model |
+| `llm.complete` | `{ text, tokensUsed? }`   | Full response assembled            |
 | `llm.error`    | `{ error }`  | LLM error                          |
 
 ### TTS events
@@ -638,7 +640,7 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `tts.start`    | `{ text }`     | Synthesis started              |
 | `tts.audio`    | `{ chunk }`    | Audio chunk ready for playback |
 | `tts.metadata` | `{ metadata }` | Audio format metadata          |
-| `tts.complete` | —              | Playback finished              |
+| `tts.complete` | —              | Synthesis complete (playback may still be in progress) |
 | `tts.error`    | `{ error }`    | TTS error                      |
 
 ### Audio events
@@ -849,16 +851,20 @@ Turn-taking controls whether the microphone is paused while the AI is speaking. 
 ```typescript
 const agent = new CompositeVoice({
   providers: [stt, llm, tts],
-  turnTaking: { strategy: 'auto' },
+  turnTaking: {
+    pauseCaptureOnPlayback: 'auto',
+    autoStrategy: 'conservative',
+  },
 });
 ```
 
-| Strategy         | Behaviour                                                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `auto` (default) | Pauses the mic for `NativeSTT` (no echo cancellation); leaves it open for `DeepgramSTT` (relies on hardware echo cancellation). |
-| `conservative`   | Always pauses the mic during TTS playback. Safe choice if you are unsure about echo cancellation.                               |
-| `aggressive`     | Never pauses. Only suitable with reliable hardware echo cancellation.                                                           |
-| `detect`         | Attempts to detect echo cancellation support at runtime before choosing a strategy.                                             |
+| `pauseCaptureOnPlayback` | `autoStrategy`   | Behaviour                                                                                                                       |
+| ------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `'auto'` (default)      | `'conservative'` (default) | Pauses the mic for `NativeSTT` (no echo cancellation); leaves it open for `DeepgramSTT` (relies on hardware echo cancellation). When pausing, uses the conservative strategy. |
+| `true`                   | —                | Always pauses the mic during TTS playback. Safe choice if you are unsure about echo cancellation.                               |
+| `false`                  | —                | Never pauses. Only suitable with reliable hardware echo cancellation.                                                           |
+| `'auto'`                 | `'detect'`       | Attempts to detect echo cancellation support at runtime before choosing a strategy.                                             |
+| `'auto'`                 | `'aggressive'`   | When auto-detection decides to pause, uses the aggressive strategy (shorter pause windows).                                     |
 
 ---
 
@@ -1038,13 +1044,9 @@ All built-in providers implement abstract base classes. You can plug in any prov
 | ---------------------- | --------- | ---------------------------------------------------------------- |
 | `AudioInputProvider`   | `input`   | Custom audio capture (microphone, file, stream)                  |
 | `BaseSTTProvider`      | `stt`     | Any speech-to-text provider                                      |
-| `LiveSTTProvider`      | `stt`     | WebSocket-based real-time STT                                    |
-| `RestSTTProvider`      | `stt`     | Request/response STT (batch transcription)                       |
 | `BaseLLMProvider`      | `llm`     | Any language model                                               |
 | `OpenAICompatibleLLM`  | `llm`     | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
 | `BaseTTSProvider`      | `tts`     | Any text-to-speech provider                                      |
-| `LiveTTSProvider`      | `tts`     | WebSocket-based streaming TTS                                    |
-| `RestTTSProvider`      | `tts`     | Request/response TTS                                             |
 | `AudioOutputProvider`  | `output`  | Custom audio playback (speakers, file, stream)                   |
 
 Every custom provider must declare its `roles` property.
@@ -1092,10 +1094,10 @@ class MySTT extends BaseSTTProvider {
   }
 
   async startCapture(): Promise<void> {
-    // Stream audio from the microphone to your service, then emit:
-    this.emit('transcription.interim', { text, isFinal: false });
-    this.emit('transcription.final', { text, isFinal: true });
-    this.emit('transcription.speechFinal', { text, speechFinal: true });
+    // Stream audio from the microphone to your service, then emit results
+    // via the base class helper (it handles event delivery and routing):
+    this.emitTranscription({ text, isFinal: false });
+    this.emitTranscription({ text, isFinal: true, utteranceComplete: true });
   }
 
   async stopCapture(): Promise<void> {
@@ -1107,18 +1109,22 @@ class MySTT extends BaseSTTProvider {
 ### LLM provider skeleton
 
 ```typescript
-import { BaseLLMProvider, LLMMessage } from '@lukeocodes/composite-voice';
+import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from '@lukeocodes/composite-voice';
 
 class MyLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
     // Set up your LLM client.
   }
 
-  async generate(prompt: string, history: LLMMessage[]): Promise<void> {
-    this.emit('llm.start', { prompt });
-    // Stream tokens from your model, then emit:
-    this.emit('llm.chunk', { chunk: token });
-    this.emit('llm.complete', { text: fullResponse });
+  async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): AsyncGenerator<string> {
+    // Stream tokens from your model — yield each chunk as it arrives.
+    for await (const token of myModelStream(messages)) {
+      yield token;
+    }
+  }
+
+  async *generate(prompt: string, options?: LLMGenerationOptions): AsyncGenerator<string> {
+    yield* this.generateFromMessages(this.promptToMessages(prompt), options);
   }
 }
 ```
@@ -1131,8 +1137,9 @@ The fastest way to add a new LLM provider that has an OpenAI-compatible API:
 import { OpenAICompatibleLLM, OpenAICompatibleLLMConfig } from '@lukeocodes/composite-voice';
 
 class MyLLM extends OpenAICompatibleLLM {
-  protected providerName = 'my-provider';
-  protected defaultBaseURL = 'https://api.my-provider.com/v1';
+  constructor(config: OpenAICompatibleLLMConfig) {
+    super({ endpoint: 'https://api.my-provider.com/v1', ...config });
+  }
 }
 
 // Use it exactly like any other LLM provider

@@ -11,7 +11,7 @@ Use DeepgramTTS for low-latency streaming speech synthesis. Text flows over a pe
 - A [Deepgram API key](https://console.deepgram.com/) or a CompositeVoice proxy server
 - No additional peer dependencies required
 
-DeepgramTTS connects through a raw native WebSocket managed by the SDK's built-in `WebSocketManager`.
+DeepgramTTS connects through a raw native WebSocket -- no external SDK or WebSocket manager library is required.
 
 ## Basic setup
 
@@ -50,6 +50,7 @@ await voice.startListening();
 | `outputFormat` | `string` | `'linear16'` | Audio encoding: `linear16`, `mulaw`, or `alaw` |
 | `options.model` | `string` | Falls back to `voice` | Overrides the voice model |
 | `options.encoding` | `string` | Falls back to `outputFormat` | Overrides the encoding |
+| `options.sampleRate` | `number` | Falls back to `sampleRate` | Overrides the output sample rate |
 
 ### Available voices
 
@@ -104,7 +105,7 @@ const tts = new DeepgramTTS({
   voice: 'aura-2-thalia-en',
 });
 
-await tts.initialize();     // Load Deepgram SDK, create client
+await tts.initialize();     // Validate configuration
 await tts.connect();         // Open WebSocket
 
 tts.onAudio((chunk) => {

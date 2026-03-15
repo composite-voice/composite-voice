@@ -28,7 +28,7 @@ import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/
 const agent = new CompositeVoice({
   providers: [
     new NativeSTT(),
-    new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5-20251001' }),
     new NativeTTS(),
   ],
   turnTaking: {
@@ -47,7 +47,8 @@ Pauses microphone capture unless the STT provider uses `navigator.mediaDevices.g
 
 In practice, this means:
 - **[NativeSTT](/guides/stt/native-stt)** (Web Speech API) -- always pauses, because the SpeechRecognition API has no echo cancellation support
-- **[DeepgramSTT](/guides/stt/deepgram-stt)** and **[AssemblyAISTT](/guides/stt/assemblyai-stt)** (MediaDevices) -- does not pause, because getUserMedia can enable `echoCancellation: true`
+- **[DeepgramSTT](/guides/stt/deepgram-stt)** (MediaDevices) -- does not pause, because getUserMedia can enable `echoCancellation: true`
+- **[AssemblyAISTT](/guides/stt/assemblyai-stt)** and other providers not explicitly listed in the capture method map -- pauses, because the conservative strategy only allows full-duplex for providers it knows use MediaDevices
 
 ```typescript
 const agent = new CompositeVoice({
@@ -133,7 +134,7 @@ const agent = new CompositeVoice({
 | Scenario                                                  | Recommended setting                                   |
 | --------------------------------------------------------- | ----------------------------------------------------- |
 | Using [NativeSTT](/guides/stt/native-stt) (Web Speech API)                        | `'auto'` with `'conservative'` (default) -- NativeSTT always needs pause |
-| Using [DeepgramSTT](/guides/stt/deepgram-stt) or [AssemblyAISTT](/guides/stt/assemblyai-stt) on a laptop        | `'auto'` with `'conservative'` or `'detect'`          |
+| Using [DeepgramSTT](/guides/stt/deepgram-stt) on a laptop                                   | `'auto'` with `'conservative'` or `'detect'`          |
 | Using [DeepgramSTT](/guides/stt/deepgram-stt) with external speakers + good mic     | `'auto'` with `'aggressive'` or `pauseCaptureOnPlayback: false` |
 | Headphones (no echo possible)                             | `pauseCaptureOnPlayback: false`                       |
 | Unsure about the user's audio setup                       | `pauseCaptureOnPlayback: true` (always safe)          |
