@@ -41,6 +41,8 @@ import { forwardHttpRequest } from '../core/http';
 import { proxyWebSocket } from '../core/ws';
 import type { CompositeVoiceProxyConfig } from '../types';
 import { buildRoutes, matchHttpRoute, matchWsRoute, setCorsHeaders } from '../utils/routing';
+import { createRateLimiter, getClientIp } from '../utils/rateLimit';
+import type { RateLimiter } from '../utils/rateLimit';
 
 /**
  * Handlers returned by {@link createNodeProxy}.
@@ -111,6 +113,13 @@ export interface NodeProxyHandlers {
 export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHandlers {
   const routes = buildRoutes(config);
   const prefix = config.pathPrefix ?? '/proxy';
+  const security = config.security;
+
+  // Initialise rate limiter if configured
+  let rateLimiter: RateLimiter | undefined;
+  if (security?.rateLimit) {
+    rateLimiter = createRateLimiter(security.rateLimit);
+  }
 
   async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = req.url ?? '/';
@@ -128,10 +137,39 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
     const route = matchHttpRoute(routes, url, prefix);
     if (!route) return; // not a proxy path — caller handles it
 
+    // --- Security checks ---
+
+    // Rate limiting
+    if (rateLimiter) {
+      const ip = getClientIp(req);
+      if (!rateLimiter.check(ip)) {
+        res.statusCode = 429;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'rate_limit_exceeded', message: 'Too many requests' }));
+        return;
+      }
+    }
+
+    // Authentication
+    if (security?.authenticate) {
+      const allowed = await security.authenticate({
+        headers: req.headers as Record<string, string | string[] | undefined>,
+        ...(req.url !== undefined && { url: req.url }),
+      });
+      if (!allowed) {
+        res.statusCode = 401;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'unauthorized', message: 'Authentication failed' }));
+        return;
+      }
+    }
+
     const targetPath = url.slice(prefix.length + 1 + route.provider.length); // strip /prefix/provider
     const targetUrl = `${route.targetBase}${targetPath}`;
 
-    await forwardHttpRequest(req, res, targetUrl, route.authHeaders);
+    await forwardHttpRequest(req, res, targetUrl, route.authHeaders, {
+      ...(security?.maxBodySize !== undefined && { maxBodySize: security.maxBodySize }),
+    });
   }
 
   function attachWebSocket(server: Server): void {
@@ -140,12 +178,48 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
       const route = matchWsRoute(routes, url, prefix);
       if (!route) return;
 
-      const targetPath = url.slice(prefix.length + 1 + route.provider.length);
-      const targetUrl = `${route.targetBase}${targetPath}`;
+      // --- Security checks for WebSocket upgrades ---
+      const runWsSecurityChecks = async (): Promise<boolean> => {
+        // Rate limiting
+        if (rateLimiter) {
+          const ip = getClientIp(req);
+          if (!rateLimiter.check(ip)) {
+            socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+            socket.destroy();
+            return false;
+          }
+        }
 
-      proxyWebSocket(req, socket, head, targetUrl, route.authHeaders).catch((err: Error) => {
-        socket.destroy(err);
-      });
+        // Authentication
+        if (security?.authenticate) {
+          const allowed = await security.authenticate({
+            headers: req.headers as Record<string, string | string[] | undefined>,
+            ...(req.url !== undefined && { url: req.url }),
+          });
+          if (!allowed) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      runWsSecurityChecks()
+        .then((allowed) => {
+          if (!allowed) return;
+
+          const targetPath = url.slice(prefix.length + 1 + route.provider.length);
+          const targetUrl = `${route.targetBase}${targetPath}`;
+
+          return proxyWebSocket(req, socket, head, targetUrl, route.authHeaders, {
+            ...(security?.maxWsMessageSize !== undefined && { maxWsMessageSize: security.maxWsMessageSize }),
+          });
+        })
+        .catch((err: Error) => {
+          socket.destroy(err);
+        });
     });
   }
 

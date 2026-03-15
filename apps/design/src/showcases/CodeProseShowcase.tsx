@@ -10,33 +10,38 @@ import {
   Prose,
 } from "@lukeocodes/composite-voice-ui";
 
-const tsExample = `import { CompositeVoice } from "@lukeocodes/composite-voice";
+const tsExample = `import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from "@lukeocodes/composite-voice";
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ apiKey: "..." }),
-  llm: new AnthropicLLM({ model: "claude-sonnet-4-20250514" }),
-  tts: new DeepgramTTS({ model: "aura-asteria-en" }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: "/api/proxy/deepgram" }),
+    new AnthropicLLM({ proxyUrl: "/api/proxy/anthropic", model: "claude-sonnet-4-20250514" }),
+    new DeepgramTTS({ proxyUrl: "/api/proxy/deepgram" }),
+  ],
 });
 
-voice.on("transcript", (text) => {
+voice.on("transcription.speechFinal", ({ text }) => {
   console.log("User said:", text);
 });
 
-voice.start();`;
+await voice.initialize();
+await voice.startListening();`;
 
-const jsExample = `const { CompositeVoice } = require("@lukeocodes/composite-voice");
+const jsExample = `const { CompositeVoice, OpenAILLM, NativeTTS } = require("@lukeocodes/composite-voice");
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ apiKey: "..." }),
-  llm: new OpenAILLM({ model: "gpt-4o" }),
-  tts: new NativeTTS(),
+  providers: [
+    new OpenAILLM({ proxyUrl: "/api/proxy/openai", model: "gpt-4o" }),
+    new NativeTTS(),
+  ],
 });
 
-voice.on("transcript", (text) => {
+voice.on("transcription.speechFinal", ({ text }) => {
   console.log("User said:", text);
 });
 
-voice.start();`;
+await voice.initialize();
+await voice.startListening();`;
 
 const bashExample = `npm install @lukeocodes/composite-voice
 # or
@@ -65,9 +70,10 @@ export default function CodeProseShowcase() {
             import <Code>CompositeVoice</Code> from the main entry point.
           </Text>
           <Text>
-            Use the <Code>voice.start()</Code> method to begin a session, and{" "}
-            <Code>voice.stop()</Code> to end it. Events are typed via{" "}
-            <Code>VoiceEvent&lt;T&gt;</Code>.
+            Call <Code>voice.initialize()</Code> then{" "}
+            <Code>voice.startListening()</Code> to begin a session, and{" "}
+            <Code>voice.dispose()</Code> to end it. Events are typed via{" "}
+            <Code>CompositeVoiceEvent</Code>.
           </Text>
         </div>
       </section>
@@ -293,18 +299,19 @@ export default function CodeProseShowcase() {
             <h3>Quick Reference</h3>
             <p>
               The <code>CompositeVoice</code> class is the main entry point.
-              Call <code>voice.start()</code> to begin and{" "}
-              <code>voice.stop()</code> to end a session.
+              Call <code>voice.initialize()</code> then{" "}
+              <code>voice.startListening()</code> to begin a session, and{" "}
+              <code>voice.dispose()</code> to end it.
             </p>
             <ul>
               <li>
-                <strong>STT:</strong> DeepgramSTT, NativeSTT
+                <strong>STT:</strong> DeepgramSTT, AssemblyAISTT, ElevenLabsSTT, NativeSTT
               </li>
               <li>
-                <strong>LLM:</strong> AnthropicLLM, OpenAILLM, WebLLMLLM
+                <strong>LLM:</strong> AnthropicLLM, OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, WebLLMLLM
               </li>
               <li>
-                <strong>TTS:</strong> DeepgramTTS, OpenAITTS, NativeTTS
+                <strong>TTS:</strong> DeepgramTTS, OpenAITTS, ElevenLabsTTS, CartesiaTTS, NativeTTS
               </li>
             </ul>
           </Prose>
@@ -377,13 +384,13 @@ export default function CodeProseShowcase() {
 
         <div className="border border-neutral-200 rounded-card p-6 space-y-4">
           <Text>
-            To start a voice session, call <Code>voice.start()</Code> in your
+            To start a voice session, call <Code>voice.initialize()</Code> then <Code>voice.startListening()</Code> in your
             component. Press <Kbd>Ctrl</Kbd> + <Kbd>M</Kbd> to toggle the
             microphone.
           </Text>
 
           <CodeBlock
-            code={`voice.on("transcript", (text) => {
+            code={`voice.on("transcription.speechFinal", ({ text }) => {
   console.log("User said:", text);
 });`}
             language="typescript"

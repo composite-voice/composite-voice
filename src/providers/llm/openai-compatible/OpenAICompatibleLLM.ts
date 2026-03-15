@@ -71,45 +71,11 @@ type ChatCompletionMessageParam =
  */
 export interface OpenAICompatibleLLMConfig extends LLMProviderConfig {
   /**
-   * API key for the provider.
-   * Required when connecting directly. Omit when using `proxyUrl`.
-   *
-   * @defaultValue `undefined`
-   */
-  apiKey?: string;
-  /**
-   * URL of the CompositeVoice proxy server endpoint for this provider.
-   *
-   * @remarks
-   * When set, the OpenAI SDK sends requests to this URL instead of the
-   * provider's native endpoint, and a dummy API key (`'proxy'`) is used.
-   * The proxy server is responsible for injecting the real API key.
-   *
-   * @defaultValue `undefined`
-   *
-   * @example
-   * ```ts
-   * proxyUrl: 'http://localhost:3000/api/proxy/openai'
-   * ```
-   */
-  proxyUrl?: string;
-  /**
    * Model identifier for the provider.
    *
    * @example `'gpt-4'`, `'llama-3.3-70b-versatile'`, `'gemini-2.0-flash'`
    */
   model: string;
-  /**
-   * Base URL for the provider's API.
-   *
-   * @remarks
-   * Defaults differ per subclass (e.g., OpenAI uses `https://api.openai.com/v1`,
-   * Groq uses `https://api.groq.com/openai/v1`). This value is ignored when
-   * `proxyUrl` is set.
-   *
-   * @defaultValue Provider-specific (set by each subclass)
-   */
-  baseURL?: string;
   /**
    * Maximum number of retries for failed API requests.
    *
@@ -235,25 +201,17 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
    * package cannot be found (peer dependency not installed).
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        this.providerName,
-        new Error(`${this.providerName} requires either "apiKey" or "proxyUrl" to be configured.`)
-      );
-    }
+    this.assertAuth();
 
     try {
       // Dynamically import OpenAI SDK (peer dependency)
       const OpenAIModule = await import('openai');
       const OpenAI = OpenAIModule.default;
 
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
-
       // Initialize OpenAI-compatible client
       this.client = new OpenAI({
-        apiKey,
-        baseURL,
+        apiKey: this.resolveApiKey(),
+        baseURL: this.resolveBaseUrl(),
         maxRetries: this.config.maxRetries ?? 3,
         timeout: this.config.timeout ?? 60000,
         dangerouslyAllowBrowser: true,
@@ -323,6 +281,19 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
    */
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     const messages = this.promptToMessages(prompt);
+    return this.generateFromMessages(messages, options);
+  }
+
+  /**
+   * Implement the abstract {@link BaseLLMProvider.processMessages} method.
+   *
+   * @remarks
+   * Delegates to {@link generateFromMessages}.
+   */
+  async processMessages(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>> {
     return this.generateFromMessages(messages, options);
   }
 

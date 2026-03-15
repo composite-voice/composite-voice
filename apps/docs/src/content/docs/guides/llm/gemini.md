@@ -23,16 +23,19 @@ Google exposes an OpenAI-compatible endpoint for Gemini, so the `openai` package
 import { CompositeVoice, GeminiLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new GeminiLLM({
-    proxyUrl: '/api/proxy/gemini',
-    model: 'gemini-2.0-flash',
-    systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new GeminiLLM({
+      proxyUrl: '/api/proxy/gemini',
+      model: 'gemini-2.0-flash',
+      systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -68,26 +71,29 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    options: { model: 'nova-3', smartFormat: true },
-  }),
-  llm: new GeminiLLM({
-    proxyUrl: '/api/proxy/gemini',
-    model: 'gemini-2.0-flash',
-    temperature: 0.7,
-    maxTokens: 256,
-    systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      options: { model: 'nova-3', smartFormat: true },
+    }),
+    new GeminiLLM({
+      proxyUrl: '/api/proxy/gemini',
+      model: 'gemini-2.0-flash',
+      temperature: 0.7,
+      maxTokens: 256,
+      systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips

@@ -18,21 +18,24 @@ Use CartesiaTTS for the lowest-latency streaming synthesis available. Cartesia's
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, CartesiaTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new CartesiaTTS({
-    proxyUrl: '/api/proxy/cartesia',
-    voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
-    modelId: 'sonic-2',
-    outputEncoding: 'pcm_s16le',
-    outputSampleRate: 24000,
-  }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new CartesiaTTS({
+      proxyUrl: '/api/proxy/cartesia',
+      voiceId: 'a0e99841-438c-4a64-b679-ae501e7d6091',
+      modelId: 'sonic-2',
+      outputEncoding: 'pcm_s16le',
+      outputSampleRate: 24000,
+    }),
+  ],
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Configuration options
@@ -83,19 +86,22 @@ const tts = new CartesiaTTS({
 });
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts,
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    tts,
+  ],
   logging: { enabled: true, level: 'debug' },
 });
 
-voice.on('tts:start', () => console.log('Speaking...'));
-voice.on('tts:end', () => console.log('Done speaking'));
+voice.on('tts.start', () => console.log('Speaking...'));
+voice.on('tts.end', () => console.log('Done speaking'));
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Emotion tags

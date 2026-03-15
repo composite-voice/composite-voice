@@ -17,7 +17,7 @@
  * 1. Wire: input.onAudio → queue.enqueue
  * 2. Start: input.start() (begins producing audio)
  * 3. Connect: await stt.connect() (async delay — chunks buffer)
- * 4. Drain: queue.startDraining(chunk => stt.sendAudio(chunk.data))
+ * 4. Drain: queue.startDraining(chunk => stt.processAudio(chunk.data))
  */
 
 import { AudioBufferQueue } from '../../src/core/pipeline/AudioBufferQueue';
@@ -79,7 +79,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
 
       // 5. Start draining — flushes buffered chunks then switches to pass-through
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       // Assert: all 5 chunks delivered to STT in order
@@ -118,7 +118,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       // Connect and drain
       await stt.connect();
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       expect(stt.receivedAudio).toHaveLength(3);
@@ -161,7 +161,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
 
       // Phase 4: Start draining — flush all 15 buffered chunks
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       // Phase 5: Even more chunks arrive after draining starts (pass-through)
@@ -208,7 +208,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
 
       // Drain all buffered chunks
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       // All 50 chunks delivered in exact order
@@ -257,7 +257,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       log.push('drain:start');
       queue.startDraining((chunk: AudioChunk) => {
         log.push(`drain:${chunk.sequence}`);
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
       log.push('drain:started');
 
@@ -337,7 +337,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
 
       // Drain them all to STT
       queue.startDraining((chunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       expect(stt.receivedAudio).toHaveLength(5);
@@ -367,7 +367,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       // No chunks produced before connect
       await stt.connect();
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       expect(stt.receivedAudio).toHaveLength(0);
@@ -396,7 +396,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       // Instant connect
       await stt.connect();
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       // All chunks delivered even with zero connect delay
@@ -423,7 +423,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       input.pushChunks(3);
       await stt.connect();
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
       expect(stt.receivedAudio).toHaveLength(3);
 
@@ -439,7 +439,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       // Reconnect
       await stt.connect();
       queue.startDraining((chunk: AudioChunk) => {
-        stt.sendAudio(chunk.data);
+        stt.processAudio(chunk.data);
       });
 
       // All 4 reconnect-buffered chunks delivered (total 7)

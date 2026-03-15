@@ -12,9 +12,7 @@ CompositeVoice maintains a conversation history that gives the LLM context from 
 
 ```typescript
 const voice = new CompositeVoice({
-  stt: ...,
-  llm: ...,
-  tts: ...,
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: true,   // default: false
     maxTurns: 10,    // default: 0 (unlimited)
@@ -26,6 +24,8 @@ const voice = new CompositeVoice({
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `false` | Accumulate turns and send them as context |
 | `maxTurns` | `number` | `0` | Maximum turns to retain; `0` means unlimited |
+| `maxTokens` | `number` | `undefined` | Approximate token budget for history (uses a `ceil(text.length / 4)` heuristic). When both `maxTurns` and `maxTokens` are set, the more restrictive limit wins. |
+| `preserveSystemMessages` | `boolean` | `true` | When `true`, system messages are never removed by turn-based or token-based trimming |
 
 ### How turns work
 
@@ -95,7 +95,7 @@ Use this when switching topics or resetting a conversation without disposing the
 
 ```typescript
 const voice = new CompositeVoice({
-  // ...providers
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: false,  // each utterance is independent (default)
   },

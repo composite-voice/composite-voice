@@ -18,19 +18,22 @@ Use NativeTTS when you need speech synthesis without API keys, external services
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new NativeTTS({
-    voiceName: 'Samantha',
-    rate: 1.0,
-    pitch: 0,
-  }),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new NativeTTS({
+      voiceName: 'Samantha',
+      rate: 1.0,
+      pitch: 0,
+    }),
+  ],
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Configuration options
@@ -60,19 +63,22 @@ const tts = new NativeTTS({
 });
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts,
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    tts,
+  ],
 });
 
-voice.on('agent:stateChange', ({ state }) => {
+voice.on('agent.stateChange', ({ state }) => {
   console.log('State:', state);
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Voice enumeration

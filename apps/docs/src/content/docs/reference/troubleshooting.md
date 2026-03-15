@@ -30,17 +30,21 @@ Some providers require an external SDK:
 
 | Provider | Peer dependency |
 |---|---|
-| [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts) | `@deepgram/sdk` (V5+) |
+| [AnthropicLLM](/guides/llm/anthropic) | `@anthropic-ai/sdk` (>=0.67.0) |
+| [OpenAILLM](/guides/llm/openai), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [OpenAITTS](/guides/tts/openai-tts) | `openai` (>=6.5.0) |
+| [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramTTS](/guides/tts/deepgram-tts) | None (built-in WebSocket) |
+| [DeepgramFlux](/guides/stt/deepgram-flux) | `@deepgram/sdk` (>=5.0.0) |
+| [WebLLMLLM](/guides/llm/webllm) | `@mlc-ai/web-llm` (>=0.2.74) |
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | None (built-in WebSocket) |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | None (built-in WebSocket) |
 | [CartesiaTTS](/guides/tts/cartesia-tts) | None (built-in WebSocket) |
-| [WebLLMLLM](/guides/llm/webllm) | `@mlc-ai/web-llm` |
 
 Install what you need:
 
 ```bash
-npm install @deepgram/sdk    # for Deepgram providers
-npm install @mlc-ai/web-llm  # for WebLLM
+npm install @anthropic-ai/sdk  # for AnthropicLLM
+npm install openai             # for OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, OpenAITTS
+npm install @mlc-ai/web-llm   # for WebLLM
 ```
 
 ---
@@ -71,7 +75,7 @@ if (!navigator.gpu) {
 }
 ```
 
-Supported: Chrome 113+, Edge 113+. Not yet supported in Firefox or Safari.
+Supported in Chrome 113+ and Edge 113+ only.
 
 ### Voice sounds different across operating systems
 
@@ -237,7 +241,7 @@ Subsequent loads use the cache and are near-instant.
 
 ### 4096-character limit (OpenAI TTS)
 
-The OpenAI TTS API has a 4096-character request limit. The SDK handles this automatically, but if your LLM responses are very long, consider reducing `maxTokens` or adding "keep responses brief" to your system prompt.
+The OpenAI TTS API has a 4096-character request limit. The SDK handles this automatically, but if your LLM responses are long, consider reducing `maxTokens` or adding "keep responses brief" to your system prompt.
 
 ---
 
@@ -249,7 +253,7 @@ Every turn appends to the message history, so input tokens grow over time. Contr
 
 ```typescript
 new CompositeVoice({
-  // ...providers
+  providers: [stt, llm, tts],
   conversationHistory: {
     enabled: true,
     maxTurns: 10,  // keep last 10 exchanges, drop older ones

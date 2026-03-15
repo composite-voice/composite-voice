@@ -187,4 +187,54 @@ export interface CompositeVoiceProxyConfig {
      */
     origins?: string[];
   };
+
+  /**
+   * Security middleware configuration.
+   *
+   * @remarks
+   * All limits are optional. When omitted, no limit is enforced and behaviour
+   * is identical to a proxy without the `security` field -- fully backward-compatible.
+   */
+  security?: {
+    /**
+     * Maximum request body size in bytes for HTTP forwarding.
+     * Requests exceeding this are rejected with 413 Payload Too Large.
+     *
+     * @defaultValue `undefined` (no limit)
+     */
+    maxBodySize?: number;
+
+    /**
+     * Maximum WebSocket message size in bytes.
+     * Messages exceeding this close the connection with code 1009 (Message Too Big).
+     *
+     * @defaultValue `undefined` (no limit)
+     */
+    maxWsMessageSize?: number;
+
+    /**
+     * Simple rate limiting: max requests per window per IP.
+     *
+     * @defaultValue `undefined` (no rate limiting)
+     */
+    rateLimit?: {
+      /** Maximum requests allowed per window. */
+      maxRequests: number;
+      /**
+       * Window duration in milliseconds.
+       *
+       * @defaultValue 60000 (1 minute)
+       */
+      windowMs?: number;
+    };
+
+    /**
+     * Optional authentication function. Return `true` to allow, `false` to reject with 401.
+     * Called with the incoming request for HTTP, or the upgrade request for WebSocket.
+     */
+    authenticate?: (req: {
+      headers: Record<string, string | string[] | undefined>;
+      url?: string;
+    }) => boolean | Promise<boolean>;
+  };
 }

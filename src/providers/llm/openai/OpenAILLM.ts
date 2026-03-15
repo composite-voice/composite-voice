@@ -48,7 +48,7 @@ import { Logger } from '../../../utils/logger';
  * };
  * ```
  *
- * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, baseURL, etc.).
+ * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, endpoint, etc.).
  */
 export interface OpenAILLMConfig extends OpenAICompatibleLLMConfig {
   /**

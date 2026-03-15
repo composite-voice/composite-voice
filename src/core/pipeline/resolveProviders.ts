@@ -89,7 +89,7 @@ import { NativeTTS } from '../../providers/tts/native/NativeTTS';
  * - **input**: {@link AudioInputProvider} methods
  * - **stt**: Either {@link RestSTTProvider} (`transcribe`) or {@link LiveSTTProvider} (`connect`, `sendAudio`, `disconnect`) + shared `onTranscription`
  * - **llm**: {@link LLMProvider} methods
- * - **tts**: Either {@link RestTTSProvider} (`synthesize`) or {@link LiveTTSProvider} (`connect`, `sendText`, `finalize`, `disconnect`) + shared `onAudio`
+ * - **tts**: Either {@link RestTTSProvider} (`synthesize`) or {@link LiveTTSProvider} (`connect`, `processChunk`, `finalize`, `disconnect`) + shared `onAudio`
  * - **output**: {@link AudioOutputProvider} methods
  *
  * @see {@link validateSlotInterface} for where this map is consumed

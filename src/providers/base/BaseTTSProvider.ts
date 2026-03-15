@@ -17,15 +17,17 @@ import { Logger } from '../../utils/logger';
  * `BaseTTSProvider` sits between {@link BaseProvider} and the two transport-
  * specific bases ({@link LiveTTSProvider} and {@link RestTTSProvider}). It
  * adds the **audio callback** and **metadata callback** mechanisms that all
- * TTS providers use to deliver synthesized audio back to the SDK core.
+ * TTS providers use to deliver synthesized audio back to the SDK core, along
+ * with **handler methods** and **guard methods** for the orchestrator.
  *
- * The audio delivery pattern mirrors the STT transcription callback:
+ * The handler/guard pattern:
  *
- * 1. The SDK (or consumer) registers listeners via {@link onAudio} and
- *    optionally {@link onMetadata}.
- * 2. Subclasses call {@link emitAudio} for each chunk of synthesized audio
- *    and {@link emitMetadata} once at the beginning of synthesis (if the
- *    provider can report format details up front).
+ * 1. **Handler methods** (`processChunk`, `finalize`) receive text data and
+ *    trigger synthesis.
+ * 2. **Guard methods** (`isAudioReady`) assert conditions on audio chunks
+ *    and return boolean.
+ * 3. **Callbacks** (`onAudio` / `emitAudio` / `onMetadata` / `emitMetadata`)
+ *    deliver synthesized audio to the orchestrator.
  *
  * **Inheritance hierarchy:**
  *
@@ -54,9 +56,12 @@ import { Logger } from '../../utils/logger';
  *   protected async onInitialize(): Promise<void> { }
  *   protected async onDispose(): Promise<void> { }
  *
- *   async synthesize(text: string): Promise<Blob> {
- *     const audioBlob = await myEngine.speak(text);
- *     return audioBlob;
+ *   processChunk(text: string): void {
+ *     // Buffer or process text
+ *   }
+ *
+ *   async finalize(): Promise<void> {
+ *     // Flush remaining audio
  *   }
  * }
  * ```
@@ -95,6 +100,53 @@ export abstract class BaseTTSProvider extends BaseProvider {
     super(type, config, logger);
     this.config = config;
   }
+
+  // === HANDLER METHODS ===
+
+  /**
+   * Process a text chunk for synthesis.
+   *
+   * @remarks
+   * Called by the orchestrator with text to synthesize. For live providers,
+   * this delegates to WebSocket send. For REST providers, this accumulates
+   * text into a buffer.
+   *
+   * @param text - A piece of text to synthesize.
+   *
+   * @virtual
+   */
+  abstract processChunk(text: string): void;
+
+  /**
+   * Finalize synthesis — flush remaining audio.
+   *
+   * @remarks
+   * Called after all text has been sent via {@link processChunk}. The
+   * provider should ensure all buffered text is synthesized and all
+   * remaining audio chunks are emitted before resolving.
+   *
+   * @virtual
+   */
+  abstract finalize(): Promise<void>;
+
+  // === GUARD METHODS ===
+
+  /**
+   * Is this audio chunk ready for playback?
+   *
+   * @remarks
+   * The orchestrator calls this to validate audio chunks before passing
+   * them to the audio player. The default implementation checks that the
+   * chunk has non-zero data.
+   *
+   * @param chunk - The audio chunk to check.
+   * @returns `true` when the chunk has valid audio data.
+   */
+  isAudioReady(chunk: AudioChunk): boolean {
+    return chunk.data.byteLength > 0;
+  }
+
+  // === CALLBACKS ===
 
   /**
    * Register a callback to receive synthesized audio chunks.

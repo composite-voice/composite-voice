@@ -94,3 +94,7 @@ export { proxyWebSocket } from './core/ws';
 // Routing utilities (for custom integrations)
 export { buildRoutes } from './utils/routing';
 export type { ProxyRoute } from './utils/routing';
+
+// Security utilities (for custom integrations)
+export { createRateLimiter, getClientIp } from './utils/rateLimit';
+export type { RateLimiter, RateLimitConfig } from './utils/rateLimit';

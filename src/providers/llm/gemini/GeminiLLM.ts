@@ -53,7 +53,7 @@ import { Logger } from '../../../utils/logger';
  * };
  * ```
  *
- * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, baseURL, etc.).
+ * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, endpoint, etc.).
  */
 export interface GeminiLLMConfig extends OpenAICompatibleLLMConfig {
   /**
@@ -129,7 +129,7 @@ export class GeminiLLM extends OpenAICompatibleLLM {
     const finalConfig: GeminiLLMConfig = {
       ...config,
       ...(resolvedKey !== undefined ? { apiKey: resolvedKey } : {}),
-      baseURL: config.baseURL ?? GEMINI_DEFAULTS.baseURL,
+      endpoint: config.endpoint ?? GEMINI_DEFAULTS.baseURL,
       model: config.model ?? GEMINI_DEFAULTS.model,
     };
     super(finalConfig, logger);

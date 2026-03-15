@@ -320,7 +320,7 @@ describe('CartesiaTTS', () => {
     it('should send text chunks with Cartesia protocol', async () => {
       await provider.connect();
 
-      provider.sendText('Hello, world!');
+      provider.processChunk('Hello, world!');
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(1);
 
@@ -341,8 +341,8 @@ describe('CartesiaTTS', () => {
     it('should set continue:true after first chunk', async () => {
       await provider.connect();
 
-      provider.sendText('Hello');
-      provider.sendText(' world');
+      provider.processChunk('Hello');
+      provider.processChunk(' world');
 
       const firstSent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       const secondSent = JSON.parse(mockWsManager.send.mock.calls[1][0]);
@@ -354,8 +354,8 @@ describe('CartesiaTTS', () => {
     it('should use same context_id across chunks', async () => {
       await provider.connect();
 
-      provider.sendText('Hello');
-      provider.sendText(' world');
+      provider.processChunk('Hello');
+      provider.processChunk(' world');
 
       const firstSent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       const secondSent = JSON.parse(mockWsManager.send.mock.calls[1][0]);
@@ -364,7 +364,7 @@ describe('CartesiaTTS', () => {
     });
 
     it('should not send text when not connected', () => {
-      provider.sendText('Hello, world!');
+      provider.processChunk('Hello, world!');
 
       expect(mockWsManager.send).not.toHaveBeenCalled();
     });
@@ -373,7 +373,7 @@ describe('CartesiaTTS', () => {
       await provider.connect();
 
       const chunks = ['Hello', ' ', 'world', '!'];
-      chunks.forEach((chunk) => provider.sendText(chunk));
+      chunks.forEach((chunk) => provider.processChunk(chunk));
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(4);
     });
@@ -386,7 +386,7 @@ describe('CartesiaTTS', () => {
       });
 
       // Should not throw
-      expect(() => provider.sendText('Hello')).not.toThrow();
+      expect(() => provider.processChunk('Hello')).not.toThrow();
     });
 
     it('should include speed when configured', async () => {
@@ -401,7 +401,7 @@ describe('CartesiaTTS', () => {
       await speedProvider.initialize();
       await speedProvider.connect();
 
-      speedProvider.sendText('Hello');
+      speedProvider.processChunk('Hello');
 
       const sent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       expect(sent.speed).toBe(1.5);
@@ -421,7 +421,7 @@ describe('CartesiaTTS', () => {
       await emotionProvider.initialize();
       await emotionProvider.connect();
 
-      emotionProvider.sendText('Hello');
+      emotionProvider.processChunk('Hello');
 
       const sent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       expect(sent.emotion).toEqual(['positivity:high', 'curiosity']);
@@ -685,7 +685,7 @@ describe('CartesiaTTS', () => {
     it('should generate a new context_id after finalize', async () => {
       await provider.connect();
 
-      provider.sendText('First utterance');
+      provider.processChunk('First utterance');
       const firstContextId = JSON.parse(mockWsManager.send.mock.calls[0][0]).context_id;
 
       mockWsManager.isConnected.mockReturnValue(false);
@@ -694,7 +694,7 @@ describe('CartesiaTTS', () => {
       mockWsManager.send.mockClear();
       mockWsManager.isConnected.mockReturnValue(true);
 
-      provider.sendText('Second utterance');
+      provider.processChunk('Second utterance');
       const secondContextId = JSON.parse(mockWsManager.send.mock.calls[0][0]).context_id;
 
       // Context IDs should differ after finalize
@@ -704,8 +704,8 @@ describe('CartesiaTTS', () => {
     it('should reset continue flag after finalize', async () => {
       await provider.connect();
 
-      provider.sendText('First chunk');
-      provider.sendText('Second chunk');
+      provider.processChunk('First chunk');
+      provider.processChunk('Second chunk');
 
       // After finalize, continue should reset
       mockWsManager.isConnected.mockReturnValue(false);
@@ -714,7 +714,7 @@ describe('CartesiaTTS', () => {
       mockWsManager.send.mockClear();
       mockWsManager.isConnected.mockReturnValue(true);
 
-      provider.sendText('New utterance');
+      provider.processChunk('New utterance');
       const sent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       expect(sent.continue).toBe(false);
     });

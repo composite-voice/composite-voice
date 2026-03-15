@@ -11,22 +11,37 @@ const mockMediaStream = {
   getTracks: jest.fn(() => [mockTrack]),
 };
 
+const mockScriptProcessor = {
+  connect: jest.fn(),
+  disconnect: jest.fn(),
+  onaudioprocess: null as ((event: any) => void) | null,
+};
+
 const mockAudioContext = {
   createMediaStreamSource: jest.fn(() => ({
     connect: jest.fn(),
     disconnect: jest.fn(),
   })),
-  createScriptProcessor: jest.fn(() => ({
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    onaudioprocess: null,
-  })),
+  createScriptProcessor: jest.fn(() => mockScriptProcessor),
   destination: {},
   sampleRate: 16000,
   state: 'running',
   suspend: jest.fn().mockResolvedValue(undefined),
   resume: jest.fn().mockResolvedValue(undefined),
   close: jest.fn().mockResolvedValue(undefined),
+  audioWorklet: undefined as any,
+};
+
+// Mock AudioWorkletNode
+const mockWorkletPort = {
+  onmessage: null as ((event: any) => void) | null,
+  postMessage: jest.fn(),
+};
+
+const mockWorkletNode = {
+  connect: jest.fn(),
+  disconnect: jest.fn(),
+  port: mockWorkletPort,
 };
 
 describe('AudioCapture', () => {
@@ -37,6 +52,20 @@ describe('AudioCapture', () => {
 
     // Reset mock track
     mockTrack.stop.mockClear();
+
+    // Reset script processor
+    mockScriptProcessor.connect.mockClear();
+    mockScriptProcessor.disconnect.mockClear();
+    mockScriptProcessor.onaudioprocess = null;
+
+    // Reset worklet mocks
+    mockWorkletPort.onmessage = null;
+    mockWorkletPort.postMessage.mockClear();
+    mockWorkletNode.connect.mockClear();
+    mockWorkletNode.disconnect.mockClear();
+
+    // Default: no AudioWorklet support (fallback path)
+    mockAudioContext.audioWorklet = undefined;
 
     // Mock getUserMedia
     global.navigator.mediaDevices.getUserMedia = jest.fn().mockResolvedValue(mockMediaStream);
@@ -273,14 +302,125 @@ describe('AudioCapture', () => {
     });
   });
 
-  describe('audio processing', () => {
-    it('should call callback with audio data', async () => {
+  describe('audio processing (ScriptProcessor fallback)', () => {
+    it('should use ScriptProcessorNode when AudioWorklet is not available', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect(mockAudioContext.createScriptProcessor).toHaveBeenCalled();
+      expect(audioCapture.isUsingWorklet()).toBe(false);
+    });
+
+    it('should call callback with audio data via ScriptProcessor', async () => {
       const callback = jest.fn();
 
       await audioCapture.start(callback);
 
       // Verify the audio processing setup was created
       expect(mockAudioContext.createScriptProcessor).toHaveBeenCalled();
+    });
+  });
+
+  describe('audio processing (AudioWorklet)', () => {
+    let mockAddModule: jest.Mock;
+
+    beforeEach(() => {
+      // Set up AudioWorklet support
+      mockAddModule = jest.fn().mockResolvedValue(undefined);
+      mockAudioContext.audioWorklet = {
+        addModule: mockAddModule,
+      };
+
+      // Mock AudioWorkletNode constructor
+      (global as any).AudioWorkletNode = jest.fn(() => mockWorkletNode);
+
+      // Mock URL.createObjectURL and URL.revokeObjectURL
+      (global as any).URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+      (global as any).URL.revokeObjectURL = jest.fn();
+
+      // Mock Blob constructor
+      (global as any).Blob = jest.fn().mockImplementation(() => ({}));
+    });
+
+    afterEach(() => {
+      delete (global as any).AudioWorkletNode;
+    });
+
+    it('should use AudioWorkletNode when available', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect(mockAddModule).toHaveBeenCalled();
+      expect((global as any).AudioWorkletNode).toHaveBeenCalledWith(
+        mockAudioContext,
+        'audio-capture-processor'
+      );
+      expect(audioCapture.isUsingWorklet()).toBe(true);
+    });
+
+    it('should create a Blob URL for the worklet processor', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect((global as any).Blob).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.stringContaining('AudioCaptureProcessor')]),
+        { type: 'application/javascript' }
+      );
+      expect((global as any).URL.createObjectURL).toHaveBeenCalled();
+    });
+
+    it('should revoke the Blob URL after addModule', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect((global as any).URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    });
+
+    it('should set up message handler on worklet port', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect(mockWorkletPort.onmessage).toBeInstanceOf(Function);
+    });
+
+    it('should not create ScriptProcessorNode when AudioWorklet succeeds', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect(mockAudioContext.createScriptProcessor).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to ScriptProcessorNode when addModule fails', async () => {
+      mockAddModule.mockRejectedValueOnce(new Error('addModule not supported'));
+
+      await audioCapture.start(jest.fn());
+
+      expect(mockAudioContext.createScriptProcessor).toHaveBeenCalled();
+      expect(audioCapture.isUsingWorklet()).toBe(false);
+    });
+
+    it('should fall back to ScriptProcessorNode when AudioWorkletNode constructor fails', async () => {
+      (global as any).AudioWorkletNode = jest.fn(() => {
+        throw new Error('AudioWorkletNode not supported');
+      });
+
+      await audioCapture.start(jest.fn());
+
+      expect(mockAudioContext.createScriptProcessor).toHaveBeenCalled();
+      expect(audioCapture.isUsingWorklet()).toBe(false);
+    });
+
+    it('should clean up worklet node on stop', async () => {
+      await audioCapture.start(jest.fn());
+
+      expect(audioCapture.isUsingWorklet()).toBe(true);
+
+      await audioCapture.stop();
+
+      expect(mockWorkletNode.disconnect).toHaveBeenCalled();
+      expect(audioCapture.isUsingWorklet()).toBe(false);
+    });
+
+    it('should revoke Blob URL even when addModule fails', async () => {
+      mockAddModule.mockRejectedValueOnce(new Error('addModule not supported'));
+
+      await audioCapture.start(jest.fn());
+
+      expect((global as any).URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     });
   });
 

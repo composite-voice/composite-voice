@@ -342,7 +342,7 @@ describe('ElevenLabsTTS', () => {
       // Clear BOS message
       mockWsManager.send.mockClear();
 
-      provider.sendText('Hello, world!');
+      provider.processChunk('Hello, world!');
 
       expect(mockWsManager.send).toHaveBeenCalledWith(
         JSON.stringify({
@@ -353,7 +353,7 @@ describe('ElevenLabsTTS', () => {
     });
 
     it('should not send text when not connected', () => {
-      provider.sendText('Hello, world!');
+      provider.processChunk('Hello, world!');
 
       // Only BOS would be sent on connect, not this text
       expect(mockWsManager.send).not.toHaveBeenCalled();
@@ -366,7 +366,7 @@ describe('ElevenLabsTTS', () => {
       mockWsManager.send.mockClear();
 
       const chunks = ['Hello', ' ', 'world', '!'];
-      chunks.forEach((chunk) => provider.sendText(chunk));
+      chunks.forEach((chunk) => provider.processChunk(chunk));
 
       expect(mockWsManager.send).toHaveBeenCalledTimes(4);
     });
@@ -380,7 +380,7 @@ describe('ElevenLabsTTS', () => {
       });
 
       // Should not throw
-      expect(() => provider.sendText('Hello')).not.toThrow();
+      expect(() => provider.processChunk('Hello')).not.toThrow();
     });
   });
 

@@ -23,16 +23,19 @@ Mistral's API is OpenAI-compatible, so the `openai` package handles all communic
 import { CompositeVoice, MistralLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new MistralLLM({
-    proxyUrl: '/api/proxy/mistral',
-    model: 'mistral-small-latest',
-    systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new MistralLLM({
+      proxyUrl: '/api/proxy/mistral',
+      model: 'mistral-small-latest',
+      systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -68,26 +71,29 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    options: { model: 'nova-3', smartFormat: true },
-  }),
-  llm: new MistralLLM({
-    proxyUrl: '/api/proxy/mistral',
-    model: 'mistral-small-latest',
-    temperature: 0.7,
-    maxTokens: 256,
-    systemPrompt: 'Tu es un assistant vocal amical. Reponds brievement.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      options: { model: 'nova-3', smartFormat: true },
+    }),
+    new MistralLLM({
+      proxyUrl: '/api/proxy/mistral',
+      model: 'mistral-small-latest',
+      temperature: 0.7,
+      maxTokens: 256,
+      systemPrompt: 'Tu es un assistant vocal amical. Reponds brievement.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Tips

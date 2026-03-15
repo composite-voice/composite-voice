@@ -22,14 +22,16 @@ Set `autoRecover: true` on the top-level config to let the SDK attempt automatic
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant.',
-    maxTokens: 200,
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant.',
+      maxTokens: 200,
+    }),
+    new NativeTTS(),
+  ],
   autoRecover: true,
 });
 ```
@@ -241,7 +243,7 @@ for (const event of errorEvents) {
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   autoRecover: true,
   logging: { enabled: true, level: 'debug' },
 });
@@ -251,7 +253,7 @@ const agent = new CompositeVoice({
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   autoRecover: true,
   logging: {
     enabled: true,
@@ -308,20 +310,23 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    options: { model: 'nova-3', interimResults: true },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: `${window.location.origin}/proxy/anthropic`,
-    model: 'claude-haiku-4-5-20251001',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-    maxTokens: 200,
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: `${window.location.origin}/proxy/deepgram`,
-    options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      interimResults: true,
+      options: { model: 'nova-3' },
+    }),
+    new AnthropicLLM({
+      proxyUrl: `${window.location.origin}/proxy/anthropic`,
+      model: 'claude-haiku-4-5-20251001',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+      maxTokens: 200,
+    }),
+    new DeepgramTTS({
+      proxyUrl: `${window.location.origin}/proxy/deepgram`,
+      options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
+    }),
+  ],
   autoRecover: true,
   reconnection: {
     enabled: true,

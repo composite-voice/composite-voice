@@ -13,8 +13,8 @@ class MockLLMProvider implements LLMProvider {
   roles = ['llm'] as const;
   config = { model: 'mock' };
 
-  generateCalls: string[] = [];
-  generateFromMessagesCalls: LLMMessage[][] = [];
+  processTextCalls: string[] = [];
+  processMessagesCalls: LLMMessage[][] = [];
 
   async initialize() {}
   async dispose() {}
@@ -22,8 +22,8 @@ class MockLLMProvider implements LLMProvider {
     return true;
   }
 
-  async generate(prompt: string) {
-    this.generateCalls.push(prompt);
+  async processText(prompt: string) {
+    this.processTextCalls.push(prompt);
     const response = `Mock response to: ${prompt}`;
     return {
       async *[Symbol.asyncIterator]() {
@@ -32,13 +32,25 @@ class MockLLMProvider implements LLMProvider {
     };
   }
 
-  async generateFromMessages(messages: LLMMessage[]) {
-    this.generateFromMessagesCalls.push([...messages]);
+  async generate(prompt: string) {
+    return this.processText(prompt);
+  }
+
+  async processMessages(messages: LLMMessage[]) {
+    this.processMessagesCalls.push([...messages]);
     return {
       async *[Symbol.asyncIterator]() {
         yield 'Mock response from history';
       },
     };
+  }
+
+  async generateFromMessages(messages: LLMMessage[]) {
+    return this.processMessages(messages);
+  }
+
+  isToolCall(_chunk: unknown): boolean {
+    return false;
   }
 }
 
@@ -210,15 +222,24 @@ describe('Composite Mode Integration', () => {
         isReady() {
           return false;
         }
-        async generate() {
+        async processText() {
           return {
             async *[Symbol.asyncIterator]() {
               yield 'test';
             },
           };
         }
+        async generate() {
+          return this.processText();
+        }
+        async processMessages() {
+          return this.processText();
+        }
         async generateFromMessages() {
-          return this.generate();
+          return this.processText();
+        }
+        isToolCall(_chunk: unknown): boolean {
+          return false;
         }
       }
 
@@ -288,7 +309,7 @@ describe('Composite Mode Integration', () => {
       expect(agent.getHistory()).toEqual([]);
     });
 
-    it('should use generate() when history is disabled', async () => {
+    it('should use processText() when history is disabled', async () => {
       const noHistoryLLM = new MockLLMProvider();
       const noHistoryAgent = new CompositeVoice({
         providers: [new NativeSTT(), noHistoryLLM, new NativeTTS()],
@@ -297,8 +318,8 @@ describe('Composite Mode Integration', () => {
 
       // Simulate transcription by directly triggering via internal method (via event simulation)
       // We test this by verifying the default (no conversationHistory config)
-      // has generate() called, not generateFromMessages()
-      expect(noHistoryLLM.generateFromMessagesCalls).toHaveLength(0);
+      // has processText() called, not processMessages()
+      expect(noHistoryLLM.processMessagesCalls).toHaveLength(0);
 
       await noHistoryAgent.dispose();
     });

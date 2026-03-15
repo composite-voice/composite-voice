@@ -68,31 +68,6 @@ type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').Message
  */
 export interface AnthropicLLMConfig extends LLMProviderConfig {
   /**
-   * Anthropic API key.
-   * Required when connecting directly to Anthropic.
-   * Omit when using `proxyUrl` -- the proxy server supplies the key.
-   *
-   * @defaultValue `undefined`
-   */
-  apiKey?: string;
-  /**
-   * URL of the CompositeVoice proxy server's Anthropic endpoint.
-   *
-   * @remarks
-   * When set, the Anthropic SDK sends requests to this URL instead of
-   * `https://api.anthropic.com`, allowing browsers to reach Anthropic through a
-   * same-origin proxy that injects the real API key server-side. A dummy API
-   * key (`'proxy'`) is used with the SDK.
-   *
-   * @defaultValue `undefined`
-   *
-   * @example
-   * ```ts
-   * proxyUrl: 'http://localhost:3000/api/proxy/anthropic'
-   * ```
-   */
-  proxyUrl?: string;
-  /**
    * Anthropic model identifier.
    *
    * @remarks
@@ -113,16 +88,6 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
    * @defaultValue `1024`
    */
   maxTokens?: number;
-  /**
-   * Base URL for the Anthropic API.
-   *
-   * @remarks
-   * For custom endpoints only. Use `proxyUrl` for the CompositeVoice proxy
-   * pattern. When neither is set, the SDK defaults to `https://api.anthropic.com`.
-   *
-   * @defaultValue `undefined` (SDK default: `'https://api.anthropic.com'`)
-   */
-  baseURL?: string;
   /**
    * Maximum number of retries for failed API requests.
    *
@@ -228,27 +193,17 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    * `@anthropic-ai/sdk` package cannot be found (peer dependency not installed).
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'AnthropicLLM',
-        new Error('AnthropicLLM requires either "apiKey" or "proxyUrl" to be configured.')
-      );
-    }
+    this.assertAuth();
 
     try {
       // Dynamically import Anthropic SDK (peer dependency)
       const AnthropicModule = await import('@anthropic-ai/sdk');
       const Anthropic = AnthropicModule.default;
 
-      // When using a proxy, point the SDK at the proxy URL with a dummy key.
-      // The proxy server injects the real Anthropic API key.
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
-
       // Initialize Anthropic client
       this.client = new Anthropic({
-        apiKey,
-        baseURL,
+        apiKey: this.resolveApiKey(),
+        baseURL: this.resolveBaseUrl(),
         maxRetries: this.config.maxRetries ?? 3,
         timeout: this.config.timeout ?? 60000,
         dangerouslyAllowBrowser: true,
@@ -306,6 +261,19 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    */
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     const messages = this.promptToMessages(prompt);
+    return this.generateFromMessages(messages, options);
+  }
+
+  /**
+   * Implement the abstract {@link BaseLLMProvider.processMessages} method.
+   *
+   * @remarks
+   * Delegates to {@link generateFromMessages}.
+   */
+  async processMessages(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>> {
     return this.generateFromMessages(messages, options);
   }
 

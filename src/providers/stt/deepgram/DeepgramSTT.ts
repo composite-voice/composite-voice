@@ -11,7 +11,7 @@
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
+import { ProviderConnectionError } from '../../../utils/errors';
 
 /**
  * Deepgram-specific transcription options passed as query parameters
@@ -189,21 +189,6 @@ export interface DeepgramTranscriptionOptions {
  * @see {@link DeepgramSTT} for the provider class
  */
 export interface DeepgramSTTConfig extends STTProviderConfig {
-  /**
-   * Deepgram API key.
-   * Required when connecting directly to Deepgram.
-   * Omit when using `proxyUrl` — the proxy server supplies the key.
-   */
-  apiKey?: string;
-  /**
-   * URL of the CompositeVoice proxy server's Deepgram endpoint.
-   * Example: `'http://localhost:3000/api/proxy/deepgram'`
-   *
-   * When set, the WebSocket connects through this URL instead of
-   * `wss://api.deepgram.com`, allowing browsers to reach Deepgram through a
-   * same-origin proxy that injects the real API key server-side.
-   */
-  proxyUrl?: string;
   /** Deepgram transcription options */
   options?: DeepgramTranscriptionOptions;
 }
@@ -345,14 +330,9 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Thrown when neither `apiKey` nor `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'DeepgramSTT',
-        new Error('DeepgramSTT requires either "apiKey" or "proxyUrl" to be configured.')
-      );
-    }
+    this.assertAuth();
 
-    if (this.config.proxyUrl) {
+    if (this.isProxyMode) {
       this.logger.info('Deepgram STT initialized (proxy mode)', {
         proxyUrl: this.config.proxyUrl,
       });
@@ -382,9 +362,7 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Direct mode: `wss://api.deepgram.com/v1/listen?model=nova-3&...`
    */
   private buildConnectionUrl(): string {
-    const base = this.config.proxyUrl
-      ? this.config.proxyUrl.replace(/^http/, 'ws')
-      : DEEPGRAM_WS_URL;
+    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
 
     const params = new URLSearchParams();
     const opts = this.config.options;
@@ -501,13 +479,10 @@ export class DeepgramSTT extends LiveSTTProvider {
 
       const url = this.buildConnectionUrl();
 
-      if (this.config.proxyUrl) {
-        // Proxy mode: no auth — the proxy injects the real API key
-        this.ws = new WebSocket(url);
-      } else {
-        // Direct mode: auth via WebSocket subprotocol
-        this.ws = new WebSocket(url, ['token', this.config.apiKey!]);
-      }
+      const protocols = this.resolveWsProtocols('token');
+      this.ws = protocols
+        ? new WebSocket(url, protocols)
+        : new WebSocket(url);
 
       // Wait for the connection to open (with timeout)
       const timeoutMs = this.config.timeout ?? 10000;
@@ -776,9 +751,11 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Sends the audio data as a binary WebSocket frame. If the connection is
    * not open, the chunk is silently dropped and a warning is logged.
    *
+   * Called by the base class's {@link LiveSTTProvider.sendAudio} method.
+   *
    * @param chunk - Raw audio data captured from the microphone.
    */
-  sendAudio(chunk: ArrayBuffer): void {
+  protected sendAudioToSocket(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send audio: not connected');
       return;

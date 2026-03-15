@@ -113,9 +113,11 @@ Point each provider at the proxy URL:
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
 });
 ```
 
@@ -150,6 +152,37 @@ Omit the `cors` option when the frontend is served from the same origin. The pro
 - **Graceful shutdown.** Listen for `SIGTERM` and call `server.close()` to drain active connections before exiting.
 - **TLS termination.** Use a reverse proxy like nginx or a cloud load balancer for HTTPS. The Node.js proxy handles plain HTTP.
 - **Containerization.** This adapter works well in Docker. Expose port 3000 and set API keys through container environment variables.
+
+## Security
+
+The proxy supports a built-in `security` configuration with rate limiting, body size limits, WebSocket message size limits, and custom authentication:
+
+```typescript
+const proxy = createNodeProxy({
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  pathPrefix: '/api/proxy',
+  security: {
+    maxBodySize: 1_000_000,          // 1 MB max request body
+    maxWsMessageSize: 500_000,       // 500 KB max WebSocket message
+    rateLimit: {
+      maxRequests: 100,              // 100 requests per window per IP
+      windowMs: 60_000,              // 1-minute window
+    },
+    authenticate: (req) => {
+      return req.headers['x-api-key'] === process.env.APP_SECRET;
+    },
+  },
+});
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `security.maxBodySize` | `number` | `undefined` | Max HTTP request body in bytes (413 if exceeded) |
+| `security.maxWsMessageSize` | `number` | `undefined` | Max WebSocket message in bytes (closes with 1009 if exceeded) |
+| `security.rateLimit.maxRequests` | `number` | -- | Max requests per window per IP |
+| `security.rateLimit.windowMs` | `number` | `60000` | Rate limit window in milliseconds |
+| `security.authenticate` | `function` | `undefined` | Custom auth function; return `false` to reject with 401 |
 
 ## Further reading
 

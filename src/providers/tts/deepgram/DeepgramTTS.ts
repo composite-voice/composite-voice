@@ -15,7 +15,7 @@
 import { LiveTTSProvider } from '../../base/LiveTTSProvider';
 import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
+import { ProviderConnectionError } from '../../../utils/errors';
 
 /**
  * Deepgram-specific TTS synthesis options.
@@ -84,26 +84,6 @@ export interface DeepgramTTSOptions {
  * @see {@link DeepgramTTSOptions} - Additional Deepgram-specific synthesis options.
  */
 export interface DeepgramTTSConfig extends TTSProviderConfig {
-  /**
-   * Deepgram API key for direct authentication.
-   *
-   * @remarks
-   * Required when connecting directly to Deepgram (no proxy).
-   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
-   */
-  apiKey?: string;
-
-  /**
-   * URL of the CompositeVoice proxy server's Deepgram endpoint.
-   *
-   * @remarks
-   * When set, the WebSocket connection is routed through the proxy and the
-   * `apiKey` is not required on the client side.
-   *
-   * @example `'http://localhost:3001/api/proxy/deepgram'`
-   */
-  proxyUrl?: string;
-
   /**
    * Additional Deepgram-specific TTS options.
    *
@@ -198,14 +178,9 @@ export class DeepgramTTS extends LiveTTSProvider {
    * @throws {@link ProviderInitializationError} if neither `apiKey` nor `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl) {
-      throw new ProviderInitializationError(
-        'DeepgramTTS',
-        new Error('DeepgramTTS requires either "apiKey" or "proxyUrl" to be configured.')
-      );
-    }
+    this.assertAuth();
 
-    if (this.config.proxyUrl) {
+    if (this.isProxyMode) {
       this.logger.info('Deepgram TTS initialized (proxy mode)', { proxyUrl: this.config.proxyUrl });
     } else {
       this.logger.info('Deepgram TTS initialized (direct mode)', {
@@ -235,9 +210,7 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Direct mode: `wss://api.deepgram.com/v1/speak?model=aura-2-thalia-en&...`
    */
   private buildConnectionUrl(): string {
-    const base = this.config.proxyUrl
-      ? this.config.proxyUrl.replace(/^http/, 'ws')
-      : DEEPGRAM_WS_URL;
+    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
 
     const model = this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en';
     const encoding = this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16';
@@ -279,13 +252,10 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       const url = this.buildConnectionUrl();
 
-      if (this.config.proxyUrl) {
-        // Proxy mode: no auth — the proxy injects the real API key
-        this.ws = new WebSocket(url);
-      } else {
-        // Direct mode: auth via WebSocket subprotocol
-        this.ws = new WebSocket(url, ['token', this.config.apiKey!]);
-      }
+      const protocols = this.resolveWsProtocols('token');
+      this.ws = protocols
+        ? new WebSocket(url, protocols)
+        : new WebSocket(url);
 
       // Receive binary audio as ArrayBuffer (not Blob)
       this.ws.binaryType = 'arraybuffer';
@@ -437,9 +407,11 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Deepgram processes the text incrementally and emits audio chunks.
    * If not connected, the call is silently ignored with a warning log.
    *
+   * Called by the base class's {@link LiveTTSProvider.sendText} method.
+   *
    * @param text - The text to synthesize into speech.
    */
-  sendText(text: string): void {
+  protected sendTextToSocket(text: string): void {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot send text: not connected');
       return;
@@ -460,9 +432,11 @@ export class DeepgramTTS extends LiveTTSProvider {
    * has been processed and all resulting audio has been emitted. Waits for
    * the `Flushed` event or a 1-second timeout before resolving.
    *
+   * Called by the base class's {@link LiveTTSProvider.finalize} method.
+   *
    * @throws Rethrows any error that occurs during finalization.
    */
-  async finalize(): Promise<void> {
+  protected async finalizeSocket(): Promise<void> {
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Cannot finalize: not connected');
       return;

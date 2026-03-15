@@ -55,7 +55,7 @@ import { Logger } from '../../../utils/logger';
  * };
  * ```
  *
- * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, baseURL, etc.).
+ * @see {@link OpenAICompatibleLLMConfig} for inherited properties (apiKey, proxyUrl, endpoint, etc.).
  */
 export interface MistralLLMConfig extends OpenAICompatibleLLMConfig {
   /**
@@ -131,7 +131,7 @@ export class MistralLLM extends OpenAICompatibleLLM {
     const finalConfig: MistralLLMConfig = {
       ...config,
       ...(resolvedKey !== undefined ? { apiKey: resolvedKey } : {}),
-      baseURL: config.baseURL ?? MISTRAL_DEFAULTS.baseURL,
+      endpoint: config.endpoint ?? MISTRAL_DEFAULTS.baseURL,
       model: config.model ?? MISTRAL_DEFAULTS.model,
     };
     super(finalConfig, logger);

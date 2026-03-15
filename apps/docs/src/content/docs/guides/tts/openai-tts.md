@@ -21,20 +21,23 @@ npm install openai
 import { CompositeVoice, NativeSTT, AnthropicLLM, OpenAITTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new NativeSTT(),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts: new OpenAITTS({
-    proxyUrl: '/api/proxy/openai',
-    model: 'tts-1',
-    voice: 'nova',
-    responseFormat: 'mp3',
-  }),
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    new OpenAITTS({
+      proxyUrl: '/api/proxy/openai',
+      model: 'tts-1',
+      voice: 'nova',
+      responseFormat: 'mp3',
+    }),
+  ],
 });
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Configuration options
@@ -48,7 +51,7 @@ await voice.start();
 | `responseFormat` | `string` | `'mp3'` | Output format: `mp3`, `opus`, `aac`, `flac`, `wav` |
 | `speed` | `number` | `1.0` | Speech speed multiplier (0.25 to 4.0) |
 | `organizationId` | `string` | -- | OpenAI organization ID for billing |
-| `baseURL` | `string` | -- | Custom API endpoint (e.g., Azure OpenAI) |
+| `endpoint` | `string` | -- | Custom API endpoint URL (e.g., Azure OpenAI) |
 | `maxRetries` | `number` | `3` | Retry count for failed requests |
 
 ### Available voices
@@ -81,18 +84,21 @@ const tts = new OpenAITTS({
 });
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-  }),
-  tts,
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+    }),
+    tts,
+  ],
 });
 
-voice.on('tts:start', () => console.log('Speaking...'));
-voice.on('tts:end', () => console.log('Done speaking'));
+voice.on('tts.start', () => console.log('Speaking...'));
+voice.on('tts.end', () => console.log('Done speaking'));
 
-await voice.start();
+await voice.initialize();
+await voice.startListening();
 ```
 
 ## Model selection
@@ -105,7 +111,7 @@ await voice.start();
 - OpenAI TTS has a 4096-character limit per request. CompositeVoice handles this automatically in the pipeline, but keep it in mind for standalone use.
 - The `opus` format gives the best balance of quality and size for browser playback.
 - OpenAITTS is REST-based, not streaming. The full audio Blob is returned after the API processes the entire input. For real-time streaming, consider [DeepgramTTS](/guides/tts/deepgram-tts).
-- Use `baseURL` to point at Azure OpenAI or any API-compatible endpoint. For CompositeVoice proxy routing, use `proxyUrl` instead.
+- Use `endpoint` to point at Azure OpenAI or any API-compatible endpoint. For CompositeVoice proxy routing, use `proxyUrl` instead.
 
 ## Further reading
 

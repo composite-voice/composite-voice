@@ -104,9 +104,11 @@ Point each provider at the proxy URL instead of supplying an API key:
 import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
-  llm: new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
-  tts: new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
 });
 ```
 
@@ -132,11 +134,43 @@ Set `origins: ['*']` during development to allow any origin. In production, list
 
 ## Production tips
 
-- **Rate limiting.** Add `express-rate-limit` before the proxy middleware to prevent abuse.
+- **Rate limiting.** Use the built-in `security.rateLimit` option (see below) or add `express-rate-limit` before the proxy middleware to prevent abuse.
 - **Error handling.** The middleware calls `next(err)` on upstream failures. Add an Express error handler to return structured error responses.
 - **Static serving.** Serve your built frontend from the same Express app to avoid CORS entirely.
 - **Process manager.** Run with PM2 or systemd for automatic restarts.
 - **Health checks.** Mount a `/health` route before the proxy middleware for load-balancer probes.
+
+## Security
+
+The proxy supports a built-in `security` configuration with rate limiting, body size limits, WebSocket message size limits, and custom authentication:
+
+```typescript
+const proxy = createExpressProxy({
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  pathPrefix: '/api/proxy',
+  security: {
+    maxBodySize: 1_000_000,          // 1 MB max request body
+    maxWsMessageSize: 500_000,       // 500 KB max WebSocket message
+    rateLimit: {
+      maxRequests: 100,              // 100 requests per window per IP
+      windowMs: 60_000,              // 1-minute window
+    },
+    authenticate: (req) => {
+      // Return true to allow, false to reject with 401
+      return req.headers['x-api-key'] === process.env.APP_SECRET;
+    },
+  },
+});
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `security.maxBodySize` | `number` | `undefined` | Max HTTP request body in bytes (413 if exceeded) |
+| `security.maxWsMessageSize` | `number` | `undefined` | Max WebSocket message in bytes (closes with 1009 if exceeded) |
+| `security.rateLimit.maxRequests` | `number` | -- | Max requests per window per IP |
+| `security.rateLimit.windowMs` | `number` | `60000` | Rate limit window in milliseconds |
+| `security.authenticate` | `function` | `undefined` | Custom auth function; return `false` to reject with 401 |
 
 ## Further reading
 

@@ -80,17 +80,40 @@ function collectRequestHeaders(req: IncomingMessage): Record<string, string> {
  * Read the full request body from an incoming message into a Buffer.
  *
  * @param req - The incoming HTTP request to consume the body from.
+ * @param maxBodySize - Optional maximum body size in bytes. If the body exceeds
+ *   this limit the promise rejects with a `BodyTooLargeError`.
  * @returns A promise that resolves to a Buffer containing the complete request body.
  *
+ * @throws {BodyTooLargeError} If `maxBodySize` is set and the body exceeds it.
  * @throws Rejects if the request stream emits an error.
  */
-async function readBody(req: IncomingMessage): Promise<Buffer> {
+async function readBody(req: IncomingMessage, maxBodySize?: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    let totalBytes = 0;
+    req.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (maxBodySize !== undefined && totalBytes > maxBodySize) {
+        req.destroy();
+        reject(new BodyTooLargeError());
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+}
+
+/**
+ * Sentinel error thrown when a request body exceeds the configured maximum size.
+ * @internal
+ */
+export class BodyTooLargeError extends Error {
+  constructor() {
+    super('Request body exceeds maximum allowed size');
+    this.name = 'BodyTooLargeError';
+  }
 }
 
 /**
@@ -110,6 +133,9 @@ async function readBody(req: IncomingMessage): Promise<Buffer> {
  *   (e.g., `https://api.anthropic.com/v1/messages`).
  * @param authHeaders - Authentication headers to inject into the upstream request
  *   (e.g., `{ 'x-api-key': '...' }`).
+ * @param options - Optional settings for body size limiting.
+ * @param options.maxBodySize - Maximum request body size in bytes.
+ *   Requests exceeding this are rejected with 413 Payload Too Large.
  * @returns A promise that resolves when the response has been fully streamed.
  *
  * @throws Writes a 502 JSON error response to `res` if the upstream `fetch` fails.
@@ -128,9 +154,34 @@ export async function forwardHttpRequest(
   req: IncomingMessage,
   res: ServerResponse,
   targetUrl: string,
-  authHeaders: Record<string, string>
+  authHeaders: Record<string, string>,
+  options?: { maxBodySize?: number }
 ): Promise<void> {
-  const body = await readBody(req);
+  // Early rejection via Content-Length header before reading the body
+  if (options?.maxBodySize !== undefined) {
+    const contentLength = parseInt(req.headers['content-length'] ?? '', 10);
+    if (!isNaN(contentLength) && contentLength > options.maxBodySize) {
+      res.statusCode = 413;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }));
+      return;
+    }
+  }
+
+  let body: Buffer;
+  try {
+    body = await readBody(req, options?.maxBodySize);
+  } catch (err) {
+    if (err instanceof BodyTooLargeError) {
+      if (!res.headersSent) {
+        res.statusCode = 413;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }));
+      }
+      return;
+    }
+    throw err;
+  }
 
   const headers: Record<string, string> = {
     ...collectRequestHeaders(req),

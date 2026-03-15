@@ -29,7 +29,7 @@ import type {
   LLMMessage,
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError } from '../../../utils/errors';
+import { importPeerDep } from '../../../utils/importPeerDep';
 
 // Type-safe imports for optional peer dependency
 type MLCEngine = import('@mlc-ai/web-llm').MLCEngine;
@@ -228,47 +228,35 @@ export class WebLLMLLM extends BaseLLMProvider {
    * not installed) or if engine creation fails (e.g., no WebGPU support).
    */
   protected async onInitialize(): Promise<void> {
-    try {
-      const webllm = await import('@mlc-ai/web-llm');
+    // Dynamically import WebLLM SDK (peer dependency)
+    const webllm = await importPeerDep<typeof import('@mlc-ai/web-llm')>(
+      '@mlc-ai/web-llm',
+      'WebLLMLLM',
+    );
 
-      this.logger.info('Loading WebLLM model (this may take a while on first run)', {
-        model: this.config.model,
-      });
+    this.logger.info('Loading WebLLM model (this may take a while on first run)', {
+      model: this.config.model,
+    });
 
-      this.engine = await webllm.CreateMLCEngine(this.config.model, {
-        initProgressCallback: (report: InitProgressReport) => {
-          this.config.onLoadProgress?.({
-            progress: report.progress,
-            timeElapsed: report.timeElapsed,
-            text: report.text,
-          });
-          this.logger.debug('WebLLM load progress', {
-            progress: Math.round(report.progress * 100),
-            text: report.text,
-          });
-        },
-        ...(this.config.chatOpts ? { chatOpts: this.config.chatOpts } : {}),
-      });
+    this.engine = await webllm.CreateMLCEngine(this.config.model, {
+      initProgressCallback: (report: InitProgressReport) => {
+        this.config.onLoadProgress?.({
+          progress: report.progress,
+          timeElapsed: report.timeElapsed,
+          text: report.text,
+        });
+        this.logger.debug('WebLLM load progress', {
+          progress: Math.round(report.progress * 100),
+          text: report.text,
+        });
+      },
+      ...(this.config.chatOpts ? { chatOpts: this.config.chatOpts } : {}),
+    });
 
-      this.logger.info('WebLLM engine ready', {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if (
-        (error as Error).message?.includes('Cannot find module') ||
-        (error as Error).message?.includes('Failed to resolve')
-      ) {
-        throw new ProviderInitializationError(
-          'WebLLMLLM',
-          new Error(
-            'WebLLM SDK not found. Install with: npm install @mlc-ai/web-llm\n' +
-              'The @mlc-ai/web-llm package is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('WebLLMLLM', error as Error);
-    }
+    this.logger.info('WebLLM engine ready', {
+      model: this.config.model,
+      stream: this.config.stream ?? true,
+    });
   }
 
   /**
@@ -287,31 +275,6 @@ export class WebLLMLLM extends BaseLLMProvider {
       this.engine = null;
     }
     this.logger.info('WebLLM engine disposed (GPU memory freed)');
-  }
-
-  /**
-   * Generate an LLM response from a single text prompt.
-   *
-   * @remarks
-   * Convenience wrapper that converts the prompt to a message array (prepending
-   * the system prompt if configured) and delegates to
-   * {@link WebLLMLLM.generateFromMessages | generateFromMessages}.
-   *
-   * @param prompt - The user's text prompt.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the engine is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   */
-  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
-    const messages = this.promptToMessages(prompt);
-    return this.generateFromMessages(messages, options);
   }
 
   /**
@@ -345,13 +308,21 @@ export class WebLLMLLM extends BaseLLMProvider {
    *   { role: 'user', content: 'What can you do offline?' },
    * ];
    *
-   * const stream = await webllm.generateFromMessages(messages);
+   * const stream = await webllm.processMessages(messages);
    * for await (const chunk of stream) {
    *   console.log(chunk);
    * }
    * ```
    */
-  async generateFromMessages(
+  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    return this.processText(prompt, options);
+  }
+
+  async generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    return this.processMessages(messages, options);
+  }
+
+  async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {

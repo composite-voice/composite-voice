@@ -75,6 +75,42 @@ export interface BaseProviderConfig {
   endpoint?: string;
 
   /**
+   * URL of a CompositeVoice proxy server endpoint for this provider.
+   *
+   * @remarks
+   * When set, requests are routed through the proxy which injects the real
+   * API key server-side. This keeps API keys out of the browser. For
+   * WebSocket providers the HTTP URL is automatically converted to `ws(s)://`.
+   *
+   * At least one of `apiKey` or `proxyUrl` must be set for providers that
+   * require authentication (all except NativeSTT, NativeTTS, and WebLLM).
+   *
+   * @example
+   * ```ts
+   * proxyUrl: 'http://localhost:3000/api/proxy/deepgram'
+   * ```
+   */
+  proxyUrl?: string;
+
+  /**
+   * Authentication type for providers that support multiple auth mechanisms.
+   *
+   * @remarks
+   * Controls how the `apiKey` is sent to the provider:
+   *
+   * - `'token'` — WebSocket subprotocol `['token', apiKey]` or header `Authorization: Token <key>`.
+   *   This is the default for Deepgram providers.
+   * - `'bearer'` — WebSocket subprotocol `['bearer', token]` or header `Authorization: Bearer <token>`.
+   *   Use this for OAuth tokens or providers that expect Bearer auth.
+   *
+   * REST/SDK providers (Anthropic, OpenAI) handle auth through their SDK constructors
+   * and ignore this field.
+   *
+   * @defaultValue Provider-specific (typically 'token' for Deepgram, ignored for REST providers)
+   */
+  authType?: 'token' | 'bearer';
+
+  /**
    * Whether to enable debug logging for this provider.
    *
    * @remarks
@@ -436,6 +472,32 @@ export interface RestSTTProvider extends BaseProvider {
    * @param callback - Function invoked with each {@link TranscriptionResult}
    */
   onTranscription(callback: (result: TranscriptionResult) => void): void;
+
+  // ─── Guard Methods ──────────────────────────────────────────────────
+
+  /**
+   * Check whether a transcription result signals an utterance-complete event.
+   * @param result - The transcription result to check.
+   */
+  isUtteranceComplete(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is a preflight (speculative) signal.
+   * @param result - The transcription result to check.
+   */
+  isPreflight(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is interim (not yet finalised).
+   * @param result - The transcription result to check.
+   */
+  isInterim(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is final (committed text).
+   * @param result - The transcription result to check.
+   */
+  isFinal(result: TranscriptionResult): boolean;
 }
 
 /**
@@ -523,6 +585,32 @@ export interface LiveSTTProvider extends BaseProvider {
    * @param callback - Function invoked with each {@link TranscriptionResult}
    */
   onTranscription(callback: (result: TranscriptionResult) => void): void;
+
+  // ─── Guard Methods ──────────────────────────────────────────────────
+
+  /**
+   * Check whether a transcription result signals an utterance-complete event.
+   * @param result - The transcription result to check.
+   */
+  isUtteranceComplete(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is a preflight (speculative) signal.
+   * @param result - The transcription result to check.
+   */
+  isPreflight(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is interim (not yet finalised).
+   * @param result - The transcription result to check.
+   */
+  isInterim(result: TranscriptionResult): boolean;
+
+  /**
+   * Check whether a transcription result is final (committed text).
+   * @param result - The transcription result to check.
+   */
+  isFinal(result: TranscriptionResult): boolean;
 }
 
 /**
@@ -1172,6 +1260,14 @@ export interface LiveTTSProvider extends BaseProvider {
    * @param callback - Function invoked with the {@link AudioMetadata}
    */
   onMetadata(callback: (metadata: AudioMetadata) => void): void;
+
+  // ─── Guard Methods ──────────────────────────────────────────────────
+
+  /**
+   * Check whether an audio chunk contains valid audio data ready for playback.
+   * @param chunk - The audio chunk to check.
+   */
+  isAudioReady(chunk: AudioChunk): boolean;
 }
 
 /**

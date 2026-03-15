@@ -1,10 +1,57 @@
 ---
 title: Providers
-description: Every STT, LLM, and TTS provider — supported models, transport, features, and configuration.
+description: Every input, STT, LLM, TTS, and output provider — supported models, transport, features, and configuration.
 order: 1
 ---
 
-CompositeVoice uses three provider slots — **STT** (speech-to-text), **LLM** (large language model), and **TTS** (text-to-speech). Mix and match any combination to build your voice pipeline.
+CompositeVoice uses five pipeline roles — **input** (audio capture), **STT** (speech-to-text), **LLM** (large language model), **TTS** (text-to-speech), and **output** (audio playback). Mix and match any combination to build your voice pipeline. Some providers cover multiple roles (e.g., NativeSTT handles both `input` and `stt`).
+
+## Audio Input
+
+| Provider | Environment | Roles | Description |
+|---|---|---|---|
+| [MicrophoneInput](#microphoneinput) | Browser | `input` | Wraps `getUserMedia` + `AudioContext` for microphone capture |
+| [BufferInput](#bufferinput) | Node/Bun/Deno | `input` | Accepts pushed `ArrayBuffer` data for server-side pipelines |
+| [NativeSTT](#nativestt) | Browser | `input` + `stt` | Browser's Web Speech API manages its own microphone internally |
+
+### MicrophoneInput
+
+Captures audio from the browser's microphone via `getUserMedia` and `AudioContext`. Use this when pairing with a WebSocket-based STT provider like DeepgramSTT or AssemblyAISTT.
+
+```typescript
+import { MicrophoneInput } from '@lukeocodes/composite-voice';
+
+const input = new MicrophoneInput({
+  sampleRate: 16000,        // audio sample rate in Hz
+});
+```
+
+- Buffers audio frames in the input queue during STT connection — no audio is ever lost
+- Works in all modern browsers that support `getUserMedia`
+- Requires HTTPS or localhost
+
+### BufferInput
+
+Accepts audio data pushed programmatically. Use this for server-side pipelines (Node.js, Bun, Deno) where there is no microphone.
+
+```typescript
+import { BufferInput } from '@lukeocodes/composite-voice';
+
+const input = new BufferInput({
+  sampleRate: 16000,
+  encoding: 'linear16',
+  channels: 1,
+  bitDepth: 16,
+});
+
+// Push audio from any source (file, stream, WebSocket, etc.)
+input.push(audioBuffer);
+```
+
+- Zero browser dependencies — no `navigator`, `window`, or `AudioContext`
+- Works in Node.js, Bun, and Deno
+
+---
 
 ## Speech-to-Text (STT)
 
@@ -172,7 +219,7 @@ import { AnthropicLLM } from '@lukeocodes/composite-voice';
 
 const llm = new AnthropicLLM({
   proxyUrl: '/api/proxy/anthropic',
-  model: 'claude-haiku-4-5',    // claude-haiku-4-5, claude-sonnet-4-5, claude-opus-4-5
+  model: 'claude-haiku-4-5',    // claude-haiku-4-5, claude-sonnet-4-6, claude-opus-4-6
   maxTokens: 1024,               // required (default: 1024)
 });
 ```
@@ -277,7 +324,7 @@ Base class for any service that speaks the OpenAI chat completions format. Use t
 import { OpenAICompatibleLLM } from '@lukeocodes/composite-voice';
 
 const llm = new OpenAICompatibleLLM({
-  baseURL: 'https://my-model-server.example.com/v1',
+  endpoint: 'https://my-model-server.example.com/v1',
   model: 'my-custom-model',
   apiKey: '...',
 });
@@ -412,6 +459,42 @@ const tts = new CartesiaTTS({
 - sonic-2 model delivers the lowest latency
 
 [API reference](/api/classes/cartesiatts)
+
+---
+
+## Audio Output
+
+| Provider | Environment | Roles | Description |
+|---|---|---|---|
+| [BrowserAudioOutput](#browseraudiooutput) | Browser | `output` | Wraps `AudioContext` for speaker playback |
+| [NullOutput](#nulloutput) | Node/Bun/Deno | `output` | Silently discards audio for server-side pipelines |
+| [NativeTTS](#nativetts) | Browser | `tts` + `output` | Browser's SpeechSynthesis API manages its own speaker output |
+
+### BrowserAudioOutput
+
+Plays audio through the browser's `AudioContext` and speakers. Use this when pairing with a WebSocket-based or REST-based TTS provider like DeepgramTTS, ElevenLabsTTS, or OpenAITTS.
+
+```typescript
+import { BrowserAudioOutput } from '@lukeocodes/composite-voice';
+
+const output = new BrowserAudioOutput();
+```
+
+- Handles `AudioContext` resumption after user gestures
+- Buffers audio frames in the output queue during setup — no audio is ever lost
+
+### NullOutput
+
+Silently discards all audio. Use this for server-side pipelines where there are no speakers.
+
+```typescript
+import { NullOutput } from '@lukeocodes/composite-voice';
+
+const output = new NullOutput();
+```
+
+- Zero browser dependencies — no `navigator`, `window`, or `AudioContext`
+- Works in Node.js, Bun, and Deno
 
 ---
 

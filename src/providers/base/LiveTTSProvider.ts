@@ -16,17 +16,21 @@ import { Logger } from '../../utils/logger';
  *
  * @remarks
  * `LiveTTSProvider` extends {@link BaseTTSProvider} with a WebSocket
- * streaming lifecycle: **connect**, **sendText**, **finalize**, and
+ * streaming lifecycle: **connect**, **processChunk**, **finalize**, and
  * **disconnect**. This is the base class you should extend when building
  * a real-time TTS provider that accepts incremental text and streams
  * synthesized audio back over a persistent connection.
  *
+ * The `processChunk` handler (inherited from {@link BaseTTSProvider} as
+ * abstract) is implemented here to delegate to the abstract
+ * {@link sendTextToSocket} method, which subclasses must implement.
+ *
  * The typical data flow is:
  *
  * ```
- * LLM yields text chunk -> sendText(chunk) -> WebSocket -> TTS Engine
- *                                                             |
- * AudioPlayer <- onAudio(audioChunk) <--- emitAudio <--------+
+ * LLM yields text chunk -> processChunk(chunk) -> WebSocket -> TTS Engine
+ *                                                                  |
+ * AudioPlayer <- onAudio(audioChunk) <--- emitAudio <------------+
  * ```
  *
  * When all text has been sent, {@link finalize} signals the provider to
@@ -68,11 +72,11 @@ import { Logger } from '../../utils/logger';
  *     };
  *   }
  *
- *   sendText(chunk: string): void {
- *     this.ws?.send(JSON.stringify({ text: chunk }));
+ *   sendTextToSocket(text: string): void {
+ *     this.ws?.send(JSON.stringify({ text }));
  *   }
  *
- *   async finalize(): Promise<void> {
+ *   async finalizeSocket(): Promise<void> {
  *     this.ws?.send(JSON.stringify({ flush: true }));
  *   }
  *
@@ -83,7 +87,7 @@ import { Logger } from '../../utils/logger';
  * }
  * ```
  *
- * @see {@link BaseTTSProvider} for the shared audio callback mechanism
+ * @see {@link BaseTTSProvider} for the shared audio callback and guard mechanism
  * @see {@link RestTTSProvider} for batch/REST TTS
  */
 export abstract class LiveTTSProvider extends BaseTTSProvider implements ILiveTTSProvider {
@@ -113,29 +117,65 @@ export abstract class LiveTTSProvider extends BaseTTSProvider implements ILiveTT
   abstract connect(): Promise<void>;
 
   /**
-   * Send a text chunk to the TTS service for incremental synthesis.
+   * Send a text chunk for real-time synthesis.
    *
    * @remarks
-   * CompositeVoice calls this method as the LLM yields text tokens.
-   * The provider should forward the text over the WebSocket connection.
-   * Audio results arrive asynchronously via the {@link onAudio} callback.
+   * This is the public method required by the {@link ILiveTTSProvider} interface.
+   * It delegates to {@link sendTextToSocket}, which subclasses implement to
+   * forward text over the WebSocket connection.
    *
-   * @param chunk - A piece of text to synthesize.
-   *
-   * @virtual
+   * @param chunk - Text to synthesize.
    */
-  abstract sendText(chunk: string): void;
+  sendText(chunk: string): void {
+    this.sendTextToSocket(chunk);
+  }
 
   /**
-   * Signal that all text for the current utterance has been sent.
+   * Process a text chunk by sending it over the WebSocket for synthesis.
    *
    * @remarks
-   * Implementations should flush any internally buffered text and ensure
-   * all remaining audio is synthesized and emitted before resolving.
+   * Legacy alias for {@link sendText}. Delegates to {@link sendTextToSocket}.
+   *
+   * @param text - A piece of text to synthesize.
+   */
+  processChunk(text: string): void {
+    this.sendTextToSocket(text);
+  }
+
+  /**
+   * Send a text chunk over the WebSocket connection.
+   *
+   * @remarks
+   * Subclasses implement this to forward text to the TTS service.
+   *
+   * @param text - A piece of text to synthesize.
    *
    * @virtual
    */
-  abstract finalize(): Promise<void>;
+  protected abstract sendTextToSocket(text: string): void;
+
+  /**
+   * Finalize synthesis — flush remaining audio.
+   *
+   * @remarks
+   * Called after all text has been sent via {@link processChunk}. Delegates
+   * to {@link finalizeSocket}, which subclasses implement to flush the
+   * WebSocket connection.
+   */
+  async finalize(): Promise<void> {
+    await this.finalizeSocket();
+  }
+
+  /**
+   * Signal the WebSocket that all text has been sent and flush remaining audio.
+   *
+   * @remarks
+   * Implementations should send a flush/finalize message to the TTS service
+   * and ensure all remaining audio is synthesized and emitted before resolving.
+   *
+   * @virtual
+   */
+  protected abstract finalizeSocket(): Promise<void>;
 
   /**
    * Close the WebSocket connection to the streaming TTS service.

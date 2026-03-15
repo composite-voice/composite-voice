@@ -25,7 +25,7 @@ const features = [
   {
     icon: MicIcon,
     title: "Composable Pipeline",
-    description: "Mix and match STT, LLM, and TTS providers. Swap Deepgram for AssemblyAI or OpenAI for Anthropic — your pipeline, your choice.",
+    description: "Five-role pipeline with swappable input, STT, LLM, TTS, and output providers. Swap Deepgram for AssemblyAI or Anthropic for OpenAI — your pipeline, your choice.",
   },
   {
     icon: ZapIcon,
@@ -35,17 +35,17 @@ const features = [
   {
     icon: RefreshCwIcon,
     title: "Resilient Connections",
-    description: "WebSocket reconnection with exponential backoff. Graceful fallbacks keep voice sessions alive through network hiccups.",
+    description: "Pipeline-level error recovery and WebSocket reconnection with exponential backoff. Configurable retry strategies keep voice sessions alive.",
   },
   {
     icon: SlidersIcon,
     title: "Turn-Taking Strategies",
-    description: "Auto, conservative, aggressive, or detect — choose how the system handles conversational flow and interruptions.",
+    description: "Automatic barge-in, plus conservative, aggressive, or detect strategies. Users can interrupt mid-speech and the SDK handles generation tracking seamlessly.",
   },
   {
     icon: ShieldIcon,
     title: "Server-Side Proxy",
-    description: "Express, Next.js, and plain Node adapters keep API keys off the client. Zero-config proxy routing for any provider.",
+    description: "Express, Next.js, and plain Node adapters with built-in rate limiting, body size limits, and auth hooks. API keys stay server-side.",
   },
   {
     icon: PackageIcon,
@@ -55,26 +55,31 @@ const features = [
 ];
 
 const providers = {
-  "Speech-to-Text": ["Deepgram", "AssemblyAI", "Web Speech API"],
+  "Speech-to-Text": ["Deepgram", "AssemblyAI", "ElevenLabs", "Web Speech API"],
   "Large Language Models": ["Anthropic", "OpenAI", "Groq", "Google Gemini", "Mistral", "WebLLM"],
   "Text-to-Speech": ["Deepgram", "OpenAI", "ElevenLabs", "Cartesia", "Web Speech API"],
 };
 
-const exampleCode = `import { CompositeVoice } from "@lukeocodes/composite-voice";
-import { DeepgramSTT } from "@lukeocodes/composite-voice/stt";
-import { AnthropicLLM } from "@lukeocodes/composite-voice/llm";
-import { DeepgramTTS } from "@lukeocodes/composite-voice/tts";
+const exampleCode = `import {
+  CompositeVoice,
+  DeepgramSTT,
+  AnthropicLLM,
+  DeepgramTTS,
+} from "@lukeocodes/composite-voice";
 
 const voice = new CompositeVoice({
-  stt: new DeepgramSTT({ model: "nova-3" }),
-  llm: new AnthropicLLM({ model: "claude-sonnet-4-20250514" }),
-  tts: new DeepgramTTS({ model: "aura-asteria-en" }),
+  providers: [
+    new DeepgramSTT({ proxyUrl: "/api/proxy/deepgram" }),
+    new AnthropicLLM({ proxyUrl: "/api/proxy/anthropic", model: "claude-sonnet-4-20250514" }),
+    new DeepgramTTS({ proxyUrl: "/api/proxy/deepgram" }),
+  ],
 });
 
-voice.on("transcript", (text) => console.log("User:", text));
-voice.on("response", (text) => console.log("AI:", text));
+voice.on("transcription.speechFinal", ({ text }) => console.log("User:", text));
+voice.on("llm.complete", ({ text }) => console.log("AI:", text));
 
-await voice.start();`;
+await voice.initialize();
+await voice.startListening();`;
 ---
 
 <Layout>

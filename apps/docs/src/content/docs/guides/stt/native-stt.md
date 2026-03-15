@@ -19,18 +19,21 @@ No API keys or peer dependencies are required.
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({
-    language: 'en-US',
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({
+      language: 'en-US',
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      systemPrompt: 'You are a helpful voice assistant. Keep responses brief.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 NativeSTT manages its own audio capture. The browser's `SpeechRecognition` API accesses the microphone directly, so CompositeVoice skips its internal `AudioCapture` setup.
@@ -53,32 +56,39 @@ See the [API reference](/api/classes/nativestt) for the full list.
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({
-    language: 'en-US',
-    continuous: true,
-    interimResults: true,
-    maxAlternatives: 1,
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
-  }),
-  tts: new NativeTTS({ voiceLang: 'en-US' }),
+  providers: [
+    new NativeSTT({
+      language: 'en-US',
+      continuous: true,
+      interimResults: true,
+      maxAlternatives: 1,
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      systemPrompt: 'You are a helpful voice assistant. Keep responses under two sentences.',
+    }),
+    new NativeTTS({ voiceLang: 'en-US' }),
+  ],
   logging: { enabled: true, level: 'info' },
 });
 
-agent.on('transcription:final', (event) => {
+agent.on('transcription.final', (event) => {
   console.log('User said:', event.text);
 });
 
-agent.on('response:text', (event) => {
+agent.on('response.text', (event) => {
   console.log('Assistant:', event.text);
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
+
+## Utterance completion
+
+NativeSTT emits one result per utterance. When the Web Speech API fires a final result, NativeSTT sets both `isFinal: true` and `utteranceComplete: true` on the `TranscriptionResult`. The `utteranceComplete` flag is what CompositeVoice uses to trigger LLM processing.
 
 ## Tips and gotchas
 

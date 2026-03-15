@@ -4,7 +4,26 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 17 provider classes. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 11 provider companies across 17 provider classes, plus 4 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+
+### Audio Input / Output (Pipeline I/O)
+
+These providers handle the `input` and `output` roles in the 5-role pipeline. They are not tied to any vendor.
+
+| | MicrophoneInput | BufferInput | BrowserAudioOutput | NullOutput |
+|---|---|---|---|---|
+| **Role** | `input` | `input` | `output` | `output` |
+| **Environment** | Browser | Node/Bun/Deno | Browser | Node/Bun/Deno |
+| **Peer dependency** | None | None | None | None |
+| **Description** | Wraps `getUserMedia` + `AudioContext` for browser microphone capture | Accepts pushed `ArrayBuffer` data for server-side pipelines | Wraps `AudioContext` for browser speaker playback | Silently discards audio — for server-side pipelines |
+
+**MicrophoneInput** buffers audio frames in the input queue while the STT WebSocket connects, then flushes them in order — no audio is ever lost. **BufferInput** does the same for programmatic audio sources.
+
+**BrowserAudioOutput** handles `AudioContext` resumption and buffers frames in the output queue during speaker setup. **NullOutput** discards all audio — use it for server-side pipelines where there are no speakers.
+
+> Multi-role providers like `NativeSTT` (input+stt) and `NativeTTS` (tts+output) cover multiple pipeline roles. When using them, you do not need separate input or output providers.
+
+---
 
 ### Deepgram
 
@@ -13,7 +32,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 | **Class** | [`DeepgramSTT`](/guides/stt/deepgram-stt) | [`DeepgramFlux`](/guides/stt/deepgram-flux) | [`DeepgramTTS`](/guides/tts/deepgram-tts) |
 | **Transport** | WebSocket | WebSocket | WebSocket |
 | **Streaming** | Yes | Yes | Yes |
-| **Peer dependency** | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 |
+| **Peer dependency** | None | None | None |
 | **Proxy support** | Yes | Yes | Yes |
 | **Browser support** | All modern browsers | All modern browsers | All modern browsers |
 | **Default model** | nova-3 | flux-general-en | aura-2-thalia-en |
@@ -44,7 +63,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 **LLM features:** Streaming via SSE, system prompts extracted to top-level `system` parameter (Anthropic API convention), `maxTokens` required (default 1024), AbortSignal cancellation for the eager pipeline, temperature and topP controls.
 
-**Models:** claude-haiku-4-5 (fastest), claude-sonnet-4-5 (balanced), claude-opus-4-5 (most capable).
+**Models:** claude-haiku-4-5 (fastest), claude-sonnet-4-6 (balanced), claude-opus-4-6 (most capable).
 
 **Guides:** [AnthropicLLM](/guides/llm/anthropic) · **Examples:** [00](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent), [30](https://github.com/lukeocodes/composite-voice/tree/main/examples/30-anthropic-models), [31](https://github.com/lukeocodes/composite-voice/tree/main/examples/31-anthropic-streaming-config)
 
@@ -66,7 +85,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 
 **LLM models:** gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-3.5-turbo.
 
-**TTS features:** 6 voices (alloy, echo, fable, onyx, nova, shimmer), quality/speed tradeoff via model selection (tts-1 fast, tts-1-hd quality), 5 output formats (mp3, opus, aac, flac, wav), speed control (0.25–4.0x), 4096 character limit per request, `baseURL` for Azure OpenAI compatibility.
+**TTS features:** 6 voices (alloy, echo, fable, onyx, nova, shimmer), quality/speed tradeoff via model selection (tts-1 fast, tts-1-hd quality), 5 output formats (mp3, opus, aac, flac, wav), speed control (0.25–4.0x), 4096 character limit per request, `endpoint` for Azure OpenAI compatibility.
 
 **Guides:** [OpenAILLM](/guides/llm/openai) · [OpenAITTS](/guides/tts/openai-tts) · **Examples:** [40](https://github.com/lukeocodes/composite-voice/tree/main/examples/40-openai-pipeline), [41](https://github.com/lukeocodes/composite-voice/tree/main/examples/41-openai-deepgram), [42](https://github.com/lukeocodes/composite-voice/tree/main/examples/42-openai-tts-pipeline)
 
@@ -242,7 +261,7 @@ CompositeVoice supports 11 provider companies across 17 provider classes. This p
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |

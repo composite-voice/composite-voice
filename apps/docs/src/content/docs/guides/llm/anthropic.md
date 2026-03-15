@@ -21,17 +21,20 @@ npm install @anthropic-ai/sdk
 import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new NativeSTT({ language: 'en-US' }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 512,
-    systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
-  }),
-  tts: new NativeTTS(),
+  providers: [
+    new NativeSTT({ language: 'en-US' }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 512,
+      systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
+    }),
+    new NativeTTS(),
+  ],
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
 
 ## Configuration options
@@ -67,27 +70,72 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt: new DeepgramSTT({
-    proxyUrl: '/api/proxy/deepgram',
-    language: 'en',
-    options: { model: 'nova-3', smartFormat: true },
-  }),
-  llm: new AnthropicLLM({
-    proxyUrl: '/api/proxy/anthropic',
-    model: 'claude-haiku-4-5',
-    maxTokens: 256,
-    temperature: 0.7,
-    systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
-  }),
-  tts: new DeepgramTTS({
-    proxyUrl: '/api/proxy/deepgram',
-    voice: 'aura-2-thalia-en',
-  }),
+  providers: [
+    new DeepgramSTT({
+      proxyUrl: '/api/proxy/deepgram',
+      language: 'en',
+      options: { model: 'nova-3', smartFormat: true },
+    }),
+    new AnthropicLLM({
+      proxyUrl: '/api/proxy/anthropic',
+      model: 'claude-haiku-4-5',
+      maxTokens: 256,
+      temperature: 0.7,
+      systemPrompt: 'You are a friendly voice assistant. Answer briefly.',
+    }),
+    new DeepgramTTS({
+      proxyUrl: '/api/proxy/deepgram',
+      voice: 'aura-2-thalia-en',
+    }),
+  ],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });
 
-await agent.start();
+await agent.initialize();
+await agent.startListening();
 ```
+
+## Tool use / function calling
+
+AnthropicLLM implements the `ToolAwareLLMProvider` interface, enabling the LLM to call functions during generation. Text output streams to TTS as usual, while tool calls are handled via an async callback. After tool execution, the SDK automatically re-calls the LLM with the tool result so it can generate a natural language follow-up.
+
+Configure tools on the top-level `CompositeVoice` config:
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-sonnet-4-6' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+  tools: {
+    definitions: [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' },
+          },
+          required: ['location'],
+        },
+      },
+    ],
+    onToolCall: async (toolCall) => {
+      if (toolCall.name === 'get_weather') {
+        const weather = await fetchWeather(toolCall.arguments.location);
+        return { toolCallId: toolCall.id, content: JSON.stringify(weather) };
+      }
+      return { toolCallId: toolCall.id, content: 'Unknown tool' };
+    },
+  },
+});
+```
+
+Tool calls are transparent to the event stream -- you still receive the same `llm.chunk` and `llm.complete` events. The tool execution loop runs internally: when the LLM emits a `tool_use` stop reason, the SDK calls your `onToolCall` handler, appends the result to the conversation, and re-invokes the LLM.
+
+> **Note:** Only AnthropicLLM supports tool use currently. Other LLM providers (OpenAILLM, WebLLMLLM) will ignore the `tools` config.
 
 ## Tips
 

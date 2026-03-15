@@ -22,3 +22,4 @@ export type { QueueStats, DrainCallback, OverflowCallback } from './AudioBufferQ
 export { configureSTTFromMetadata } from './configureSTTFromMetadata';
 export { resolveProviders } from './resolveProviders';
 export { AudioHeaderCache } from './AudioHeaderCache';
+export { TTSBackpressure } from './TTSBackpressure';

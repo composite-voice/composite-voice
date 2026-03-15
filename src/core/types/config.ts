@@ -370,9 +370,48 @@ export interface ConversationHistoryConfig {
    * A "turn" is a user + assistant message pair. Oldest turns are dropped
    * when the limit is reached. Set to `0` for unlimited history.
    *
+   * When both `maxTurns` and {@link maxTokens} are set, the more restrictive
+   * limit wins (i.e., both constraints are applied and the smallest resulting
+   * history is used).
+   *
    * @defaultValue 0
    */
   maxTurns?: number;
+
+  /**
+   * Approximate token budget for conversation history.
+   *
+   * @remarks
+   * When set, the SDK estimates token count using a `Math.ceil(text.length / 4)`
+   * heuristic (roughly 1 token per 4 characters). Oldest non-system turns are
+   * removed until the total estimated token count fits within this budget.
+   *
+   * This is a coarse heuristic, not an exact tokenizer — actual token counts
+   * will vary by model and language. Use this as a safety net to prevent
+   * excessively large context windows, not as a precise limit.
+   *
+   * When both {@link maxTurns} and `maxTokens` are set, the more restrictive
+   * limit wins.
+   *
+   * @defaultValue undefined (no token limit)
+   */
+  maxTokens?: number;
+
+  /**
+   * Whether to preserve system messages during history trimming.
+   *
+   * @remarks
+   * When `true` (the default), system messages (role `'system'`) are never
+   * removed by turn-based or token-based trimming. They are separated before
+   * trimming and prepended back afterward, ensuring system instructions are
+   * always present in the LLM context.
+   *
+   * Set to `false` to treat system messages the same as user/assistant
+   * messages during trimming.
+   *
+   * @defaultValue true
+   */
+  preserveSystemMessages?: boolean;
 }
 
 /**
@@ -530,6 +569,27 @@ export interface CompositeVoiceConfig {
   eagerLLM?: EagerLLMConfig;
 
   /**
+   * Pipeline tuning options.
+   *
+   * @remarks
+   * Controls flow between pipeline stages. Currently supports backpressure
+   * between LLM and Live TTS providers.
+   */
+  pipeline?: {
+    /**
+     * Maximum text chunks buffered between LLM and TTS before pausing LLM generation.
+     *
+     * @remarks
+     * Only applies to Live (WebSocket) TTS providers. REST TTS receives the
+     * full response at once and is unaffected. When not set, no backpressure
+     * is applied (default behavior).
+     *
+     * @defaultValue undefined (no limit)
+     */
+    maxPendingChunks?: number;
+  };
+
+  /**
    * Whether to enable automatic error recovery.
    *
    * @remarks
@@ -554,6 +614,17 @@ export interface CompositeVoiceConfig {
     definitions: import('./providers').LLMToolDefinition[];
     onToolCall: (toolCall: import('./providers').LLMToolCall) => Promise<import('./providers').LLMToolResult>;
   };
+
+  /**
+   * Recovery strategy configuration for automatic error recovery.
+   *
+   * @remarks
+   * Only applies when `autoRecover` is `true`. Controls the backoff behavior
+   * when the SDK attempts to recover from provider errors.
+   *
+   * @see {@link RecoveryStrategy}
+   */
+  recovery?: import('../RecoveryOrchestrator').RecoveryStrategy;
 
   /**
    * Additional custom configuration for provider-specific or application-specific needs.

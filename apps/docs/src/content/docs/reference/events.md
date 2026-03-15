@@ -55,11 +55,11 @@ idle → ready → listening → thinking → speaking → listening → ...
 | `transcription.start` | `{}` | STT provider began listening for speech |
 | `transcription.interim` | `{ text, confidence? }` | Partial recognition result (updates as user speaks) |
 | `transcription.final` | `{ text, confidence? }` | Confirmed recognition segment |
-| `transcription.speechFinal` | `{ text, confidence? }` | End-of-utterance detected — triggers LLM generation |
+| `transcription.speechFinal` | `{ text, confidence? }` | Emitted when a complete utterance is detected. Internally triggers LLM processing |
 | `transcription.preflight` | `{ text, confidence? }` | Early end-of-speech signal ([DeepgramFlux](/guides/stt/deepgram-flux) only) — triggers eager LLM |
 | `transcription.error` | `{ error: Error, recoverable: boolean }` | STT provider error |
 
-The pipeline sends `speechFinal` text to the LLM. `interim` events update in real time as the user speaks. Multi-segment providers (Deepgram) may emit several `transcription.final` events for a single utterance; only the last one is followed by `transcription.speechFinal`.
+The pipeline sends the transcript to the LLM when a complete utterance is detected. The `transcription.speechFinal` event signals this. `interim` events update in real time as the user speaks. Multi-segment providers (Deepgram) may emit several `transcription.final` events for a single utterance; only the last one is followed by `transcription.speechFinal`.
 
 ### LLM events
 
@@ -92,6 +92,25 @@ LLM text streams to TTS as it arrives. Each `llm.chunk` forwards its text to the
 | `audio.playback.start` | `{}` | Audio playback started |
 | `audio.playback.end` | `{}` | Audio playback finished |
 | `audio.playback.error` | `{ error: Error }` | Playback error |
+
+### Queue events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `queue.overflow` | `{ queueName: string, droppedChunks: number, currentSize: number }` | Queue exceeded capacity, chunks were dropped according to the overflow strategy |
+| `queue.stats` | `{ queueName: string, size: number, totalEnqueued: number, totalDequeued: number, oldestChunkAge: number }` | Pipeline health snapshot — useful for monitoring buffer pressure |
+
+Queue events fire on the input and output buffer queues. Subscribe to `queue.overflow` to detect when audio frames are being dropped, and `queue.stats` for real-time monitoring of pipeline health.
+
+```typescript
+voice.on('queue.overflow', ({ queueName, droppedChunks, currentSize }) => {
+  console.warn(`Queue "${queueName}" dropped ${droppedChunks} chunks (${currentSize} remaining)`);
+});
+
+voice.on('queue.stats', ({ queueName, size, totalEnqueued, totalDequeued, oldestChunkAge }) => {
+  console.log(`Queue "${queueName}": ${size} buffered, ${totalEnqueued} enqueued, ${totalDequeued} dequeued`);
+});
+```
 
 ### Event flow diagram
 

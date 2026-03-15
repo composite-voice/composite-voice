@@ -44,8 +44,29 @@ export class MockSTTProvider implements RestSTTProvider {
     // Results delivered via onTranscription callback
   }
 
+  processAudio(_chunk: ArrayBuffer): void {
+    // No-op for REST STT
+  }
+
   onTranscription(callback: (result: TranscriptionResult) => void) {
     this.transcriptionCallback = callback;
+  }
+
+  // Guard methods
+  isUtteranceComplete(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
+  }
+
+  isPreflight(_result: TranscriptionResult): boolean {
+    return false;
+  }
+
+  isInterim(result: TranscriptionResult): boolean {
+    return !result.isFinal;
+  }
+
+  isFinal(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
   }
 
   // Test helper
@@ -83,7 +104,7 @@ export class MockLLMProvider implements LLMProvider {
     return this.ready;
   }
 
-  async generate(prompt: string) {
+  async processText(prompt: string) {
     this.generateCalled = true;
     this.lastPrompt = prompt;
 
@@ -100,8 +121,20 @@ export class MockLLMProvider implements LLMProvider {
     };
   }
 
+  async generate(prompt: string) {
+    return this.processText(prompt);
+  }
+
+  async processMessages() {
+    return this.processText('test');
+  }
+
   async generateFromMessages() {
-    return this.generate('test');
+    return this.processMessages();
+  }
+
+  isToolCall(_chunk: unknown): boolean {
+    return false;
   }
 }
 
@@ -126,6 +159,18 @@ export class MockTTSProvider implements RestTTSProvider {
 
   isReady() {
     return this.ready;
+  }
+
+  processChunk(_text: string): void {
+    // Accumulate text for synthesis
+  }
+
+  async finalize(): Promise<void> {
+    // Flush remaining audio
+  }
+
+  isAudioReady(chunk: AudioChunk): boolean {
+    return chunk.data.byteLength > 0;
   }
 
   async synthesize(_text: string): Promise<Blob> {
@@ -193,7 +238,7 @@ export class MockAllInOneProvider implements BaseProvider {
     this.connected = true;
   }
 
-  sendAudio(_chunk: ArrayBuffer) {
+  processAudio(_chunk: ArrayBuffer) {
     if (!this.connected) {
       throw new Error('Not connected');
     }
@@ -465,7 +510,7 @@ export class MockOutputProvider implements AudioOutputProvider {
  *
  * @remarks
  * Simulates a WebSocket-based STT provider with a configurable connection
- * delay. Records all audio data sent via `sendAudio()` for assertion.
+ * delay. Records all audio data sent via `processAudio()` for assertion.
  */
 export class MockLiveSTTProvider implements LiveSTTProvider {
   type = 'websocket' as const;
@@ -475,7 +520,7 @@ export class MockLiveSTTProvider implements LiveSTTProvider {
   private connected = false;
   private transcriptionCallback?: (result: TranscriptionResult) => void;
 
-  /** Audio buffers received via sendAudio(). */
+  /** Audio buffers received via processAudio()/sendAudio(). */
   public receivedAudio: ArrayBuffer[] = [];
 
   /** Configurable delay in ms for connect(). */
@@ -512,12 +557,34 @@ export class MockLiveSTTProvider implements LiveSTTProvider {
     this.receivedAudio.push(chunk);
   }
 
+  processAudio(chunk: ArrayBuffer) {
+    this.sendAudio(chunk);
+  }
+
   async disconnect() {
     this.connected = false;
   }
 
   onTranscription(callback: (result: TranscriptionResult) => void) {
     this.transcriptionCallback = callback;
+  }
+
+  // ─── Guard methods ─────────────────────────────────────────────────
+
+  isUtteranceComplete(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
+  }
+
+  isPreflight(_result: TranscriptionResult): boolean {
+    return false;
+  }
+
+  isInterim(result: TranscriptionResult): boolean {
+    return !result.isFinal;
+  }
+
+  isFinal(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
   }
 
   // ─── Test helpers ────────────────────────────────────────────────────
@@ -553,11 +620,23 @@ export class FailingProvider implements LLMProvider {
     return false;
   }
 
-  async generate(): Promise<AsyncIterable<string>> {
+  async processText(): Promise<AsyncIterable<string>> {
     throw new Error('Generation failed');
   }
 
+  async generate(): Promise<AsyncIterable<string>> {
+    return this.processText();
+  }
+
+  async processMessages(): Promise<AsyncIterable<string>> {
+    return this.processText();
+  }
+
   async generateFromMessages(): Promise<AsyncIterable<string>> {
-    return this.generate();
+    return this.processText();
+  }
+
+  isToolCall(_chunk: unknown): boolean {
+    return false;
   }
 }

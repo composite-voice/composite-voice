@@ -34,7 +34,7 @@ Configure reconnection behavior at the top level of the `CompositeVoice` config:
 import { CompositeVoice } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   reconnection: {
     enabled: true,
     maxAttempts: 5,
@@ -147,7 +147,7 @@ Retry frequently with a high attempt count. Suitable for mobile apps or environm
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   reconnection: {
     enabled: true,
     maxAttempts: 10,
@@ -166,7 +166,7 @@ Fewer attempts with longer delays. Avoids hammering a provider that may be exper
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   reconnection: {
     enabled: true,
     maxAttempts: 3,
@@ -185,7 +185,7 @@ Turn off auto-reconnect when you want full control over retry logic. Useful for 
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   reconnection: {
     enabled: false,
   },
@@ -209,7 +209,7 @@ For maximum resilience, enable both:
 
 ```typescript
 const agent = new CompositeVoice({
-  stt, llm, tts,
+  providers: [/* ...your providers */],
   reconnection: {
     enabled: true,
     maxAttempts: 5,

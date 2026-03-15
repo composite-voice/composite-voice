@@ -35,6 +35,23 @@ type WsWebSocket = import('ws').WebSocket;
 type WsWebSocketServer = import('ws').WebSocketServer;
 
 /**
+ * Calculate the byte size of a WebSocket message payload.
+ *
+ * @param data - The message data, which may be a Buffer, ArrayBuffer, or array of Buffers.
+ * @returns The total size in bytes.
+ * @internal
+ */
+function getMessageSize(data: Buffer | ArrayBuffer | Buffer[]): number {
+  if (Array.isArray(data)) {
+    return data.reduce((sum, buf) => sum + buf.length, 0);
+  }
+  if (data instanceof ArrayBuffer) {
+    return data.byteLength;
+  }
+  return data.length;
+}
+
+/**
  * Dynamically load the `ws` package.
  *
  * @remarks
@@ -82,6 +99,9 @@ async function loadWs(): Promise<{
  *   (e.g., `wss://api.deepgram.com/v1/listen`).
  * @param authHeaders - Authentication headers to inject into the upstream connection
  *   (e.g., `{ Authorization: 'Token ...' }`).
+ * @param options - Optional settings for message size limiting.
+ * @param options.maxWsMessageSize - Maximum WebSocket message size in bytes.
+ *   Messages exceeding this close the client connection with code 1009 (Message Too Big).
  * @returns A promise that resolves once the WebSocket relay is fully established.
  *
  * @throws Terminates the client connection with close code 1011 if the upstream
@@ -103,7 +123,8 @@ export async function proxyWebSocket(
   socket: Socket,
   head: Buffer,
   targetUrl: string,
-  authHeaders: Record<string, string>
+  authHeaders: Record<string, string>,
+  options?: { maxWsMessageSize?: number }
 ): Promise<void> {
   const { WebSocket, WebSocketServer } = await loadWs();
 
@@ -122,6 +143,15 @@ export async function proxyWebSocket(
   wss.handleUpgrade(req, socket, head, (clientWs: WsWebSocket) => {
     upstreamWs.on('open', () => {
       clientWs.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+        // Enforce message size limit on client → upstream messages
+        if (options?.maxWsMessageSize !== undefined) {
+          const size = getMessageSize(data);
+          if (size > options.maxWsMessageSize) {
+            clientWs.close(1009, 'Message Too Big');
+            upstreamWs.close(1000, 'Client message too big');
+            return;
+          }
+        }
         if (upstreamWs.readyState === WebSocket.OPEN) {
           upstreamWs.send(data, { binary: isBinary });
         }

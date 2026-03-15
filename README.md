@@ -59,6 +59,8 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Agent states](#agent-states)
 - [Conversation history](#conversation-history)
 - [Eager LLM pipeline](#eager-llm-pipeline)
+- [Tool use / function calling](#tool-use--function-calling)
+- [Barge-in](#barge-in)
 - [Turn-taking](#turn-taking)
 - [Server-side proxy](#server-side-proxy)
 - [Server-side usage](#server-side-usage)
@@ -275,10 +277,13 @@ const agent = new CompositeVoice({
 
 | Provider        | Transport      | Browser support     | Peer dependency |
 | --------------- | -------------- | ------------------- | --------------- |
-| `NativeSTT`     | Web Speech API | Chrome, Edge        | None            |
-| `DeepgramSTT`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
-| `DeepgramFlux`  | WebSocket      | All modern browsers | `@deepgram/sdk` |
-| `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
+| `NativeSTT`      | Web Speech API | Chrome, Edge        | None            |
+| `DeepgramSTT`    | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `DeepgramFlux`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `AssemblyAISTT`  | WebSocket      | All modern browsers | None            |
+| `ElevenLabsSTT`  | WebSocket      | All modern browsers | None            |
+
+All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
 **`NativeSTT` options:**
 
@@ -310,6 +315,8 @@ new DeepgramSTT({
 
 **`DeepgramFlux` options (V2/Flux — supports eager LLM):**
 
+> **Note:** DeepgramFlux is currently disabled and throws on construction. It requires `@deepgram/sdk` V5 (`listen.v2` API), which is not yet stable. Use `DeepgramSTT` with Nova models instead. The class is preserved for future re-enablement when the V5 SDK stabilizes.
+
 ```typescript
 new DeepgramFlux({
   apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
@@ -330,6 +337,19 @@ new AssemblyAISTT({
   sampleRate: 16000, // audio sample rate in Hz
   wordBoost: ['CompositeVoice'], // boost recognition of specific words
   interimResults: true, // partial transcripts while speaking
+});
+```
+
+**`ElevenLabsSTT` options:**
+
+```typescript
+new ElevenLabsSTT({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  model: 'scribe_v2_realtime', // default model
+  audioFormat: 'pcm_16000', // audio format
+  language: 'en', // BCP 47, ISO 639-1, or ISO 639-3
+  commitStrategy: 'vad', // 'vad' (default) or 'manual'
+  includeTimestamps: true, // word-level timestamps
 });
 ```
 
@@ -522,7 +542,9 @@ const agent = new CompositeVoice({
   // Conversation memory (disabled by default)
   conversationHistory: {
     enabled: true,
-    maxTurns: 10, // 0 = unlimited; each turn = one user + assistant exchange
+    maxTurns: 10,                  // 0 = unlimited; each turn = one user + assistant exchange
+    maxTokens: 4000,               // approximate token budget (chars/4 heuristic)
+    preserveSystemMessages: true,  // keep system messages during trimming (default: true)
   },
 
   // Eager/speculative LLM generation (requires DeepgramFlux)
@@ -534,7 +556,8 @@ const agent = new CompositeVoice({
 
   // Turn-taking: whether to pause the mic during TTS playback
   turnTaking: {
-    strategy: 'auto', // 'auto' | 'conservative' | 'aggressive' | 'detect'
+    pauseCaptureOnPlayback: 'auto', // 'auto' | true | false (default: 'auto')
+    autoStrategy: 'conservative',   // 'conservative' | 'aggressive' | 'detect' (default: 'conservative')
   },
 
   // Logging
@@ -543,12 +566,29 @@ const agent = new CompositeVoice({
     level: 'info', // 'debug' | 'info' | 'warn' | 'error'
   },
 
+  // LLM→TTS backpressure
+  pipeline: {
+    maxPendingChunks: 10,  // pause LLM if TTS has 10+ unprocessed chunks
+  },
+
   // WebSocket reconnection (applies to Deepgram providers)
   reconnection: {
+    enabled: true,      // required — enables reconnection
     maxAttempts: 5,
     initialDelay: 1000, // ms before first retry
     maxDelay: 30000, // cap on retry interval
     backoffMultiplier: 2, // exponential backoff factor
+  },
+
+  // Automatic error recovery
+  autoRecover: true,
+
+  // Recovery strategy (when autoRecover is true)
+  recovery: {
+    maxAttempts: 3,
+    initialDelay: 1000,
+    backoffMultiplier: 2,
+    maxDelay: 10000,
   },
 });
 ```
@@ -569,19 +609,19 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 
 | Event               | Payload                    | Description                                  |
 | ------------------- | -------------------------- | -------------------------------------------- |
-| `agent.ready`       | `{ state }`                | SDK initialized and ready to start listening |
+| `agent.ready`       | —                          | SDK initialized and ready to start listening |
 | `agent.stateChange` | `{ state, previousState }` | Agent moved to a new state                   |
-| `agent.error`       | `{ error }`                | System-level error                           |
+| `agent.error`       | `{ error, recoverable, context? }` | System-level error                    |
 
 ### Transcription events
 
 | Event                       | Payload                 | Description                                                          |
 | --------------------------- | ----------------------- | -------------------------------------------------------------------- |
 | `transcription.start`       | —                       | Transcription session opened                                         |
-| `transcription.interim`     | `{ text, isFinal }`     | Partial transcript — updates word by word while the user is speaking |
-| `transcription.final`       | `{ text, isFinal }`     | Confirmed transcript segment                                         |
-| `transcription.speechFinal` | `{ text, speechFinal }` | Full utterance ended — triggers the LLM                              |
-| `transcription.preflight`   | `{ text, isPreflight }` | Early end-of-turn signal (DeepgramFlux only)                         |
+| `transcription.interim`     | `{ text, confidence? }`     | Partial transcript — updates word by word while the user is speaking |
+| `transcription.final`       | `{ text, confidence? }`     | Confirmed transcript segment                                         |
+| `transcription.speechFinal` | `{ text, confidence? }` | Full utterance ended. The `utteranceComplete` flag on the transcription result is what triggers LLM processing. |
+| `transcription.preflight`   | `{ text, confidence? }` | Early end-of-turn signal (DeepgramFlux only)                         |
 | `transcription.error`       | `{ error }`             | Transcription error                                                  |
 
 ### LLM events
@@ -589,8 +629,8 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | Event          | Payload      | Description                        |
 | -------------- | ------------ | ---------------------------------- |
 | `llm.start`    | `{ prompt }` | LLM generation started             |
-| `llm.chunk`    | `{ chunk }`  | Text token received from the model |
-| `llm.complete` | `{ text }`   | Full response assembled            |
+| `llm.chunk`    | `{ chunk, accumulated }`  | Text token received from the model |
+| `llm.complete` | `{ text, tokensUsed? }`   | Full response assembled            |
 | `llm.error`    | `{ error }`  | LLM error                          |
 
 ### TTS events
@@ -600,7 +640,7 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `tts.start`    | `{ text }`     | Synthesis started              |
 | `tts.audio`    | `{ chunk }`    | Audio chunk ready for playback |
 | `tts.metadata` | `{ metadata }` | Audio format metadata          |
-| `tts.complete` | —              | Playback finished              |
+| `tts.complete` | —              | Synthesis complete (playback may still be in progress) |
 | `tts.error`    | `{ error }`    | TTS error                      |
 
 ### Audio events
@@ -745,6 +785,65 @@ The result is noticeably lower perceived latency on natural speech patterns wher
 
 ---
 
+## Tool use / function calling
+
+LLM providers that implement `ToolAwareLLMProvider` can invoke tools (function calls) during generation. Currently, `AnthropicLLM` supports this. Text output is streamed to TTS as usual, while tool calls are handled via the `onToolCall` callback. After tool execution, the LLM is called again with the tool result to generate a natural language follow-up.
+
+```typescript
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-sonnet-4-6' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+  tools: {
+    definitions: [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string', description: 'City name' },
+          },
+          required: ['location'],
+        },
+      },
+    ],
+    onToolCall: async (toolCall) => {
+      // Execute the tool and return the result
+      const weather = await fetchWeather(toolCall.arguments.location);
+      return { result: JSON.stringify(weather) };
+    },
+  },
+});
+```
+
+> **Note:** Only `AnthropicLLM` supports tools currently via the `ToolAwareLLMProvider` interface. Other LLM providers will ignore the `tools` configuration.
+
+---
+
+## Barge-in
+
+The SDK automatically interrupts the agent when the user speaks while the agent is in the `thinking` or `speaking` state. This is called **barge-in** — the user can cut in at any time without waiting for the agent to finish.
+
+When barge-in is triggered, the SDK:
+1. Aborts the in-flight LLM generation (via `AbortSignal`)
+2. Clears the TTS output queue
+3. Resets the TTS provider
+4. Transitions back to `listening` state
+
+Barge-in happens automatically when the STT provider detects speech during agent output. You can also trigger it programmatically:
+
+```typescript
+// Programmatic barge-in — immediately stop the agent and return to listening
+agent.stopSpeaking();
+```
+
+No configuration is required — barge-in is always active.
+
+---
+
 ## Turn-taking
 
 Turn-taking controls whether the microphone is paused while the AI is speaking. The right strategy depends on whether your audio setup provides echo cancellation.
@@ -752,16 +851,20 @@ Turn-taking controls whether the microphone is paused while the AI is speaking. 
 ```typescript
 const agent = new CompositeVoice({
   providers: [stt, llm, tts],
-  turnTaking: { strategy: 'auto' },
+  turnTaking: {
+    pauseCaptureOnPlayback: 'auto',
+    autoStrategy: 'conservative',
+  },
 });
 ```
 
-| Strategy         | Behaviour                                                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `auto` (default) | Pauses the mic for `NativeSTT` (no echo cancellation); leaves it open for `DeepgramSTT` (relies on hardware echo cancellation). |
-| `conservative`   | Always pauses the mic during TTS playback. Safe choice if you are unsure about echo cancellation.                               |
-| `aggressive`     | Never pauses. Only suitable with reliable hardware echo cancellation.                                                           |
-| `detect`         | Attempts to detect echo cancellation support at runtime before choosing a strategy.                                             |
+| `pauseCaptureOnPlayback` | `autoStrategy`   | Behaviour                                                                                                                       |
+| ------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `'auto'` (default)      | `'conservative'` (default) | Pauses the mic for `NativeSTT` (no echo cancellation); leaves it open for `DeepgramSTT` (relies on hardware echo cancellation). When pausing, uses the conservative strategy. |
+| `true`                   | —                | Always pauses the mic during TTS playback. Safe choice if you are unsure about echo cancellation.                               |
+| `false`                  | —                | Never pauses. Only suitable with reliable hardware echo cancellation.                                                           |
+| `'auto'`                 | `'detect'`       | Attempts to detect echo cancellation support at runtime before choosing a strategy.                                             |
+| `'auto'`                 | `'aggressive'`   | When auto-detection decides to pause, uses the aggressive strategy (shorter pause windows).                                     |
 
 ---
 
@@ -860,6 +963,32 @@ const agent = new CompositeVoice({ providers: [stt, llm, tts] });
 
 See [Example 10](./examples/10-proxy-server/) for a complete production-ready setup.
 
+### Proxy security
+
+The proxy supports optional security middleware for rate limiting, body size limits, WebSocket message size limits, and custom authentication. All options are opt-in — when omitted, the proxy behaves identically to a proxy without the `security` field.
+
+```typescript
+const proxy = createExpressProxy({
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  security: {
+    rateLimit: { maxRequests: 100, windowMs: 60000 },
+    maxBodySize: 1024 * 1024,        // 1 MB
+    maxWsMessageSize: 64 * 1024,     // 64 KB
+    authenticate: (req) => {
+      return req.headers['x-api-token'] === process.env.APP_TOKEN;
+    },
+  },
+});
+```
+
+| Option             | What it does                                                                 |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `rateLimit`        | Per-IP request throttling. Requests over the limit receive `429 Too Many Requests`. |
+| `maxBodySize`      | Rejects HTTP bodies larger than the limit with `413 Payload Too Large`.       |
+| `maxWsMessageSize` | Closes WebSocket connections that send messages exceeding the limit (code 1009). |
+| `authenticate`     | Custom auth function — return `true` to allow, `false` to reject with `401`. Called for both HTTP requests and WebSocket upgrade requests. |
+
 ---
 
 ## Server-side usage
@@ -915,13 +1044,9 @@ All built-in providers implement abstract base classes. You can plug in any prov
 | ---------------------- | --------- | ---------------------------------------------------------------- |
 | `AudioInputProvider`   | `input`   | Custom audio capture (microphone, file, stream)                  |
 | `BaseSTTProvider`      | `stt`     | Any speech-to-text provider                                      |
-| `LiveSTTProvider`      | `stt`     | WebSocket-based real-time STT                                    |
-| `RestSTTProvider`      | `stt`     | Request/response STT (batch transcription)                       |
 | `BaseLLMProvider`      | `llm`     | Any language model                                               |
 | `OpenAICompatibleLLM`  | `llm`     | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
 | `BaseTTSProvider`      | `tts`     | Any text-to-speech provider                                      |
-| `LiveTTSProvider`      | `tts`     | WebSocket-based streaming TTS                                    |
-| `RestTTSProvider`      | `tts`     | Request/response TTS                                             |
 | `AudioOutputProvider`  | `output`  | Custom audio playback (speakers, file, stream)                   |
 
 Every custom provider must declare its `roles` property.
@@ -969,10 +1094,10 @@ class MySTT extends BaseSTTProvider {
   }
 
   async startCapture(): Promise<void> {
-    // Stream audio from the microphone to your service, then emit:
-    this.emit('transcription.interim', { text, isFinal: false });
-    this.emit('transcription.final', { text, isFinal: true });
-    this.emit('transcription.speechFinal', { text, speechFinal: true });
+    // Stream audio from the microphone to your service, then emit results
+    // via the base class helper (it handles event delivery and routing):
+    this.emitTranscription({ text, isFinal: false });
+    this.emitTranscription({ text, isFinal: true, utteranceComplete: true });
   }
 
   async stopCapture(): Promise<void> {
@@ -984,18 +1109,22 @@ class MySTT extends BaseSTTProvider {
 ### LLM provider skeleton
 
 ```typescript
-import { BaseLLMProvider, LLMMessage } from '@lukeocodes/composite-voice';
+import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from '@lukeocodes/composite-voice';
 
 class MyLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
     // Set up your LLM client.
   }
 
-  async generate(prompt: string, history: LLMMessage[]): Promise<void> {
-    this.emit('llm.start', { prompt });
-    // Stream tokens from your model, then emit:
-    this.emit('llm.chunk', { chunk: token });
-    this.emit('llm.complete', { text: fullResponse });
+  async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): AsyncGenerator<string> {
+    // Stream tokens from your model — yield each chunk as it arrives.
+    for await (const token of myModelStream(messages)) {
+      yield token;
+    }
+  }
+
+  async *generate(prompt: string, options?: LLMGenerationOptions): AsyncGenerator<string> {
+    yield* this.generateFromMessages(this.promptToMessages(prompt), options);
   }
 }
 ```
@@ -1008,8 +1137,9 @@ The fastest way to add a new LLM provider that has an OpenAI-compatible API:
 import { OpenAICompatibleLLM, OpenAICompatibleLLMConfig } from '@lukeocodes/composite-voice';
 
 class MyLLM extends OpenAICompatibleLLM {
-  protected providerName = 'my-provider';
-  protected defaultBaseURL = 'https://api.my-provider.com/v1';
+  constructor(config: OpenAICompatibleLLMConfig) {
+    super({ endpoint: 'https://api.my-provider.com/v1', ...config });
+  }
 }
 
 // Use it exactly like any other LLM provider
@@ -1073,20 +1203,21 @@ For a full implementation guide, see [CONTRIBUTING.md](./CONTRIBUTING.md#adding-
 
 ## Examples
 
-27 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
+29 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
 
-### Getting started (00–05)
+### Getting started (00–06)
 
 Browser-native providers and core SDK patterns. Only an Anthropic API key is required for most examples.
 
-| #                                         | What it demonstrates                    | API keys needed | Port |
-| ----------------------------------------- | --------------------------------------- | --------------- | ---- |
-| [00](./examples/00-minimal-voice-agent/)  | Minimum viable voice agent              | Anthropic       | 3000 |
-| [01](./examples/01-conversation-history/) | Multi-turn conversation memory          | Anthropic       | 3001 |
-| [02](./examples/02-system-persona/)       | System prompt persona configuration     | Anthropic       | 3002 |
-| [03](./examples/03-event-inspector/)      | Full event timeline and debugging       | Anthropic       | 3003 |
-| [04](./examples/04-error-recovery/)       | Error simulation and automatic recovery | Anthropic       | 3004 |
-| [05](./examples/05-turn-taking/)          | Turn-taking strategy visualization      | Anthropic       | 3005 |
+| #                                         | What it demonstrates                    | API keys needed      | Port |
+| ----------------------------------------- | --------------------------------------- | -------------------- | ---- |
+| [00](./examples/00-minimal-voice-agent/)  | Minimum viable voice agent              | Anthropic            | 3000 |
+| [01](./examples/01-conversation-history/) | Multi-turn conversation memory          | Anthropic            | 3001 |
+| [02](./examples/02-system-persona/)       | System prompt persona configuration     | Anthropic            | 3002 |
+| [03](./examples/03-event-inspector/)      | Full event timeline and debugging       | Anthropic            | 3003 |
+| [04](./examples/04-error-recovery/)       | Error simulation and automatic recovery | Anthropic            | 3004 |
+| [05](./examples/05-turn-taking/)          | Turn-taking strategy visualization      | Anthropic            | 3005 |
+| [06](./examples/06-advanced-config/)      | Advanced config — multi-role and 5-provider patterns with queue options | Anthropic + Deepgram | 3006 |
 
 ### Production patterns (10–13)
 
@@ -1154,13 +1285,14 @@ Real-time transcription with word-level timing.
 | ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
 | [70](./examples/70-assemblyai-pipeline/) | AssemblyAI STT + Claude + Deepgram TTS | AssemblyAI + Anthropic + Deepgram | 3070 |
 
-### ElevenLabs (80)
+### ElevenLabs (80–81)
 
-Ultra-low-latency streaming TTS with natural voices.
+Ultra-low-latency streaming TTS and real-time STT with natural voices.
 
-| #                                        | What it demonstrates                   | API keys needed                   | Port |
-| ---------------------------------------- | -------------------------------------- | --------------------------------- | ---- |
-| [80](./examples/80-elevenlabs-pipeline/) | ElevenLabs TTS + Deepgram STT + Claude | ElevenLabs + Deepgram + Anthropic | 3080 |
+| #                                        | What it demonstrates                        | API keys needed                   | Port |
+| ---------------------------------------- | ------------------------------------------- | --------------------------------- | ---- |
+| [80](./examples/80-elevenlabs-pipeline/) | ElevenLabs TTS + Deepgram STT + Claude      | ElevenLabs + Deepgram + Anthropic | 3080 |
+| [81](./examples/81-elevenlabs-stt/)      | ElevenLabs STT (Scribe V2) standalone demo  | ElevenLabs                        | 3081 |
 
 ### Cartesia (90)
 
@@ -1198,6 +1330,7 @@ pnpm example:02-system-persona:dev               # http://localhost:3002
 pnpm example:03-event-inspector:dev              # http://localhost:3003
 pnpm example:04-error-recovery:dev               # http://localhost:3004
 pnpm example:05-turn-taking:dev                  # http://localhost:3005
+pnpm example:06-advanced-config:dev              # http://localhost:3006
 
 # Production patterns
 pnpm example:10-proxy-server:dev                 # http://localhost:3010
@@ -1232,6 +1365,7 @@ pnpm example:70-assemblyai-pipeline:dev          # http://localhost:3070
 
 # ElevenLabs
 pnpm example:80-elevenlabs-pipeline:dev          # http://localhost:3080
+pnpm example:81-elevenlabs-stt:dev               # http://localhost:3081
 
 # Cartesia
 pnpm example:90-cartesia-pipeline:dev            # http://localhost:3090
@@ -1247,15 +1381,15 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
-| ------------- | ------------- | ----------- | ------------ | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
-| Chrome / Edge | Full          | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
-| Firefox       | Not supported | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
-| Safari        | Limited       | Full        | Full         | Full          | Full      | Full        | Full      | Full          | Full        |
+| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS |
+| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- |
+| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
+| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
+| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        |
 
 `NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) and REST-based providers (OpenAI) work across all modern browsers.
 
-For cross-browser production deployments, use `DeepgramSTT` or `AssemblyAISTT` for STT, and any cloud TTS provider.
+For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 
 ---
 

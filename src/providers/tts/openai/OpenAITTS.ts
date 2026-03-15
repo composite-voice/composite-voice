@@ -77,26 +77,6 @@ export type OpenAITTSFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
  */
 export interface OpenAITTSConfig extends TTSProviderConfig {
   /**
-   * OpenAI API key for direct authentication.
-   *
-   * @remarks
-   * Required when connecting directly to OpenAI (no proxy).
-   * Omit when using `proxyUrl` -- the proxy server supplies the key server-side.
-   */
-  apiKey?: string;
-
-  /**
-   * URL of the CompositeVoice proxy server's OpenAI endpoint.
-   *
-   * @remarks
-   * When set, all API requests are routed through the proxy.
-   * The `apiKey` is not required on the client side.
-   *
-   * @example `'http://localhost:3001/api/proxy/openai'`
-   */
-  proxyUrl?: string;
-
-  /**
    * The TTS model to use.
    *
    * @remarks
@@ -139,17 +119,6 @@ export interface OpenAITTSConfig extends TTSProviderConfig {
    * @defaultValue `undefined`
    */
   organizationId?: string;
-
-  /**
-   * Base URL for the OpenAI API.
-   *
-   * @remarks
-   * Use this for custom API-compatible endpoints (e.g., Azure OpenAI).
-   * For CompositeVoice proxy routing, use `proxyUrl` instead.
-   *
-   * @defaultValue `undefined` (uses OpenAI's default endpoint)
-   */
-  baseURL?: string;
 
   /**
    * Maximum number of retries for failed API requests.
@@ -256,8 +225,8 @@ export class OpenAITTS extends RestTTSProvider {
       const OpenAIModule = await import('openai');
       const OpenAI = OpenAIModule.default;
 
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+      const baseURL = this.resolveBaseUrl();
+      const apiKey = this.resolveApiKey();
 
       // Initialize OpenAI client
       this.client = new OpenAI({

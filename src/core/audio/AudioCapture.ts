@@ -7,17 +7,22 @@
  * This module provides the {@link AudioCapture} class, which manages microphone
  * input using the Web Audio API. It handles the full lifecycle of audio
  * capture: requesting microphone permissions, creating an `AudioContext` and
- * `ScriptProcessorNode`, converting raw audio data to the configured format
+ * audio processing node, converting raw audio data to the configured format
  * (e.g. 16-bit PCM), and delivering audio chunks to a callback.
  *
  * Audio data flows through the following pipeline:
  *
  * 1. `MediaStream` (from `getUserMedia`)
  * 2. `MediaStreamAudioSourceNode`
- * 3. `ScriptProcessorNode` (buffer processing)
+ * 3. `AudioWorkletNode` (preferred) or `ScriptProcessorNode` (fallback)
  * 4. Optional downsampling (if the hardware sample rate differs from config)
  * 5. Format conversion (Float32 to Int16 PCM)
  * 6. Callback delivery as `ArrayBuffer`
+ *
+ * The class prefers `AudioWorkletNode` which processes audio in a separate
+ * thread, preventing main-thread glitches. If AudioWorklet is not available
+ * (e.g. in older browsers or test environments), it falls back to the
+ * deprecated `ScriptProcessorNode`.
  *
  * @see {@link AudioPlayer} for the corresponding audio playback manager.
  */
@@ -27,6 +32,28 @@ import { AudioCaptureError, MicrophonePermissionError } from '../../utils/errors
 import { Logger } from '../../utils/logger';
 import { floatTo16BitPCM, downsampleAudio } from '../../utils/audio';
 import { DEFAULT_AUDIO_INPUT_CONFIG } from '../types/config';
+
+/**
+ * Inline source code for the AudioWorklet processor.
+ *
+ * @remarks
+ * This is loaded via a Blob URL at runtime so that users do not need to serve
+ * a separate worklet JS file. The source is intentionally kept minimal — it
+ * copies each render quantum's first-channel data and posts it to the main
+ * thread.
+ */
+const WORKLET_PROCESSOR_SOURCE = `
+class AudioCaptureProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (input && input[0] && input[0].length > 0) {
+      this.port.postMessage({ type: 'audio', data: new Float32Array(input[0]) });
+    }
+    return true;
+  }
+}
+registerProcessor('audio-capture-processor', AudioCaptureProcessor);
+`;
 
 /**
  * Callback function that receives captured audio data.
@@ -53,14 +80,20 @@ export type AudioCaptureCallback = (audioData: ArrayBuffer) => void;
  *
  * @remarks
  * `AudioCapture` encapsulates the browser's `getUserMedia`, `AudioContext`, and
- * `ScriptProcessorNode` APIs to provide a simple start/stop interface for
- * microphone capture. It supports pause/resume, configurable sample rates,
- * echo cancellation, noise suppression, and automatic gain control.
+ * audio processing APIs to provide a simple start/stop interface for microphone
+ * capture. It supports pause/resume, configurable sample rates, echo
+ * cancellation, noise suppression, and automatic gain control.
+ *
+ * When starting, the class attempts to use `AudioWorkletNode` for off-main-thread
+ * audio processing. If AudioWorklet is unavailable (e.g. in older browsers or
+ * jsdom test environments), it transparently falls back to the deprecated
+ * `ScriptProcessorNode`.
  *
  * Audio data is delivered as `ArrayBuffer` chunks to the callback provided to
- * {@link AudioCapture.start | start()}. The chunk size is determined by the
- * {@link AudioInputConfig.chunkDuration} setting (default 100ms), rounded to
- * the nearest power-of-two buffer size for the `ScriptProcessorNode`.
+ * {@link AudioCapture.start | start()}. The chunk size depends on the processing
+ * path: the worklet delivers 128-frame render quanta, while the fallback
+ * `ScriptProcessorNode` uses a power-of-two buffer size derived from the
+ * {@link AudioInputConfig.chunkDuration} setting (default 100ms).
  *
  * The class tracks its own state via {@link AudioCaptureState} values:
  * `'inactive'`, `'starting'`, `'active'`, `'paused'`, and `'stopping'`.
@@ -100,6 +133,8 @@ export class AudioCapture {
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private processorNode: ScriptProcessorNode | null = null;
+  private workletNode: AudioWorkletNode | null = null;
+  private useWorklet = false;
   private callback: AudioCaptureCallback | null = null;
 
   /**
@@ -191,7 +226,8 @@ export class AudioCapture {
    * This method:
    * 1. Requests microphone access via `getUserMedia`.
    * 2. Creates an `AudioContext` at the configured sample rate.
-   * 3. Connects a `MediaStreamAudioSourceNode` through a `ScriptProcessorNode`.
+   * 3. Connects a `MediaStreamAudioSourceNode` through an `AudioWorkletNode`
+   *    (preferred) or `ScriptProcessorNode` (fallback).
    * 4. Delivers processed audio chunks to the provided `callback`.
    *
    * If already capturing (`state === 'active'`), this method logs a warning
@@ -252,23 +288,8 @@ export class AudioCapture {
       // Create source node from media stream
       this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
 
-      // Create script processor node for audio processing
-      // Buffer size calculation: sampleRate * chunkDuration / 1000
-      const bufferSize = this.calculateBufferSize();
-      this.processorNode = this.audioContext.createScriptProcessor(
-        bufferSize,
-        this.config.channels ?? 1,
-        this.config.channels ?? 1
-      );
-
-      // Process audio data
-      this.processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
-        this.processAudioData(event);
-      };
-
-      // Connect the nodes
-      this.sourceNode.connect(this.processorNode);
-      this.processorNode.connect(this.audioContext.destination);
+      // Set up audio processing (AudioWorklet preferred, ScriptProcessor fallback)
+      await this.setupAudioProcessor();
 
       this.state = 'active';
       this.logger?.info('Audio capture started');
@@ -288,6 +309,69 @@ export class AudioCapture {
         error as Error
       );
     }
+  }
+
+  /**
+   * Set up the audio processing node, preferring AudioWorklet over ScriptProcessor.
+   *
+   * @remarks
+   * Attempts to register and connect an `AudioWorkletNode` using an inline
+   * Blob URL. If AudioWorklet is not supported or `addModule` fails, falls
+   * back to the deprecated `ScriptProcessorNode`.
+   */
+  private async setupAudioProcessor(): Promise<void> {
+    if (this.audioContext?.audioWorklet) {
+      try {
+        const blob = new Blob([WORKLET_PROCESSOR_SOURCE], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        try {
+          await this.audioContext.audioWorklet.addModule(url);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+
+        this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-capture-processor');
+        this.workletNode.port.onmessage = (event: MessageEvent) => {
+          if (event.data?.type === 'audio') {
+            this.handleAudioData(event.data.data as Float32Array);
+          }
+        };
+        this.sourceNode!.connect(this.workletNode);
+        this.useWorklet = true;
+        this.logger?.info('Using AudioWorkletNode for audio capture');
+        return;
+      } catch {
+        this.logger?.info('AudioWorklet not available, falling back to ScriptProcessorNode');
+      }
+    }
+
+    // Fallback: ScriptProcessorNode (deprecated but universally supported)
+    this.setupScriptProcessor();
+  }
+
+  /**
+   * Set up audio processing using the deprecated `ScriptProcessorNode`.
+   *
+   * @remarks
+   * Used as a fallback when AudioWorklet is not available. Connects the
+   * source through a ScriptProcessorNode to the AudioContext destination.
+   */
+  private setupScriptProcessor(): void {
+    const bufferSize = this.calculateBufferSize();
+    this.processorNode = this.audioContext!.createScriptProcessor(
+      bufferSize,
+      this.config.channels ?? 1,
+      this.config.channels ?? 1
+    );
+
+    this.processorNode.onaudioprocess = (event: AudioProcessingEvent) => {
+      this.processAudioEvent(event);
+    };
+
+    this.sourceNode!.connect(this.processorNode);
+    this.processorNode.connect(this.audioContext!.destination);
+    this.useWorklet = false;
+    this.logger?.info('Using ScriptProcessorNode for audio capture (fallback)');
   }
 
   /**
@@ -314,13 +398,12 @@ export class AudioCapture {
    *
    * @remarks
    * This handler is invoked by the `onaudioprocess` event. It extracts channel
-   * data, applies downsampling if the hardware sample rate differs from the
-   * configured rate, converts to the target format, and delivers the result to
-   * the registered callback.
+   * data and delegates to {@link handleAudioData} for downsampling, format
+   * conversion, and callback delivery.
    *
    * @param event - The `AudioProcessingEvent` from the `ScriptProcessorNode`.
    */
-  private processAudioData(event: AudioProcessingEvent): void {
+  private processAudioEvent(event: AudioProcessingEvent): void {
     if (!this.callback || this.state !== 'active') {
       return;
     }
@@ -329,14 +412,38 @@ export class AudioCapture {
       const inputBuffer = event.inputBuffer;
       const channelData = inputBuffer.getChannelData(0);
 
+      this.handleAudioData(channelData, inputBuffer.sampleRate);
+    } catch (error) {
+      this.logger?.error('Error processing audio data', error);
+    }
+  }
+
+  /**
+   * Handle raw Float32 audio samples from either processing path.
+   *
+   * @remarks
+   * This method contains the shared audio processing logic used by both the
+   * AudioWorklet and ScriptProcessorNode paths. It applies downsampling if the
+   * source sample rate differs from the configured rate, converts to the target
+   * format, and delivers the result to the registered callback.
+   *
+   * @param channelData - Raw Float32 audio samples from a single channel.
+   * @param sourceSampleRate - The sample rate of the incoming data. Defaults to
+   *   the configured sample rate (used by the worklet path where the
+   *   AudioContext sample rate matches the config).
+   */
+  private handleAudioData(channelData: Float32Array, sourceSampleRate?: number): void {
+    if (!this.callback || this.state !== 'active') {
+      return;
+    }
+
+    try {
+      const inputSampleRate = sourceSampleRate ?? this.config.sampleRate;
+
       // Downsample if necessary
       let processedData: Float32Array = channelData;
-      if (inputBuffer.sampleRate !== this.config.sampleRate) {
-        processedData = downsampleAudio(
-          channelData,
-          inputBuffer.sampleRate,
-          this.config.sampleRate
-        );
+      if (inputSampleRate !== this.config.sampleRate) {
+        processedData = downsampleAudio(channelData, inputSampleRate, this.config.sampleRate);
       }
 
       // Convert to appropriate format
@@ -357,7 +464,7 @@ export class AudioCapture {
    * (`wav`, `opus`, `mp3`, `webm`) fall back to PCM with a warning, leaving
    * encoding to downstream providers.
    *
-   * @param float32Data - The raw Float32 audio samples from the `ScriptProcessorNode`.
+   * @param float32Data - The raw Float32 audio samples.
    * @returns An `ArrayBuffer` containing the converted audio data.
    */
   private convertAudioData(float32Data: Float32Array): ArrayBuffer {
@@ -458,6 +565,12 @@ export class AudioCapture {
    * the `AudioContext`, stops media stream tracks, and nullifies references.
    */
   private cleanup(): void {
+    if (this.workletNode) {
+      this.workletNode.port.onmessage = null;
+      this.workletNode.disconnect();
+      this.workletNode = null;
+    }
+
     if (this.processorNode) {
       this.processorNode.disconnect();
       this.processorNode.onaudioprocess = null;
@@ -479,6 +592,7 @@ export class AudioCapture {
       this.mediaStream = null;
     }
 
+    this.useWorklet = false;
     this.callback = null;
   }
 
@@ -523,6 +637,20 @@ export class AudioCapture {
   updateConfig(config: Partial<AudioInputConfig>): void {
     this.config = { ...this.config, ...config };
     this.logger?.info('Audio configuration updated');
+  }
+
+  /**
+   * Returns whether the AudioWorklet path is being used for the current session.
+   *
+   * @remarks
+   * Returns `true` if the current capture session is using `AudioWorkletNode`,
+   * `false` if using the `ScriptProcessorNode` fallback or if capture is not
+   * active.
+   *
+   * @returns `true` if AudioWorklet is in use, `false` otherwise.
+   */
+  isUsingWorklet(): boolean {
+    return this.useWorklet;
   }
 
   /**

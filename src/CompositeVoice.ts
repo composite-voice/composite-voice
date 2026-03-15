@@ -51,18 +51,20 @@ import { InvalidStateError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
+import { trimConversationHistory } from './utils/conversationHistory';
 import { resolveProviders } from './core/pipeline/resolveProviders';
 import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
 import type { QueueStats } from './core/pipeline/AudioBufferQueue';
 import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
 import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
+import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
  *
  * @remarks
  * Live STT providers stream audio in real-time over a WebSocket and support
- * `connect()`, `sendAudio()`, and `disconnect()` methods. REST STT providers,
+ * `connect()`, `processAudio()`, and `disconnect()` methods. REST STT providers,
  * by contrast, transcribe complete audio blobs via `transcribe()`.
  *
  * @param provider - The STT provider instance to check.
@@ -77,7 +79,7 @@ function isLiveSTT(provider: STTProvider): provider is LiveSTTProvider {
  *
  * @remarks
  * Live TTS providers stream synthesized audio chunks in real-time over a
- * WebSocket and support `connect()`, `sendText()`, `finalize()`, and
+ * WebSocket and support `connect()`, `processChunk()`, `finalize()`, and
  * `disconnect()` methods. They also expose `onAudio()` and `onMetadata()`
  * callbacks for receiving audio data.
  *
@@ -328,6 +330,8 @@ export class CompositeVoice {
    *  generations can detect they've been superseded by a barge-in. */
   private llmGenerationId = 0;
 
+  // LLM→TTS backpressure (when config.pipeline.maxPendingChunks is set)
+  private ttsBackpressure: TTSBackpressure | null = null;
 
   private initialized = false;
 
@@ -414,6 +418,12 @@ export class CompositeVoice {
 
     // Create header cache for WebSocket reconnection
     this.headerCache = new AudioHeaderCache();
+
+    // Setup LLM→TTS backpressure (opt-in via config)
+    const maxPending = config.pipeline?.maxPendingChunks;
+    if (maxPending && maxPending > 0) {
+      this.ttsBackpressure = new TTSBackpressure(maxPending);
+    }
 
     // Setup logging
     const loggingConfig = { ...DEFAULT_LOGGING_CONFIG, ...config.logging };
@@ -589,7 +599,7 @@ export class CompositeVoice {
         }
       }
 
-      if (result.isPreflight) {
+      if (stt.isPreflight(result)) {
         // ── Preflight / eager end-of-turn ──────────────────────────────────
         // DeepgramFlux signals early completion before speech_final.
         this.emitEvent({
@@ -606,7 +616,7 @@ export class CompositeVoice {
         return;
       }
 
-      if (result.utteranceComplete && result.text.trim()) {
+      if (stt.isUtteranceComplete(result) && result.text.trim()) {
         // ── Utterance complete — provider says "send to LLM now" ─────────
         this.emitEvent({
           type: 'transcription.speechFinal',
@@ -626,7 +636,7 @@ export class CompositeVoice {
         } as CompositeVoiceEvent);
 
         this.handleSpeechFinal(result.text);
-      } else if (result.isFinal) {
+      } else if (stt.isFinal(result)) {
         // ── Segment finalised but not utterance-complete ─────────────────
         // Emit for display/caption purposes but do NOT trigger LLM.
         this.emitEvent({
@@ -654,6 +664,8 @@ export class CompositeVoice {
         // Multi-role tts===output: no queue needed, TTS handles playback internally.
         // Track playback state for agent state machine derivation.
         tts.onAudio((chunk) => {
+          if (!tts.isAudioReady(chunk)) return;
+          this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -675,6 +687,8 @@ export class CompositeVoice {
       } else {
         // Separate TTS and output: wire audio through output queue
         tts.onAudio((chunk) => {
+          if (!tts.isAudioReady(chunk)) return;
+          this.ttsBackpressure?.release();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -828,7 +842,7 @@ export class CompositeVoice {
    * 2. Transitions the processing state machine to `processing`, then `streaming`.
    * 3. Builds the LLM request, optionally including conversation history.
    * 4. Streams response chunks, emitting `llm.chunk` events and forwarding
-   *    text to Live TTS providers via `sendText()`.
+   *    text to Live TTS providers via `processChunk()`.
    * 5. On completion, emits `llm.complete`, appends to conversation history,
    *    and triggers TTS synthesis (REST or Live finalization).
    * 6. Handles `AbortSignal` for eager pipeline cancellation at every stage,
@@ -885,10 +899,11 @@ export class CompositeVoice {
 
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality });
-        const maxTurns = historyConfig?.maxTurns ?? 0;
-        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
-          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
-        }
+        // Trim history using token-aware trimming (preserves system messages by default)
+        this.conversationHistory = trimConversationHistory(
+          this.conversationHistory,
+          historyConfig,
+        );
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -933,7 +948,7 @@ export class CompositeVoice {
         responseIterable = await llm.generate(text, { signal: activeSignal });
       }
 
-      // Check if aborted before we start streaming (generate() may have taken time)
+      // Check if aborted before we start streaming (processMessages/processText may have taken time)
       if (activeSignal.aborted) {
         this.processingStateMachine.setIdle();
         return;
@@ -974,7 +989,13 @@ export class CompositeVoice {
         // Skip entirely once a code block is detected — the response contains a
         // skill invocation and shouldn't be spoken
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
-          tts.sendText(chunk);
+          if (this.ttsBackpressure) {
+            await this.ttsBackpressure.waitForCapacity();
+            tts.sendText(chunk);
+            this.ttsBackpressure.acquire();
+          } else {
+            tts.sendText(chunk);
+          }
         }
       }
 
@@ -1245,7 +1266,7 @@ export class CompositeVoice {
    * @remarks
    * This is the Live TTS counterpart to {@link processTTS} for REST TTS. The
    * key difference is that audio chunks have already been arriving in real-time
-   * during LLM streaming (via `sendText()`), so this method only needs to:
+   * during LLM streaming (via `processChunk()`), so this method only needs to:
    *
    * 1. Optionally pause audio capture to prevent echo. For separate input
    *    providers, this stops queue draining and pauses the input.
@@ -1622,6 +1643,9 @@ export class CompositeVoice {
         this.eagerText = null;
       }
 
+      // Reset backpressure so stale waitForCapacity promises don't block
+      this.ttsBackpressure?.reset();
+
       // Stop output provider and clear output queue (for separate output)
       if (!this.isMultiRoleOutput) {
         this.outputQueue.clear();
@@ -1737,10 +1761,10 @@ export class CompositeVoice {
 
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality: 'text' });
-        const maxTurns = historyConfig?.maxTurns ?? 0;
-        if (maxTurns > 0 && this.conversationHistory.length > maxTurns * 2) {
-          this.conversationHistory = this.conversationHistory.slice(-(maxTurns * 2));
-        }
+        this.conversationHistory = trimConversationHistory(
+          this.conversationHistory,
+          historyConfig,
+        );
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -1951,7 +1975,7 @@ export class CompositeVoice {
           fullText = '';
           toolCalls = [];
 
-          // Re-call the LLM with tool results — it will generate a spoken follow-up
+          // Re-call the LLM with tool results — it will produce a spoken follow-up
           if (isLiveTTS(tts) && !this._outputMuted) {
             await tts.connect();
           }

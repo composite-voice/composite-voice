@@ -21,6 +21,9 @@ import { Logger } from '../../utils/logger';
  * callback. Use this base class when the STT service exposes an HTTP
  * endpoint rather than a persistent WebSocket connection.
  *
+ * The `processAudio` handler from {@link BaseSTTProvider} is a no-op for
+ * REST providers; use {@link transcribe} for batch processing instead.
+ *
  * The typical data flow is:
  *
  * ```
@@ -70,7 +73,7 @@ import { Logger } from '../../utils/logger';
  * }
  * ```
  *
- * @see {@link BaseSTTProvider} for the shared STT callback mechanism
+ * @see {@link BaseSTTProvider} for the shared STT callback and guard mechanism
  * @see {@link LiveSTTProvider} for WebSocket-based real-time STT
  */
 export abstract class RestSTTProvider extends BaseSTTProvider implements IRestSTTProvider {
@@ -82,6 +85,20 @@ export abstract class RestSTTProvider extends BaseSTTProvider implements IRestST
    */
   constructor(config: STTProviderConfig, logger?: Logger) {
     super('rest', config, logger);
+  }
+
+  /**
+   * Process a raw audio chunk (no-op for REST providers).
+   *
+   * @remarks
+   * REST STT providers do not process streaming audio. Use
+   * {@link transcribe} for batch processing instead. This method exists
+   * to satisfy the {@link BaseSTTProvider} contract.
+   *
+   * @param _chunk - Raw audio data (ignored).
+   */
+  processAudio(_chunk: ArrayBuffer): void {
+    // No-op for REST providers — use transcribe() for batch processing
   }
 
   /**

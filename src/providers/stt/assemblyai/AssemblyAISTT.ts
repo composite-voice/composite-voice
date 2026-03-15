@@ -439,7 +439,7 @@ export class AssemblyAISTT extends LiveSTTProvider {
    *
    * @param chunk - Raw audio data captured from the microphone.
    */
-  sendAudio(chunk: ArrayBuffer): void {
+  protected sendAudioToSocket(chunk: ArrayBuffer): void {
     if (!this.isConnected || !this.wsManager) {
       this.logger.warn('Cannot send audio: not connected');
       return;
