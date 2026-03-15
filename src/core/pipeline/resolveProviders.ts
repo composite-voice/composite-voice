@@ -87,7 +87,7 @@ import { NativeTTS } from '../../providers/tts/native/NativeTTS';
  * accept either REST or live (WebSocket) variants:
  *
  * - **input**: {@link AudioInputProvider} methods
- * - **stt**: Either {@link RestSTTProvider} (`transcribe`) or {@link LiveSTTProvider} (`connect`, `processAudio`, `disconnect`) + shared `onTranscription`
+ * - **stt**: Either {@link RestSTTProvider} (`transcribe`) or {@link LiveSTTProvider} (`connect`, `sendAudio`, `disconnect`) + shared `onTranscription`
  * - **llm**: {@link LLMProvider} methods
  * - **tts**: Either {@link RestTTSProvider} (`synthesize`) or {@link LiveTTSProvider} (`connect`, `processChunk`, `finalize`, `disconnect`) + shared `onAudio`
  * - **output**: {@link AudioOutputProvider} methods
@@ -100,14 +100,14 @@ const ROLE_REQUIRED_METHODS: Record<ProviderRole, string[][]> = {
     // RestSTTProvider
     ['transcribe', 'onTranscription'],
     // LiveSTTProvider
-    ['connect', 'processAudio', 'disconnect', 'onTranscription'],
+    ['connect', 'sendAudio', 'disconnect', 'onTranscription'],
   ],
-  llm: [['processMessages', 'processText']],
+  llm: [['generate', 'generateFromMessages']],
   tts: [
     // RestTTSProvider
     ['synthesize'],
     // LiveTTSProvider
-    ['connect', 'processChunk', 'finalize', 'disconnect', 'onAudio', 'onMetadata'],
+    ['connect', 'sendText', 'finalize', 'disconnect', 'onAudio', 'onMetadata'],
   ],
   output: [
     [

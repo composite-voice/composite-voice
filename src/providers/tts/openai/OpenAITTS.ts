@@ -225,8 +225,8 @@ export class OpenAITTS extends RestTTSProvider {
       const OpenAIModule = await import('openai');
       const OpenAI = OpenAIModule.default;
 
-      const baseURL = this.config.proxyUrl ?? this.config.baseURL;
-      const apiKey = this.config.proxyUrl ? 'proxy' : (this.config.apiKey as string);
+      const baseURL = this.resolveBaseUrl();
+      const apiKey = this.resolveApiKey();
 
       // Initialize OpenAI client
       this.client = new OpenAI({

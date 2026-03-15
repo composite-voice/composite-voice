@@ -314,6 +314,14 @@ export class WebLLMLLM extends BaseLLMProvider {
    * }
    * ```
    */
+  async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    return this.processText(prompt, options);
+  }
+
+  async generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+    return this.processMessages(messages, options);
+  }
+
   async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions

@@ -113,7 +113,7 @@ export class AudioRouter {
     // Start draining: flush all buffered chunks then switch to pass-through
     if (isLiveSTT(stt)) {
       this.inputQueue.startDraining((chunk: AudioChunk) => {
-        stt.processAudio(chunk.data);
+        stt.sendAudio(chunk.data);
       });
     }
   }
