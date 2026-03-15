@@ -51,7 +51,7 @@ await voice.startListening();
 | `responseFormat` | `string` | `'mp3'` | Output format: `mp3`, `opus`, `aac`, `flac`, `wav` |
 | `speed` | `number` | `1.0` | Speech speed multiplier (0.25 to 4.0) |
 | `organizationId` | `string` | -- | OpenAI organization ID for billing |
-| `baseURL` | `string` | -- | Custom API endpoint (e.g., Azure OpenAI) |
+| `endpoint` | `string` | -- | Custom API endpoint URL (e.g., Azure OpenAI) |
 | `maxRetries` | `number` | `3` | Retry count for failed requests |
 
 ### Available voices
@@ -111,7 +111,7 @@ await voice.startListening();
 - OpenAI TTS has a 4096-character limit per request. CompositeVoice handles this automatically in the pipeline, but keep it in mind for standalone use.
 - The `opus` format gives the best balance of quality and size for browser playback.
 - OpenAITTS is REST-based, not streaming. The full audio Blob is returned after the API processes the entire input. For real-time streaming, consider [DeepgramTTS](/guides/tts/deepgram-tts).
-- Use `baseURL` to point at Azure OpenAI or any API-compatible endpoint. For CompositeVoice proxy routing, use `proxyUrl` instead.
+- Use `endpoint` to point at Azure OpenAI or any API-compatible endpoint. For CompositeVoice proxy routing, use `proxyUrl` instead.
 
 ## Further reading
 

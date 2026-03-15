@@ -43,6 +43,7 @@ await voice.startListening();
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `apiKey` | `string` | -- | Deepgram API key (direct mode) |
+| `authType` | `'token' \| 'bearer'` | `'token'` | Controls WebSocket auth. Default: `'token'` (subprotocol `['token', apiKey]`). Set to `'bearer'` for OAuth tokens. |
 | `proxyUrl` | `string` | -- | Proxy server URL (recommended for production) |
 | `voice` | `string` | `'aura-2-thalia-en'` | Voice model identifier |
 | `sampleRate` | `number` | `24000` | Output sample rate: `8000`, `16000`, `24000`, `32000`, or `48000` Hz |

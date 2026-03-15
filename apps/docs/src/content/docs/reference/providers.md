@@ -324,7 +324,7 @@ Base class for any service that speaks the OpenAI chat completions format. Use t
 import { OpenAICompatibleLLM } from '@lukeocodes/composite-voice';
 
 const llm = new OpenAICompatibleLLM({
-  baseURL: 'https://my-model-server.example.com/v1',
+  endpoint: 'https://my-model-server.example.com/v1',
   model: 'my-custom-model',
   apiKey: '...',
 });

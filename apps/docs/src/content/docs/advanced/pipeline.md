@@ -140,13 +140,8 @@ class MyLLM extends BaseLLMProvider {
     // Clean up resources
   }
 
-  async *generate(prompt: string, options?: LLMGenerationOptions): AsyncIterable<string> {
-    const messages = this.promptToMessages(prompt);
-    yield* this.generateFromMessages(messages, options);
-  }
-
-  async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): AsyncIterable<string> {
-    // Call your model and yield text chunks
+  // Primary method — called by CompositeVoice pipeline
+  async *processMessages(messages: LLMMessage[], options?: LLMGenerationOptions): AsyncIterable<string> {
     const response = await fetch('https://my-model.example.com/chat', {
       method: 'POST',
       body: JSON.stringify({ messages }),
@@ -161,6 +156,16 @@ class MyLLM extends BaseLLMProvider {
       if (done) break;
       yield decoder.decode(value);
     }
+  }
+
+  // Compatibility methods — override these if you need standalone usage
+  async *generate(prompt: string, options?: LLMGenerationOptions): AsyncIterable<string> {
+    const messages = this.promptToMessages(prompt);
+    yield* this.processMessages(messages, options);
+  }
+
+  async *generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): AsyncIterable<string> {
+    yield* this.processMessages(messages, options);
   }
 }
 ```
@@ -188,11 +193,11 @@ class MyTTS extends LiveTTSProvider {
     };
   }
 
-  sendText(chunk: string): void {
+  sendTextToSocket(chunk: string): void {
     this.ws?.send(JSON.stringify({ text: chunk }));
   }
 
-  async finalize(): Promise<void> {
+  async finalizeSocket(): Promise<void> {
     this.ws?.send(JSON.stringify({ flush: true }));
   }
 
@@ -210,16 +215,37 @@ BaseProvider
 │   ├── MicrophoneInput   ← browser microphone via getUserMedia
 │   └── BufferInput       ← programmatic audio buffers
 ├── BaseSTTProvider
-│   ├── LiveSTTProvider    ← WebSocket STT (implement connect, sendAudio, disconnect)
+│   ├── LiveSTTProvider    ← WebSocket STT (implement connect, sendAudioToSocket, disconnect)
 │   └── RestSTTProvider    ← REST STT (implement transcribe)
-├── BaseLLMProvider        ← all LLMs (implement generate, generateFromMessages)
+├── BaseLLMProvider        ← all LLMs (implement processMessages, generate, generateFromMessages)
 ├── BaseTTSProvider
-│   ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendText, finalize, disconnect)
+│   ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendTextToSocket, finalizeSocket, disconnect)
 │   └── RestTTSProvider    ← REST TTS (implement synthesize)
 └── BaseOutputProvider    ← audio output (implement playAudio, stopPlayback)
     ├── BrowserAudioOutput ← Web Audio API playback
     └── NullOutput         ← discards audio (testing)
 ```
+
+### Guard and handler methods
+
+Every provider exposes two types of standard methods:
+
+**Handler methods** receive data and perform the provider's core function:
+- STT: `sendAudioToSocket(chunk)` -- sends audio to the service for transcription
+- LLM: `processMessages(messages, options)` -- sends messages to the LLM
+- TTS: `sendTextToSocket(text)` -- sends text for synthesis
+
+**Guard methods** assert conditions on results and return boolean. CompositeVoice calls these to decide what to do with each result:
+- `isUtteranceComplete(result)` -- is this a complete utterance ready for the LLM?
+- `isPreflight(result)` -- is this a speculative end-of-turn signal?
+- `isAudioReady(chunk)` -- does this chunk contain valid audio for playback?
+
+**Base connection helpers** (on all providers):
+- `assertAuth()` -- validates `apiKey` or `proxyUrl` is configured
+- `resolveBaseUrl(defaultUrl)` -- resolves `proxyUrl` > `endpoint` > default
+- `resolveApiKey()` -- returns `apiKey` or `'proxy'` in proxy mode
+- `resolveWsProtocols()` -- WebSocket subprotocol array for auth
+- `isProxyMode` -- `true` when using proxy
 
 ### Audio internals
 

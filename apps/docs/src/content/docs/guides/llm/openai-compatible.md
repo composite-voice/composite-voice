@@ -24,7 +24,7 @@ const agent = new CompositeVoice({
   providers: [
     new NativeSTT({ language: 'en-US' }),
     new OpenAICompatibleLLM({
-      baseURL: 'https://my-model-server.example.com/v1',
+      endpoint: 'https://my-model-server.example.com/v1',
       apiKey: 'my-api-key',
       model: 'my-custom-model',
       systemPrompt: 'You are a concise voice assistant. Keep answers under two sentences.',
@@ -42,13 +42,13 @@ await agent.startListening();
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `model` | `string` | (required) | Model identifier recognized by the target endpoint. |
-| `baseURL` | `string` | -- | Base URL for the API (e.g., `http://localhost:11434/v1`). |
+| `endpoint` | `string` | -- | Custom API endpoint URL (e.g., `http://localhost:11434/v1`). |
 | `systemPrompt` | `string` | -- | System-level instructions for the assistant. |
 | `temperature` | `number` | -- | Randomness (0 = deterministic, 2 = creative). |
 | `maxTokens` | `number` | -- | Maximum tokens per response. |
 | `topP` | `number` | -- | Nucleus sampling threshold (0--1). |
 | `stream` | `boolean` | `true` | Stream tokens incrementally. |
-| `proxyUrl` | `string` | -- | CompositeVoice proxy endpoint. Takes precedence over `baseURL`. |
+| `proxyUrl` | `string` | -- | CompositeVoice proxy endpoint. Takes precedence over `endpoint`. |
 | `apiKey` | `string` | -- | API key for the target endpoint. |
 | `maxRetries` | `number` | `3` | Retry count for failed requests. |
 
@@ -58,7 +58,7 @@ await agent.startListening();
 
 ```typescript
 const llm = new OpenAICompatibleLLM({
-  baseURL: 'http://localhost:11434/v1',
+  endpoint: 'http://localhost:11434/v1',
   apiKey: 'ollama',  // Ollama ignores the key but the SDK requires one
   model: 'llama3.2',
   systemPrompt: 'You are a helpful voice assistant.',
@@ -69,7 +69,7 @@ const llm = new OpenAICompatibleLLM({
 
 ```typescript
 const llm = new OpenAICompatibleLLM({
-  baseURL: 'https://api.together.xyz/v1',
+  endpoint: 'https://api.together.xyz/v1',
   apiKey: 'your-together-api-key',
   model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
 });
@@ -79,7 +79,7 @@ const llm = new OpenAICompatibleLLM({
 
 ```typescript
 const llm = new OpenAICompatibleLLM({
-  baseURL: 'https://api.deepseek.com/v1',
+  endpoint: 'https://api.deepseek.com/v1',
   apiKey: 'your-deepseek-api-key',
   model: 'deepseek-chat',
 });
@@ -103,7 +103,7 @@ const agent = new CompositeVoice({
       options: { model: 'nova-3', smartFormat: true },
     }),
     new OpenAICompatibleLLM({
-      baseURL: 'http://localhost:11434/v1',
+      endpoint: 'http://localhost:11434/v1',
       apiKey: 'ollama',
       model: 'llama3.2',
       temperature: 0.7,
@@ -126,7 +126,7 @@ await agent.startListening();
 
 - **Provide either `apiKey` or `proxyUrl`.** At least one is required. If both are set, `proxyUrl` takes precedence and the SDK sends a dummy key.
 - **Verify your endpoint supports streaming.** Some self-hosted setups disable SSE streaming. Set `stream: false` if your endpoint does not support it.
-- **This is the base class for OpenAI, Groq, Mistral, and Gemini.** If you use one of those services, prefer their dedicated provider classes -- they set correct defaults for `baseURL` and `model`.
+- **This is the base class for OpenAI, Groq, Mistral, and Gemini.** If you use one of those services, prefer their dedicated provider classes -- they set correct defaults for `endpoint` and `model`.
 - **Extend this class for custom providers.** Override `providerName` and `buildClientOptions()` to add provider-specific behavior. See the source of `GroqLLM` or `GeminiLLM` for examples.
 
 ## Related

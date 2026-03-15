@@ -50,6 +50,7 @@ await agent.startListening();
 |---|---|---|---|
 | `proxyUrl` | `string` | -- | URL of your CompositeVoice proxy endpoint (recommended) |
 | `apiKey` | `string` | -- | Deepgram API key (development only) |
+| `authType` | `'token' \| 'bearer'` | `'token'` | Controls WebSocket auth. Default: `'token'` (subprotocol `['token', apiKey]`). Set to `'bearer'` for OAuth tokens. |
 | `language` | `string` | `'en-US'` | Language code |
 | `interimResults` | `boolean` | `true` | Emit partial transcripts while the user speaks |
 | `options.model` | `string` | `'nova-3'` | Transcription model (see model table below) |

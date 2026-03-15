@@ -94,6 +94,19 @@ const voice = new CompositeVoice({
 
 Configure audio capture and playback settings on the input and output providers directly, not on the top-level config. For example, `MicrophoneInput` accepts `sampleRate`, `echoCancellation`, `noiseSuppression`, and `autoGainControl`. `BrowserAudioOutput` accepts `bufferSize`, `minBufferDuration`, and `enableSmoothing`. See [Audio](/advanced/audio) for details.
 
+## Base provider options
+
+Every provider inherits these options from `BaseProviderConfig`:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `endpoint` | `string` | -- | Custom API endpoint URL. Replaces the provider's default URL. |
+| `authType` | `'token' \| 'bearer'` | `'token'` | Controls WebSocket subprotocol and `Authorization` header format. `'token'` uses `['token', apiKey]` subprotocol (Deepgram convention). `'bearer'` sends a `Bearer` token. |
+| `proxyUrl` | `string` | -- | Proxy server URL. When set, the provider operates in proxy mode -- `proxyUrl` takes precedence over `endpoint` for URL resolution, and `apiKey` is not required. |
+| `apiKey` | `string` | -- | API key for direct authentication. Not needed in proxy mode. |
+
+These options are available on all STT, LLM, TTS, and I/O providers. Individual providers add their own options on top (e.g., `model`, `voice`, `language`).
+
 ## Turn-taking strategies
 
 Turn-taking controls whether the SDK pauses microphone capture while the agent speaks. This prevents the agent's own audio from being re-transcribed, which would create a feedback loop.

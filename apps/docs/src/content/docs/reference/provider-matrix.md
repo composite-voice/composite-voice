@@ -32,7 +32,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`DeepgramSTT`](/guides/stt/deepgram-stt) | [`DeepgramFlux`](/guides/stt/deepgram-flux) | [`DeepgramTTS`](/guides/tts/deepgram-tts) |
 | **Transport** | WebSocket | WebSocket | WebSocket |
 | **Streaming** | Yes | Yes | Yes |
-| **Peer dependency** | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 | `@deepgram/sdk` >=5.0.0-beta.1 |
+| **Peer dependency** | None | None | None |
 | **Proxy support** | Yes | Yes | Yes |
 | **Browser support** | All modern browsers | All modern browsers | All modern browsers |
 | **Default model** | nova-3 | flux-general-en | aura-2-thalia-en |
@@ -85,7 +85,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **LLM models:** gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-3.5-turbo.
 
-**TTS features:** 6 voices (alloy, echo, fable, onyx, nova, shimmer), quality/speed tradeoff via model selection (tts-1 fast, tts-1-hd quality), 5 output formats (mp3, opus, aac, flac, wav), speed control (0.25–4.0x), 4096 character limit per request, `baseURL` for Azure OpenAI compatibility.
+**TTS features:** 6 voices (alloy, echo, fable, onyx, nova, shimmer), quality/speed tradeoff via model selection (tts-1 fast, tts-1-hd quality), 5 output formats (mp3, opus, aac, flac, wav), speed control (0.25–4.0x), 4096 character limit per request, `endpoint` for Azure OpenAI compatibility.
 
 **Guides:** [OpenAILLM](/guides/llm/openai) · [OpenAITTS](/guides/tts/openai-tts) · **Examples:** [40](https://github.com/lukeocodes/composite-voice/tree/main/examples/40-openai-pipeline), [41](https://github.com/lukeocodes/composite-voice/tree/main/examples/41-openai-deepgram), [42](https://github.com/lukeocodes/composite-voice/tree/main/examples/42-openai-tts-pipeline)
 
@@ -261,7 +261,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |
