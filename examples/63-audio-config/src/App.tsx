@@ -4,7 +4,8 @@ import {
   MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
-  NativeTTS,
+  DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
@@ -70,6 +71,10 @@ export default function App() {
   }, []);
 
   const handleInit = useCallback(async () => {
+    if (agentRef.current) {
+      await agentRef.current.dispose();
+    }
+
     const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput({
@@ -84,35 +89,41 @@ export default function App() {
         new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-haiku-4-5',
           systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
           maxTokens: 200,
         }),
-        new NativeTTS({ rate: 1.0, preferLocal: true }),
+        new DeepgramTTS({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+        new BrowserAudioOutput(),
       ],
     });
 
-    // Track audio chunks for stats
     let startTime = 0;
-    let chunkCount = 0;
-    let byteCount = 0;
 
     newAgent.on('audio.capture.start', () => {
       startTime = Date.now();
-      chunkCount = 0;
-      byteCount = 0;
       setChunkStats([]);
       setTotalChunks(0);
       setTotalBytes(0);
+      setChunksPerSecond(0);
+      setAvgChunkSize(0);
     });
 
-    // Use an interval to track audio chunk throughput
+    // Poll queue stats to track audio chunk throughput
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      if (chunkCount > 0 && startTime > 0) {
+      if (!agentRef.current || startTime === 0) return;
+      try {
+        const stats = agentRef.current.getQueueStats();
+        const inputStats = stats.input;
         const elapsed = (Date.now() - startTime) / 1000;
-        setChunksPerSecond(elapsed > 0 ? chunkCount / elapsed : 0);
-        setAvgChunkSize(byteCount / chunkCount);
+
+        setTotalChunks(inputStats.totalEnqueued);
+        setTotalBytes(inputStats.totalEnqueued * 3200); // 100ms @ 16kHz 16-bit mono = 3200 bytes
+        setChunksPerSecond(elapsed > 0 ? inputStats.totalEnqueued / elapsed : 0);
+        setAvgChunkSize(inputStats.totalEnqueued > 0 ? 3200 : 0);
+      } catch {
+        // Agent may be disposed
       }
     }, 500);
 
@@ -263,7 +274,10 @@ InputQueue -> STT Provider`} />
   echoCancellation: true,   // Prevents TTS feedback loop
   noiseSuppression: true,   // Reduces background noise
   autoGainControl: true,    // Normalizes volume levels
-})`} />
+})
+
+// Full Deepgram pipeline:
+// MicrophoneInput -> DeepgramSTT -> AnthropicLLM -> DeepgramTTS -> BrowserAudioOutput`} />
             </div>
           </CardBody>
         </Card>

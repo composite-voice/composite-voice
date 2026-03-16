@@ -174,13 +174,11 @@ export default function App() {
                   id="language"
                   value={language}
                   onChange={(e) => handleLanguageChange(e.target.value)}
-                >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.flag} {lang.label} ({lang.code})
-                    </option>
-                  ))}
-                </Select>
+                  options={LANGUAGES.map((lang) => ({
+                    value: lang.code,
+                    label: `${lang.flag} ${lang.label} (${lang.code})`,
+                  }))}
+                />
               </div>
 
               <div className="flex gap-2 items-center">

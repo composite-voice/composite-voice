@@ -90,6 +90,14 @@ class MockLLM implements LLMProvider {
     callbacks.onComplete?.(accumulated);
     return accumulated;
   }
+
+  async generateFromMessages(
+    messages: LLMMessage[],
+    callbacks: LLMStreamCallbacks,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    return this.generate(messages, callbacks, signal);
+  }
 }
 
 // ─── App Component ───────────────────────────────────────────────────────
@@ -233,6 +241,15 @@ class MockLLM implements LLMProvider {
 
     callbacks.onComplete?.(accumulated);
     return accumulated;
+  }
+
+  // Alias required by the SDK interface
+  async generateFromMessages(
+    messages: LLMMessage[],
+    callbacks: LLMStreamCallbacks,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    return this.generate(messages, callbacks, signal);
   }
 }
 
