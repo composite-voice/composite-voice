@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.0.4](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.3...composite-voice-v0.0.4) (2026-03-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* rebuild all examples with React + design system
+
+### Features
+
+* rebuild all examples with React + design system ([57794aa](https://github.com/lukeocodes/composite-voice/commit/57794aad3b0e24f757230134e6b4f76916066be6))
+* **stt:** implement DeepgramFlux V2 with native WebSocket, strict role validation ([dee6e6a](https://github.com/lukeocodes/composite-voice/commit/dee6e6ab693391bbb70c79887ac4041a5f8e77f7))
+
+
+### Bug Fixes
+
+* **examples:** Deepgram pipeline for 63, generateFromMessages for 64, Select options for 65 ([a06bf3a](https://github.com/lukeocodes/composite-voice/commit/a06bf3aa73e99b35b642f99726391a53e1b329fa))
+* **examples:** standardize all examples with tailwind, styles, and no-markdown prompts ([722753f](https://github.com/lukeocodes/composite-voice/commit/722753f7019cb97f26d220bcad57d8b7915d3c26))
+* **examples:** update example 03 with 5-role pipeline and deps ([1188e4c](https://github.com/lukeocodes/composite-voice/commit/1188e4cb20c519bcd5d7854f4497058e85127e02))
+* **examples:** update example 04 with tailwind deps and no-markdown prompt ([68d03b7](https://github.com/lukeocodes/composite-voice/commit/68d03b74d39f096808278499b3c7a9c162f0a5da))
+* **examples:** use CodeBlock code prop instead of children, fix interval leak ([bac3918](https://github.com/lukeocodes/composite-voice/commit/bac3918c460e58caec7135fcf1b486326869dba1))
+* **examples:** use public getHistory() API in example 06 ([a89e8a2](https://github.com/lukeocodes/composite-voice/commit/a89e8a2ea274c8047c253d47ee35e7357c59c390))
+* **examples:** use state variable for agent prop, update example 14 for live Flux ([bc868c5](https://github.com/lukeocodes/composite-voice/commit/bc868c5095bf2d80b4cbaba4e9b5d233fe6ee3cd))
+* NativeSTT mic cycling, browser capability checks, I/O context frontmatter ([19b8a17](https://github.com/lukeocodes/composite-voice/commit/19b8a175527672ef802d148d38753c3cc8ddb826))
+* **proxy:** WS race condition, CORS headers, content-encoding ([7712e1e](https://github.com/lukeocodes/composite-voice/commit/7712e1e5c549a761d52d1872796ff5f5708ad394))
+* **turn-taking:** pause capture when NativeTTS bypasses echo cancellation ([8c4f206](https://github.com/lukeocodes/composite-voice/commit/8c4f206466fc65d90e8eb3a2206aa441705464d8))
+
+
+### Miscellaneous Chores
+
+* release 0.0.4 ([1fa025a](https://github.com/lukeocodes/composite-voice/commit/1fa025a7b0002586a5e2b4bf881f5cc047d2d84b))
+
 ## [0.0.3](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.2...composite-voice-v0.0.3) (2026-03-15)
 
 
