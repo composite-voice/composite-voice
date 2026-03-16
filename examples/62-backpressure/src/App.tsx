@@ -22,6 +22,7 @@ import {
 } from '@lukeocodes/composite-voice-ui';
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   const [maxPendingChunks, setMaxPendingChunks] = useState(5);
@@ -32,7 +33,7 @@ export default function App() {
   const [overflowCount, setOverflowCount] = useState(0);
 
   const handleInit = useCallback(async () => {
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput({ sampleRate: 16000, format: 'pcm' }),
         new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
@@ -57,20 +58,20 @@ export default function App() {
       },
     });
 
-    agent.on('llm.chunk', () => {
+    newAgent.on('llm.chunk', () => {
       setLlmChunks((c) => c + 1);
       setPendingCount((c) => Math.min(c + 1, maxPendingChunks));
     });
-    agent.on('tts.audio', () => {
+    newAgent.on('tts.audio', () => {
       setTtsChunks((c) => c + 1);
       setPendingCount((c) => Math.max(c - 1, 0));
     });
-    agent.on('llm.start', () => {
+    newAgent.on('llm.start', () => {
       setLlmChunks(0);
       setTtsChunks(0);
       setPendingCount(0);
     });
-    agent.on('queue.stats', (e) => {
+    newAgent.on('queue.stats', (e) => {
       const data = e as any;
       if (data.queueName === 'input') {
         setQueueStats((prev) => ({ ...prev, inputSize: data.size }));
@@ -78,12 +79,13 @@ export default function App() {
         setQueueStats((prev) => ({ ...prev, outputSize: data.size }));
       }
     });
-    agent.on('queue.overflow', () => {
+    newAgent.on('queue.overflow', () => {
       setOverflowCount((c) => c + 1);
     });
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [maxPendingChunks]);
 
   const handleStart = useCallback(async () => {
@@ -215,7 +217,7 @@ agent.on('queue.overflow', (e) => {
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

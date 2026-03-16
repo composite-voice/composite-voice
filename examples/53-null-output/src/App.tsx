@@ -25,6 +25,7 @@ interface TTSEvent {
 }
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
   const eventIdRef = useRef(0);
 
@@ -43,7 +44,7 @@ export default function App() {
   }, []);
 
   const handleInit = useCallback(async () => {
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({
           language: 'en-US',
@@ -65,27 +66,28 @@ export default function App() {
     });
 
     // Track TTS events
-    agent.on('tts.start', (e) => {
+    newAgent.on('tts.start', (e) => {
       addEvent('tts.start', `Synthesis started: "${(e as any).text?.slice(0, 60) ?? ''}..."`);
     });
-    agent.on('tts.audio', (e) => {
+    newAgent.on('tts.audio', (e) => {
       const bytes = (e as any).chunk?.data?.byteLength ?? 0;
       setAudioChunksDiscarded((c) => c + 1);
       setTotalBytesDiscarded((b) => b + bytes);
       addEvent('tts.audio', `Audio chunk discarded: ${bytes} bytes`);
     });
-    agent.on('tts.complete', () => {
+    newAgent.on('tts.complete', () => {
       addEvent('tts.complete', 'Synthesis complete (audio never played)');
     });
-    agent.on('tts.error', (e) => {
+    newAgent.on('tts.error', (e) => {
       addEvent('tts.error', `Error: ${e.error?.message ?? 'unknown'}`);
     });
-    agent.on('llm.complete', () => {
+    newAgent.on('llm.complete', () => {
       addEvent('llm.complete', 'LLM response complete, TTS synthesis should follow');
     });
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [addEvent]);
 
   const handleStart = useCallback(async () => {
@@ -192,7 +194,7 @@ agent.on('tts.complete', () => { /* synthesis done */ });`}
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

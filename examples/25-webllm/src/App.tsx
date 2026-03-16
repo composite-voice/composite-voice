@@ -37,6 +37,7 @@ export default function App() {
   );
   const [loadProgress, setLoadProgress] = useState<WebLLMLoadProgress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   const handleInit = useCallback(async () => {
@@ -47,7 +48,7 @@ export default function App() {
     setIsLoading(true);
     setLoadProgress(null);
 
-    agentRef.current = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({
           language: 'en-US',
@@ -66,7 +67,9 @@ export default function App() {
       ],
     });
 
-    await agentRef.current.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
     setIsLoading(false);
   }, [model, systemPrompt]);
 
@@ -136,7 +139,7 @@ export default function App() {
       </Card>
 
       <VoiceAgent
-        agent={agentRef.current}
+        agent={agent}
         onInit={handleInit}
         onStart={handleStart}
         onStop={handleStop}

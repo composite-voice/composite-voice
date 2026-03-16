@@ -25,6 +25,7 @@ import {
 const BUFFER_SIZES = [1024, 2048, 4096, 8192, 16384];
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   // AudioOutputConfig state
@@ -52,7 +53,7 @@ export default function App() {
       enableSmoothing,
     });
 
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({
           language: 'en-US',
@@ -73,19 +74,20 @@ export default function App() {
       ],
     });
 
-    agent.on('tts.audio', () => setChunksReceived((c) => c + 1));
-    agent.on('audio.playback.start', () => setPlaybackState('playing'));
-    agent.on('audio.playback.end', () => {
+    newAgent.on('tts.audio', () => setChunksReceived((c) => c + 1));
+    newAgent.on('audio.playback.start', () => setPlaybackState('playing'));
+    newAgent.on('audio.playback.end', () => {
       setPlaybackState('idle');
       setChunksReceived(0);
     });
-    agent.on('tts.start', () => {
+    newAgent.on('tts.start', () => {
       setPlaybackState('buffering');
       setChunksReceived(0);
     });
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [bufferSize, minBufferDuration, sampleRate, enableSmoothing]);
 
   const handleStart = useCallback(async () => {
@@ -221,7 +223,7 @@ export default function App() {
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

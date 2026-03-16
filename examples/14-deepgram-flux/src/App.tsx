@@ -1,203 +1,314 @@
-import React from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { ExampleShell } from '../../_shared/ExampleShell';
+import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
   Card,
   CardBody,
   CardTitle,
   CardDescription,
-  Alert,
+  FormField,
+  Input,
   Badge,
 } from '@lukeocodes/composite-voice-ui';
-
-export default function App() {
-  return (
-    <ExampleShell
-      title="DeepgramFlux (V2 STT)"
-      description="Deepgram's next-generation STT pipeline with structured turn events and eager LLM integration."
-      number="14"
-    >
-      <div className="space-y-6">
-        {/* Disabled Warning */}
-        <Alert variant="warning" title="Provider Currently Disabled">
-          DeepgramFlux requires the Deepgram SDK V5 (<code>listen.v2</code> API), which is
-          not yet stable. This example shows what the configuration would look like and
-          explains the eager pipeline concept. Use <strong>DeepgramSTT</strong> with Nova
-          models as the current alternative.
-        </Alert>
-
-        {/* What Flux Would Look Like */}
-        <Card>
-          <CardBody>
-            <CardTitle>Configuration Preview</CardTitle>
-            <CardDescription>
-              This is how you would configure DeepgramFlux once the V5 SDK stabilizes.
-            </CardDescription>
-            <pre className="mt-4 p-4 rounded bg-neutral-50 text-sm font-mono overflow-x-auto border border-neutral-200">
-{`import {
+import {
   CompositeVoice,
   DeepgramFlux,
   MicrophoneInput,
   AnthropicLLM,
-  NativeTTS,
+  DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
-const agent = new CompositeVoice({
-  providers: [
-    new MicrophoneInput(),
-    new DeepgramFlux({
-      proxyUrl: \`\${window.location.origin}/proxy/deepgram\`,
-      language: 'en-US',
-      options: {
-        model: 'nova-3',
-        encoding: 'linear16',
-        sampleRate: 16000,
-        // V2-specific thresholds for eager pipeline
-        eotThreshold: 0.5,       // End-of-turn confidence threshold
-        eagerEotThreshold: 0.3,  // Eager end-of-turn threshold
-        eotTimeoutMs: 2000,      // Timeout before forcing end-of-turn
-        keyterms: ['CompositeVoice', 'Deepgram'],
-      },
-    }),
-    new AnthropicLLM({
-      proxyUrl: \`\${window.location.origin}/proxy/anthropic\`,
-      model: 'claude-haiku-4-5-20251001',
-      systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
-      maxTokens: 200,
-    }),
-    new NativeTTS({ rate: 1.0 }),
-  ],
-});`}
-            </pre>
-          </CardBody>
-        </Card>
+interface TurnEvent {
+  id: number;
+  event: string;
+  transcript: string;
+  confidence: number;
+  timestamp: number;
+}
 
-        {/* Flux Options Reference */}
+const EVENT_BADGE_VARIANT: Record<string, string> = {
+  StartOfTurn: 'neutral',
+  Update: 'primary',
+  EagerEndOfTurn: 'warning',
+  TurnResumed: 'danger',
+  EndOfTurn: 'success',
+};
+
+let eventIdCounter = 0;
+
+export default function App() {
+  const agentRef = useRef<CompositeVoice | null>(null);
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
+
+  // DeepgramFlux configuration state
+  const [eagerEotThreshold, setEagerEotThreshold] = useState(0.5);
+  const [eotThreshold, setEotThreshold] = useState(0.7);
+  const [eotTimeoutMs, setEotTimeoutMs] = useState(5000);
+  const [keytermsInput, setKeytermsInput] = useState('');
+
+  // Turn events from V2 API
+  const [turnEvents, setTurnEvents] = useState<TurnEvent[]>([]);
+  const [transcript, setTranscript] = useState('');
+
+  const handleInit = useCallback(async () => {
+    if (agentRef.current) {
+      await agentRef.current.dispose();
+    }
+
+    eventIdCounter = 0;
+    setTurnEvents([]);
+    setTranscript('');
+
+    const keyterms = keytermsInput
+      .split(',')
+      .map((w) => w.trim())
+      .filter(Boolean);
+
+    const voice = new CompositeVoice({
+      providers: [
+        new MicrophoneInput(),
+        new DeepgramFlux({
+          proxyUrl: `${window.location.origin}/proxy/deepgram`,
+          options: {
+            eagerEotThreshold,
+            eotThreshold,
+            eotTimeoutMs,
+            ...(keyterms.length > 0 ? { keyterms } : {}),
+          },
+        }),
+        new AnthropicLLM({
+          proxyUrl: `${window.location.origin}/proxy/anthropic`,
+          model: 'claude-haiku-4-5',
+          systemPrompt:
+            'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
+          maxTokens: 200,
+        }),
+        new DeepgramTTS({
+          proxyUrl: `${window.location.origin}/proxy/deepgram`,
+        }),
+        new BrowserAudioOutput(),
+      ],
+      eagerLLM: {
+        enabled: true,
+        cancelOnTextChange: true,
+        similarityThreshold: 0.8,
+      },
+      logging: { enabled: true, level: 'debug' },
+    });
+
+    // Track V2 turn events from metadata
+    voice.on('transcription.interim', (e) => {
+      const meta = (e as any).metadata;
+      const event = meta?.event;
+      if (event) {
+        setTurnEvents((prev) => [
+          ...prev.slice(-50),
+          {
+            id: ++eventIdCounter,
+            event,
+            transcript: e.text,
+            confidence: meta.end_of_turn_confidence ?? 0,
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+      if (e.text.trim()) setTranscript(e.text);
+    });
+
+    voice.on('transcription.preflight', (e) => {
+      const meta = (e as any).metadata;
+      setTurnEvents((prev) => [
+        ...prev.slice(-50),
+        {
+          id: ++eventIdCounter,
+          event: 'EagerEndOfTurn',
+          transcript: e.text,
+          confidence: meta?.end_of_turn_confidence ?? 0,
+          timestamp: Date.now(),
+        },
+      ]);
+      setTranscript(`[preflight] ${e.text}`);
+    });
+
+    voice.on('transcription.speechFinal', (e) => {
+      const meta = (e as any).metadata;
+      setTurnEvents((prev) => [
+        ...prev.slice(-50),
+        {
+          id: ++eventIdCounter,
+          event: 'EndOfTurn',
+          transcript: e.text,
+          confidence: meta?.end_of_turn_confidence ?? 0,
+          timestamp: Date.now(),
+        },
+      ]);
+      setTranscript(e.text);
+    });
+
+    await voice.initialize();
+    agentRef.current = voice;
+    setAgent(voice);
+  }, [eagerEotThreshold, eotThreshold, eotTimeoutMs, keytermsInput]);
+
+  const handleStart = useCallback(async () => {
+    setTurnEvents([]);
+    await agentRef.current?.startListening();
+  }, []);
+
+  const handleStop = useCallback(async () => {
+    await agentRef.current?.stopListening();
+  }, []);
+
+  // Count events by type
+  const eventCounts = turnEvents.reduce<Record<string, number>>((acc, evt) => {
+    acc[evt.event] = (acc[evt.event] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <ExampleShell
+      title="DeepgramFlux (V2 STT)"
+      description="Deepgram's V2 speech-to-text with structured turn events and eager end-of-turn detection for speculative LLM generation."
+      number="14"
+    >
+      <div className="space-y-6">
+        {/* Configuration Panel */}
         <Card>
           <CardBody>
             <CardTitle>DeepgramFlux Options</CardTitle>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-200">
-                    <th className="text-left py-2 pr-4 font-semibold">Option</th>
-                    <th className="text-left py-2 pr-4 font-semibold">Type</th>
-                    <th className="text-left py-2 font-semibold">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="text-foreground-muted">
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">model</td>
-                    <td className="py-2 pr-4">string</td>
-                    <td className="py-2">Deepgram model (e.g. <code>nova-3</code>)</td>
-                  </tr>
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">encoding</td>
-                    <td className="py-2 pr-4">string</td>
-                    <td className="py-2">Audio encoding format</td>
-                  </tr>
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">sampleRate</td>
-                    <td className="py-2 pr-4">number</td>
-                    <td className="py-2">Audio sample rate in Hz</td>
-                  </tr>
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">eotThreshold</td>
-                    <td className="py-2 pr-4">number</td>
-                    <td className="py-2">End-of-turn confidence threshold (0.0-1.0)</td>
-                  </tr>
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">eagerEotThreshold</td>
-                    <td className="py-2 pr-4">number</td>
-                    <td className="py-2">Eager end-of-turn threshold for speculative generation</td>
-                  </tr>
-                  <tr className="border-b border-neutral-100">
-                    <td className="py-2 pr-4 font-mono text-xs">eotTimeoutMs</td>
-                    <td className="py-2 pr-4">number</td>
-                    <td className="py-2">Timeout (ms) before forcing end-of-turn</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-4 font-mono text-xs">keyterms</td>
-                    <td className="py-2 pr-4">string[]</td>
-                    <td className="py-2">Terms to boost recognition accuracy</td>
-                  </tr>
-                </tbody>
-              </table>
+            <CardDescription>
+              Configure V2 turn detection thresholds. Lower eager threshold = faster speculative generation, but more false positives.
+            </CardDescription>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <FormField
+                label={`Eager EOT Threshold: ${eagerEotThreshold}`}
+                htmlFor="eagerEot"
+                hint="Confidence to fire EagerEndOfTurn (0.3–0.9)"
+              >
+                <Input
+                  id="eagerEot"
+                  type="range"
+                  min={0.3}
+                  max={0.9}
+                  step={0.05}
+                  value={eagerEotThreshold}
+                  onChange={(e) => setEagerEotThreshold(Number(e.target.value))}
+                  disabled={!!agent}
+                />
+              </FormField>
+
+              <FormField
+                label={`EOT Threshold: ${eotThreshold}`}
+                htmlFor="eot"
+                hint="Confidence to fire EndOfTurn (0.5–0.9)"
+              >
+                <Input
+                  id="eot"
+                  type="range"
+                  min={0.5}
+                  max={0.9}
+                  step={0.05}
+                  value={eotThreshold}
+                  onChange={(e) => setEotThreshold(Number(e.target.value))}
+                  disabled={!!agent}
+                />
+              </FormField>
+
+              <FormField
+                label="EOT Timeout (ms)"
+                htmlFor="eotTimeout"
+                hint="Force end-of-turn after this many ms of silence"
+              >
+                <Input
+                  id="eotTimeout"
+                  type="number"
+                  min={1000}
+                  max={10000}
+                  step={500}
+                  value={eotTimeoutMs}
+                  onChange={(e) => setEotTimeoutMs(Number(e.target.value))}
+                  disabled={!!agent}
+                />
+              </FormField>
+
+              <FormField
+                label="Keyterms"
+                htmlFor="keyterms"
+                hint="Comma-separated terms to boost recognition"
+              >
+                <Input
+                  id="keyterms"
+                  type="text"
+                  placeholder="e.g. CompositeVoice, Deepgram"
+                  value={keytermsInput}
+                  onChange={(e) => setKeytermsInput(e.target.value)}
+                  disabled={!!agent}
+                />
+              </FormField>
             </div>
           </CardBody>
         </Card>
 
-        {/* Eager Pipeline Concept */}
+        {/* Voice Agent Controls */}
+        <VoiceAgent
+          agent={agent}
+          onInit={handleInit}
+          onStart={handleStart}
+          onStop={handleStop}
+        />
+
+        {/* Current Transcript */}
         <Card>
           <CardBody>
-            <CardTitle>The Eager Pipeline Concept</CardTitle>
-            <p className="text-sm text-foreground-muted mt-2 mb-4">
-              DeepgramFlux V2 delivers structured turn events that enable speculative LLM
-              generation, significantly reducing perceived latency.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Badge variant="info" size="lg">1</Badge>
-                <div>
-                  <p className="text-sm font-medium">StartOfTurn</p>
-                  <p className="text-sm text-foreground-muted">
-                    User begins speaking. The pipeline prepares for input.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="info" size="lg">2</Badge>
-                <div>
-                  <p className="text-sm font-medium">Update</p>
-                  <p className="text-sm text-foreground-muted">
-                    Streaming partial transcripts as the user speaks.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="warning" size="lg">3</Badge>
-                <div>
-                  <p className="text-sm font-medium">EagerEndOfTurn</p>
-                  <p className="text-sm text-foreground-muted">
-                    Confidence threshold crossed — the LLM begins generating speculatively.
-                    If the user continues speaking, the speculative response is discarded.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="default" size="lg">3a</Badge>
-                <div>
-                  <p className="text-sm font-medium">TurnResumed</p>
-                  <p className="text-sm text-foreground-muted">
-                    User resumed speaking after an eager end-of-turn. Speculative LLM
-                    output is discarded, and transcription continues.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Badge variant="success" size="lg">4</Badge>
-                <div>
-                  <p className="text-sm font-medium">EndOfTurn</p>
-                  <p className="text-sm text-foreground-muted">
-                    Confirmed end of speech. If speculative output matches, it is used
-                    immediately — the user perceives near-zero latency.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <CardTitle>Transcript</CardTitle>
+            <p className="text-sm mt-2">{transcript || 'Speak to see V2 turn events...'}</p>
           </CardBody>
         </Card>
 
-        {/* Current Alternative */}
-        <Card variant="filled">
+        {/* V2 Turn Event Stream */}
+        <Card>
           <CardBody>
-            <CardTitle level={4}>Current Alternative</CardTitle>
-            <p className="text-sm text-foreground-muted mt-2">
-              While DeepgramFlux is disabled, you can achieve similar results using{' '}
-              <strong>DeepgramSTT</strong> with Nova models. The V1 API supports{' '}
-              <code>interimResults</code>, <code>endpointing</code>, and{' '}
-              <code>vadEvents</code> which provide a good approximation of turn detection.
-              See <a href="../11-deepgram-stt/" className="text-primary-600 underline">Example 11</a> for details.
-            </p>
+            <CardTitle>V2 Turn Events</CardTitle>
+            <CardDescription>
+              Live stream of TurnInfo events from the Deepgram Flux API.
+            </CardDescription>
+
+            {/* Event counts */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['StartOfTurn', 'Update', 'EagerEndOfTurn', 'TurnResumed', 'EndOfTurn'].map((evt) => (
+                <Badge key={evt} variant={(EVENT_BADGE_VARIANT[evt] ?? 'neutral') as any} size="sm">
+                  {evt}: {eventCounts[evt] || 0}
+                </Badge>
+              ))}
+            </div>
+
+            {/* Event timeline */}
+            <div className="mt-4 space-y-1.5 max-h-72 overflow-y-auto">
+              {turnEvents.length === 0 ? (
+                <p className="text-sm text-foreground-muted">No events yet.</p>
+              ) : (
+                turnEvents.map((evt) => (
+                  <div
+                    key={evt.id}
+                    className="flex items-center gap-3 text-sm py-1 border-b border-neutral-100 last:border-0"
+                  >
+                    <span className="text-xs text-foreground-muted w-20 shrink-0">
+                      {new Date(evt.timestamp).toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 1 })}
+                    </span>
+                    <Badge variant={(EVENT_BADGE_VARIANT[evt.event] ?? 'neutral') as any} size="sm">
+                      {evt.event}
+                    </Badge>
+                    {evt.confidence > 0 && (
+                      <span className="text-xs text-foreground-muted shrink-0">
+                        EOT: {(evt.confidence * 100).toFixed(0)}%
+                      </span>
+                    )}
+                    <span className="text-sm truncate">{evt.transcript}</span>
+                  </div>
+                ))
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>

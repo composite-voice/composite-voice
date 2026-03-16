@@ -34,6 +34,7 @@ interface RecoveryLogEntry {
 }
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
   const logIdRef = useRef(0);
 
@@ -69,7 +70,7 @@ export default function App() {
   }, []);
 
   const handleInit = useCallback(async () => {
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({ language: 'en-US', continuous: true, interimResults: true }),
         new AnthropicLLM({
@@ -84,12 +85,13 @@ export default function App() {
       recovery: currentStrategy,
     });
 
-    agent.on('agent.error', (e) => {
+    newAgent.on('agent.error', (e) => {
       setAgentErrors((prev) => [...prev.slice(-10), `${new Date().toLocaleTimeString()}: ${e.error.message}`]);
     });
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [currentStrategy]);
 
   const handleStart = useCallback(async () => {
@@ -273,7 +275,7 @@ export default function App() {
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

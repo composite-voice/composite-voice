@@ -34,6 +34,7 @@ export default function App() {
     'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.'
   );
   const [streaming, setStreaming] = useState(true);
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   const handleInit = useCallback(async () => {
@@ -41,7 +42,7 @@ export default function App() {
       await agentRef.current.dispose();
     }
 
-    agentRef.current = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({
           language: 'en-US',
@@ -60,7 +61,9 @@ export default function App() {
       ],
     });
 
-    await agentRef.current.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [model, temperature, maxTokens, systemPrompt, streaming]);
 
   const handleStart = useCallback(async () => {
@@ -138,7 +141,7 @@ export default function App() {
       </Card>
 
       <VoiceAgent
-        agent={agentRef.current}
+        agent={agent}
         onInit={handleInit}
         onStart={handleStart}
         onStop={handleStop}

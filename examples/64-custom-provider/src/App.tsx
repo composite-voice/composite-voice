@@ -95,6 +95,7 @@ class MockLLM implements LLMProvider {
 // ─── App Component ───────────────────────────────────────────────────────
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
   const [delay, setDelay] = useState(50);
   const [generationLog, setGenerationLog] = useState<string[]>([]);
@@ -106,7 +107,7 @@ export default function App() {
   const handleInit = useCallback(async () => {
     const mockLLM = new MockLLM({ delay });
 
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new NativeSTT({ language: 'en-US', continuous: true, interimResults: true }),
         mockLLM,
@@ -114,13 +115,14 @@ export default function App() {
       ],
     });
 
-    agent.on('llm.start', () => addLog('MockLLM: generation started'));
-    agent.on('llm.chunk', (e) => addLog(`MockLLM: chunk "${e.chunk}"`));
-    agent.on('llm.complete', (e) => addLog(`MockLLM: complete (${e.text.length} chars)`));
-    agent.on('transcription.speechFinal', (e) => addLog(`Input: "${e.text}"`));
+    newAgent.on('llm.start', () => addLog('MockLLM: generation started'));
+    newAgent.on('llm.chunk', (e) => addLog(`MockLLM: chunk "${e.chunk}"`));
+    newAgent.on('llm.complete', (e) => addLog(`MockLLM: complete (${e.text.length} chars)`));
+    newAgent.on('transcription.speechFinal', (e) => addLog(`Input: "${e.text}"`));
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
   }, [delay, addLog]);
 
   const handleStart = useCallback(async () => {
@@ -269,7 +271,7 @@ const agent = new CompositeVoice({
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

@@ -24,6 +24,7 @@ interface ChunkStat {
 }
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   // Audio environment detection
@@ -61,7 +62,7 @@ export default function App() {
   }, []);
 
   const handleInit = useCallback(async () => {
-    const agent = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput({
           sampleRate: 16000,
@@ -88,7 +89,7 @@ export default function App() {
     let chunkCount = 0;
     let byteCount = 0;
 
-    agent.on('audio.capture.start', () => {
+    newAgent.on('audio.capture.start', () => {
       startTime = Date.now();
       chunkCount = 0;
       byteCount = 0;
@@ -106,8 +107,9 @@ export default function App() {
       }
     }, 500);
 
-    agentRef.current = agent;
-    await agent.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
 
     return () => clearInterval(origInterval);
   }, []);
@@ -265,7 +267,7 @@ InputQueue -> STT Provider`}
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}

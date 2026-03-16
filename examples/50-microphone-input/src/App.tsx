@@ -28,6 +28,7 @@ const FORMATS = ['pcm', 'opus', 'mp3', 'wav', 'webm'];
 const CHUNK_DURATIONS = [20, 50, 100, 150, 250];
 
 export default function App() {
+  const [agent, setAgent] = useState<CompositeVoice | null>(null);
   const agentRef = useRef<CompositeVoice | null>(null);
 
   // AudioInputConfig state
@@ -115,7 +116,7 @@ export default function App() {
   }, [stopAudioMeter]);
 
   const handleInit = useCallback(async () => {
-    agentRef.current = new CompositeVoice({
+    const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput({
           sampleRate,
@@ -141,7 +142,9 @@ export default function App() {
       ],
     });
 
-    await agentRef.current.initialize();
+    await newAgent.initialize();
+    agentRef.current = newAgent;
+    setAgent(newAgent);
     await startAudioMeter();
   }, [sampleRate, format, channels, chunkDuration, echoCancellation, noiseSuppression, autoGainControl, startAudioMeter]);
 
@@ -296,7 +299,7 @@ export default function App() {
 
         {/* Voice Agent */}
         <VoiceAgent
-          agent={agentRef.current}
+          agent={agent}
           onInit={handleInit}
           onStart={handleStart}
           onStop={handleStop}
