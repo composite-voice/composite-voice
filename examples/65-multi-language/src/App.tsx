@@ -263,8 +263,7 @@ export default function App() {
           <CardBody>
             <CardTitle>How to Configure Language</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`// Set language in DeepgramSTT options
+              <CodeBlock language="typescript" code={`// Set language in DeepgramSTT options
 new DeepgramSTT({
   proxyUrl: '/proxy/deepgram',
   options: {
@@ -288,8 +287,7 @@ const newAgent = new CompositeVoice({
     // ... other providers
   ],
 });
-await newAgent.initialize();`}
-              </CodeBlock>
+await newAgent.initialize();`} />
             </div>
           </CardBody>
         </Card>

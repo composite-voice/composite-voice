@@ -222,8 +222,7 @@ export default function App() {
           <CardBody>
             <CardTitle>How to Enable Barge-In</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`// Enable full-duplex mode (mic stays active during playback)
+              <CodeBlock language="typescript" code={`// Enable full-duplex mode (mic stays active during playback)
 const agent = new CompositeVoice({
   providers: [...],
   turnTaking: {
@@ -237,8 +236,7 @@ agent.stopSpeaking();
 // The agent will detect speech during playback and:
 // 1. Stop current audio playback
 // 2. Cancel in-flight TTS
-// 3. Process the new user input`}
-              </CodeBlock>
+// 3. Process the new user input`} />
             </div>
           </CardBody>
         </Card>

@@ -193,8 +193,7 @@ export default function App() {
           <CardBody>
             <CardTitle>Custom Provider Implementation</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`import type { LLMProvider, LLMMessage, LLMStreamCallbacks, ProviderType } from '@lukeocodes/composite-voice';
+              <CodeBlock language="typescript" code={`import type { LLMProvider, LLMMessage, LLMStreamCallbacks, ProviderType } from '@lukeocodes/composite-voice';
 import type { ProviderRole } from '@lukeocodes/composite-voice';
 
 class MockLLM implements LLMProvider {
@@ -244,8 +243,7 @@ const agent = new CompositeVoice({
     new MockLLM(),
     new NativeTTS(),
   ],
-});`}
-              </CodeBlock>
+});`} />
             </div>
           </CardBody>
         </Card>

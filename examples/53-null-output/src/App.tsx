@@ -144,8 +144,7 @@ export default function App() {
               Usage <Badge variant="neutral">NullOutput</Badge>
             </CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`import { NullOutput } from '@lukeocodes/composite-voice';
+              <CodeBlock language="typescript" code={`import { NullOutput } from '@lukeocodes/composite-voice';
 
 // NullOutput implements AudioOutputProvider as a null sink.
 // All methods are no-ops — audio is silently discarded.
@@ -161,8 +160,7 @@ const agent = new CompositeVoice({
 // TTS events still fire normally:
 agent.on('tts.start', () => { /* synthesis started */ });
 agent.on('tts.audio', () => { /* chunk generated */ });
-agent.on('tts.complete', () => { /* synthesis done */ });`}
-              </CodeBlock>
+agent.on('tts.complete', () => { /* synthesis done */ });`} />
             </div>
           </CardBody>
         </Card>

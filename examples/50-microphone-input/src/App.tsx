@@ -285,9 +285,7 @@ export default function App() {
               Current Configuration <Badge variant="neutral">AudioInputConfig</Badge>
             </CardTitle>
             <div className="mt-3">
-              <CodeBlock language="json">
-                {JSON.stringify(currentConfig, null, 2)}
-              </CodeBlock>
+              <CodeBlock language="json" code={JSON.stringify(currentConfig, null, 2)} />
             </div>
           </CardBody>
         </Card>

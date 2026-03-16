@@ -191,8 +191,7 @@ export default function App() {
           <CardBody>
             <CardTitle>Configuration</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`const agent = new CompositeVoice({
+              <CodeBlock language="typescript" code={`const agent = new CompositeVoice({
   providers: [...],
   pipeline: {
     maxPendingChunks: ${maxPendingChunks},  // Throttle LLM -> TTS
@@ -209,8 +208,7 @@ agent.on('queue.stats', (e) => {
 });
 agent.on('queue.overflow', (e) => {
   console.warn(e.queueName, e.droppedChunks, 'dropped');
-});`}
-              </CodeBlock>
+});`} />
             </div>
           </CardBody>
         </Card>

@@ -172,8 +172,7 @@ export default function App() {
               BufferInput Configuration <Badge variant="neutral">AudioMetadata</Badge>
             </CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`const bufferInput = new BufferInput({
+              <CodeBlock language="typescript" code={`const bufferInput = new BufferInput({
   sampleRate: 16000,
   encoding: 'linear16',
   channels: 1,
@@ -181,8 +180,7 @@ export default function App() {
 });
 
 // Push audio data programmatically
-bufferInput.push(audioChunkArrayBuffer);`}
-              </CodeBlock>
+bufferInput.push(audioChunkArrayBuffer);`} />
             </div>
           </CardBody>
         </Card>

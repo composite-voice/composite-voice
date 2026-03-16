@@ -41,6 +41,14 @@ export default function App() {
   const [totalBytes, setTotalBytes] = useState(0);
   const [avgChunkSize, setAvgChunkSize] = useState(0);
   const [chunksPerSecond, setChunksPerSecond] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   // Detect audio capabilities
   useEffect(() => {
@@ -98,8 +106,9 @@ export default function App() {
       setTotalBytes(0);
     });
 
-    // Use a proxy event to track audio chunks
-    const origInterval = setInterval(() => {
+    // Use an interval to track audio chunk throughput
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
       if (chunkCount > 0 && startTime > 0) {
         const elapsed = (Date.now() - startTime) / 1000;
         setChunksPerSecond(elapsed > 0 ? chunkCount / elapsed : 0);
@@ -110,8 +119,6 @@ export default function App() {
     await newAgent.initialize();
     agentRef.current = newAgent;
     setAgent(newAgent);
-
-    return () => clearInterval(origInterval);
   }, []);
 
   const handleStart = useCallback(async () => {
@@ -211,8 +218,7 @@ export default function App() {
           <CardBody>
             <CardTitle>How AudioCapture Works</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="text">
-{`Microphone
+              <CodeBlock language="text" code={`Microphone
     |
     v
 getUserMedia({ audio: constraints })
@@ -239,8 +245,7 @@ Convert Float32 -> Int16 (linear16)
 ArrayBuffer chunks -> onAudio callback
     |
     v
-InputQueue -> STT Provider`}
-              </CodeBlock>
+InputQueue -> STT Provider`} />
             </div>
           </CardBody>
         </Card>
@@ -250,8 +255,7 @@ InputQueue -> STT Provider`}
           <CardBody>
             <CardTitle>MicrophoneInput Configuration Used</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`new MicrophoneInput({
+              <CodeBlock language="typescript" code={`new MicrophoneInput({
   sampleRate: 16000,        // Target capture rate (may resample)
   format: 'pcm',            // Raw PCM output
   channels: 1,              // Mono (recommended for speech)
@@ -259,8 +263,7 @@ InputQueue -> STT Provider`}
   echoCancellation: true,   // Prevents TTS feedback loop
   noiseSuppression: true,   // Reduces background noise
   autoGainControl: true,    // Normalizes volume levels
-})`}
-              </CodeBlock>
+})`} />
             </div>
           </CardBody>
         </Card>

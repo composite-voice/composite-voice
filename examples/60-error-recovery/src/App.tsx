@@ -211,13 +211,11 @@ export default function App() {
           <CardBody>
             <CardTitle>Configuration</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`const agent = new CompositeVoice({
+              <CodeBlock language="typescript" code={`const agent = new CompositeVoice({
   providers: [...],
   autoRecover: true,
   recovery: ${JSON.stringify(currentStrategy, null, 4)},
-});`}
-              </CodeBlock>
+});`} />
             </div>
           </CardBody>
         </Card>

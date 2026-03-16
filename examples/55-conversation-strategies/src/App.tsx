@@ -233,8 +233,7 @@ export default function App() {
           <CardBody>
             <CardTitle>Configuration</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`// Short memory — forgets after 3 turns
+              <CodeBlock language="typescript" code={`// Short memory — forgets after 3 turns
 const shortMemory = new CompositeVoice({
   providers: [...],
   conversationHistory: {
@@ -252,8 +251,7 @@ const longMemory = new CompositeVoice({
     // Optional: preserveSystemMessages: true (default)
     // Optional: maxTokens: 4000 (token budget limit)
   },
-});`}
-              </CodeBlock>
+});`} />
             </div>
           </CardBody>
         </Card>

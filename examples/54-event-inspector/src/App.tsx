@@ -293,9 +293,7 @@ export default function App() {
               </CardTitle>
               <div className="mt-3">
                 {selectedEvent ? (
-                  <CodeBlock language="json">
-                    {selectedEvent.payload}
-                  </CodeBlock>
+                  <CodeBlock language="json" code={selectedEvent.payload} />
                 ) : (
                   <p className="text-sm text-foreground-muted">
                     Click an event in the timeline to inspect its payload.
@@ -311,8 +309,7 @@ export default function App() {
           <CardBody>
             <CardTitle>How to Subscribe to All Events</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript">
-{`// Subscribe to all events for debugging
+              <CodeBlock language="typescript" code={`// Subscribe to all events for debugging
 const ALL_EVENTS = [
   'transcription.start', 'transcription.interim',
   'transcription.final', 'transcription.speechFinal',
@@ -328,8 +325,7 @@ ALL_EVENTS.forEach((eventType) => {
   agent.on(eventType, (data) => {
     console.log(eventType, data);
   });
-});`}
-              </CodeBlock>
+});`} />
             </div>
           </CardBody>
         </Card>
