@@ -235,6 +235,12 @@ export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
     }
 
     for (const role of provider.roles) {
+      if (!ALL_PROVIDER_ROLES.includes(role)) {
+        throw new ConfigurationError(
+          `Provider "${providerName}" declares unknown role "${role}". ` +
+            `Valid roles are: ${ALL_PROVIDER_ROLES.join(', ')}`
+        );
+      }
       if (slots[role]) {
         const existingName = slots[role].constructor.name;
         throw new ConfigurationError(

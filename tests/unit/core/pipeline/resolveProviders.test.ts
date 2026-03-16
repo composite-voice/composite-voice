@@ -446,6 +446,33 @@ describe('resolveProviders', () => {
       expect(() => resolveProviders([noRoles])).toThrow(ConfigurationError);
       expect(() => resolveProviders([noRoles])).toThrow(/declares no roles/);
     });
+
+    it('throws ConfigurationError for provider with an unknown role', () => {
+      const badRole = {
+        type: 'rest' as const,
+        roles: ['sttt'] as unknown as readonly ProviderRole[],
+        initialize: async () => {},
+        dispose: async () => {},
+        isReady: () => true,
+      };
+
+      expect(() => resolveProviders([badRole])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([badRole])).toThrow(/unknown role "sttt"/);
+      expect(() => resolveProviders([badRole])).toThrow(/Valid roles are/);
+    });
+
+    it('throws ConfigurationError for provider with a non-string role', () => {
+      const numericRole = {
+        type: 'rest' as const,
+        roles: [42] as unknown as readonly ProviderRole[],
+        initialize: async () => {},
+        dispose: async () => {},
+        isReady: () => true,
+      };
+
+      expect(() => resolveProviders([numericRole])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([numericRole])).toThrow(/unknown role "42"/);
+    });
   });
 
   describe('duck-type validation', () => {

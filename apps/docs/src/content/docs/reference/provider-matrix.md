@@ -6,6 +6,38 @@ order: 0
 
 CompositeVoice supports 11 provider companies across 17 provider classes, plus 4 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
+### Pipeline Role Matrix
+
+Every provider and the pipeline role(s) it fills. Multi-role providers cover two adjacent stages — use them for simpler configs (3 providers instead of 5).
+
+| Provider | `input` | `stt` | `llm` | `tts` | `output` |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **MicrophoneInput** | **yes** | | | | |
+| **BufferInput** | **yes** | | | | |
+| **NativeSTT** | **yes** | **yes** | | | |
+| **DeepgramSTT** | | **yes** | | | |
+| **DeepgramFlux** | | **yes** | | | |
+| **AssemblyAISTT** | | **yes** | | | |
+| **ElevenLabsSTT** | | **yes** | | | |
+| **AnthropicLLM** | | | **yes** | | |
+| **OpenAILLM** | | | **yes** | | |
+| **GroqLLM** | | | **yes** | | |
+| **GeminiLLM** | | | **yes** | | |
+| **MistralLLM** | | | **yes** | | |
+| **WebLLMLLM** | | | **yes** | | |
+| **OpenAICompatibleLLM** | | | **yes** | | |
+| **NativeTTS** | | | | **yes** | **yes** |
+| **DeepgramTTS** | | | | **yes** | |
+| **OpenAITTS** | | | | **yes** | |
+| **ElevenLabsTTS** | | | | **yes** | |
+| **CartesiaTTS** | | | | **yes** | |
+| **BrowserAudioOutput** | | | | | **yes** |
+| **NullOutput** | | | | | **yes** |
+
+> The pipeline requires all 5 roles to be filled. If both `input` and `stt` are uncovered, `NativeSTT` is auto-filled. If both `tts` and `output` are uncovered, `NativeTTS` is auto-filled. The `llm` role is always required — there is no default LLM.
+
+---
+
 ### Audio Input / Output (Pipeline I/O)
 
 These providers handle the `input` and `output` roles in the 5-role pipeline. They are not tied to any vendor.

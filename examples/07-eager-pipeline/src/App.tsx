@@ -12,7 +12,7 @@ import {
 } from '@lukeocodes/composite-voice-ui';
 import {
   CompositeVoice,
-  DeepgramSTT,
+  DeepgramFlux,
   AnthropicLLM,
   DeepgramTTS,
   MicrophoneInput,
@@ -40,7 +40,7 @@ export default function App() {
   const configSnippet = `new CompositeVoice({
   providers: [
     new MicrophoneInput(),
-    new DeepgramSTT({ proxyUrl: '/proxy/deepgram' }),
+    new DeepgramFlux({ proxyUrl: '/proxy/deepgram', options: { eagerEotThreshold: 0.5, eotThreshold: 0.7 } }),
     new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: 'claude-haiku-4-5' }),
     new DeepgramTTS({ proxyUrl: '/proxy/deepgram' }),
     new BrowserAudioOutput(),
@@ -70,8 +70,12 @@ export default function App() {
     const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput(),
-        new DeepgramSTT({
+        new DeepgramFlux({
           proxyUrl: `${window.location.origin}/proxy/deepgram`,
+          options: {
+            eagerEotThreshold: 0.5,
+            eotThreshold: 0.7,
+          },
         }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
