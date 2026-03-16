@@ -56,10 +56,28 @@ const PROVIDER_CAPTURE_METHOD: Record<string, 'mediadevices' | 'speechrecognitio
   // STT Providers
   NativeSTT: 'speechrecognition', // Uses Web Speech API - NO echo cancellation support
   DeepgramSTT: 'mediadevices', // Uses getUserMedia - CAN use echo cancellation
+  DeepgramFlux: 'mediadevices', // Uses getUserMedia - CAN use echo cancellation
 
   // TTS Providers (don't capture, but noted for reference)
   NativeTTS: 'none',
   DeepgramTTS: 'none',
+};
+
+/**
+ * TTS providers whose audio output bypasses the browser's echo cancellation.
+ *
+ * @remarks
+ * NativeTTS uses the SpeechSynthesis API which plays audio through a separate
+ * system audio path, not through the Web Audio API graph. Browser echo
+ * cancellation (via getUserMedia constraints) only works reliably when the
+ * playback audio goes through the same audio graph — so even though
+ * MicrophoneInput requests echoCancellation, NativeTTS audio still leaks
+ * through to the microphone.
+ *
+ * @internal
+ */
+const TTS_BYPASSES_ECHO_CANCELLATION: Record<string, boolean> = {
+  NativeTTS: true,
 };
 
 /**
@@ -218,13 +236,16 @@ export function shouldPauseCaptureOnPlayback(
   switch (autoStrategy) {
     case 'conservative': {
       // Pause by default, unless STT provider uses MediaDevices with echo cancellation
+      // AND the TTS provider doesn't bypass echo cancellation (e.g. NativeTTS)
       const supportsEchoCancellation = providerSupportsEchoCancellation(sttName);
+      const ttsBypassesEC = TTS_BYPASSES_ECHO_CANCELLATION[ttsName] === true;
       const captureMethod = PROVIDER_CAPTURE_METHOD[sttName] || 'unknown';
-      const shouldPause = !supportsEchoCancellation;
+      const shouldPause = !supportsEchoCancellation || ttsBypassesEC;
       logger?.debug(
         `Turn-taking: Conservative - ${shouldPause ? 'PAUSE' : 'CONTINUE'} ` +
           `(${sttName} uses ${captureMethod}, ` +
-          `echo cancellation: ${supportsEchoCancellation ? 'supported' : 'not supported'})`
+          `echo cancellation: ${supportsEchoCancellation ? 'supported' : 'not supported'}, ` +
+          `TTS bypasses EC: ${ttsBypassesEC})`
       );
       return shouldPause;
     }
@@ -242,11 +263,14 @@ export function shouldPauseCaptureOnPlayback(
 
     case 'detect': {
       // Attempt runtime detection - check if browser supports echo cancellation
+      // Still force pause if TTS bypasses echo cancellation
       const hasEchoCancellation = detectEchoCancellationSupport(sttProvider);
-      const shouldPauseDetect = !hasEchoCancellation;
+      const ttsBypassesECDetect = TTS_BYPASSES_ECHO_CANCELLATION[ttsName] === true;
+      const shouldPauseDetect = !hasEchoCancellation || ttsBypassesECDetect;
       logger?.debug(
         `Turn-taking: Detect - ${shouldPauseDetect ? 'PAUSE' : 'CONTINUE'} ` +
-          `(echo cancellation: ${hasEchoCancellation ? 'supported' : 'not supported'})`
+          `(echo cancellation: ${hasEchoCancellation ? 'supported' : 'not supported'}, ` +
+          `TTS bypasses EC: ${ttsBypassesECDetect})`
       );
       return shouldPauseDetect;
     }

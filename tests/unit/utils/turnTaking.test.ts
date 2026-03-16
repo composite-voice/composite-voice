@@ -80,9 +80,15 @@ describe('shouldPauseCaptureOnPlayback', () => {
       expect(shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('Any'))).toBe(true);
     });
 
-    it('should NOT pause for DeepgramSTT (uses MediaDevices, has echo cancellation)', () => {
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+    it('should NOT pause for DeepgramSTT + non-NativeTTS (uses MediaDevices, has echo cancellation)', () => {
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(
         false
+      );
+    });
+
+    it('should pause for DeepgramSTT + NativeTTS (NativeTTS bypasses echo cancellation)', () => {
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))).toBe(
+        true
       );
     });
 
@@ -143,7 +149,7 @@ describe('shouldPauseCaptureOnPlayback', () => {
       expect(shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('Any'))).toBe(true);
     });
 
-    it('should NOT pause for DeepgramSTT when browser supports echo cancellation', () => {
+    it('should NOT pause for DeepgramSTT + non-NativeTTS when browser supports echo cancellation', () => {
       mockGetSupportedConstraints.mockReturnValue({
         echoCancellation: true,
         noiseSuppression: true,
@@ -153,8 +159,23 @@ describe('shouldPauseCaptureOnPlayback', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(
         false
+      );
+    });
+
+    it('should pause for DeepgramSTT + NativeTTS even when browser supports echo cancellation', () => {
+      mockGetSupportedConstraints.mockReturnValue({
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      });
+      const config: TurnTakingConfig = {
+        pauseCaptureOnPlayback: 'auto',
+        autoStrategy: 'detect',
+      };
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))).toBe(
+        true
       );
     });
 

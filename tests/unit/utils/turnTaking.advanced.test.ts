@@ -75,10 +75,10 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
       ).toBe(true);
     });
 
-    it('should NOT pause for DeepgramSTT + NativeTTS', () => {
+    it('should pause for DeepgramSTT + NativeTTS (NativeTTS bypasses echo cancellation)', () => {
       expect(
         shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('should NOT pause for DeepgramSTT + DeepgramTTS', () => {
