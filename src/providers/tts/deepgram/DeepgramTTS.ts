@@ -16,6 +16,7 @@ import { LiveTTSProvider } from '../../base/LiveTTSProvider';
 import type { TTSProviderConfig, AudioChunk } from '../../../core/types';
 import { Logger } from '../../../utils/logger';
 import { ProviderConnectionError } from '../../../utils/errors';
+import { buildQueryParams } from '../../../utils/queryParams';
 
 /**
  * Deepgram-specific TTS synthesis options.
@@ -54,6 +55,9 @@ export interface DeepgramTTSOptions {
    * @defaultValue Falls back to `config.sampleRate` or `24000`
    */
   sampleRate?: number;
+
+  /** Labels for usage reporting in the Deepgram console. Multiple values are sent as separate `tag=` query parameters. */
+  tag?: string | string[];
 }
 
 /**
@@ -212,14 +216,12 @@ export class DeepgramTTS extends LiveTTSProvider {
   private buildConnectionUrl(): string {
     const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
 
-    const model = this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en';
-    const encoding = this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16';
-    const sampleRate = this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000;
-
-    const params = new URLSearchParams();
-    params.set('model', model);
-    params.set('encoding', encoding);
-    params.set('sample_rate', String(sampleRate));
+    const params = buildQueryParams({
+      model: this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en',
+      encoding: this.config.options?.encoding ?? this.config.outputFormat ?? 'linear16',
+      sampleRate: this.config.options?.sampleRate ?? this.config.sampleRate ?? 24000,
+      tag: this.config.options?.tag,
+    });
 
     return `${base}/v1/speak?${params.toString()}`;
   }
@@ -253,9 +255,7 @@ export class DeepgramTTS extends LiveTTSProvider {
       const url = this.buildConnectionUrl();
 
       const protocols = this.resolveWsProtocols('token');
-      this.ws = protocols
-        ? new WebSocket(url, protocols)
-        : new WebSocket(url);
+      this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Receive binary audio as ArrayBuffer (not Blob)
       this.ws.binaryType = 'arraybuffer';

@@ -12,6 +12,7 @@ import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig, TranscriptionResult } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderConnectionError } from '../../../utils/errors';
+import { buildQueryParams } from '../../../utils/queryParams';
 
 /**
  * Deepgram-specific transcription options passed as query parameters
@@ -63,8 +64,8 @@ export interface DeepgramTranscriptionOptions {
    */
   keyterms?: string[];
 
-  /** Label for usage reporting in the Deepgram console. */
-  tag?: string;
+  /** Labels for usage reporting in the Deepgram console. Multiple values are sent as separate `tag=` query parameters. */
+  tag?: string | string[];
 
   /** Opt out of the Deepgram Model Improvement Program. */
   mipOptOut?: boolean;
@@ -363,91 +364,44 @@ export class DeepgramSTT extends LiveSTTProvider {
    */
   private buildConnectionUrl(): string {
     const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
-
-    const params = new URLSearchParams();
     const opts = this.config.options;
 
-    // Core params (always set)
-    params.set('model', opts?.model ?? 'nova-3');
-    params.set('language', this.config.language ?? 'en-US');
-    params.set('punctuate', String(opts?.punctuation ?? true));
-    params.set('smart_format', String(opts?.smartFormat ?? true));
-    params.set('interim_results', String(this.config.interimResults ?? true));
-    params.set('endpointing', String(opts?.endpointing ?? false));
-    params.set('vad_events', String(opts?.vadEvents ?? false));
-    params.set('profanity_filter', String(opts?.profanityFilter ?? false));
-    params.set('diarize', String(opts?.diarize ?? false));
-
-    // Optional params (only include if set)
-    if (opts?.encoding !== undefined) {
-      params.set('encoding', opts.encoding);
-    }
-    if (opts?.sampleRate !== undefined) {
-      params.set('sample_rate', String(opts.sampleRate));
-    }
-    if (opts?.channels !== undefined) {
-      params.set('channels', String(opts.channels));
-    }
-    if (opts?.redact && opts.redact.length > 0) {
-      for (const r of opts.redact) {
-        params.append('redact', r);
-      }
-    }
-    if (opts?.keywords && opts.keywords.length > 0) {
-      for (const kw of opts.keywords) {
-        params.append('keywords', kw);
-      }
-    }
-    if (opts?.keyterms && opts.keyterms.length > 0) {
-      for (const kt of opts.keyterms) {
-        params.append('keyterm', kt);
-      }
-    }
-    if (opts?.numerals !== undefined) {
-      params.set('numerals', String(opts.numerals));
-    }
-    if (opts?.multichannel !== undefined) {
-      params.set('multichannel', String(opts.multichannel));
-    }
-    if (opts?.dictation !== undefined) {
-      params.set('dictation', String(opts.dictation));
-    }
-    if (opts?.replace && opts.replace.length > 0) {
-      for (const r of opts.replace) {
-        params.append('replace', r);
-      }
-    }
-    if (opts?.search && opts.search.length > 0) {
-      for (const s of opts.search) {
-        params.append('search', s);
-      }
-    }
-    if (opts?.utteranceEndMs !== undefined) {
-      params.set('utterance_end_ms', String(opts.utteranceEndMs));
-    }
-    if (opts?.version !== undefined) {
-      params.set('version', opts.version);
-    }
-    if (opts?.tag !== undefined) {
-      params.set('tag', opts.tag);
-    }
-    if (opts?.mipOptOut !== undefined) {
-      params.set('mip_opt_out', String(opts.mipOptOut));
-    }
-    if (opts?.extra && opts.extra.length > 0) {
-      for (const e of opts.extra) {
-        params.append('extra', e);
-      }
-    }
-    if (opts?.detectEntities !== undefined) {
-      params.set('detect_entities', String(opts.detectEntities));
-    }
-    if (opts?.alternatives !== undefined) {
-      params.set('alternatives', String(opts.alternatives));
-    }
-    if (opts?.utterances !== undefined) {
-      params.set('utterances', String(opts.utterances));
-    }
+    const params = buildQueryParams({
+      // Core params (always set)
+      model: opts?.model ?? 'nova-3',
+      language: this.config.language ?? 'en-US',
+      punctuation: opts?.punctuation ?? true,
+      smartFormat: opts?.smartFormat ?? true,
+      interimResults: this.config.interimResults ?? true,
+      endpointing: opts?.endpointing ?? false,
+      vadEvents: opts?.vadEvents ?? false,
+      profanityFilter: opts?.profanityFilter ?? false,
+      diarize: opts?.diarize ?? false,
+      // Optional params (undefined values are skipped)
+      encoding: opts?.encoding,
+      sampleRate: opts?.sampleRate,
+      channels: opts?.channels,
+      redact: opts?.redact,
+      keywords: opts?.keywords,
+      keyterms: opts?.keyterms,
+      numerals: opts?.numerals,
+      multichannel: opts?.multichannel,
+      dictation: opts?.dictation,
+      replace: opts?.replace,
+      search: opts?.search,
+      utteranceEndMs: opts?.utteranceEndMs,
+      version: opts?.version,
+      tag: opts?.tag,
+      mipOptOut: opts?.mipOptOut,
+      extra: opts?.extra,
+      detectEntities: opts?.detectEntities,
+      alternatives: opts?.alternatives,
+      utterances: opts?.utterances,
+    }, {
+      // Naming exceptions where camelToSnake doesn't match the API
+      punctuation: 'punctuate',
+      keyterms: 'keyterm',
+    });
 
     return `${base}/v1/listen?${params.toString()}`;
   }
@@ -480,9 +434,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       const url = this.buildConnectionUrl();
 
       const protocols = this.resolveWsProtocols('token');
-      this.ws = protocols
-        ? new WebSocket(url, protocols)
-        : new WebSocket(url);
+      this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Wait for the connection to open (with timeout)
       const timeoutMs = this.config.timeout ?? 10000;

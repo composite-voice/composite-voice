@@ -14,6 +14,7 @@ import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { ProviderConnectionError } from '../../../utils/errors';
+import { buildQueryParams } from '../../../utils/queryParams';
 
 /**
  * Deepgram Flux transcription options passed as query parameters
@@ -58,8 +59,8 @@ export interface DeepgramFluxOptions {
   /** Keyterms to boost recognition of specialized terminology. */
   keyterms?: string[];
 
-  /** Label for usage reporting. */
-  tag?: string;
+  /** Labels for usage reporting. Multiple values are sent as separate `tag=` query parameters. */
+  tag?: string | string[];
 
   /** Opt out of the Deepgram Model Improvement Program. */
   mipOptOut?: boolean;
@@ -189,40 +190,21 @@ export class DeepgramFlux extends LiveSTTProvider {
    */
   private buildConnectionUrl(): string {
     const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
-
-    const params = new URLSearchParams();
     const opts = this.config.options;
 
-    // Required param
-    params.set('model', opts?.model ?? 'flux-general-en');
-
-    // Optional params (only include if set)
-    if (opts?.encoding !== undefined) {
-      params.set('encoding', opts.encoding);
-    }
-    if (opts?.sampleRate !== undefined) {
-      params.set('sample_rate', String(opts.sampleRate));
-    }
-    if (opts?.eotThreshold !== undefined) {
-      params.set('eot_threshold', String(opts.eotThreshold));
-    }
-    if (opts?.eagerEotThreshold !== undefined) {
-      params.set('eager_eot_threshold', String(opts.eagerEotThreshold));
-    }
-    if (opts?.eotTimeoutMs !== undefined) {
-      params.set('eot_timeout_ms', String(opts.eotTimeoutMs));
-    }
-    if (opts?.keyterms && opts.keyterms.length > 0) {
-      for (const kt of opts.keyterms) {
-        params.append('keyterm', kt);
-      }
-    }
-    if (opts?.tag !== undefined) {
-      params.set('tag', opts.tag);
-    }
-    if (opts?.mipOptOut !== undefined) {
-      params.set('mip_opt_out', String(opts.mipOptOut));
-    }
+    const params = buildQueryParams({
+      model: opts?.model ?? 'flux-general-en',
+      encoding: opts?.encoding,
+      sampleRate: opts?.sampleRate,
+      eotThreshold: opts?.eotThreshold,
+      eagerEotThreshold: opts?.eagerEotThreshold,
+      eotTimeoutMs: opts?.eotTimeoutMs,
+      keyterms: opts?.keyterms,
+      tag: opts?.tag,
+      mipOptOut: opts?.mipOptOut,
+    }, {
+      keyterms: 'keyterm',
+    });
 
     return `${base}/v2/listen?${params.toString()}`;
   }
@@ -247,9 +229,7 @@ export class DeepgramFlux extends LiveSTTProvider {
       const url = this.buildConnectionUrl();
 
       const protocols = this.resolveWsProtocols('token');
-      this.ws = protocols
-        ? new WebSocket(url, protocols)
-        : new WebSocket(url);
+      this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Wait for the connection to open (with timeout)
       const timeoutMs = this.config.timeout ?? 10000;
@@ -353,9 +333,10 @@ export class DeepgramFlux extends LiveSTTProvider {
    */
   private handleTurnInfo(msg: TurnInfoMessage): void {
     const transcript = msg.transcript;
-    const confidence = msg.words.length > 0
-      ? msg.words.reduce((sum, w) => sum + w.confidence, 0) / msg.words.length
-      : 0;
+    const confidence =
+      msg.words.length > 0
+        ? msg.words.reduce((sum, w) => sum + w.confidence, 0) / msg.words.length
+        : 0;
 
     switch (msg.event) {
       case 'StartOfTurn':
