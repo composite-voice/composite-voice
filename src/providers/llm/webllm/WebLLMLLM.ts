@@ -231,7 +231,7 @@ export class WebLLMLLM extends BaseLLMProvider {
     // Dynamically import WebLLM SDK (peer dependency)
     const webllm = await importPeerDep<typeof import('@mlc-ai/web-llm')>(
       '@mlc-ai/web-llm',
-      'WebLLMLLM',
+      'WebLLMLLM'
     );
 
     this.logger.info('Loading WebLLM model (this may take a while on first run)', {
@@ -318,7 +318,10 @@ export class WebLLMLLM extends BaseLLMProvider {
     return this.processText(prompt, options);
   }
 
-  async generateFromMessages(messages: LLMMessage[], options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+  async generateFromMessages(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>> {
     return this.processMessages(messages, options);
   }
 

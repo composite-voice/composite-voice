@@ -17,11 +17,17 @@ function makeChunk(sequence: number, timestampOffset = 0): AudioChunk {
 }
 
 /** Creates a default AudioBufferQueue config. */
-function defaultConfig(overrides: Partial<{ name: string; maxSize: number; overflowStrategy: 'drop-oldest' | 'drop-newest' | 'block' }> = {}) {
+function defaultConfig(
+  overrides: Partial<{
+    name: string;
+    maxSize: number;
+    overflowStrategy: 'drop-oldest' | 'drop-newest' | 'block';
+  }> = {}
+) {
   return {
     name: overrides.name ?? 'test-queue',
     maxSize: overrides.maxSize ?? 5,
-    overflowStrategy: overrides.overflowStrategy ?? 'drop-oldest' as const,
+    overflowStrategy: overrides.overflowStrategy ?? ('drop-oldest' as const),
   };
 }
 
@@ -233,7 +239,9 @@ describe('AudioBufferQueue', () => {
 
   describe('overflow: drop-newest', () => {
     it('discards incoming chunk when buffer is full', () => {
-      const queue = new AudioBufferQueue(defaultConfig({ maxSize: 3, overflowStrategy: 'drop-newest' }));
+      const queue = new AudioBufferQueue(
+        defaultConfig({ maxSize: 3, overflowStrategy: 'drop-newest' })
+      );
 
       queue.enqueue(makeChunk(1));
       queue.enqueue(makeChunk(2));
@@ -250,7 +258,9 @@ describe('AudioBufferQueue', () => {
     });
 
     it('increments totalDropped counter', () => {
-      const queue = new AudioBufferQueue(defaultConfig({ maxSize: 2, overflowStrategy: 'drop-newest' }));
+      const queue = new AudioBufferQueue(
+        defaultConfig({ maxSize: 2, overflowStrategy: 'drop-newest' })
+      );
 
       queue.enqueue(makeChunk(1));
       queue.enqueue(makeChunk(2));
@@ -281,7 +291,9 @@ describe('AudioBufferQueue', () => {
 
       let resolved = false;
       const promise = queue.enqueue(makeChunk(3)) as Promise<void>;
-      promise.then(() => { resolved = true; });
+      promise.then(() => {
+        resolved = true;
+      });
 
       // Not resolved yet
       await Promise.resolve(); // flush microtask
@@ -300,7 +312,9 @@ describe('AudioBufferQueue', () => {
       const promise = queue.enqueue(makeChunk(2)) as Promise<void>;
 
       let resolved = false;
-      promise.then(() => { resolved = true; });
+      promise.then(() => {
+        resolved = true;
+      });
 
       queue.clear();
       await promise;

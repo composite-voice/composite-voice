@@ -163,10 +163,7 @@ interface AssemblyAILikeSTT {
  * @see {@link AudioMetadata} for the metadata structure
  * @see {@link AudioInputProvider.getMetadata} for how metadata is obtained
  */
-export function configureSTTFromMetadata(
-  stt: BaseProvider,
-  metadata: AudioMetadata,
-): void {
+export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetadata): void {
   const providerName = stt.constructor?.name ?? '';
 
   if (DEEPGRAM_LIKE_NAMES.has(providerName)) {

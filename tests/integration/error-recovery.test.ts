@@ -14,11 +14,7 @@
 import { CompositeVoice } from '../../src/CompositeVoice';
 import { NativeSTT } from '../../src/providers/stt/native/NativeSTT';
 import { NativeTTS } from '../../src/providers/tts/native/NativeTTS';
-import type {
-  LLMProvider,
-  LLMMessage,
-  LLMGenerationOptions,
-} from '../../src/core/types/providers';
+import type { LLMProvider, LLMMessage, LLMGenerationOptions } from '../../src/core/types/providers';
 import type { AgentState } from '../../src/core/events/types';
 
 // ─── Mock LLM Providers ──────────────────────────────────────────────────────
@@ -518,9 +514,7 @@ describe('Pipeline Error Recovery', () => {
       }
 
       // Wildcard should capture both agent.stateChange and agent.error events
-      const errorEvents = allEvents.filter(
-        (e: { type: string }) => e.type === 'agent.error'
-      );
+      const errorEvents = allEvents.filter((e: { type: string }) => e.type === 'agent.error');
       expect(errorEvents.length).toBeGreaterThanOrEqual(1);
 
       const stateChangeEvents = allEvents.filter(

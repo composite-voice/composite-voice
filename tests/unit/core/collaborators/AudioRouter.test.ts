@@ -106,8 +106,8 @@ describe('AudioRouter', () => {
       wavHeader[6] = 0x00;
       wavHeader[7] = 0x00;
       // WAVE
-      wavHeader[8] = 0x57;  // W
-      wavHeader[9] = 0x41;  // A
+      wavHeader[8] = 0x57; // W
+      wavHeader[9] = 0x41; // A
       wavHeader[10] = 0x56; // V
       wavHeader[11] = 0x45; // E
 

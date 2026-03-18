@@ -15,13 +15,19 @@ function buf(...bytes: number[]): ArrayBuffer {
 function makeWavBuffer(totalSize: number = 100): ArrayBuffer {
   const arr = new Uint8Array(totalSize);
   // "RIFF"
-  [0x52, 0x49, 0x46, 0x46].forEach((b, i) => { arr[i] = b; });
+  [0x52, 0x49, 0x46, 0x46].forEach((b, i) => {
+    arr[i] = b;
+  });
   // file size (little-endian, arbitrary)
   arr[4] = (totalSize - 8) & 0xff;
   // "WAVE"
-  [0x57, 0x41, 0x56, 0x45].forEach((b, i) => { arr[8 + i] = b; });
+  [0x57, 0x41, 0x56, 0x45].forEach((b, i) => {
+    arr[8 + i] = b;
+  });
   // "fmt " sub-chunk
-  [0x66, 0x6d, 0x74, 0x20].forEach((b, i) => { arr[12 + i] = b; });
+  [0x66, 0x6d, 0x74, 0x20].forEach((b, i) => {
+    arr[12 + i] = b;
+  });
   // fmt chunk size = 16 (PCM)
   arr[16] = 16;
   // audio format = 1 (PCM)
@@ -29,9 +35,12 @@ function makeWavBuffer(totalSize: number = 100): ArrayBuffer {
   // channels = 1
   arr[22] = 1;
   // sample rate = 16000 (little-endian: 0x3E80)
-  arr[24] = 0x80; arr[25] = 0x3e;
+  arr[24] = 0x80;
+  arr[25] = 0x3e;
   // "data" sub-chunk header at offset 36
-  [0x64, 0x61, 0x74, 0x61].forEach((b, i) => { arr[36 + i] = b; });
+  [0x64, 0x61, 0x74, 0x61].forEach((b, i) => {
+    arr[36 + i] = b;
+  });
   return arr.buffer;
 }
 
@@ -39,9 +48,13 @@ function makeWavBuffer(totalSize: number = 100): ArrayBuffer {
 function makeOggBuffer(): ArrayBuffer {
   const arr = new Uint8Array(80);
   // First OggS at offset 0
-  [0x4f, 0x67, 0x67, 0x53].forEach((b, i) => { arr[i] = b; });
+  [0x4f, 0x67, 0x67, 0x53].forEach((b, i) => {
+    arr[i] = b;
+  });
   // Second OggS at offset 40
-  [0x4f, 0x67, 0x67, 0x53].forEach((b, i) => { arr[40 + i] = b; });
+  [0x4f, 0x67, 0x67, 0x53].forEach((b, i) => {
+    arr[40 + i] = b;
+  });
   return arr.buffer;
 }
 
@@ -131,10 +144,18 @@ describe('AudioHeaderCache', () => {
   describe('stream formats (no extractable header)', () => {
     it('detects MP3 but returns null header', () => {
       const mp3Buffer = buf(
-        0x49, 0x44, 0x33, // ID3
-        0x04, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00,
+        0x49,
+        0x44,
+        0x33, // ID3
+        0x04,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00
       );
       cache.process(mp3Buffer);
 
@@ -191,9 +212,18 @@ describe('AudioHeaderCache', () => {
     it('correctly accumulates and detects when fed one byte at a time', () => {
       // Feed FLAC magic bytes one at a time
       const flacBytes = [
-        0x66, 0x4c, 0x61, 0x43, // "fLaC"
-        0x00, 0x00, 0x00, 0x22, // STREAMINFO block header (length=34)
-        0x00, 0x00, 0x00, 0x00, // padding to reach 12 bytes
+        0x66,
+        0x4c,
+        0x61,
+        0x43, // "fLaC"
+        0x00,
+        0x00,
+        0x00,
+        0x22, // STREAMINFO block header (length=34)
+        0x00,
+        0x00,
+        0x00,
+        0x00, // padding to reach 12 bytes
       ];
 
       for (let i = 0; i < flacBytes.length - 1; i++) {

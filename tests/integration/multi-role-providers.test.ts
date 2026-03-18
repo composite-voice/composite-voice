@@ -172,12 +172,12 @@ describe('Multi-role provider resolution', () => {
       const nativeTTS = new NativeTTS();
 
       // NativeSTT claims ['input', 'stt'] — conflict detected on 'input' first
-      expect(() =>
-        resolveProviders([extraInput, nativeSTT, llm, nativeTTS])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([extraInput, nativeSTT, llm, nativeTTS])
-      ).toThrow(/Duplicate role "input"/);
+      expect(() => resolveProviders([extraInput, nativeSTT, llm, nativeTTS])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([extraInput, nativeSTT, llm, nativeTTS])).toThrow(
+        /Duplicate role "input"/
+      );
     });
 
     it('throws when NativeTTS conflicts with an explicit output provider', () => {
@@ -187,12 +187,12 @@ describe('Multi-role provider resolution', () => {
       const extraOutput = new MockOutputProvider();
 
       // NativeTTS claims 'output', so adding another output provider should fail
-      expect(() =>
-        resolveProviders([nativeSTT, llm, nativeTTS, extraOutput])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([nativeSTT, llm, nativeTTS, extraOutput])
-      ).toThrow(/Duplicate role/);
+      expect(() => resolveProviders([nativeSTT, llm, nativeTTS, extraOutput])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([nativeSTT, llm, nativeTTS, extraOutput])).toThrow(
+        /Duplicate role/
+      );
     });
 
     it('throws when two NativeSTT instances are provided', () => {
@@ -201,12 +201,10 @@ describe('Multi-role provider resolution', () => {
       const llm = new MockLLMProvider();
       const nativeTTS = new NativeTTS();
 
-      expect(() =>
-        resolveProviders([stt1, stt2, llm, nativeTTS])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([stt1, stt2, llm, nativeTTS])
-      ).toThrow(/Duplicate role "input"/);
+      expect(() => resolveProviders([stt1, stt2, llm, nativeTTS])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([stt1, stt2, llm, nativeTTS])).toThrow(
+        /Duplicate role "input"/
+      );
     });
   });
 

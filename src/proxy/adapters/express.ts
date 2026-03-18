@@ -237,7 +237,9 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
           const targetUrl = `${route.targetBase}${targetPath}`;
 
           return proxyWebSocket(req, socket, head, targetUrl, route.authHeaders, {
-            ...(security?.maxWsMessageSize !== undefined && { maxWsMessageSize: security.maxWsMessageSize }),
+            ...(security?.maxWsMessageSize !== undefined && {
+              maxWsMessageSize: security.maxWsMessageSize,
+            }),
           });
         })
         .catch((err: Error) => {

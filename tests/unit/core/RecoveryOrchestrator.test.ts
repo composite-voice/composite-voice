@@ -64,10 +64,8 @@ describe('RecoveryOrchestrator', () => {
   describe('recovery retries with backoff', () => {
     it('should increase delay with each attempt', async () => {
       const events: RecoveryEvent[] = [];
-      const orchestrator = new RecoveryOrchestrator(
-        fastStrategy,
-        undefined,
-        (event) => events.push({ ...event }),
+      const orchestrator = new RecoveryOrchestrator(fastStrategy, undefined, (event) =>
+        events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
 
@@ -93,7 +91,7 @@ describe('RecoveryOrchestrator', () => {
       expect(result3).toBe(true);
 
       // Verify the recovering events were emitted
-      const recoveringEvents = events.filter(e => e.recovering);
+      const recoveringEvents = events.filter((e) => e.recovering);
       expect(recoveringEvents.length).toBe(3);
       expect(recoveringEvents[0]!.attempt).toBe(1);
       expect(recoveringEvents[1]!.attempt).toBe(2);
@@ -107,7 +105,7 @@ describe('RecoveryOrchestrator', () => {
       const orchestrator = new RecoveryOrchestrator(
         { ...fastStrategy, maxAttempts: 2 },
         undefined,
-        (event) => events.push({ ...event }),
+        (event) => events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
 
@@ -140,10 +138,8 @@ describe('RecoveryOrchestrator', () => {
   describe('non-recoverable errors are not retried', () => {
     it('should return false immediately for non-recoverable errors', async () => {
       const events: RecoveryEvent[] = [];
-      const orchestrator = new RecoveryOrchestrator(
-        fastStrategy,
-        undefined,
-        (event) => events.push({ ...event }),
+      const orchestrator = new RecoveryOrchestrator(fastStrategy, undefined, (event) =>
+        events.push({ ...event })
       );
       const error = new ConfigurationError('missing API key');
       const recoverFn = jest.fn().mockResolvedValue(undefined);
@@ -165,9 +161,12 @@ describe('RecoveryOrchestrator', () => {
       const error = new ProviderConnectionError('TestSTT');
 
       // Start a recovery that will take time (the delay + the recoverFn)
-      const slowRecoverFn = jest.fn().mockImplementation(() => new Promise(resolve => {
-        setTimeout(resolve, 500);
-      }));
+      const slowRecoverFn = jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(resolve, 500);
+          })
+      );
 
       const firstPromise = orchestrator.attemptRecovery('stt', error, slowRecoverFn);
 
@@ -275,10 +274,8 @@ describe('RecoveryOrchestrator', () => {
   describe('recovery events are emitted correctly', () => {
     it('should emit recovering=true when starting, recovered=true on success', async () => {
       const events: RecoveryEvent[] = [];
-      const orchestrator = new RecoveryOrchestrator(
-        fastStrategy,
-        undefined,
-        (event) => events.push({ ...event }),
+      const orchestrator = new RecoveryOrchestrator(fastStrategy, undefined, (event) =>
+        events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
       const recoverFn = jest.fn().mockResolvedValue(undefined);
@@ -290,30 +287,32 @@ describe('RecoveryOrchestrator', () => {
       expect(events).toHaveLength(2);
 
       // First event: recovery starting
-      expect(events[0]).toEqual(expect.objectContaining({
-        provider: 'stt',
-        attempt: 1,
-        maxAttempts: 3,
-        recovering: true,
-        recovered: false,
-      }));
+      expect(events[0]).toEqual(
+        expect.objectContaining({
+          provider: 'stt',
+          attempt: 1,
+          maxAttempts: 3,
+          recovering: true,
+          recovered: false,
+        })
+      );
 
       // Second event: recovery succeeded
-      expect(events[1]).toEqual(expect.objectContaining({
-        provider: 'stt',
-        attempt: 1,
-        maxAttempts: 3,
-        recovering: false,
-        recovered: true,
-      }));
+      expect(events[1]).toEqual(
+        expect.objectContaining({
+          provider: 'stt',
+          attempt: 1,
+          maxAttempts: 3,
+          recovering: false,
+          recovered: true,
+        })
+      );
     });
 
     it('should emit recovering=true then no recovered event on failure', async () => {
       const events: RecoveryEvent[] = [];
-      const orchestrator = new RecoveryOrchestrator(
-        fastStrategy,
-        undefined,
-        (event) => events.push({ ...event }),
+      const orchestrator = new RecoveryOrchestrator(fastStrategy, undefined, (event) =>
+        events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
       const recoverFn = jest.fn().mockRejectedValue(new Error('fail'));
@@ -324,20 +323,20 @@ describe('RecoveryOrchestrator', () => {
 
       // Only the "recovering" event is emitted (no success event)
       expect(events).toHaveLength(1);
-      expect(events[0]).toEqual(expect.objectContaining({
-        provider: 'stt',
-        attempt: 1,
-        recovering: true,
-        recovered: false,
-      }));
+      expect(events[0]).toEqual(
+        expect.objectContaining({
+          provider: 'stt',
+          attempt: 1,
+          recovering: true,
+          recovered: false,
+        })
+      );
     });
 
     it('should include the error in all events', async () => {
       const events: RecoveryEvent[] = [];
-      const orchestrator = new RecoveryOrchestrator(
-        fastStrategy,
-        undefined,
-        (event) => events.push({ ...event }),
+      const orchestrator = new RecoveryOrchestrator(fastStrategy, undefined, (event) =>
+        events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
       const recoverFn = jest.fn().mockResolvedValue(undefined);
@@ -414,7 +413,7 @@ describe('RecoveryOrchestrator', () => {
       const orchestrator = new RecoveryOrchestrator(
         { ...fastStrategy, maxAttempts: 2 },
         undefined,
-        (event) => events.push({ ...event }),
+        (event) => events.push({ ...event })
       );
       const error = new ProviderConnectionError('TestSTT');
 
@@ -437,7 +436,7 @@ describe('RecoveryOrchestrator', () => {
       await r3Promise;
 
       // The attempt counter should show 1 (reset after success)
-      const lastRecoveringEvent = events.filter(e => e.recovering).pop();
+      const lastRecoveringEvent = events.filter((e) => e.recovering).pop();
       expect(lastRecoveringEvent?.attempt).toBe(1);
     });
   });

@@ -168,7 +168,12 @@ export async function forwardHttpRequest(
     if (!isNaN(contentLength) && contentLength > options.maxBodySize) {
       res.statusCode = 413;
       res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }));
+      res.end(
+        JSON.stringify({
+          error: 'payload_too_large',
+          message: 'Request body exceeds maximum allowed size',
+        })
+      );
       return;
     }
   }
@@ -181,7 +186,12 @@ export async function forwardHttpRequest(
       if (!res.headersSent) {
         res.statusCode = 413;
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }));
+        res.end(
+          JSON.stringify({
+            error: 'payload_too_large',
+            message: 'Request body exceeds maximum allowed size',
+          })
+        );
       }
       return;
     }

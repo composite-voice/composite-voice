@@ -340,7 +340,9 @@ export abstract class BaseProvider implements IBaseProvider {
    * @param defaultAuthType - The default auth type for this provider.
    * @returns Subprotocol array for `new WebSocket(url, protocols)`, or `undefined`.
    */
-  protected resolveWsProtocols(defaultAuthType: 'token' | 'bearer' = 'token'): string[] | undefined {
+  protected resolveWsProtocols(
+    defaultAuthType: 'token' | 'bearer' = 'token'
+  ): string[] | undefined {
     if (this.isProxyMode) return undefined;
     const authType = this.config.authType ?? defaultAuthType;
     const key = this.config.apiKey;

@@ -207,10 +207,7 @@ describe('DeepgramSTT', () => {
     });
 
     it('should handle connection timeout', async () => {
-      const customProvider = new DeepgramSTT(
-        { apiKey: 'test-key', timeout: 100 },
-        logger
-      );
+      const customProvider = new DeepgramSTT({ apiKey: 'test-key', timeout: 100 }, logger);
       await customProvider.initialize();
 
       // Don't trigger onopen — let it time out
@@ -331,9 +328,7 @@ describe('DeepgramSTT', () => {
     it('should handle UtteranceEnd events', async () => {
       await connectProvider();
 
-      mockWs._triggerMessage(
-        JSON.stringify({ type: 'UtteranceEnd', last_word_end: 1.5 })
-      );
+      mockWs._triggerMessage(JSON.stringify({ type: 'UtteranceEnd', last_word_end: 1.5 }));
 
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -389,9 +384,7 @@ describe('DeepgramSTT', () => {
       mockWs._triggerClose();
       await disconnectPromise;
 
-      expect(mockWs.send).toHaveBeenCalledWith(
-        JSON.stringify({ type: 'CloseStream' })
-      );
+      expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'CloseStream' }));
       expect(provider.isWebSocketConnected()).toBe(false);
     });
 

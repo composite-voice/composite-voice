@@ -47,7 +47,7 @@ export class TurnTakingController {
 
   constructor(
     config: TurnTakingConfig | undefined,
-    private logger: Logger,
+    private logger: Logger
   ) {
     this.turnTakingConfig = { ...DEFAULT_TURN_TAKING_CONFIG, ...config };
   }
@@ -76,7 +76,7 @@ export class TurnTakingController {
     stt: STTProvider,
     input: AudioInputProvider,
     inputQueue: AudioBufferQueue,
-    isMultiRoleInput: boolean,
+    isMultiRoleInput: boolean
   ): Promise<void> {
     if (!isMultiRoleInput) {
       inputQueue.stopDraining();
@@ -102,7 +102,7 @@ export class TurnTakingController {
     input: AudioInputProvider,
     inputQueue: AudioBufferQueue,
     headerCache: AudioHeaderCache,
-    isMultiRoleInput: boolean,
+    isMultiRoleInput: boolean
   ): Promise<void> {
     if (!isMultiRoleInput) {
       input.resume();
@@ -141,7 +141,7 @@ export class TurnTakingController {
     inputQueue: AudioBufferQueue,
     headerCache: AudioHeaderCache,
     isMultiRoleInput: boolean,
-    captureWasPaused: boolean,
+    captureWasPaused: boolean
   ): Promise<void> {
     if (captureWasPaused && !isMultiRoleInput) {
       input.resume();

@@ -214,7 +214,9 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
           const targetUrl = `${route.targetBase}${targetPath}`;
 
           return proxyWebSocket(req, socket, head, targetUrl, route.authHeaders, {
-            ...(security?.maxWsMessageSize !== undefined && { maxWsMessageSize: security.maxWsMessageSize }),
+            ...(security?.maxWsMessageSize !== undefined && {
+              maxWsMessageSize: security.maxWsMessageSize,
+            }),
           });
         })
         .catch((err: Error) => {

@@ -62,7 +62,7 @@ export interface DeepgramTranscriptionOptions {
    *
    * @example `['CompositeVoice', 'WebSocket']`
    */
-  keyterms?: string[];
+  keyterms?: string | string[];
 
   /** Labels for usage reporting in the Deepgram console. Multiple values are sent as separate `tag=` query parameters. */
   tag?: string | string[];
@@ -83,7 +83,7 @@ export interface DeepgramTranscriptionOptions {
    *
    * @example `['pci', 'ssn', 'numbers']`
    */
-  redact?: string[];
+  redact?: string | string[];
 
   /** Enable diarization / speaker detection (V1 only). */
   diarize?: boolean;
@@ -98,7 +98,7 @@ export interface DeepgramTranscriptionOptions {
    *
    * @see {@link keyterms} for the newer boosting API (V1 & V2).
    */
-  keywords?: string[];
+  keywords?: string | string[];
 
   /** Number of transcription alternatives to return (V1 only). */
   alternatives?: number;
@@ -137,14 +137,14 @@ export interface DeepgramTranscriptionOptions {
    *
    * @example `['colour:color', 'grey:gray']`
    */
-  replace?: string[];
+  replace?: string | string[];
 
   /**
    * Search for specific terms or phrases in the transcript (V1 only).
    *
    * @example `['action item', 'follow up']`
    */
-  search?: string[];
+  search?: string | string[];
 
   /**
    * Delay in milliseconds before emitting an `UtteranceEnd` event (V1 only).
@@ -159,7 +159,7 @@ export interface DeepgramTranscriptionOptions {
   version?: string;
 
   /** Arbitrary key:value metadata passed through to the API (V1 only). */
-  extra?: string[];
+  extra?: string | string[];
 }
 
 /**

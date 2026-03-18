@@ -79,8 +79,8 @@ export function trimConversationHistory(
   let nonSystemMessages: LLMMessage[];
 
   if (preserveSystem) {
-    systemMessages = history.filter(m => m.role === 'system');
-    nonSystemMessages = history.filter(m => m.role !== 'system');
+    systemMessages = history.filter((m) => m.role === 'system');
+    nonSystemMessages = history.filter((m) => m.role !== 'system');
   } else {
     nonSystemMessages = [...history];
   }

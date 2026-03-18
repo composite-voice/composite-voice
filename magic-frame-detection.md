@@ -9,41 +9,49 @@ function detectAudioFormat(buffer) {
   const view = new Uint8Array(buffer);
 
   // WAV: "RIFF....WAVE"
-  if (view[0] === 0x52 && view[1] === 0x49 &&
-      view[2] === 0x46 && view[3] === 0x46 &&
-      view[8] === 0x57 && view[9] === 0x41 &&
-      view[10] === 0x56 && view[11] === 0x45) return 'wav';
+  if (
+    view[0] === 0x52 &&
+    view[1] === 0x49 &&
+    view[2] === 0x46 &&
+    view[3] === 0x46 &&
+    view[8] === 0x57 &&
+    view[9] === 0x41 &&
+    view[10] === 0x56 &&
+    view[11] === 0x45
+  )
+    return 'wav';
 
   // OGG: "OggS"
-  if (view[0] === 0x4F && view[1] === 0x67 &&
-      view[2] === 0x67 && view[3] === 0x53) return 'ogg';
+  if (view[0] === 0x4f && view[1] === 0x67 && view[2] === 0x67 && view[3] === 0x53) return 'ogg';
 
   // FLAC: "fLaC"
-  if (view[0] === 0x66 && view[1] === 0x4C &&
-      view[2] === 0x61 && view[3] === 0x43) return 'flac';
+  if (view[0] === 0x66 && view[1] === 0x4c && view[2] === 0x61 && view[3] === 0x43) return 'flac';
 
   // MP3: ID3 tag
-  if (view[0] === 0x49 && view[1] === 0x44 &&
-      view[2] === 0x33) return 'mp3';
+  if (view[0] === 0x49 && view[1] === 0x44 && view[2] === 0x33) return 'mp3';
 
   // MP3: raw sync word (no ID3)
-  if (view[0] === 0xFF && (view[1] & 0xE0) === 0xE0) return 'mp3';
+  if (view[0] === 0xff && (view[1] & 0xe0) === 0xe0) return 'mp3';
 
   // AAC ADTS
-  if (view[0] === 0xFF && (view[1] & 0xF6) === 0xF0) return 'aac';
+  if (view[0] === 0xff && (view[1] & 0xf6) === 0xf0) return 'aac';
 
   // AIFF: "FORM....AIFF" or "AIFC"
-  if (view[0] === 0x46 && view[1] === 0x4F &&
-      view[2] === 0x52 && view[3] === 0x4D &&
-      (view[8] === 0x41 && view[9] === 0x49)) return 'aiff';
+  if (
+    view[0] === 0x46 &&
+    view[1] === 0x4f &&
+    view[2] === 0x52 &&
+    view[3] === 0x4d &&
+    view[8] === 0x41 &&
+    view[9] === 0x49
+  )
+    return 'aiff';
 
   // M4A/MP4: ftyp box at offset 4
-  if (view[4] === 0x66 && view[5] === 0x74 &&
-      view[6] === 0x79 && view[7] === 0x70) return 'mp4';
+  if (view[4] === 0x66 && view[5] === 0x74 && view[6] === 0x79 && view[7] === 0x70) return 'mp4';
 
   // WebM/MKV: EBML header
-  if (view[0] === 0x1A && view[1] === 0x45 &&
-      view[2] === 0xDF && view[3] === 0xA3) return 'webm';
+  if (view[0] === 0x1a && view[1] === 0x45 && view[2] === 0xdf && view[3] === 0xa3) return 'webm';
 
   return null; // unknown
 }
@@ -163,13 +171,13 @@ websocket.onmessage = (e) => stream.push(e.data);
 
 Since you're building an STT SDK, here's the practical reality of what you'll actually encounter and how detectable each is:
 
-| Format | Detectable? | Confidence | Notes |
-|---|---|---|---|
-| Raw PCM | ✗ | Heuristic only | Most common from browser mic |
-| WAV | ✓ | Very high | RIFF+WAVE magic is unambiguous |
-| OGG/Opus | ✓ | Very high | OggS magic unambiguous |
-| MP3 | ✓ | High | ID3 tag makes it easy; raw sync is slightly ambiguous |
-| AAC/ADTS | ✓ | Medium | Sync word can false-positive in PCM data |
-| WebM | ✓ | Very high | EBML header unambiguous |
+| Format   | Detectable? | Confidence     | Notes                                                 |
+| -------- | ----------- | -------------- | ----------------------------------------------------- |
+| Raw PCM  | ✗           | Heuristic only | Most common from browser mic                          |
+| WAV      | ✓           | Very high      | RIFF+WAVE magic is unambiguous                        |
+| OGG/Opus | ✓           | Very high      | OggS magic unambiguous                                |
+| MP3      | ✓           | High           | ID3 tag makes it easy; raw sync is slightly ambiguous |
+| AAC/ADTS | ✓           | Medium         | Sync word can false-positive in PCM data              |
+| WebM     | ✓           | Very high      | EBML header unambiguous                               |
 
 The safest real-world approach for an STT SDK is to **let the caller declare the format if they know it**, fall back to sniffing, and default to PCM if nothing matches — since that's what browsers produce natively via `AudioWorklet`.

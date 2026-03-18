@@ -17,9 +17,7 @@ class TestProvider extends BaseProvider {
     this.assertAuth();
   }
 
-  public callResolveBaseUrl(
-    defaultUrl?: string,
-  ): string | undefined {
+  public callResolveBaseUrl(defaultUrl?: string): string | undefined {
     return this.resolveBaseUrl(defaultUrl);
   }
 
@@ -27,15 +25,11 @@ class TestProvider extends BaseProvider {
     return this.resolveApiKey();
   }
 
-  public callResolveWsProtocols(
-    defaultAuthType?: 'token' | 'bearer'
-  ): string[] | undefined {
+  public callResolveWsProtocols(defaultAuthType?: 'token' | 'bearer'): string[] | undefined {
     return this.resolveWsProtocols(defaultAuthType);
   }
 
-  public callResolveAuthHeader(
-    defaultAuthType?: 'token' | 'bearer'
-  ): string | undefined {
+  public callResolveAuthHeader(defaultAuthType?: 'token' | 'bearer'): string | undefined {
     return this.resolveAuthHeader(defaultAuthType);
   }
 
@@ -123,9 +117,9 @@ describe('BaseProvider helpers', () => {
         proxyUrl: 'http://localhost:3000/proxy',
       });
 
-      expect(
-        provider.callResolveBaseUrl('wss://api.default.com')
-      ).toBe('ws://localhost:3000/proxy');
+      expect(provider.callResolveBaseUrl('wss://api.default.com')).toBe(
+        'ws://localhost:3000/proxy'
+      );
     });
 
     it('should convert https to wss for proxyUrl when type is websocket', () => {
@@ -133,9 +127,9 @@ describe('BaseProvider helpers', () => {
         proxyUrl: 'https://my-proxy.example.com/proxy',
       });
 
-      expect(
-        provider.callResolveBaseUrl('wss://api.default.com')
-      ).toBe('wss://my-proxy.example.com/proxy');
+      expect(provider.callResolveBaseUrl('wss://api.default.com')).toBe(
+        'wss://my-proxy.example.com/proxy'
+      );
     });
 
     it('should return endpoint when set and no proxyUrl', () => {
@@ -213,10 +207,7 @@ describe('BaseProvider helpers', () => {
     it("should return ['bearer', apiKey] when defaultAuthType is 'bearer'", () => {
       const provider = new TestProvider('websocket', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveWsProtocols('bearer')).toEqual([
-        'bearer',
-        'sk-123',
-      ]);
+      expect(provider.callResolveWsProtocols('bearer')).toEqual(['bearer', 'sk-123']);
     });
 
     it('should return undefined in proxy mode', () => {
@@ -241,10 +232,7 @@ describe('BaseProvider helpers', () => {
       });
 
       // Default param is 'token' but config.authType = 'bearer' should win
-      expect(provider.callResolveWsProtocols('token')).toEqual([
-        'bearer',
-        'sk-123',
-      ]);
+      expect(provider.callResolveWsProtocols('token')).toEqual(['bearer', 'sk-123']);
     });
   });
 

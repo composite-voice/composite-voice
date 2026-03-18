@@ -156,7 +156,7 @@ export class RecoveryOrchestrator {
   constructor(
     private strategy: RecoveryStrategy = DEFAULT_RECOVERY_STRATEGY,
     private logger?: Logger,
-    private onRecoveryEvent?: (event: RecoveryEvent) => void,
+    private onRecoveryEvent?: (event: RecoveryEvent) => void
   ) {}
 
   /**
@@ -186,7 +186,7 @@ export class RecoveryOrchestrator {
   async attemptRecovery(
     providerName: string,
     error: CompositeVoiceError,
-    recoverFn: () => Promise<void>,
+    recoverFn: () => Promise<void>
   ): Promise<boolean> {
     // Don't recover non-recoverable errors
     if (!error.recoverable) {
@@ -234,10 +234,10 @@ export class RecoveryOrchestrator {
     // Calculate delay with exponential backoff
     const delay = Math.min(
       this.strategy.initialDelay * Math.pow(this.strategy.backoffMultiplier, currentAttempts - 1),
-      this.strategy.maxDelay,
+      this.strategy.maxDelay
     );
 
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     try {
       await recoverFn();
@@ -254,7 +254,10 @@ export class RecoveryOrchestrator {
       return true;
     } catch (retryError) {
       this.recovering.delete(providerName);
-      this.logger?.warn(`Recovery attempt ${currentAttempts} failed for ${providerName}`, retryError);
+      this.logger?.warn(
+        `Recovery attempt ${currentAttempts} failed for ${providerName}`,
+        retryError
+      );
       return false;
     }
   }

@@ -33,7 +33,7 @@ export class EagerLLMController {
 
   constructor(
     private config?: EagerLLMConfig,
-    private logger?: Logger,
+    private logger?: Logger
   ) {}
 
   /** Whether the eager LLM pipeline is enabled in configuration. */
@@ -123,7 +123,7 @@ export class EagerLLMController {
     if (shouldCancel) {
       this.logger?.debug(
         'speech_final too different from preflight — cancelling eager, restarting',
-        { similarity, threshold, preflight: eagerText, final: confirmedText },
+        { similarity, threshold, preflight: eagerText, final: confirmedText }
       );
       this.abortController.abort();
       this.clearState();
@@ -133,7 +133,7 @@ export class EagerLLMController {
     // Accept the preflight response even though text changed beyond threshold
     this.logger?.debug(
       'speech_final differs but cancelOnTextChange=false — accepting eager response',
-      { similarity, threshold },
+      { similarity, threshold }
     );
     this.clearState();
     return 'accept-anyway';

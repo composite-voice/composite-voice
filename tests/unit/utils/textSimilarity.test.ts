@@ -34,10 +34,7 @@ describe('textSimilarity', () => {
 
     it('should return 1.0 for long prefix', () => {
       expect(
-        textSimilarity(
-          'the quick brown fox',
-          'the quick brown fox jumps over the lazy dog'
-        )
+        textSimilarity('the quick brown fox', 'the quick brown fox jumps over the lazy dog')
       ).toBe(1);
     });
   });
@@ -57,10 +54,7 @@ describe('textSimilarity', () => {
     });
 
     it('should handle divergence after shared prefix', () => {
-      const score = textSimilarity(
-        'hello world how',
-        'hello world what are you doing'
-      );
+      const score = textSimilarity('hello world how', 'hello world what are you doing');
       // "hello" and "world" match, "how" doesn't → 2/3
       expect(score).toBeCloseTo(2 / 3, 2);
     });

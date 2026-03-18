@@ -81,15 +81,15 @@ describe('shouldPauseCaptureOnPlayback', () => {
     });
 
     it('should NOT pause for DeepgramSTT + non-NativeTTS (uses MediaDevices, has echo cancellation)', () => {
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(
-        false
-      );
+      expect(
+        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))
+      ).toBe(false);
     });
 
     it('should pause for DeepgramSTT + NativeTTS (NativeTTS bypasses echo cancellation)', () => {
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))).toBe(
-        true
-      );
+      expect(
+        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))
+      ).toBe(true);
     });
 
     it('should pause for unknown STT providers (no echo cancellation entry)', () => {
@@ -159,9 +159,9 @@ describe('shouldPauseCaptureOnPlayback', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(
-        false
-      );
+      expect(
+        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))
+      ).toBe(false);
     });
 
     it('should pause for DeepgramSTT + NativeTTS even when browser supports echo cancellation', () => {
@@ -174,9 +174,9 @@ describe('shouldPauseCaptureOnPlayback', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))).toBe(
-        true
-      );
+      expect(
+        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('NativeTTS'))
+      ).toBe(true);
     });
 
     it('should pause for DeepgramSTT when browser lacks echo cancellation support', () => {

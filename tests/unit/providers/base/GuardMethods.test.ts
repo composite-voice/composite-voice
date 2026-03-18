@@ -47,10 +47,7 @@ class TestLLMProvider extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {}
   protected async onDispose(): Promise<void> {}
 
-  async generate(
-    _prompt: string,
-    _options?: LLMGenerationOptions
-  ): Promise<AsyncIterable<string>> {
+  async generate(_prompt: string, _options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     return (async function* () {
       yield 'hello';
     })();
@@ -229,7 +226,6 @@ describe('LLM guard methods (BaseLLMProvider)', () => {
   beforeEach(() => {
     llm = new TestLLMProvider({ model: 'test-model' } as LLMProviderConfig);
   });
-
 
   describe('isToolCall()', () => {
     it('should return false by default (base implementation)', () => {

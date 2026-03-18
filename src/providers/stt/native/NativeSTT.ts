@@ -230,9 +230,9 @@ export class NativeSTT extends LiveSTTProvider {
     if (!SpeechRecognitionAPI) {
       this.logger.error(
         'Web Speech API is not supported in this browser. ' +
-        'NativeSTT requires SpeechRecognition (Chrome, Edge, Safari). ' +
-        'Chromium-based browsers without Google services (e.g., ungoogled-chromium) ' +
-        'will not work. Use DeepgramSTT or another cloud STT provider instead.'
+          'NativeSTT requires SpeechRecognition (Chrome, Edge, Safari). ' +
+          'Chromium-based browsers without Google services (e.g., ungoogled-chromium) ' +
+          'will not work. Use DeepgramSTT or another cloud STT provider instead.'
       );
       throw new Error(
         'Web Speech API is not supported in this browser. Use DeepgramSTT or another cloud STT provider instead.'
@@ -330,7 +330,7 @@ export class NativeSTT extends LiveSTTProvider {
       } else if (event.error === 'network') {
         errorMessage =
           'Network error during speech recognition. The Web Speech API requires a connection ' +
-          'to Google\'s speech servers. This fails on browsers without Google services ' +
+          "to Google's speech servers. This fails on browsers without Google services " +
           '(e.g., ungoogled-chromium, Brave with restrictions). Use DeepgramSTT or another ' +
           'cloud STT provider instead.';
         // Stop retrying — network errors won't resolve themselves
@@ -530,7 +530,9 @@ export class NativeSTT extends LiveSTTProvider {
   protected sendAudioToSocket(_chunk: ArrayBuffer): void {
     // No-op: Native STT uses SpeechRecognition API which directly accesses the microphone
     // Audio flow: Microphone → SpeechRecognition API → onTranscription callback
-    this.logger.debug('sendAudioToSocket() called on native STT (no-op - browser manages audio capture)');
+    this.logger.debug(
+      'sendAudioToSocket() called on native STT (no-op - browser manages audio capture)'
+    );
   }
 
   // ── AudioInputProvider interface (multi-role: input + stt) ──────────
@@ -547,9 +549,7 @@ export class NativeSTT extends LiveSTTProvider {
    * @see {@link AudioInputProvider.start}
    */
   start(): void {
-    this.connect().catch((err) =>
-      this.logger.error('Failed to start audio input', err)
-    );
+    this.connect().catch((err) => this.logger.error('Failed to start audio input', err));
   }
 
   /**
@@ -561,9 +561,7 @@ export class NativeSTT extends LiveSTTProvider {
    * @see {@link AudioInputProvider.stop}
    */
   stop(): void {
-    this.disconnect().catch((err) =>
-      this.logger.error('Failed to stop audio input', err)
-    );
+    this.disconnect().catch((err) => this.logger.error('Failed to stop audio input', err));
   }
 
   /**
@@ -578,9 +576,7 @@ export class NativeSTT extends LiveSTTProvider {
    * @see {@link AudioInputProvider.pause}
    */
   pause(): void {
-    this.disconnect().catch((err) =>
-      this.logger.error('Failed to pause audio input', err)
-    );
+    this.disconnect().catch((err) => this.logger.error('Failed to pause audio input', err));
   }
 
   /**
@@ -593,9 +589,7 @@ export class NativeSTT extends LiveSTTProvider {
    * @see {@link AudioInputProvider.resume}
    */
   resume(): void {
-    this.connect().catch((err) =>
-      this.logger.error('Failed to resume audio input', err)
-    );
+    this.connect().catch((err) => this.logger.error('Failed to resume audio input', err));
   }
 
   /**

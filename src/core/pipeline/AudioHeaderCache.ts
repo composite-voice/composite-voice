@@ -134,9 +134,7 @@ export class AudioHeaderCache {
     if (this.accumulationBuffer === null) {
       this.accumulationBuffer = new Uint8Array(incoming);
     } else {
-      const combined = new Uint8Array(
-        this.accumulationBuffer.byteLength + incoming.byteLength,
-      );
+      const combined = new Uint8Array(this.accumulationBuffer.byteLength + incoming.byteLength);
       combined.set(this.accumulationBuffer, 0);
       combined.set(incoming, this.accumulationBuffer.byteLength);
       this.accumulationBuffer = combined;

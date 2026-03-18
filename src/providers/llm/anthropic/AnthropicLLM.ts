@@ -543,7 +543,10 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
     const anthropicMessages: MessageParam[] = nonSystemMessages.map((msg) => {
       if (msg.role === 'assistant' && msg.toolCalls?.length) {
         // Assistant message with tool use — create content blocks
-        const content: Array<{ type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }> = [];
+        const content: Array<
+          | { type: 'text'; text: string }
+          | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+        > = [];
         if (msg.content) content.push({ type: 'text', text: msg.content });
         for (const tc of msg.toolCalls) {
           content.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.arguments });
@@ -554,12 +557,14 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
         // Tool result — Anthropic uses role: 'user' with tool_result content
         return {
           role: 'user' as const,
-          content: [{
-            type: 'tool_result' as const,
-            tool_use_id: msg.toolCallId!,
-            content: msg.content,
-            ...(msg.toolCallId ? {} : {}),
-          }],
+          content: [
+            {
+              type: 'tool_result' as const,
+              tool_use_id: msg.toolCallId!,
+              content: msg.content,
+              ...(msg.toolCallId ? {} : {}),
+            },
+          ],
         };
       }
       return { role: msg.role as 'user' | 'assistant', content: msg.content };
@@ -602,7 +607,9 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             messages: anthropicMessages,
             ...(system ? { system } : {}),
             ...(tools?.length ? { tools } : {}),
-            ...(mergedOptions.temperature !== undefined ? { temperature: mergedOptions.temperature } : {}),
+            ...(mergedOptions.temperature !== undefined
+              ? { temperature: mergedOptions.temperature }
+              : {}),
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(mergedOptions.stopSequences ? { stop_sequences: mergedOptions.stopSequences } : {}),
             ...(mergedOptions.extra ?? {}),
@@ -621,20 +628,33 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             if (signal?.aborted) break;
 
             if (event.type === 'content_block_start') {
-              const block = (event as unknown as { content_block: { type: string; id?: string; name?: string } }).content_block;
+              const block = (
+                event as unknown as { content_block: { type: string; id?: string; name?: string } }
+              ).content_block;
               if (block.type === 'tool_use') {
                 activeToolId = block.id ?? '';
                 activeToolName = block.name ?? '';
                 activeToolArgs = '';
-                yield { type: 'tool_call_start', toolCall: { id: activeToolId, name: activeToolName } };
+                yield {
+                  type: 'tool_call_start',
+                  toolCall: { id: activeToolId, name: activeToolName },
+                };
               }
             } else if (event.type === 'content_block_delta') {
-              const delta = (event as unknown as { delta: { type: string; text?: string; partial_json?: string } }).delta;
+              const delta = (
+                event as unknown as {
+                  delta: { type: string; text?: string; partial_json?: string };
+                }
+              ).delta;
               if (delta.type === 'text_delta' && delta.text) {
                 yield { type: 'text', text: delta.text };
               } else if (delta.type === 'input_json_delta' && delta.partial_json) {
                 activeToolArgs += delta.partial_json;
-                yield { type: 'tool_call_delta', toolCallId: activeToolId, argumentsDelta: delta.partial_json };
+                yield {
+                  type: 'tool_call_delta',
+                  toolCallId: activeToolId,
+                  argumentsDelta: delta.partial_json,
+                };
               }
             } else if (event.type === 'content_block_stop') {
               if (activeToolId) {

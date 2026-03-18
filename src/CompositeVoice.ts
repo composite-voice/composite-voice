@@ -301,14 +301,14 @@ export class CompositeVoice {
     if (sttName === 'NativeSTT' && !apis.speechRecognition) {
       this.logger.error(
         'NativeSTT requires the Web Speech API (SpeechRecognition) which is not available in this browser. ' +
-        'Use DeepgramSTT or another cloud STT provider instead.'
+          'Use DeepgramSTT or another cloud STT provider instead.'
       );
     }
 
     if (ttsName === 'NativeTTS' && !apis.speechSynthesis) {
       this.logger.error(
         'NativeTTS requires the SpeechSynthesis API which is not available in this browser. ' +
-        'Use DeepgramTTS or another cloud TTS provider instead.'
+          'Use DeepgramTTS or another cloud TTS provider instead.'
       );
     }
 
@@ -316,10 +316,13 @@ export class CompositeVoice {
       this.logger.warn('AudioContext is not available. Audio playback may not work.');
     }
 
-    if (!apis.mediaDevices && (sttName === 'DeepgramSTT' || sttName === 'AssemblyAISTT' || sttName === 'ElevenLabsSTT')) {
+    if (
+      !apis.mediaDevices &&
+      (sttName === 'DeepgramSTT' || sttName === 'AssemblyAISTT' || sttName === 'ElevenLabsSTT')
+    ) {
       this.logger.error(
         `${sttName} requires navigator.mediaDevices.getUserMedia which is not available. ` +
-        'Are you on HTTPS? getUserMedia requires a secure context.'
+          'Are you on HTTPS? getUserMedia requires a secure context.'
       );
     }
   }
@@ -371,9 +374,13 @@ export class CompositeVoice {
 
     if (includeGuidance) {
       if (outputMode === 'voice') {
-        parts.push('Your response will be spoken aloud via text-to-speech. Keep responses concise and conversational. Never use markdown, code blocks, bullet points, or numbered lists. Respond in plain, natural sentences.');
+        parts.push(
+          'Your response will be spoken aloud via text-to-speech. Keep responses concise and conversational. Never use markdown, code blocks, bullet points, or numbered lists. Respond in plain, natural sentences.'
+        );
       } else {
-        parts.push('Your response will be displayed as text. Keep responses clear and well-structured. Do not use markdown formatting. Respond in plain text.');
+        parts.push(
+          'Your response will be displayed as text. Keep responses clear and well-structured. Do not use markdown formatting. Respond in plain text.'
+        );
       }
     }
 
@@ -636,7 +643,8 @@ export class CompositeVoice {
     stt.onTranscription((result) => {
       // ── Error results from STT providers ──────────────────────────────
       if (result.metadata?.error && !result.text?.trim()) {
-        const errorMsg = (result.metadata.message as string) || `STT error: ${result.metadata.error}`;
+        const errorMsg =
+          (result.metadata.message as string) || `STT error: ${result.metadata.error}`;
         this.logger.error('STT provider error', errorMsg);
         this.emitEvent({
           type: 'transcription.error',
@@ -648,7 +656,10 @@ export class CompositeVoice {
       }
 
       // ── Barge-in: interrupt playback when user starts speaking ──────────
-      if ((this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) && result.text?.trim()) {
+      if (
+        (this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) &&
+        result.text?.trim()
+      ) {
         this.logger.debug('Barge-in detected — stopping playback');
         // Synchronously abort LLM + reset state machines so processLLM
         // can start immediately in this same callback
@@ -669,12 +680,24 @@ export class CompositeVoice {
         // Reset state machines so agent can process new input
         const ps = this.playbackStateMachine.getState();
         if (ps !== 'idle' && ps !== 'error') {
-          try { this.playbackStateMachine.setStopped(); } catch { /* ignore */ }
-          try { this.playbackStateMachine.setIdle(); } catch { /* ignore */ }
+          try {
+            this.playbackStateMachine.setStopped();
+          } catch {
+            /* ignore */
+          }
+          try {
+            this.playbackStateMachine.setIdle();
+          } catch {
+            /* ignore */
+          }
         }
         const prs = this.processingStateMachine.getState();
         if (prs !== 'idle') {
-          try { this.processingStateMachine.setIdle(); } catch { /* ignore */ }
+          try {
+            this.processingStateMachine.setIdle();
+          } catch {
+            /* ignore */
+          }
         }
         // Disconnect TTS in background (async, don't block)
         if (isLiveTTS(tts)) {
@@ -938,7 +961,11 @@ export class CompositeVoice {
    * @see {@link CompositeVoice.processTTS | processTTS} for REST TTS synthesis.
    * @see {@link CompositeVoice.finalizeLiveTTS | finalizeLiveTTS} for Live TTS finalization.
    */
-  private async processLLM(text: string, signal?: AbortSignal, modality: 'voice' | 'text' = 'voice'): Promise<void> {
+  private async processLLM(
+    text: string,
+    signal?: AbortSignal,
+    modality: 'voice' | 'text' = 'voice'
+  ): Promise<void> {
     // Tag this generation so we can detect if it's been superseded by barge-in
     const generationId = ++this.llmGenerationId;
 
@@ -983,10 +1010,7 @@ export class CompositeVoice {
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality });
         // Trim history using token-aware trimming (preserves system messages by default)
-        this.conversationHistory = trimConversationHistory(
-          this.conversationHistory,
-          historyConfig,
-        );
+        this.conversationHistory = trimConversationHistory(this.conversationHistory, historyConfig);
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -996,7 +1020,10 @@ export class CompositeVoice {
         const fullResponse = await this.processLLMToolLoop(msgs, activeSignal, generationId);
 
         if (generationId !== this.llmGenerationId) return;
-        if (activeSignal.aborted) { this.processingStateMachine.setIdle(); return; }
+        if (activeSignal.aborted) {
+          this.processingStateMachine.setIdle();
+          return;
+        }
         this.llmAbortController = null;
 
         this.processingStateMachine.setComplete();
@@ -1593,9 +1620,12 @@ export class CompositeVoice {
         //    data — chunks are sent in small batches with event-loop yields
         //    between each batch, giving the proxy/upstream time to relay.
         if (isLiveSTT(stt)) {
-          this.inputQueue.startDraining((chunk: AudioChunk) => {
-            stt.sendAudio(chunk.data);
-          }, { paced: true });
+          this.inputQueue.startDraining(
+            (chunk: AudioChunk) => {
+              stt.sendAudio(chunk.data);
+            },
+            { paced: true }
+          );
         }
       }
 
@@ -1847,10 +1877,7 @@ export class CompositeVoice {
 
       if (useHistory) {
         this.conversationHistory.push({ role: 'user', content: text, modality: 'text' });
-        this.conversationHistory = trimConversationHistory(
-          this.conversationHistory,
-          historyConfig,
-        );
+        this.conversationHistory = trimConversationHistory(this.conversationHistory, historyConfig);
       }
 
       // Tool-aware path: delegate to tool loop which handles TTS internally
@@ -1858,7 +1885,11 @@ export class CompositeVoice {
         this.processingStateMachine.setProcessing();
         this.processingStateMachine.setStreaming();
         const msgs = [...(ioContext ? [ioContext] : []), ...this.conversationHistory];
-        const fullResponse = await this.processLLMToolLoop(msgs, llmController.signal, generationId);
+        const fullResponse = await this.processLLMToolLoop(
+          msgs,
+          llmController.signal,
+          generationId
+        );
 
         if (generationId !== this.llmGenerationId) return;
         this.llmAbortController = null;
@@ -1890,7 +1921,7 @@ export class CompositeVoice {
       if (useHistory) {
         responseIterable = await llm.generateFromMessages(
           [...(ioContext ? [ioContext] : []), ...this.conversationHistory],
-          { signal: llmController.signal },
+          { signal: llmController.signal }
         );
       } else {
         responseIterable = await llm.generate(text, { signal: llmController.signal });
@@ -1984,7 +2015,7 @@ export class CompositeVoice {
   private async processLLMToolLoop(
     messages: LLMMessage[],
     signal: AbortSignal,
-    _generationId: number,
+    _generationId: number
   ): Promise<string> {
     const { llm, tts } = this;
     if (!isToolAware(llm) || !this.config.tools) {
@@ -2013,7 +2044,12 @@ export class CompositeVoice {
 
       if (chunk.type === 'text') {
         fullText += chunk.text;
-        this.emitEvent({ type: 'llm.chunk', chunk: chunk.text, accumulated: fullText, timestamp: Date.now() });
+        this.emitEvent({
+          type: 'llm.chunk',
+          chunk: chunk.text,
+          accumulated: fullText,
+          timestamp: Date.now(),
+        });
         // Only text goes to TTS — tool calls are silent
         if (isLiveTTS(tts) && !this._outputMuted) {
           tts.sendText(chunk.text);
@@ -2051,7 +2087,12 @@ export class CompositeVoice {
 
           // Execute each tool and collect results
           for (const tc of toolCalls) {
-            this.emitEvent({ type: 'llm.chunk', chunk: '', accumulated: fullText, timestamp: Date.now() });
+            this.emitEvent({
+              type: 'llm.chunk',
+              chunk: '',
+              accumulated: fullText,
+              timestamp: Date.now(),
+            });
             const result = await toolConfig.onToolCall(tc);
             messages.push({ role: 'tool', content: result.content, toolCallId: result.toolCallId });
           }
@@ -2075,7 +2116,12 @@ export class CompositeVoice {
             if (signal.aborted) break;
             if (chunk2.type === 'text') {
               fullText += chunk2.text;
-              this.emitEvent({ type: 'llm.chunk', chunk: chunk2.text, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
+              this.emitEvent({
+                type: 'llm.chunk',
+                chunk: chunk2.text,
+                accumulated: textBeforeTools + fullText,
+                timestamp: Date.now(),
+              });
               if (isLiveTTS(tts) && !this._outputMuted) {
                 tts.sendText(chunk2.text);
               }

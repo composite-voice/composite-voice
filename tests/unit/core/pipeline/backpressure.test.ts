@@ -55,7 +55,9 @@ describe('TTSBackpressure', () => {
       expect(bp.pendingCount).toBe(2);
 
       let resolved = false;
-      const promise = bp.waitForCapacity().then(() => { resolved = true; });
+      const promise = bp.waitForCapacity().then(() => {
+        resolved = true;
+      });
 
       // Flush microtasks — should NOT resolve yet
       await Promise.resolve();
@@ -110,7 +112,9 @@ describe('TTSBackpressure', () => {
       // Wait, release, send again — 3 cycles
       for (let i = 0; i < 3; i++) {
         let resolved = false;
-        const promise = bp.waitForCapacity().then(() => { resolved = true; });
+        const promise = bp.waitForCapacity().then(() => {
+          resolved = true;
+        });
         await Promise.resolve();
         expect(resolved).toBe(false);
 
@@ -141,7 +145,9 @@ describe('TTSBackpressure', () => {
       bp.acquire();
 
       let resolved = false;
-      const promise = bp.waitForCapacity().then(() => { resolved = true; });
+      const promise = bp.waitForCapacity().then(() => {
+        resolved = true;
+      });
 
       await Promise.resolve();
       expect(resolved).toBe(false);
@@ -195,7 +201,9 @@ describe('TTSBackpressure', () => {
 
       // Second should block
       let blocked = true;
-      const promise = bp.waitForCapacity().then(() => { blocked = false; });
+      const promise = bp.waitForCapacity().then(() => {
+        blocked = false;
+      });
       await Promise.resolve();
       expect(blocked).toBe(true);
 

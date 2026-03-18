@@ -187,9 +187,7 @@ describe('Array-based provider configuration', () => {
       const nullOutput = new NullOutput();
 
       // Should not throw — BufferInput has all required AudioInputProvider methods
-      expect(() =>
-        resolveProviders([bufferInput, stt, llm, tts, nullOutput])
-      ).not.toThrow();
+      expect(() => resolveProviders([bufferInput, stt, llm, tts, nullOutput])).not.toThrow();
     });
 
     it('NullOutput passes duck-type validation for AudioOutputProvider', () => {
@@ -200,9 +198,7 @@ describe('Array-based provider configuration', () => {
       const nullOutput = new NullOutput();
 
       // Should not throw — NullOutput has all required AudioOutputProvider methods
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, nullOutput])
-      ).not.toThrow();
+      expect(() => resolveProviders([input, stt, llm, tts, nullOutput])).not.toThrow();
     });
   });
 
@@ -239,12 +235,8 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, stt, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, tts, output])
-      ).toThrow(/llm/);
+      expect(() => resolveProviders([input, stt, tts, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, stt, tts, output])).toThrow(/llm/);
     });
 
     it('throws ConfigurationError when only input is uncovered (no auto-fill for partial pair)', () => {
@@ -254,12 +246,8 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([stt, llm, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([stt, llm, tts, output])
-      ).toThrow(/input/);
+      expect(() => resolveProviders([stt, llm, tts, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([stt, llm, tts, output])).toThrow(/input/);
     });
 
     it('throws ConfigurationError when only output is uncovered (no auto-fill for partial pair)', () => {
@@ -269,12 +257,8 @@ describe('Array-based provider configuration', () => {
       const llm = new MockLLMProvider();
       const tts = new MockTTSProvider();
 
-      expect(() =>
-        resolveProviders([input, stt, llm, tts])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, llm, tts])
-      ).toThrow(/output/);
+      expect(() => resolveProviders([input, stt, llm, tts])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, stt, llm, tts])).toThrow(/output/);
     });
 
     it('throws ConfigurationError with empty providers array', () => {
@@ -292,18 +276,18 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, stt1, stt2, llm, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt1, stt2, llm, tts, output])
-      ).toThrow(/Duplicate role "stt"/);
-      expect(() =>
-        resolveProviders([input, stt1, stt2, llm, tts, output])
-      ).toThrow(/MockLiveSTTProvider/);
-      expect(() =>
-        resolveProviders([input, stt1, stt2, llm, tts, output])
-      ).toThrow(/MockSTTProvider/);
+      expect(() => resolveProviders([input, stt1, stt2, llm, tts, output])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([input, stt1, stt2, llm, tts, output])).toThrow(
+        /Duplicate role "stt"/
+      );
+      expect(() => resolveProviders([input, stt1, stt2, llm, tts, output])).toThrow(
+        /MockLiveSTTProvider/
+      );
+      expect(() => resolveProviders([input, stt1, stt2, llm, tts, output])).toThrow(
+        /MockSTTProvider/
+      );
     });
 
     it('throws ConfigurationError naming both providers when LLM role is duplicated', () => {
@@ -314,15 +298,15 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, stt, llm1, llm2, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, llm1, llm2, tts, output])
-      ).toThrow(/Duplicate role "llm"/);
-      expect(() =>
-        resolveProviders([input, stt, llm1, llm2, tts, output])
-      ).toThrow(/MockLLMProvider/);
+      expect(() => resolveProviders([input, stt, llm1, llm2, tts, output])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([input, stt, llm1, llm2, tts, output])).toThrow(
+        /Duplicate role "llm"/
+      );
+      expect(() => resolveProviders([input, stt, llm1, llm2, tts, output])).toThrow(
+        /MockLLMProvider/
+      );
     });
 
     it('throws ConfigurationError when input role is duplicated', () => {
@@ -333,12 +317,12 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input1, input2, stt, llm, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input1, input2, stt, llm, tts, output])
-      ).toThrow(/Duplicate role "input"/);
+      expect(() => resolveProviders([input1, input2, stt, llm, tts, output])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([input1, input2, stt, llm, tts, output])).toThrow(
+        /Duplicate role "input"/
+      );
     });
 
     it('throws ConfigurationError when output role is duplicated', () => {
@@ -349,12 +333,12 @@ describe('Array-based provider configuration', () => {
       const output1 = new MockOutputProvider();
       const output2 = new NullOutput();
 
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, output1, output2])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, output1, output2])
-      ).toThrow(/Duplicate role "output"/);
+      expect(() => resolveProviders([input, stt, llm, tts, output1, output2])).toThrow(
+        ConfigurationError
+      );
+      expect(() => resolveProviders([input, stt, llm, tts, output1, output2])).toThrow(
+        /Duplicate role "output"/
+      );
     });
   });
 
@@ -365,7 +349,9 @@ describe('Array-based provider configuration', () => {
         readonly roles: readonly ProviderRole[] = ['input'];
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
         // Missing: start, stop, pause, resume, isActive, onAudio, getMetadata
       }
 
@@ -375,15 +361,11 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([badInput, stt, llm, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([badInput, stt, llm, tts, output])
-      ).toThrow(/does not implement the required interface/);
-      expect(() =>
-        resolveProviders([badInput, stt, llm, tts, output])
-      ).toThrow(/"input"/);
+      expect(() => resolveProviders([badInput, stt, llm, tts, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([badInput, stt, llm, tts, output])).toThrow(
+        /does not implement the required interface/
+      );
+      expect(() => resolveProviders([badInput, stt, llm, tts, output])).toThrow(/"input"/);
     });
 
     it('throws ConfigurationError when STT provider matches neither REST nor live interface', () => {
@@ -393,7 +375,9 @@ describe('Array-based provider configuration', () => {
         config = { model: 'bad' };
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
         // Missing both REST (transcribe, onTranscription) and live (connect, processAudio, disconnect, onTranscription) methods
       }
 
@@ -403,15 +387,11 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, badSTT, llm, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, badSTT, llm, tts, output])
-      ).toThrow(/does not implement the required interface/);
-      expect(() =>
-        resolveProviders([input, badSTT, llm, tts, output])
-      ).toThrow(/"stt"/);
+      expect(() => resolveProviders([input, badSTT, llm, tts, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, badSTT, llm, tts, output])).toThrow(
+        /does not implement the required interface/
+      );
+      expect(() => resolveProviders([input, badSTT, llm, tts, output])).toThrow(/"stt"/);
     });
 
     it('throws ConfigurationError when LLM provider is missing required methods', () => {
@@ -421,7 +401,9 @@ describe('Array-based provider configuration', () => {
         config = { model: 'bad' };
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
         // Missing: processMessages, processText
       }
 
@@ -431,15 +413,11 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, stt, badLLM, tts, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, badLLM, tts, output])
-      ).toThrow(/does not implement the required interface/);
-      expect(() =>
-        resolveProviders([input, stt, badLLM, tts, output])
-      ).toThrow(/"llm"/);
+      expect(() => resolveProviders([input, stt, badLLM, tts, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, stt, badLLM, tts, output])).toThrow(
+        /does not implement the required interface/
+      );
+      expect(() => resolveProviders([input, stt, badLLM, tts, output])).toThrow(/"llm"/);
     });
 
     it('throws ConfigurationError when TTS provider matches neither REST nor live interface', () => {
@@ -449,7 +427,9 @@ describe('Array-based provider configuration', () => {
         config = { model: 'bad' };
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
         // Missing both REST (synthesize) and live (connect, processChunk, finalize, disconnect, onAudio, onMetadata)
       }
 
@@ -459,15 +439,11 @@ describe('Array-based provider configuration', () => {
       const badTTS = new BadTTS();
       const output = new MockOutputProvider();
 
-      expect(() =>
-        resolveProviders([input, stt, llm, badTTS, output])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, llm, badTTS, output])
-      ).toThrow(/does not implement the required interface/);
-      expect(() =>
-        resolveProviders([input, stt, llm, badTTS, output])
-      ).toThrow(/"tts"/);
+      expect(() => resolveProviders([input, stt, llm, badTTS, output])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, stt, llm, badTTS, output])).toThrow(
+        /does not implement the required interface/
+      );
+      expect(() => resolveProviders([input, stt, llm, badTTS, output])).toThrow(/"tts"/);
     });
 
     it('throws ConfigurationError when output provider is missing required methods', () => {
@@ -476,7 +452,9 @@ describe('Array-based provider configuration', () => {
         readonly roles: readonly ProviderRole[] = ['output'];
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
         // Missing: configure, enqueue, flush, stop, pause, resume, isPlaying, etc.
       }
 
@@ -486,15 +464,11 @@ describe('Array-based provider configuration', () => {
       const tts = new MockTTSProvider();
       const badOutput = new BadOutput();
 
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, badOutput])
-      ).toThrow(ConfigurationError);
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, badOutput])
-      ).toThrow(/does not implement the required interface/);
-      expect(() =>
-        resolveProviders([input, stt, llm, tts, badOutput])
-      ).toThrow(/"output"/);
+      expect(() => resolveProviders([input, stt, llm, tts, badOutput])).toThrow(ConfigurationError);
+      expect(() => resolveProviders([input, stt, llm, tts, badOutput])).toThrow(
+        /does not implement the required interface/
+      );
+      expect(() => resolveProviders([input, stt, llm, tts, badOutput])).toThrow(/"output"/);
     });
   });
 
@@ -546,7 +520,9 @@ describe('Array-based provider configuration', () => {
         readonly roles: readonly ProviderRole[] = [];
         async initialize() {}
         async dispose() {}
-        isReady() { return true; }
+        isReady() {
+          return true;
+        }
       }
 
       expect(() => resolveProviders([new NoRoles()])).toThrow(ConfigurationError);

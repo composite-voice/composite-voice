@@ -34,9 +34,15 @@ Providers are configured as a flat array. The SDK resolves them to a typed `Reso
 const voice = new CompositeVoice({
   providers: [
     new MicrophoneInput(),
-    new DeepgramSTT({ /* ... */ }),
-    new AnthropicLLM({ /* ... */ }),
-    new DeepgramTTS({ /* ... */ }),
+    new DeepgramSTT({
+      /* ... */
+    }),
+    new AnthropicLLM({
+      /* ... */
+    }),
+    new DeepgramTTS({
+      /* ... */
+    }),
     new BrowserAudioOutput(),
   ],
 });
@@ -48,7 +54,13 @@ Some providers cover multiple roles. NativeSTT covers `input` + `stt`, and Nativ
 
 ```typescript
 const voice = new CompositeVoice({
-  providers: [new NativeSTT(), new AnthropicLLM({ /* ... */ }), new NativeTTS()],
+  providers: [
+    new NativeSTT(),
+    new AnthropicLLM({
+      /* ... */
+    }),
+    new NativeTTS(),
+  ],
 });
 ```
 
@@ -135,6 +147,7 @@ tests/
 ## Pre-commit Hooks
 
 `.husky/pre-commit` runs:
+
 1. `pnpm install --frozen-lockfile` — catches out-of-sync lockfile
 2. `pnpm test` — full test suite
 

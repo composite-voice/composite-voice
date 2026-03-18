@@ -56,7 +56,7 @@ describe('TurnTakingController', () => {
     it('creates an instance with config and logger', () => {
       const controller = new TurnTakingController(
         { pauseCaptureOnPlayback: 'auto', autoStrategy: 'conservative' },
-        mockLogger,
+        mockLogger
       );
       expect(controller).toBeInstanceOf(TurnTakingController);
     });
@@ -72,10 +72,7 @@ describe('TurnTakingController', () => {
     });
 
     it('merges provided config over defaults', () => {
-      const controller = new TurnTakingController(
-        { pauseCaptureOnPlayback: true },
-        mockLogger,
-      );
+      const controller = new TurnTakingController({ pauseCaptureOnPlayback: true }, mockLogger);
       // Explicit true overrides auto behavior
       expect(controller.shouldPause(makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(true);
     });
@@ -83,25 +80,19 @@ describe('TurnTakingController', () => {
 
   describe('shouldPause', () => {
     it('returns true when pauseCaptureOnPlayback is explicitly true', () => {
-      const controller = new TurnTakingController(
-        { pauseCaptureOnPlayback: true },
-        mockLogger,
-      );
+      const controller = new TurnTakingController({ pauseCaptureOnPlayback: true }, mockLogger);
       expect(controller.shouldPause(makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(true);
     });
 
     it('returns false when pauseCaptureOnPlayback is explicitly false', () => {
-      const controller = new TurnTakingController(
-        { pauseCaptureOnPlayback: false },
-        mockLogger,
-      );
+      const controller = new TurnTakingController({ pauseCaptureOnPlayback: false }, mockLogger);
       expect(controller.shouldPause(makeSTT('NativeSTT'), makeTTS('NativeTTS'))).toBe(false);
     });
 
     it('returns true for NativeSTT with conservative auto strategy', () => {
       const controller = new TurnTakingController(
         { pauseCaptureOnPlayback: 'auto', autoStrategy: 'conservative' },
-        mockLogger,
+        mockLogger
       );
       expect(controller.shouldPause(makeSTT('NativeSTT'), makeTTS('NativeTTS'))).toBe(true);
     });
@@ -109,7 +100,7 @@ describe('TurnTakingController', () => {
     it('returns false for DeepgramSTT with conservative auto strategy', () => {
       const controller = new TurnTakingController(
         { pauseCaptureOnPlayback: 'auto', autoStrategy: 'conservative' },
-        mockLogger,
+        mockLogger
       );
       expect(controller.shouldPause(makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(false);
     });
@@ -121,7 +112,7 @@ describe('TurnTakingController', () => {
           autoStrategy: 'aggressive',
           alwaysPauseCombinations: [{ stt: 'NativeSTT', tts: 'any' }],
         },
-        mockLogger,
+        mockLogger
       );
       expect(controller.shouldPause(makeSTT('NativeSTT'), makeTTS('DeepgramTTS'))).toBe(true);
     });
@@ -133,7 +124,7 @@ describe('TurnTakingController', () => {
           autoStrategy: 'aggressive',
           alwaysPauseCombinations: [{ stt: 'NativeSTT', tts: 'NativeTTS' }],
         },
-        mockLogger,
+        mockLogger
       );
       expect(controller.shouldPause(makeSTT('DeepgramSTT'), makeTTS('DeepgramTTS'))).toBe(false);
     });

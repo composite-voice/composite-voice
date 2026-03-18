@@ -45,7 +45,7 @@ export class AudioRouter {
 
   constructor(
     inputQueueConfig?: Partial<AudioBufferQueueConfig>,
-    outputQueueConfig?: Partial<AudioBufferQueueConfig>,
+    outputQueueConfig?: Partial<AudioBufferQueueConfig>
   ) {
     this.inputQueue = new AudioBufferQueue({
       name: 'input',

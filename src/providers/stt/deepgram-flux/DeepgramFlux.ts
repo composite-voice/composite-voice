@@ -57,7 +57,7 @@ export interface DeepgramFluxOptions {
   eotTimeoutMs?: number;
 
   /** Keyterms to boost recognition of specialized terminology. */
-  keyterms?: string[];
+  keyterms?: string | string[];
 
   /** Labels for usage reporting. Multiple values are sent as separate `tag=` query parameters. */
   tag?: string | string[];

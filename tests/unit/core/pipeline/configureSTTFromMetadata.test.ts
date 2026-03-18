@@ -32,7 +32,9 @@ class DeepgramSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 }
 
 /** Stub matching DeepgramFlux's constructor name and config shape. */
@@ -47,7 +49,9 @@ class DeepgramFlux {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 }
 
 /** Stub matching AssemblyAISTT's constructor name and config shape. */
@@ -62,7 +66,9 @@ class AssemblyAISTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 }
 
 /** Stub for NativeSTT — should be a no-op target. */
@@ -77,7 +83,9 @@ class NativeSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 }
 
 /** Stub for ElevenLabsSTT — should be a no-op target. */
@@ -92,7 +100,9 @@ class ElevenLabsSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 }
 
 // ─── DeepgramSTT auto-fill ──────────────────────────────────────────────────

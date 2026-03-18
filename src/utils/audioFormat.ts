@@ -56,15 +56,7 @@
  *
  * @see {@link detectAudioFormat} for the detection function
  */
-export type DetectedAudioFormat =
-  | 'wav'
-  | 'ogg'
-  | 'mp3'
-  | 'aac'
-  | 'webm'
-  | 'flac'
-  | 'aiff'
-  | 'mp4';
+export type DetectedAudioFormat = 'wav' | 'ogg' | 'mp3' | 'aac' | 'webm' | 'flac' | 'aiff' | 'mp4';
 
 /**
  * Minimum number of bytes required for reliable format detection.
@@ -114,9 +106,7 @@ export const MIN_SNIFF_BYTES = 12;
  * @see {@link DetectedAudioFormat} for the set of possible return values
  * @see {@link extractHeader} for extracting the header once the format is known
  */
-export function detectAudioFormat(
-  buffer: ArrayBuffer,
-): DetectedAudioFormat | null {
+export function detectAudioFormat(buffer: ArrayBuffer): DetectedAudioFormat | null {
   if (buffer.byteLength < MIN_SNIFF_BYTES) {
     return null;
   }
@@ -138,32 +128,17 @@ export function detectAudioFormat(
   }
 
   // OGG: "OggS" at 0
-  if (
-    view[0] === 0x4f &&
-    view[1] === 0x67 &&
-    view[2] === 0x67 &&
-    view[3] === 0x53
-  ) {
+  if (view[0] === 0x4f && view[1] === 0x67 && view[2] === 0x67 && view[3] === 0x53) {
     return 'ogg';
   }
 
   // FLAC: "fLaC" at 0
-  if (
-    view[0] === 0x66 &&
-    view[1] === 0x4c &&
-    view[2] === 0x61 &&
-    view[3] === 0x43
-  ) {
+  if (view[0] === 0x66 && view[1] === 0x4c && view[2] === 0x61 && view[3] === 0x43) {
     return 'flac';
   }
 
   // WebM/MKV: EBML header at 0
-  if (
-    view[0] === 0x1a &&
-    view[1] === 0x45 &&
-    view[2] === 0xdf &&
-    view[3] === 0xa3
-  ) {
+  if (view[0] === 0x1a && view[1] === 0x45 && view[2] === 0xdf && view[3] === 0xa3) {
     return 'webm';
   }
 
@@ -180,12 +155,7 @@ export function detectAudioFormat(
   }
 
   // MP4/M4A: "ftyp" at offset 4
-  if (
-    view[4] === 0x66 &&
-    view[5] === 0x74 &&
-    view[6] === 0x79 &&
-    view[7] === 0x70
-  ) {
+  if (view[4] === 0x66 && view[5] === 0x74 && view[6] === 0x79 && view[7] === 0x70) {
     return 'mp4';
   }
 
@@ -268,7 +238,7 @@ const WAV_HEADER_SIZE = 44;
  */
 export function extractHeader(
   buffer: ArrayBuffer,
-  format: DetectedAudioFormat,
+  format: DetectedAudioFormat
 ): ArrayBuffer | null {
   switch (format) {
     case 'wav':
@@ -312,12 +282,7 @@ function extractOggHeader(buffer: ArrayBuffer): ArrayBuffer | null {
   const view = new Uint8Array(buffer);
   // Find the second "OggS" marker (first is at offset 0)
   for (let i = 4; i <= view.byteLength - 4; i++) {
-    if (
-      view[i] === 0x4f &&
-      view[i + 1] === 0x67 &&
-      view[i + 2] === 0x67 &&
-      view[i + 3] === 0x53
-    ) {
+    if (view[i] === 0x4f && view[i + 1] === 0x67 && view[i + 2] === 0x67 && view[i + 3] === 0x53) {
       return buffer.slice(0, i);
     }
   }

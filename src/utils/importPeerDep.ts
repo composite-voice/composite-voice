@@ -35,7 +35,7 @@ import { ProviderInitializationError } from './errors';
  */
 export async function importPeerDep<T = unknown>(
   packageName: string,
-  providerName: string,
+  providerName: string
 ): Promise<T> {
   try {
     const mod = await import(packageName);
@@ -51,7 +51,7 @@ export async function importPeerDep<T = unknown>(
         providerName,
         new Error(
           `${packageName} is required but not installed. Install it with: npm install ${packageName}`
-        ),
+        )
       );
     }
     throw new ProviderInitializationError(providerName, error as Error);

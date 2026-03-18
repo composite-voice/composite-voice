@@ -185,7 +185,10 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
       const contentLength = parseInt(req.headers.get('content-length') ?? '', 10);
       if (!isNaN(contentLength) && contentLength > security.maxBodySize) {
         return new Response(
-          JSON.stringify({ error: 'payload_too_large', message: 'Request body exceeds maximum allowed size' }),
+          JSON.stringify({
+            error: 'payload_too_large',
+            message: 'Request body exceeds maximum allowed size',
+          }),
           { status: 413, headers: { 'content-type': 'application/json' } }
         );
       }

@@ -127,10 +127,7 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
    *
    * @virtual
    */
-  abstract generate(
-    prompt: string,
-    options?: LLMGenerationOptions
-  ): Promise<AsyncIterable<string>>;
+  abstract generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>>;
 
   /**
    * Generate a response from a multi-turn conversation.
@@ -160,7 +157,10 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
    * @param options - Optional generation overrides.
    * @returns An `AsyncIterable` that yields text chunks as they arrive.
    */
-  async processText(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
+  async processText(
+    prompt: string,
+    options?: LLMGenerationOptions
+  ): Promise<AsyncIterable<string>> {
     return this.processMessages(this.promptToMessages(prompt), options);
   }
 

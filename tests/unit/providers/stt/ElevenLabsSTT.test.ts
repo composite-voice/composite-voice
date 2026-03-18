@@ -53,7 +53,11 @@ function setupConnectionMock(sessionId = 'test-session-123') {
   let currentOnMessage: ((event: MessageEvent) => void) | null = null;
 
   mockWsManager.setHandlers.mockImplementation(
-    (handlers: { onMessage?: (event: MessageEvent) => void; onClose?: () => void; onError?: (error: Error) => void }) => {
+    (handlers: {
+      onMessage?: (event: MessageEvent) => void;
+      onClose?: () => void;
+      onError?: (error: Error) => void;
+    }) => {
       if (handlers.onMessage) currentOnMessage = handlers.onMessage;
     }
   );
@@ -314,9 +318,7 @@ describe('ElevenLabsSTT', () => {
         proxyUrl: 'http://localhost:3000/api/proxy/elevenlabs/',
       });
 
-      expect(url).toContain(
-        'ws://localhost:3000/api/proxy/elevenlabs/v1/speech-to-text/realtime'
-      );
+      expect(url).toContain('ws://localhost:3000/api/proxy/elevenlabs/v1/speech-to-text/realtime');
     });
   });
 
@@ -418,11 +420,9 @@ describe('ElevenLabsSTT', () => {
 
     it('should throw ProviderConnectionError on WebSocket close during handshake', async () => {
       let handshakeOnClose: (() => void) | null = null;
-      mockWsManager.setHandlers.mockImplementation(
-        (handlers: { onClose?: () => void }) => {
-          if (handlers.onClose) handshakeOnClose = handlers.onClose;
-        }
-      );
+      mockWsManager.setHandlers.mockImplementation((handlers: { onClose?: () => void }) => {
+        if (handlers.onClose) handshakeOnClose = handlers.onClose;
+      });
       mockWsManager.connect.mockImplementation(async () => {
         if (handshakeOnClose) {
           handshakeOnClose();
@@ -433,10 +433,7 @@ describe('ElevenLabsSTT', () => {
     });
 
     it('should use configured timeout for connection', async () => {
-      const customProvider = new ElevenLabsSTT(
-        { apiKey: 'test-key', timeout: 5000 },
-        logger
-      );
+      const customProvider = new ElevenLabsSTT({ apiKey: 'test-key', timeout: 5000 }, logger);
       await customProvider.initialize();
       await customProvider.connect();
 
@@ -849,10 +846,7 @@ describe('ElevenLabsSTT', () => {
 
       beforeEach(async () => {
         setupConnectionMock();
-        provider = new ElevenLabsSTT(
-          { apiKey: 'test-key', commitStrategy: 'manual' },
-          logger
-        );
+        provider = new ElevenLabsSTT({ apiKey: 'test-key', commitStrategy: 'manual' }, logger);
         await provider.initialize();
         await provider.connect();
         mockWsManager.send.mockClear();

@@ -75,13 +75,17 @@ class StubInput {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   start() {}
   stop() {}
   pause() {}
   resume() {}
-  isActive() { return false; }
+  isActive() {
+    return false;
+  }
   onAudio(_cb: (chunk: AudioChunk) => void) {}
   getMetadata(): AudioMetadata {
     return { sampleRate: 16000, encoding: 'linear16', channels: 1, bitDepth: 16 };
@@ -96,7 +100,9 @@ class StubLiveSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   async connect() {}
   sendAudio(_chunk: ArrayBuffer) {}
@@ -112,7 +118,9 @@ class StubRestSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   async transcribe(_audio: Blob) {}
   onTranscription(_cb: (result: TranscriptionResult) => void) {}
@@ -126,10 +134,16 @@ class StubLLM {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   async generate(_prompt: string) {
-    return { async *[Symbol.asyncIterator]() { yield 'hello'; } };
+    return {
+      async *[Symbol.asyncIterator]() {
+        yield 'hello';
+      },
+    };
   }
   async generateFromMessages() {
     return this.generate('');
@@ -144,7 +158,9 @@ class StubLiveTTS {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   async connect() {}
   sendText(_chunk: string) {}
@@ -162,7 +178,9 @@ class StubRestTTS {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   async synthesize(_text: string) {
     return new Blob([new ArrayBuffer(0)], { type: 'audio/wav' });
@@ -176,7 +194,9 @@ class StubOutput {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   configure(_metadata: AudioMetadata) {}
   enqueue(_chunk: AudioChunk) {}
@@ -184,7 +204,9 @@ class StubOutput {
   stop() {}
   pause() {}
   resume() {}
-  isPlaying() { return false; }
+  isPlaying() {
+    return false;
+  }
   onPlaybackStart(_cb: () => void) {}
   onPlaybackEnd(_cb: () => void) {}
   onPlaybackError(_cb: (error: Error) => void) {}
@@ -198,14 +220,18 @@ class StubInputSTT {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   // AudioInputProvider methods
   start() {}
   stop() {}
   pause() {}
   resume() {}
-  isActive() { return false; }
+  isActive() {
+    return false;
+  }
   onAudio(_cb: (chunk: AudioChunk) => void) {}
   getMetadata(): AudioMetadata {
     return { sampleRate: 16000, encoding: 'linear16', channels: 1, bitDepth: 16 };
@@ -226,7 +252,9 @@ class StubTTSOutput {
 
   async initialize() {}
   async dispose() {}
-  isReady() { return true; }
+  isReady() {
+    return true;
+  }
 
   // RestTTSProvider methods
   async synthesize(_text: string) {
@@ -240,7 +268,9 @@ class StubTTSOutput {
   stop() {}
   pause() {}
   resume() {}
-  isPlaying() { return false; }
+  isPlaying() {
+    return false;
+  }
   onPlaybackStart(_cb: () => void) {}
   onPlaybackEnd(_cb: () => void) {}
   onPlaybackError(_cb: (error: Error) => void) {}

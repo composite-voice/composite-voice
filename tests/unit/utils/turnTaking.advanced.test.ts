@@ -95,9 +95,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         autoStrategy: 'aggressive',
         alwaysPauseCombinations: [{ stt: 'NativeSTT', tts: 'any' }],
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('SomeTTS'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('SomeTTS'))).toBe(
+        true
+      );
       expect(
         shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('AnyOtherTTS'))
       ).toBe(true);
@@ -109,9 +109,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         autoStrategy: 'aggressive',
         alwaysPauseCombinations: [{ stt: 'any', tts: 'NativeTTS' }],
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('SomeSTT'), makeTTS('NativeTTS'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('SomeSTT'), makeTTS('NativeTTS'))).toBe(
+        true
+      );
       expect(
         shouldPauseCaptureOnPlayback(config, makeSTT('AnyOtherSTT'), makeTTS('NativeTTS'))
       ).toBe(true);
@@ -123,9 +123,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         autoStrategy: 'aggressive',
         alwaysPauseCombinations: [{ stt: 'any', tts: 'any' }],
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('Whatever'), makeTTS('Anything'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('Whatever'), makeTTS('Anything'))).toBe(
+        true
+      );
     });
 
     it('should NOT pause when no combinations are defined', () => {
@@ -134,9 +134,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         autoStrategy: 'aggressive',
         // alwaysPauseCombinations undefined
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('NativeTTS'))
-      ).toBe(false);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('NativeSTT'), makeTTS('NativeTTS'))).toBe(
+        false
+      );
     });
 
     it('should match multiple combinations independently', () => {
@@ -148,15 +148,15 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
           { stt: 'GammaSTT', tts: 'DeltaTTS' },
         ],
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('AlphaSTT'), makeTTS('BetaTTS'))
-      ).toBe(true);
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('GammaSTT'), makeTTS('DeltaTTS'))
-      ).toBe(true);
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('AlphaSTT'), makeTTS('DeltaTTS'))
-      ).toBe(false);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('AlphaSTT'), makeTTS('BetaTTS'))).toBe(
+        true
+      );
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('GammaSTT'), makeTTS('DeltaTTS'))).toBe(
+        true
+      );
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('AlphaSTT'), makeTTS('DeltaTTS'))).toBe(
+        false
+      );
     });
   });
 
@@ -167,9 +167,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+        true
+      );
     });
 
     it('should pause when echoCancellation is true but noiseSuppression is false', () => {
@@ -182,9 +182,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+        true
+      );
     });
 
     it('should pause when autoGainControl is false', () => {
@@ -197,9 +197,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))
-      ).toBe(true);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+        true
+      );
     });
 
     it('should NOT pause when all three constraints are supported', () => {
@@ -212,9 +212,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
         pauseCaptureOnPlayback: 'auto',
         autoStrategy: 'detect',
       };
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))
-      ).toBe(false);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('DeepgramSTT'), makeTTS('Any'))).toBe(
+        false
+      );
     });
   });
 
@@ -254,9 +254,9 @@ describe('shouldPauseCaptureOnPlayback — advanced scenarios', () => {
       // The function checks PROVIDER_CAPTURE_METHOD[providerName] === 'speechrecognition'
       // for unknown providers this is undefined !== 'speechrecognition' -> false
       // So it proceeds to check browser support, which returns true -> hasEC=true -> shouldPause=false
-      expect(
-        shouldPauseCaptureOnPlayback(config, makeSTT('UnknownProvider'), makeTTS('Any'))
-      ).toBe(false);
+      expect(shouldPauseCaptureOnPlayback(config, makeSTT('UnknownProvider'), makeTTS('Any'))).toBe(
+        false
+      );
     });
   });
 });

@@ -637,7 +637,9 @@ export interface CompositeVoiceConfig {
    */
   tools?: {
     definitions: import('./providers').LLMToolDefinition[];
-    onToolCall: (toolCall: import('./providers').LLMToolCall) => Promise<import('./providers').LLMToolResult>;
+    onToolCall: (
+      toolCall: import('./providers').LLMToolCall
+    ) => Promise<import('./providers').LLMToolResult>;
   };
 
   /**

@@ -364,10 +364,7 @@ export class AudioBufferQueue {
    *
    * @see {@link stopDraining} to return to buffering mode
    */
-  startDraining(
-    callback: DrainCallback,
-    options?: { paced?: boolean; batchSize?: number },
-  ): void {
+  startDraining(callback: DrainCallback, options?: { paced?: boolean; batchSize?: number }): void {
     this.drainCallback = callback;
 
     // Cancel any pending paced drain from a previous call.

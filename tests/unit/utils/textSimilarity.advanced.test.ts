@@ -17,10 +17,7 @@ describe('textSimilarity — advanced eager LLM reconciliation', () => {
 
     it('should return 1.0 for longer text as exact prefix of even longer text', () => {
       expect(
-        textSimilarity(
-          'the quick brown fox jumps',
-          'the quick brown fox jumps over the lazy dog'
-        )
+        textSimilarity('the quick brown fox jumps', 'the quick brown fox jumps over the lazy dog')
       ).toBe(1);
     });
 
@@ -179,10 +176,7 @@ describe('textSimilarity — advanced eager LLM reconciliation', () => {
     });
 
     it('should be < 0.8 when user pivots mid-sentence', () => {
-      const score = textSimilarity(
-        'what is the weather',
-        'actually set a timer for five minutes'
-      );
+      const score = textSimilarity('what is the weather', 'actually set a timer for five minutes');
       expect(score).toBeLessThan(0.8);
     });
 

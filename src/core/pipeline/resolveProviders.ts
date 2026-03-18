@@ -145,13 +145,13 @@ function validateSlotInterface(provider: BaseProvider, role: ProviderRole): void
 
   // Provider must match at least one of the valid method sets
   const matchesAny = methodSets.some((methods) =>
-    methods.every((method) => typeof (provider as unknown as Record<string, unknown>)[method] === 'function')
+    methods.every(
+      (method) => typeof (provider as unknown as Record<string, unknown>)[method] === 'function'
+    )
   );
 
   if (!matchesAny) {
-    const expected = methodSets
-      .map((methods) => `[${methods.join(', ')}]`)
-      .join(' or ');
+    const expected = methodSets.map((methods) => `[${methods.join(', ')}]`).join(' or ');
     throw new ConfigurationError(
       `Provider "${providerName}" assigned to role "${role}" does not implement the required interface. ` +
         `Expected methods: ${expected}`
@@ -217,9 +217,7 @@ function validateSlotInterface(provider: BaseProvider, role: ProviderRole): void
  */
 export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
   if (!providers || !Array.isArray(providers) || providers.length === 0) {
-    throw new ConfigurationError(
-      'resolveProviders requires a non-empty providers array'
-    );
+    throw new ConfigurationError('resolveProviders requires a non-empty providers array');
   }
 
   // Step 1: Assign providers to slots based on their declared roles

@@ -365,13 +365,13 @@ CompositeVoice uses a 5-role pipeline architecture. Every provider declares whic
 [input] -> InputQueue -> [stt] -> [llm] -> [tts] -> OutputQueue -> [output]
 ```
 
-| Role     | Purpose                                     | Interface              |
-| -------- | ------------------------------------------- | ---------------------- |
-| `input`  | Captures audio from a source (mic, buffer)  | `AudioInputProvider`   |
-| `stt`    | Converts audio to text                      | `LiveSTTProvider` / `RestSTTProvider` |
-| `llm`    | Generates a text response                   | `LLMProvider`          |
-| `tts`    | Converts text to audio                      | `LiveTTSProvider` / `RestTTSProvider` |
-| `output` | Plays audio to a destination (speakers, file) | `AudioOutputProvider` |
+| Role     | Purpose                                       | Interface                             |
+| -------- | --------------------------------------------- | ------------------------------------- |
+| `input`  | Captures audio from a source (mic, buffer)    | `AudioInputProvider`                  |
+| `stt`    | Converts audio to text                        | `LiveSTTProvider` / `RestSTTProvider` |
+| `llm`    | Generates a text response                     | `LLMProvider`                         |
+| `tts`    | Converts text to audio                        | `LiveTTSProvider` / `RestTTSProvider` |
+| `output` | Plays audio to a destination (speakers, file) | `AudioOutputProvider`                 |
 
 A single provider can cover multiple roles. For example, `NativeSTT` covers both `input` and `stt` because the Web Speech API manages its own microphone internally. Similarly, `NativeTTS` covers `tts` and `output` because `SpeechSynthesis` handles both synthesis and playback.
 
@@ -421,10 +421,10 @@ These base classes set their `roles` property automatically (e.g., `BaseSTTProvi
 
 **For input and output providers,** implement the interface directly:
 
-| Category | Interface              | Required methods                                                |
-| -------- | ---------------------- | --------------------------------------------------------------- |
-| Input    | `AudioInputProvider`   | `start()`, `stop()`, `pause()`, `resume()`, `isActive()`, `onAudio(callback)`, `getMetadata()` |
-| Output   | `AudioOutputProvider`  | `configure(metadata)`, `enqueue(chunk)`, `flush()`, `stop()`, `pause()`, `resume()`, `isPlaying()`, `onPlaybackStart(cb)`, `onPlaybackEnd(cb)`, `onPlaybackError(cb)` |
+| Category | Interface             | Required methods                                                                                                                                                      |
+| -------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Input    | `AudioInputProvider`  | `start()`, `stop()`, `pause()`, `resume()`, `isActive()`, `onAudio(callback)`, `getMetadata()`                                                                        |
+| Output   | `AudioOutputProvider` | `configure(metadata)`, `enqueue(chunk)`, `flush()`, `stop()`, `pause()`, `resume()`, `isPlaying()`, `onPlaybackStart(cb)`, `onPlaybackEnd(cb)`, `onPlaybackError(cb)` |
 
 Input and output providers also need the `BaseProvider` lifecycle methods (`initialize()`, `dispose()`, `isReady()`).
 
@@ -443,15 +443,31 @@ class MyCustomInput implements AudioInputProvider {
   private callback?: (chunk: AudioChunk) => void;
   private active = false;
 
-  async initialize() { /* set up resources */ }
-  async dispose() { /* release resources */ }
-  isReady() { return true; }
+  async initialize() {
+    /* set up resources */
+  }
+  async dispose() {
+    /* release resources */
+  }
+  isReady() {
+    return true;
+  }
 
-  start() { this.active = true; /* begin capture */ }
-  stop() { this.active = false; /* end capture */ }
-  pause() { /* pause capture */ }
-  resume() { /* resume capture */ }
-  isActive() { return this.active; }
+  start() {
+    this.active = true; /* begin capture */
+  }
+  stop() {
+    this.active = false; /* end capture */
+  }
+  pause() {
+    /* pause capture */
+  }
+  resume() {
+    /* resume capture */
+  }
+  isActive() {
+    return this.active;
+  }
 
   onAudio(callback: (chunk: AudioChunk) => void) {
     this.callback = callback;
@@ -464,6 +480,7 @@ class MyCustomInput implements AudioInputProvider {
 ```
 
 Key points:
+
 - `onAudio(callback)` is called by the orchestrator _before_ `start()`. Store the callback and invoke it whenever a new audio chunk is available.
 - `getMetadata()` describes the audio format. The SDK uses this to auto-configure the STT provider's encoding and sample rate.
 - For server-side providers, avoid any browser dependencies (`navigator`, `window`, `AudioContext`). See `BufferInput` as a reference.
@@ -480,25 +497,52 @@ class MyCustomOutput implements AudioOutputProvider {
   public readonly type: ProviderType = 'rest';
   public readonly roles: readonly ProviderRole[] = ['output'];
 
-  async initialize() { /* set up resources */ }
-  async dispose() { /* release resources */ }
-  isReady() { return true; }
+  async initialize() {
+    /* set up resources */
+  }
+  async dispose() {
+    /* release resources */
+  }
+  isReady() {
+    return true;
+  }
 
-  configure(metadata: AudioMetadata) { /* set up playback format */ }
-  enqueue(chunk: AudioChunk) { /* buffer chunk for playback */ }
-  async flush() { /* wait for all queued audio to finish */ }
-  stop() { /* stop playback immediately */ }
-  pause() { /* pause playback */ }
-  resume() { /* resume playback */ }
-  isPlaying() { return false; }
+  configure(metadata: AudioMetadata) {
+    /* set up playback format */
+  }
+  enqueue(chunk: AudioChunk) {
+    /* buffer chunk for playback */
+  }
+  async flush() {
+    /* wait for all queued audio to finish */
+  }
+  stop() {
+    /* stop playback immediately */
+  }
+  pause() {
+    /* pause playback */
+  }
+  resume() {
+    /* resume playback */
+  }
+  isPlaying() {
+    return false;
+  }
 
-  onPlaybackStart(callback: () => void) { /* store callback */ }
-  onPlaybackEnd(callback: () => void) { /* store callback */ }
-  onPlaybackError(callback: (error: Error) => void) { /* store callback */ }
+  onPlaybackStart(callback: () => void) {
+    /* store callback */
+  }
+  onPlaybackEnd(callback: () => void) {
+    /* store callback */
+  }
+  onPlaybackError(callback: (error: Error) => void) {
+    /* store callback */
+  }
 }
 ```
 
 Key points:
+
 - `configure(metadata)` is called once when the TTS emits format metadata. Use it to set up sample rate, encoding, etc.
 - `enqueue(chunk)` is called for each chunk of synthesized audio. Chunks arrive in order.
 - `flush()` should resolve when the last enqueued chunk has finished playing.

@@ -27,7 +27,7 @@ export class ConversationManager {
 
   constructor(
     private config?: ConversationHistoryConfig,
-    private logger?: Logger,
+    private logger?: Logger
   ) {}
 
   /** Whether conversation history is enabled in the configuration. */
@@ -114,7 +114,7 @@ export class ConversationManager {
   buildIOContextMessage(
     modality: 'voice' | 'text',
     inputMuted: boolean,
-    outputMuted: boolean,
+    outputMuted: boolean
   ): LLMMessage {
     const inputMode = inputMuted ? 'text' : 'voice';
     const outputMode = outputMuted ? 'text' : 'voice';
@@ -122,15 +122,21 @@ export class ConversationManager {
     const parts: string[] = [];
 
     if (inputMode === 'voice') {
-      parts.push('The user is speaking to you through a microphone (speech-to-text). You can hear them.');
+      parts.push(
+        'The user is speaking to you through a microphone (speech-to-text). You can hear them.'
+      );
     } else {
       parts.push('The user is typing to you. Their microphone is off, so you cannot hear them.');
     }
 
     if (outputMode === 'voice') {
-      parts.push('Your response will be spoken aloud via text-to-speech. The user can hear you. Keep responses concise and conversational. Avoid markdown, code blocks, or long lists — the user is listening, not reading.');
+      parts.push(
+        'Your response will be spoken aloud via text-to-speech. The user can hear you. Keep responses concise and conversational. Avoid markdown, code blocks, or long lists — the user is listening, not reading.'
+      );
     } else {
-      parts.push('Your response will be displayed as text only. The user cannot hear you. You may use markdown formatting, code blocks, links, and structured content.');
+      parts.push(
+        'Your response will be displayed as text only. The user cannot hear you. You may use markdown formatting, code blocks, links, and structured content.'
+      );
     }
 
     if (modality !== inputMode) {
@@ -155,7 +161,7 @@ export class ConversationManager {
   getMessagesForLLM(
     modality: 'voice' | 'text',
     inputMuted: boolean,
-    outputMuted: boolean,
+    outputMuted: boolean
   ): LLMMessage[] {
     const ioContext = this.buildIOContextMessage(modality, inputMuted, outputMuted);
     return [ioContext, ...this.history];

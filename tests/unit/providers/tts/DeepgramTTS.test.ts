@@ -219,10 +219,7 @@ describe('DeepgramTTS', () => {
     });
 
     it('should handle connection timeout', async () => {
-      const customProvider = new DeepgramTTS(
-        { apiKey: 'test-key', timeout: 100 },
-        logger
-      );
+      const customProvider = new DeepgramTTS({ apiKey: 'test-key', timeout: 100 }, logger);
       await customProvider.initialize();
 
       // Don't trigger onopen — let it time out
@@ -369,9 +366,7 @@ describe('DeepgramTTS', () => {
 
       expect(mockWs.send).toHaveBeenCalledTimes(4);
       chunks.forEach((chunk) => {
-        expect(mockWs.send).toHaveBeenCalledWith(
-          JSON.stringify({ type: 'Speak', text: chunk })
-        );
+        expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'Speak', text: chunk }));
       });
     });
 

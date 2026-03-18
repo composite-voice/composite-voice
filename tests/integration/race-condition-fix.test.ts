@@ -22,10 +22,7 @@
 
 import { AudioBufferQueue } from '../../src/core/pipeline/AudioBufferQueue';
 import type { AudioChunk } from '../../src/core/types/audio';
-import {
-  MockInputProvider,
-  MockLiveSTTProvider,
-} from '../mocks/MockProviders';
+import { MockInputProvider, MockLiveSTTProvider } from '../mocks/MockProviders';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -168,11 +165,7 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
       const postConnectChunks = input.pushChunks(3);
 
       // Assert: all 18 chunks delivered (10 + 5 + 3), none lost
-      const allProduced = [
-        ...preConnectChunks,
-        ...midConnectChunks,
-        ...postConnectChunks,
-      ];
+      const allProduced = [...preConnectChunks, ...midConnectChunks, ...postConnectChunks];
       expect(stt.receivedAudio).toHaveLength(18);
 
       // Verify exact ordering — every chunk's data matches in sequence
@@ -279,12 +272,12 @@ describe('Race condition fix — InputProvider → AudioBufferQueue → LiveSTT'
         'stt:connecting',
         'stt:connected',
         'drain:start',
-        'drain:0',      // flush: chunk 0
-        'drain:1',      // flush: chunk 1
-        'drain:2',      // flush: chunk 2
+        'drain:0', // flush: chunk 0
+        'drain:1', // flush: chunk 1
+        'drain:2', // flush: chunk 2
         'drain:started',
-        'enqueue:3',    // pass-through enqueue
-        'drain:3',      // pass-through drain (synchronous)
+        'enqueue:3', // pass-through enqueue
+        'drain:3', // pass-through drain (synchronous)
         'phase3:pass-through',
       ]);
 
