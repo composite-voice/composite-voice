@@ -2102,32 +2102,77 @@ export class CompositeVoice {
           fullText = '';
           toolCalls = [];
 
-          // Re-call the LLM with tool results — it will produce a spoken follow-up
-          if (isLiveTTS(tts) && !this._outputMuted) {
-            await tts.connect();
-          }
+          // Re-call the LLM with tool results — it may produce text, more
+          // tool calls, or a mix. We loop until the LLM stops calling tools
+          // (up to a safety limit to prevent infinite loops).
+          const MAX_TOOL_ROUNDS = 5;
+          let round = 1;
+          let continueLoop = true;
 
-          const followUp = await llm.generateWithTools(messages, {
-            signal,
-            tools: toolConfig.definitions,
-          });
+          while (continueLoop && round < MAX_TOOL_ROUNDS && !signal.aborted) {
+            if (isLiveTTS(tts) && !this._outputMuted) {
+              await tts.connect();
+            }
 
-          for await (const chunk2 of followUp) {
-            if (signal.aborted) break;
-            if (chunk2.type === 'text') {
-              fullText += chunk2.text;
-              this.emitEvent({
-                type: 'llm.chunk',
-                chunk: chunk2.text,
-                accumulated: textBeforeTools + fullText,
-                timestamp: Date.now(),
-              });
-              if (isLiveTTS(tts) && !this._outputMuted) {
-                tts.sendText(chunk2.text);
+            const followUp = await llm.generateWithTools(messages, {
+              signal,
+              tools: toolConfig.definitions,
+            });
+
+            continueLoop = false;
+
+            for await (const chunk2 of followUp) {
+              if (signal.aborted) break;
+              if (chunk2.type === 'text') {
+                fullText += chunk2.text;
+                this.emitEvent({
+                  type: 'llm.chunk',
+                  chunk: chunk2.text,
+                  accumulated: textBeforeTools + fullText,
+                  timestamp: Date.now(),
+                });
+                if (isLiveTTS(tts) && !this._outputMuted) {
+                  tts.sendText(chunk2.text);
+                }
+              } else if (chunk2.type === 'tool_call_start') {
+                activeToolId = chunk2.toolCall.id;
+                activeToolName = chunk2.toolCall.name;
+                activeToolArgs = '';
+              } else if (chunk2.type === 'tool_call_delta') {
+                activeToolArgs += chunk2.argumentsDelta;
+              } else if (chunk2.type === 'tool_call_end') {
+                try {
+                  const args = activeToolArgs ? JSON.parse(activeToolArgs) : {};
+                  toolCalls.push({ id: activeToolId, name: activeToolName, arguments: args });
+                } catch {
+                  this.logger.error('Failed to parse tool call arguments', { raw: activeToolArgs });
+                }
+                activeToolArgs = '';
+              } else if (chunk2.type === 'done') {
+                if (chunk2.stopReason === 'tool_use' && toolCalls.length > 0) {
+                  // Finalize any intermediate text
+                  if (fullText.trim() && !this._outputMuted) {
+                    if (isLiveTTS(tts)) {
+                      await this.finalizeLiveTTS(fullText);
+                    } else if (isRestTTS(tts)) {
+                      await this.processTTS(fullText);
+                    }
+                  }
+
+                  // Add assistant message + execute tools
+                  messages.push({ role: 'assistant', content: fullText, toolCalls });
+                  for (const tc of toolCalls) {
+                    const result = await toolConfig.onToolCall(tc);
+                    messages.push({ role: 'tool', content: result.content, toolCallId: result.toolCallId });
+                  }
+
+                  fullText = '';
+                  toolCalls = [];
+                  round++;
+                  continueLoop = true;
+                }
               }
             }
-            // If the follow-up also has tool calls, we'd need recursion,
-            // but for now we handle a single tool round-trip
           }
         }
       }
