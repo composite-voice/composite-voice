@@ -10,7 +10,7 @@ import compress from '@playform/compress';
 
 // https://astro.build/config
 export default defineConfig({
-	site: process.env.PUBLIC_CV_WEB_URL || 'http://localhost:4321',
+	site: process.env.CV_WEB_URL || 'http://localhost:4321',
 	integrations: [
 		react(),
 		sitemap(),
