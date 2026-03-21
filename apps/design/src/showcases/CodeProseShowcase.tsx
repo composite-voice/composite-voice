@@ -8,6 +8,7 @@ import {
   Kbd,
   Mark,
   Prose,
+  BrandName,
 } from "@lukeocodes/composite-voice-ui";
 
 const tsExample = `import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from "@lukeocodes/composite-voice";
@@ -216,7 +217,7 @@ export default function CodeProseShowcase() {
 
         <div className="space-y-3">
           <Text>
-            The <Mark>CompositeVoice SDK</Mark> provides a unified API for
+            The <Mark><BrandName /> SDK</Mark> provides a unified API for
             voice-driven applications.
           </Text>
           <Text>
@@ -250,7 +251,7 @@ export default function CodeProseShowcase() {
           <Prose>
             <h2>Getting Started</h2>
             <p>
-              CompositeVoice is a <strong>modular voice SDK</strong> that
+              <BrandName /> is a <strong>modular voice SDK</strong> that
               connects speech-to-text, language models, and text-to-speech into a
               seamless pipeline. It supports both <em>browser-native</em> and
               cloud-based providers.
@@ -318,10 +319,10 @@ export default function CodeProseShowcase() {
         <Heading level={3}>Large size</Heading>
         <div className="border border-neutral-200 rounded-card p-6">
           <Prose size="lg">
-            <h2>Why CompositeVoice?</h2>
+            <h2>Why <BrandName />?</h2>
             <p>
               Building voice interfaces shouldn't require gluing together
-              incompatible APIs. CompositeVoice provides a{" "}
+              incompatible APIs. <BrandName /> provides a{" "}
               <strong>unified abstraction</strong> that lets you swap providers
               without changing application code.
             </p>

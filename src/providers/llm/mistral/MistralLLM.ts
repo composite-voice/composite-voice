@@ -36,7 +36,7 @@ import { Logger } from '../../../utils/logger';
  * `mistralApiKey`/`apiKey` (direct API access) or `proxyUrl` (server-side proxy).
  * At least one must be set.
  *
- * **Peer dependency:** `openai` (Mistral speaks the OpenAI chat completions format).
+ * **Peer dependency:** None (uses native `fetch` with the OpenAI chat completions format).
  *
  * @example
  * ```ts

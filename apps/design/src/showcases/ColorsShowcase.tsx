@@ -3,6 +3,7 @@ import {
   ColorSwatch,
   Heading,
   Text,
+  BrandName,
 } from "@lukeocodes/composite-voice-ui";
 
 const palettes = [
@@ -156,7 +157,7 @@ export default function ColorsShowcase() {
       <section className="space-y-4">
         <Heading level={2}>Color System</Heading>
         <Text color="muted">
-          The CompositeVoice color system is built on semantic naming
+          The <BrandName /> color system is built on semantic naming
           conventions with token-derived palettes. Each palette is generated
           from a single base color via <code>color-mix(in oklch)</code> — change
           one token to re-theme its entire scale across light and dark modes.

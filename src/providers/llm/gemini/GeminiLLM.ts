@@ -34,7 +34,7 @@ import { Logger } from '../../../utils/logger';
  * `geminiApiKey`/`apiKey` (direct API access) or `proxyUrl` (server-side proxy).
  * At least one must be set.
  *
- * **Peer dependency:** `openai` (Gemini speaks the OpenAI chat completions format).
+ * **Peer dependency:** None (uses native `fetch` with the OpenAI chat completions format).
  *
  * @example
  * ```ts

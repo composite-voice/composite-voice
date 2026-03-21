@@ -10,6 +10,7 @@ import {
   Badge,
   Text,
   Heading,
+  BrandName,
 } from "@lukeocodes/composite-voice-ui";
 
 export default function CardsShowcase() {
@@ -135,7 +136,7 @@ export default function CardsShowcase() {
             <CardBody>
               <CardTitle>Getting Started</CardTitle>
               <CardDescription>
-                Learn the basics of setting up CompositeVoice in your project.
+                Learn the basics of setting up <BrandName /> in your project.
               </CardDescription>
             </CardBody>
           </Card>
