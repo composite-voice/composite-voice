@@ -20,7 +20,7 @@ import {
   FilterIcon,
 } from "@lukeocodes/composite-voice-ui";
 
-const CV_DOCS_URL = process.env.CV_DOCS_URL || "/";
+const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
 const version = pkg.version;
 
 const features = [

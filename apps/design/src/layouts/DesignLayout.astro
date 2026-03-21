@@ -17,9 +17,9 @@ const pageDescription = description || `CompositeVoice Design System — ${title
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
 
 /* Cross-site URLs from Netlify env vars (process.env works in .astro frontmatter at build time) */
-const CV_WEB_URL = process.env.CV_WEB_URL || "/";
-const CV_DOCS_URL = process.env.CV_DOCS_URL || "/";
-const CV_DESIGN_URL = process.env.CV_DESIGN_URL || "/";
+const CV_WEB_URL = import.meta.env.CV_WEB_URL || "/";
+const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
+const CV_DESIGN_URL = import.meta.env.CV_DESIGN_URL || "/";
 
 const sites = [
   { href: CV_WEB_URL, label: "Home" },
