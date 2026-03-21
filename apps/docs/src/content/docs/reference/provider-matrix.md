@@ -88,7 +88,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`AnthropicLLM`](/guides/llm/anthropic) |
 | **Transport** | HTTP streaming (SSE) |
 | **Streaming** | Yes |
-| **Peer dependency** | `@anthropic-ai/sdk` >=0.67.0 |
+| **Peer dependency** | None |
 | **Proxy support** | Yes |
 | **Browser support** | All modern browsers |
 | **Default model** | claude-haiku-4-5 |
@@ -108,7 +108,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`OpenAILLM`](/guides/llm/openai) | [`OpenAITTS`](/guides/tts/openai-tts) |
 | **Transport** | HTTP streaming | HTTP (REST) |
 | **Streaming** | Yes | No (batch synthesis) |
-| **Peer dependency** | `openai` >=6.5.0 | `openai` >=6.5.0 |
+| **Peer dependency** | None | None |
 | **Proxy support** | Yes | Yes |
 | **Browser support** | All modern browsers | All modern browsers |
 | **Default model** | *(required)* | tts-1 |
@@ -130,7 +130,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`GroqLLM`](/guides/llm/groq) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
-| **Peer dependency** | `openai` >=6.5.0 |
+| **Peer dependency** | None |
 | **Proxy support** | Yes |
 | **Browser support** | All modern browsers |
 | **Default model** | llama-3.3-70b-versatile |
@@ -150,7 +150,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`GeminiLLM`](/guides/llm/gemini) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
-| **Peer dependency** | `openai` >=6.5.0 |
+| **Peer dependency** | None |
 | **Proxy support** | Yes |
 | **Browser support** | All modern browsers |
 | **Default model** | gemini-2.0-flash |
@@ -170,7 +170,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`MistralLLM`](/guides/llm/mistral) |
 | **Transport** | HTTP streaming |
 | **Streaming** | Yes |
-| **Peer dependency** | `openai` >=6.5.0 |
+| **Peer dependency** | None |
 | **Proxy support** | Yes |
 | **Browser support** | All modern browsers |
 | **Default model** | mistral-small-latest |
@@ -293,7 +293,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |

@@ -9,13 +9,7 @@ Use `GroqLLM` when you need the lowest possible LLM latency. Groq's custom LPU h
 ## Prerequisites
 
 - A [Groq API key](https://console.groq.com/) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
-
-Groq's API is OpenAI-compatible, so the `openai` package handles all communication.
+- No additional dependencies required. GroqLLM uses native `fetch` internally.
 
 ## Basic setup
 
@@ -104,7 +98,7 @@ await agent.startListening();
 
 - **Use Groq model names exactly as listed.** Groq model identifiers differ from the upstream model names (e.g., `llama-3.3-70b-versatile`, not `meta-llama/Llama-3.3-70B`).
 - **Pair with eager LLM for minimum latency.** Groq's fast inference combined with [DeepgramFlux](/guides/stt/deepgram-flux) preflight signals produces the lowest speech-to-first-token latency.
-- **Groq uses the `openai` peer dependency.** You do not need to install `groq-sdk`.
+- **GroqLLM uses native `fetch` -- no `groq-sdk` or `openai` package needed.**
 - **Rate limits apply.** Free-tier Groq accounts have token-per-minute limits. Check the [Groq docs](https://console.groq.com/docs/rate-limits) for current limits.
 
 ## Related

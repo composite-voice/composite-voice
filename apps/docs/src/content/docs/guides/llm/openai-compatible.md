@@ -9,11 +9,7 @@ Use `OpenAICompatibleLLM` when you need to connect a custom, self-hosted, or thi
 ## Prerequisites
 
 - An accessible OpenAI-compatible API endpoint
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
+- No additional dependencies required. OpenAICompatibleLLM uses native `fetch` internally.
 
 ## Basic setup
 

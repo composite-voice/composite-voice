@@ -16,6 +16,8 @@ import {
   SlidersIcon,
   ShieldIcon,
   PackageIcon,
+  CodeIcon,
+  FilterIcon,
 } from "@lukeocodes/composite-voice-ui";
 
 const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
@@ -41,6 +43,16 @@ const features = [
     icon: SlidersIcon,
     title: "Turn-Taking Strategies",
     description: "Automatic barge-in, plus conservative, aggressive, or detect strategies. Users can interrupt mid-speech and the SDK handles generation tracking seamlessly.",
+  },
+  {
+    icon: CodeIcon,
+    title: "Smart Text Routing",
+    description: "LLM output is split into visual and spoken streams. Code fences are buffered and never read aloud. Markdown is stripped for natural TTS while the UI gets full formatting.",
+  },
+  {
+    icon: FilterIcon,
+    title: "Zero SDK Dependencies",
+    description: "LLM and TTS providers use native fetch — no @anthropic-ai/sdk or openai packages to install. WebSocket providers use native WebSocket. Only WebLLM needs a peer dep.",
   },
   {
     icon: ShieldIcon,
@@ -124,7 +136,7 @@ await voice.startListening();`;
       </p>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {features.map(({ icon: Icon, title, description }) => (
         <Card variant="outlined">
           <CardBody>

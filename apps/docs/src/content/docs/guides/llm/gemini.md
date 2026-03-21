@@ -9,13 +9,7 @@ Use `GeminiLLM` when you want Google's Gemini models with their strong multimoda
 ## Prerequisites
 
 - A [Google AI Studio API key](https://aistudio.google.com/apikey) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
-
-Google exposes an OpenAI-compatible endpoint for Gemini, so the `openai` package handles all communication.
+- No additional dependencies required. GeminiLLM uses native `fetch` internally.
 
 ## Basic setup
 
@@ -100,7 +94,7 @@ await agent.startListening();
 
 - **Gemini uses Google's OpenAI-compatible endpoint.** The base URL defaults to `https://generativelanguage.googleapis.com/v1beta/openai`. You do not need to set this manually.
 - **`gemini-2.0-flash` is ideal for voice.** It delivers fast inference with good quality for conversational tasks.
-- **Gemini uses the `openai` peer dependency.** You do not need to install a Gemini-specific SDK.
+- **GeminiLLM uses native `fetch` -- no Gemini-specific SDK or `openai` package needed.**
 - **Google AI Studio keys are free-tier.** They work for development and testing. For production, use Vertex AI credentials through a proxy.
 
 ## Related

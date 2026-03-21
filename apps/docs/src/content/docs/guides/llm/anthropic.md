@@ -9,11 +9,7 @@ Use `AnthropicLLM` when you want Claude's strong instruction-following and reaso
 ## Prerequisites
 
 - An [Anthropic API key](https://console.anthropic.com/) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install @anthropic-ai/sdk
-```
+- No additional dependencies required. AnthropicLLM uses native `fetch` internally.
 
 ## Basic setup
 

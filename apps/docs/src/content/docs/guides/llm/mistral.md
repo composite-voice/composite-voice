@@ -9,13 +9,7 @@ Use `MistralLLM` when you need strong multilingual support, especially for Europ
 ## Prerequisites
 
 - A [Mistral API key](https://console.mistral.ai/) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
-
-Mistral's API is OpenAI-compatible, so the `openai` package handles all communication.
+- No additional dependencies required. MistralLLM uses native `fetch` internally.
 
 ## Basic setup
 
@@ -100,7 +94,7 @@ await agent.startListening();
 
 - **Mistral excels at multilingual tasks.** French and other European languages produce especially good results.
 - **`mistral-small-latest` is best for voice.** It provides the fastest responses while maintaining quality for conversational use cases.
-- **Mistral uses the `openai` peer dependency.** You do not need to install `@mistralai/mistralai`.
+- **MistralLLM uses native `fetch` -- no `@mistralai/mistralai` or `openai` package needed.**
 - **Model names use the `-latest` suffix.** This always points to the most recent version of that model tier.
 
 ## Related

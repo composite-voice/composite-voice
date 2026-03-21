@@ -9,11 +9,7 @@ Use `OpenAILLM` when you want GPT models for your voice assistant.
 ## Prerequisites
 
 - An [OpenAI API key](https://platform.openai.com/api-keys) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
+- No additional dependencies required. OpenAILLM uses native `fetch` internally.
 
 ## Basic setup
 

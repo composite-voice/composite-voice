@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* **llm:** smart text routing — split LLM output into visual and spoken streams ([895a972](https://github.com/lukeocodes/composite-voice/commit/895a972a))
+* **llm:** code fence buffering — never send fenced code to TTS or stream partial fences to UI ([1c8aa58](https://github.com/lukeocodes/composite-voice/commit/1c8aa58d))
+* **llm:** dual visual/spoken chunks with markdown stripping for TTS ([1ee1565](https://github.com/lukeocodes/composite-voice/commit/1ee15659))
+* **core:** replace @anthropic-ai/sdk and openai with native fetch + shared HttpClient, SSEParser, and abort helpers ([00840bf](https://github.com/lukeocodes/composite-voice/commit/00840bf5))
+
+### Breaking Changes
+
+* `@anthropic-ai/sdk` and `openai` are no longer peer dependencies — AnthropicLLM, OpenAILLM, OpenAITTS, GroqLLM, GeminiLLM, and MistralLLM now use native `fetch`
+* `OpenAICompatibleLLM.buildClientOptions()` renamed to `buildHeaders()` — subclasses that override this method must update
+
 ## [0.0.4](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.3...composite-voice-v0.0.4) (2026-03-16)
 
 

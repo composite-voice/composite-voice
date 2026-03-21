@@ -9,11 +9,7 @@ Use OpenAITTS when you want high-quality speech synthesis via a simple REST call
 ## Prerequisites
 
 - An [OpenAI API key](https://platform.openai.com/api-keys) or a CompositeVoice proxy server
-- Install the peer dependency:
-
-```bash
-npm install openai
-```
+- No additional dependencies required. OpenAITTS uses native `fetch` internally.
 
 ## Basic setup
 

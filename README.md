@@ -36,7 +36,8 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.        |
 | **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change. |
 | **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                              |
-| **Zero mandatory dependencies** | Provider SDKs are optional peer dependencies — install only what you actually use. Many providers (AssemblyAI, ElevenLabs, Cartesia) need no peer dependency at all.              |
+| **Zero mandatory dependencies** | LLM and TTS providers use native `fetch` — no SDK installs needed. WebSocket providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) use native WebSocket. Only WebLLM requires a peer dependency. |
+| **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.    |
 | **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, queue stats, and state transitions.                                         |
 | **Race-condition-free**         | Audio frames are buffered in a queue during STT connection. No frames are ever lost, even when the WebSocket handshake takes time.                                                |
 | **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                |
@@ -59,6 +60,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Agent states](#agent-states)
 - [Conversation history](#conversation-history)
 - [Eager LLM pipeline](#eager-llm-pipeline)
+- [Smart text routing](#smart-text-routing)
 - [Tool use / function calling](#tool-use--function-calling)
 - [Barge-in](#barge-in)
 - [Turn-taking](#turn-taking)
@@ -85,17 +87,14 @@ yarn add @lukeocodes/composite-voice
 
 Node.js 18 or later is required.
 
-Provider SDKs are optional peer dependencies — install only what you use:
+Most providers use native `fetch` or native WebSocket — no SDKs to install. Optional peer dependencies:
 
 ```bash
-pnpm add @anthropic-ai/sdk    # AnthropicLLM (>=0.67.0)
-pnpm add @deepgram/sdk        # DeepgramSTT, DeepgramFlux, DeepgramTTS (>=5.0.0-beta.1)
-pnpm add openai               # OpenAILLM, OpenAITTS, GroqLLM, GeminiLLM, MistralLLM (>=6.5.0)
 pnpm add @mlc-ai/web-llm      # WebLLMLLM — in-browser inference (>=0.2.74)
 pnpm add ws                   # server-side proxy WebSocket support, Node.js only (>=8.0.0)
 ```
 
-AssemblyAI, ElevenLabs, and Cartesia providers use raw WebSocket connections and require no peer dependencies.
+Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, ElevenLabs, and Cartesia providers all work with zero peer dependencies.
 
 ---
 
@@ -780,6 +779,26 @@ speech_final arrives
 ```
 
 The result is noticeably lower perceived latency on natural speech patterns where the end of an utterance is predictable. See [Example 21](./examples/21-eager-pipeline/) for a demo with real-time pipeline timing.
+
+---
+
+## Smart text routing
+
+LLM responses often contain markdown, code blocks, and formatting that sounds terrible when read aloud by TTS. CompositeVoice automatically splits LLM output into separate **visual** and **spoken** streams:
+
+- **Code fences** are buffered entirely and never sent to TTS — no more hearing "opening backtick backtick backtick javascript function hello..."
+- **Markdown** is stripped from the spoken stream (headings, bold, links, lists) while the visual stream preserves full formatting for the UI
+- **Partial fences** are held in a buffer until the closing fence arrives, so incomplete code blocks never leak to either stream
+
+```typescript
+// Subscribe to the visual stream (full markdown + code) for your UI
+voice.on('llm.chunk', ({ chunk }) => appendToUI(chunk));
+
+// The spoken stream is handled automatically — TTS receives clean text only
+// No configuration needed; smart routing is built into the pipeline
+```
+
+The routing is handled by `LLMTextRouter` and `ChunkSplitter` internally. The TTS provider receives pre-processed text via `ttsStrip`, which removes markdown syntax while preserving natural sentence structure.
 
 ---
 
