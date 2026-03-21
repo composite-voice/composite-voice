@@ -403,10 +403,10 @@ export class WebLLMLLM extends BaseLLMProvider {
 
           const stream = await engine.chat.completions.create({
             messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
+            ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+            ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(options.stopSequences ? { stop: options.stopSequences } : {}),
             stream: true as const,
             stream_options: { include_usage: true },
             ...options.extra,
@@ -483,10 +483,10 @@ export class WebLLMLLM extends BaseLLMProvider {
 
           const response = await engine.chat.completions.create({
             messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
+            ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+            ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(options.stopSequences ? { stop: options.stopSequences } : {}),
             stream: false as const,
             ...options.extra,
           });

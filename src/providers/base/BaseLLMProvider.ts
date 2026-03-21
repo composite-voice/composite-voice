@@ -233,6 +233,7 @@ export abstract class BaseLLMProvider extends BaseProvider implements LLMProvide
     const stopSequences = options?.stopSequences ?? this.config.stopSequences;
     if (stopSequences !== undefined) merged.stopSequences = stopSequences;
 
+    if (options?.signal) merged.signal = options.signal;
     if (options?.extra !== undefined) merged.extra = options.extra;
 
     return merged;

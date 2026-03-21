@@ -256,9 +256,6 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
     if (!this.client) throw new Error(`${this.providerName} client not initialized`);
 
     const mergedOptions = this.mergeOptions(options);
-    if (options?.signal) {
-      mergedOptions.signal = options.signal;
-    }
     const shouldStream = this.config.stream ?? true;
 
     // Convert messages to OpenAI format
@@ -311,7 +308,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
     if (!this.client) throw new Error(`${this.providerName} client not initialized`);
 
     const mergedOptions = this.mergeOptions(options);
-    const signal = mergedOptions.signal ?? options?.signal;
+    const signal = mergedOptions.signal;
 
     // Convert messages to OpenAI format (including tool messages)
     const openaiMessages: ChatCompletionMessage[] = messages.map((msg) => {
@@ -372,11 +369,11 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
           const body = {
             model: config.model,
             messages: openaiMessages,
-            temperature: mergedOptions.temperature ?? null,
-            max_tokens: mergedOptions.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: mergedOptions.stopSequences ?? null,
             stream: true,
+            ...(mergedOptions.temperature !== undefined ? { temperature: mergedOptions.temperature } : {}),
+            ...(mergedOptions.maxTokens !== undefined ? { max_tokens: mergedOptions.maxTokens } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(mergedOptions.stopSequences ? { stop: mergedOptions.stopSequences } : {}),
             ...(tools?.length ? { tools } : {}),
             ...(mergedOptions.extra ?? {}),
           };
@@ -486,12 +483,12 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
           const body = {
             model: config.model,
             messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
             stream: true,
-            ...options.extra,
+            ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+            ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(options.stopSequences ? { stop: options.stopSequences } : {}),
+            ...(options.extra ?? {}),
           };
 
           const response = await client.request('/chat/completions', {
@@ -548,12 +545,12 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
           const body = {
             model: config.model,
             messages,
-            temperature: options.temperature ?? null,
-            max_tokens: options.maxTokens ?? null,
-            top_p: config.topP ?? null,
-            stop: options.stopSequences ?? null,
             stream: false,
-            ...options.extra,
+            ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+            ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+            ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+            ...(options.stopSequences ? { stop: options.stopSequences } : {}),
+            ...(options.extra ?? {}),
           };
 
           const response = await client.request('/chat/completions', {
