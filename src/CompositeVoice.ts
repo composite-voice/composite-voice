@@ -2028,6 +2028,7 @@ export class CompositeVoice {
     let activeToolArgs = '';
     let activeToolName = '';
     let activeToolId = '';
+    let insideCodeFence = false;
 
     // Ensure Live TTS WebSocket is connected before streaming begins
     if (isLiveTTS(tts) && !this._outputMuted) {
@@ -2050,8 +2051,11 @@ export class CompositeVoice {
           accumulated: fullText,
           timestamp: Date.now(),
         });
-        // Only text goes to TTS — tool calls are silent
-        if (isLiveTTS(tts) && !this._outputMuted) {
+        // Skip code fences for TTS — they're visual-only in the chat
+        if (chunk.text.includes('```')) {
+          insideCodeFence = !insideCodeFence;
+        }
+        if (!insideCodeFence && isLiveTTS(tts) && !this._outputMuted) {
           tts.sendText(chunk.text);
         }
       } else if (chunk.type === 'tool_call_start') {
@@ -2131,7 +2135,10 @@ export class CompositeVoice {
                   accumulated: textBeforeTools + fullText,
                   timestamp: Date.now(),
                 });
-                if (isLiveTTS(tts) && !this._outputMuted) {
+                if (chunk2.text.includes('```')) {
+                  insideCodeFence = !insideCodeFence;
+                }
+                if (!insideCodeFence && isLiveTTS(tts) && !this._outputMuted) {
                   tts.sendText(chunk2.text);
                 }
               } else if (chunk2.type === 'tool_call_start') {
