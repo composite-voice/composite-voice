@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 17 provider classes, plus 4 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 11 provider companies across 17 provider classes, plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -32,9 +32,10 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **ElevenLabsTTS** | | | | **yes** | |
 | **CartesiaTTS** | | | | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
-| **NullOutput** | | | | | **yes** |
+| **NullInput** | **yes** | **yes** | | | |
+| **NullOutput** | | | | **yes** | **yes** |
 
-> The pipeline requires all 5 roles to be filled. If both `input` and `stt` are uncovered, `NativeSTT` is auto-filled. If both `tts` and `output` are uncovered, `NativeTTS` is auto-filled. The `llm` role is always required — there is no default LLM.
+> The pipeline requires all 5 roles to be filled. If both `input` and `stt` are uncovered, `NullInput` is auto-filled (text-only, no microphone). If both `tts` and `output` are uncovered, `NullOutput` is auto-filled (text-only, no speakers). If an STT is provided without an `input`, `MicrophoneInput` is auto-filled. If a TTS is provided without an `output`, `BrowserAudioOutput` is auto-filled. If no `llm` is provided, `AnthropicLLM` (`claude-haiku-4-5`) is auto-filled.
 
 ---
 
@@ -42,18 +43,18 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 
 These providers handle the `input` and `output` roles in the 5-role pipeline. They are not tied to any vendor.
 
-| | MicrophoneInput | BufferInput | BrowserAudioOutput | NullOutput |
-|---|---|---|---|---|
-| **Role** | `input` | `input` | `output` | `output` |
-| **Environment** | Browser | Node/Bun/Deno | Browser | Node/Bun/Deno |
-| **Peer dependency** | None | None | None | None |
-| **Description** | Wraps `getUserMedia` + `AudioContext` for browser microphone capture | Accepts pushed `ArrayBuffer` data for server-side pipelines | Wraps `AudioContext` for browser speaker playback | Silently discards audio — for server-side pipelines |
+| | MicrophoneInput | BufferInput | NullInput | BrowserAudioOutput | NullOutput |
+|---|---|---|---|---|---|
+| **Role** | `input` | `input` | `input` + `stt` | `output` | `tts` + `output` |
+| **Environment** | Browser | Node/Bun/Deno | Any | Browser | Any |
+| **Peer dependency** | None | None | None | None | None |
+| **Description** | Wraps `getUserMedia` + `AudioContext` for browser microphone capture | Accepts pushed `ArrayBuffer` data for server-side pipelines | Text-only input — no microphone, covers both `input` and `stt` roles | Wraps `AudioContext` for browser speaker playback | Text-only output — no speakers, covers both `tts` and `output` roles |
 
-**MicrophoneInput** buffers audio frames in the input queue while the STT WebSocket connects, then flushes them in order — no audio is ever lost. **BufferInput** does the same for programmatic audio sources.
+**MicrophoneInput** buffers audio frames in the input queue while the STT WebSocket connects, then flushes them in order — no audio is ever lost. **BufferInput** does the same for programmatic audio sources. **NullInput** covers both `input` and `stt` roles for text-only pipelines — no microphone is requested.
 
-**BrowserAudioOutput** handles `AudioContext` resumption and buffers frames in the output queue during speaker setup. **NullOutput** discards all audio — use it for server-side pipelines where there are no speakers.
+**BrowserAudioOutput** handles `AudioContext` resumption and buffers frames in the output queue during speaker setup. **NullOutput** covers both `tts` and `output` roles for text-only pipelines — no audio is played.
 
-> Multi-role providers like `NativeSTT` (input+stt) and `NativeTTS` (tts+output) cover multiple pipeline roles. When using them, you do not need separate input or output providers.
+> Multi-role providers like `NativeSTT` (input+stt), `NativeTTS` (tts+output), `NullInput` (input+stt), and `NullOutput` (tts+output) cover multiple pipeline roles. When using them, you do not need separate input/output providers.
 
 ---
 

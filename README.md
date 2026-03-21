@@ -8,19 +8,15 @@
 **An SDK for building AI voice agents — wire together any combination of input, STT, LLM, TTS, and output providers behind one unified 5-role pipeline.**
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM } from '@lukeocodes/composite-voice';
 
+// Text agent — NullInput + NullOutput auto-filled
 const agent = new CompositeVoice({
-  providers: [
-    new NativeSTT(),
-    new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' }),
-    new NativeTTS(),
-  ],
+  providers: [new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' })],
 });
 
 await agent.initialize();
-await agent.startListening();
-// Microphone capture, transcription, LLM streaming, TTS playback — all handled.
+// Add NativeSTT + NativeTTS for voice, or cloud providers for production audio.
 ```
 
 ---
@@ -36,7 +32,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.                        |
 | **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
 | **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                              |
-| **Zero mandatory dependencies** | LLM and TTS providers use native `fetch` — no SDK installs needed. WebSocket providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) use native WebSocket. Only WebLLM requires a peer dependency. |
+| **Zero-config text agent**      | Pass an empty providers array (or just an LLM) and the SDK defaults to a text-only agent — AnthropicLLM + NullInput + NullOutput. Add voice providers to progressively enhance. |
 | **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.                    |
 | **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, queue stats, and state transitions.                                                         |
 | **Race-condition-free**         | Audio frames are buffered in a queue during STT connection. No frames are ever lost, even when the WebSocket handshake takes time.                                                                |
@@ -96,9 +92,30 @@ Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, ElevenLabs, and 
 
 ## Quick start
 
-### Simplest setup — 3 providers, one API key
+### Simplest setup — text agent, zero providers
 
-Uses the browser's built-in Web Speech API and SpeechSynthesis. NativeSTT covers the `input`+`stt` roles and NativeTTS covers `tts`+`output`, so you only need an LLM. Works in Chrome and Edge.
+Pass just an LLM (or even an empty array) and the SDK defaults to a text-only agent. NullInput and NullOutput are auto-filled — no microphone, no speaker. You interact via `agent.pushText()` and subscribe to LLM events.
+
+```typescript
+import { CompositeVoice, AnthropicLLM } from '@lukeocodes/composite-voice';
+
+// Just an LLM — NullInput + NullOutput auto-filled for text-only mode
+const agent = new CompositeVoice({
+  providers: [new AnthropicLLM({ apiKey: 'sk-ant-...', model: 'claude-haiku-4-5-20251001' })],
+});
+
+// Or even zero providers — AnthropicLLM (claude-haiku-4-5) auto-filled too
+// const agent = new CompositeVoice({ providers: [] });
+
+agent.on('llm.chunk', (e) => process.stdout.write(e.chunk));
+agent.on('agent.stateChange', (e) => console.log('State:', e.state));
+
+await agent.initialize();
+```
+
+### Add voice — browser built-ins
+
+Add NativeSTT and NativeTTS for a voice agent using the browser's Web Speech API and SpeechSynthesis. Works in Chrome and Edge.
 
 ```typescript
 import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
@@ -126,23 +143,21 @@ await agent.startListening();
 
 See [Example 00](./examples/00-minimal-voice-agent/) for a full runnable demo with UI.
 
-### Production setup — 5 providers, explicit audio I/O
+### Production setup — cloud providers, auto-filled audio I/O
 
-Full 5-role pipeline with separate input and output providers. Audio is buffered between stages, eliminating the race condition where first frames could be lost during STT WebSocket handshake.
+Supply cloud STT and TTS providers and the SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for you. Audio is buffered between stages, eliminating the race condition where first frames could be lost during STT WebSocket handshake.
 
 ```typescript
 import {
   CompositeVoice,
-  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
+// 3-provider config — MicrophoneInput + BrowserAudioOutput auto-filled
 const agent = new CompositeVoice({
   providers: [
-    new MicrophoneInput(),
     new DeepgramSTT({
       apiKey: 'your-deepgram-key',
       options: {
@@ -162,7 +177,6 @@ const agent = new CompositeVoice({
       apiKey: 'your-deepgram-key',
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
-    new BrowserAudioOutput(),
   ],
 });
 
@@ -205,10 +219,10 @@ Every provider declares a `roles` property listing which pipeline slots it fills
 
 ### Multi-role providers
 
-Some providers handle multiple roles. NativeSTT manages its own microphone internally (Web Speech API), so it covers both `input` and `stt`. NativeTTS manages its own speaker output, so it covers `tts` and `output`.
+Some providers handle multiple roles. NativeSTT manages its own microphone internally (Web Speech API), so it covers both `input` and `stt`. NativeTTS manages its own speaker output, so it covers `tts` and `output`. These are explicit providers you add when you want voice — they are not auto-filled defaults.
 
 ```typescript
-// 3-provider config — NativeSTT covers input+stt, NativeTTS covers tts+output
+// Voice agent with browser built-ins — NativeSTT covers input+stt, NativeTTS covers tts+output
 const agent = new CompositeVoice({
   providers: [
     new NativeSTT(),        // roles: ['input', 'stt']
@@ -239,14 +253,19 @@ const agent = new CompositeVoice({
 
 When you omit certain roles, the SDK auto-fills them:
 
-- **`input` + `stt` both uncovered** → auto-fills with `new NativeSTT()` (covers both)
-- **`tts` + `output` both uncovered** → auto-fills with `new NativeTTS()` (covers both)
-- **`llm` is always required** — no default LLM provider
+- **`input` + `stt` both uncovered** → auto-fills with `NullInput` (text-only, no microphone)
+- **`tts` + `output` both uncovered** → auto-fills with `NullOutput` (text-only, no speaker)
+- **`llm` uncovered** → auto-fills with `AnthropicLLM` (`claude-haiku-4-5`)
+- **`stt` provided without `input`** → auto-fills with `MicrophoneInput`
+- **`tts` provided without `output`** → auto-fills with `BrowserAudioOutput`
 
-This means the minimal config is just an LLM:
+This means the minimal config is an empty providers array (text-only agent with AnthropicLLM):
 
 ```typescript
-// LLM-only config — NativeSTT and NativeTTS auto-filled
+// Zero-config — AnthropicLLM + NullInput + NullOutput auto-filled
+const agent = new CompositeVoice({ providers: [] });
+
+// Or just an LLM — NullInput + NullOutput auto-filled for text-only mode
 const agent = new CompositeVoice({
   providers: [new AnthropicLLM({ apiKey: '...', model: 'claude-haiku-4-5-20251001' })],
 });

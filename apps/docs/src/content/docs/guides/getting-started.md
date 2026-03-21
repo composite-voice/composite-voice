@@ -18,7 +18,7 @@ pnpm add @lukeocodes/composite-voice
 
 ## Your first voice pipeline
 
-The simplest pipeline uses browser-native speech recognition and synthesis -- zero extra API keys beyond Anthropic. [NativeSTT](/guides/stt/native-stt) wraps the Web Speech API. [NativeTTS](/guides/tts/native-tts) wraps SpeechSynthesis. Both work out of the box in Chrome, Edge, and Safari.
+The simplest pipeline is an LLM-only text agent. When no providers are supplied (or only an LLM), the SDK auto-fills `NullInput` (text-only, no microphone) and `NullOutput` (text-only, no speakers). No extra API keys beyond Anthropic are needed.
 
 ```typescript
 import {
@@ -36,7 +36,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-Only the LLM provider is required. When input+STT are omitted, the SDK defaults to `NativeSTT` (which covers both the `input` and `stt` pipeline roles). When TTS+output are omitted, it defaults to `NativeTTS` (covering `tts` and `output`).
+When no input or STT provider is supplied, the SDK defaults to `NullInput` (text-only, no microphone) — covering both the `input` and `stt` pipeline roles. When no TTS or output provider is supplied, it defaults to `NullOutput` (text-only, no speakers) — covering `tts` and `output`. When no LLM is supplied, it defaults to `AnthropicLLM` with `claude-haiku-4-5`. For a voice-enabled pipeline, add [NativeSTT](/guides/stt/native-stt) and [NativeTTS](/guides/tts/native-tts) explicitly, or use cloud providers like [DeepgramSTT](/guides/stt/deepgram-stt) and [DeepgramTTS](/guides/tts/deepgram-tts) — when an STT is provided without an input, `MicrophoneInput` is auto-filled; when a TTS is provided without an output, `BrowserAudioOutput` is auto-filled.
 
 The `proxyUrl` keeps your Anthropic API key on the server. The browser never sees it. See [Secure your API key](#secure-your-api-key-with-the-server-proxy) below.
 

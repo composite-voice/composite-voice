@@ -6,7 +6,7 @@ order: 2
 
 ## Full configuration shape
 
-Pass a configuration object to the `CompositeVoice` constructor. Only the `providers` array is required (with at minimum an LLM provider); everything else has sensible defaults.
+Pass a configuration object to the `CompositeVoice` constructor. The `providers` array can be empty — the SDK auto-fills missing roles with sensible defaults. Everything else also has sensible defaults.
 
 ```typescript
 import {
@@ -19,9 +19,11 @@ import {
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
-  // Required -- provider instances for the 5-role pipeline
+  // Provider instances for the 5-role pipeline.
   // Each provider declares its roles (input, stt, llm, tts, output).
-  // Uncovered input+stt defaults to NativeSTT; uncovered tts+output defaults to NativeTTS.
+  // Uncovered input+stt defaults to NullInput (text-only); uncovered tts+output defaults to NullOutput (text-only).
+  // Uncovered llm defaults to AnthropicLLM (claude-haiku-4-5).
+  // STT without input auto-fills MicrophoneInput; TTS without output auto-fills BrowserAudioOutput.
   providers: [
     new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
