@@ -8,6 +8,7 @@ import pagefind from 'astro-pagefind';
 import llmsTxt from '@4hse/astro-llms-txt';
 import playformInline from '@playform/inline';
 import compress from '@playform/compress';
+import { remarkBaseUrl } from './src/lib/remark-base-url.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -15,6 +16,7 @@ export default defineConfig({
 	base: '/docs',
 	markdown: {
 		syntaxHighlight: 'prism',
+		remarkPlugins: [remarkBaseUrl],
 	},
 	integrations: [
 		react(),
