@@ -15,13 +15,13 @@ Use the Express adapter when your backend runs Express 4/5, Connect, Polka, or R
 ## Install dependencies
 
 ```bash
-npm install express @lukeocodes/composite-voice
+pnpm add express @lukeocodes/composite-voice
 ```
 
 If you use TypeScript, also add the dev dependency:
 
 ```bash
-npm install -D tsx
+pnpm add -D tsx
 ```
 
 ## Create the server

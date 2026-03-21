@@ -72,7 +72,7 @@ async function loadWs(): Promise<{
   } catch {
     throw new Error(
       'WebSocket proxying requires the "ws" package.\n' +
-        'Install it with: npm install ws\n' +
+        'Install it with: pnpm add ws\n' +
         'The "ws" package is an optional peer dependency of @lukeocodes/composite-voice.'
     );
   }

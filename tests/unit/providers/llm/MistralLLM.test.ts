@@ -47,10 +47,7 @@ function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Respons
   const encoder = new TextEncoder();
   const lines =
     chunks
-      .map(
-        (c) =>
-          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
-      )
+      .map((c) => `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`)
       .join('') + 'data: [DONE]\n\n';
   const stream = new ReadableStream({
     start(controller) {

@@ -43,9 +43,7 @@ voice.on("transcription.speechFinal", ({ text }) => {
 await voice.initialize();
 await voice.startListening();`;
 
-const bashExample = `npm install @lukeocodes/composite-voice
-# or
-pnpm add @lukeocodes/composite-voice`;
+const bashExample = `pnpm add @lukeocodes/composite-voice`;
 
 const cssExample = `@theme {
   --color-primary-500: oklch(0.637 0.237 25.331);

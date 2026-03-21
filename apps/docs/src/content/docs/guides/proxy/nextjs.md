@@ -14,7 +14,7 @@ Use the Next.js adapter when your application already runs on Next.js 13+ with t
 ## Install dependencies
 
 ```bash
-npm install @lukeocodes/composite-voice
+pnpm add @lukeocodes/composite-voice
 ```
 
 No extra server packages are needed -- the adapter works with the built-in Next.js runtime.

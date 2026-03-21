@@ -37,7 +37,7 @@ All other providers (AnthropicLLM, OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, Op
 Install what you need:
 
 ```bash
-npm install @mlc-ai/web-llm   # for WebLLM
+pnpm add @mlc-ai/web-llm   # for WebLLM
 ```
 
 ---

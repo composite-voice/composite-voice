@@ -13,7 +13,7 @@ Use `WebLLMLLM` when you need full privacy, offline capability, or zero server c
 - Install the peer dependency:
 
 ```bash
-npm install @mlc-ai/web-llm
+pnpm add @mlc-ai/web-llm
 ```
 
 ## Basic setup

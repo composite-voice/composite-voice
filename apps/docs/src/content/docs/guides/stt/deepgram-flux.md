@@ -16,7 +16,7 @@ Use DeepgramFlux for the lowest-latency voice pipelines. It connects to Deepgram
 - The `@deepgram/sdk` (v5+) peer dependency installed:
 
 ```bash
-npm install @deepgram/sdk@^5
+pnpm add @deepgram/sdk@^5
 ```
 
 For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.

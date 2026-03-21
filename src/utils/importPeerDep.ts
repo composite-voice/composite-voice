@@ -50,7 +50,7 @@ export async function importPeerDep<T = unknown>(
       throw new ProviderInitializationError(
         providerName,
         new Error(
-          `${packageName} is required but not installed. Install it with: npm install ${packageName}`
+          `${packageName} is required but not installed. Install it with: pnpm add ${packageName}`
         )
       );
     }

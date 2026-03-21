@@ -14,7 +14,7 @@ Use the Node.js adapter when you need full control over the HTTP server or your 
 ## Install dependencies
 
 ```bash
-npm install @lukeocodes/composite-voice
+pnpm add @lukeocodes/composite-voice
 ```
 
 No additional server framework is required. The adapter uses only the built-in `http` module.

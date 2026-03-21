@@ -47,10 +47,7 @@ function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Respons
   const encoder = new TextEncoder();
   const lines =
     chunks
-      .map(
-        (c) =>
-          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
-      )
+      .map((c) => `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`)
       .join('') + 'data: [DONE]\n\n';
   const stream = new ReadableStream({
     start(controller) {
@@ -205,9 +202,7 @@ describe('GeminiLLM', () => {
       }
 
       const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe(
-        'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-      );
+      expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
     });
 
     it('should allow overriding endpoint', async () => {

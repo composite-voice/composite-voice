@@ -48,10 +48,7 @@ function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Respons
   const encoder = new TextEncoder();
   const lines =
     chunks
-      .map(
-        (c) =>
-          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
-      )
+      .map((c) => `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`)
       .join('') + 'data: [DONE]\n\n';
   const stream = new ReadableStream({
     start(controller) {
@@ -470,9 +467,7 @@ describe('OpenAICompatibleLLM', () => {
 
       // Verify the fetch URL and headers when making a request
       mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
-      const result = await groqProvider.processMessages([
-        { role: 'user', content: 'Hello' },
-      ]);
+      const result = await groqProvider.processMessages([{ role: 'user', content: 'Hello' }]);
       for await (const _chunk of result) {
         // consume
       }

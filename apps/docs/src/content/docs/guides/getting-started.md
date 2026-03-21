@@ -13,7 +13,7 @@ order: 1
 ## Install
 
 ```bash
-npm install @lukeocodes/composite-voice
+pnpm add @lukeocodes/composite-voice
 ```
 
 ## Your first voice pipeline

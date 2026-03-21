@@ -31,20 +31,20 @@ Building a voice agent from scratch means solving many hard problems simultaneou
 
 CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 
-| Feature                         | What it means for you                                                                                                                                                             |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.        |
-| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change. |
-| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                              |
+| Feature                         | What it means for you                                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.                        |
+| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
+| **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                              |
 | **Zero mandatory dependencies** | LLM and TTS providers use native `fetch` — no SDK installs needed. WebSocket providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) use native WebSocket. Only WebLLM requires a peer dependency. |
-| **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.    |
-| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, queue stats, and state transitions.                                         |
-| **Race-condition-free**         | Audio frames are buffered in a queue during STT connection. No frames are ever lost, even when the WebSocket handshake takes time.                                                |
-| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                |
-| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                |
-| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                              |
-| **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                    |
-| **Extensible**                  | Abstract base classes for all 5 roles. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                                                 |
+| **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.                    |
+| **Event-driven**                | Subscribe to any stage of the pipeline: individual transcription words, LLM tokens, TTS audio chunks, queue stats, and state transitions.                                                         |
+| **Race-condition-free**         | Audio frames are buffered in a queue during STT connection. No frames are ever lost, even when the WebSocket handshake takes time.                                                                |
+| **Conversation memory**         | Multi-turn history that grows and trims automatically, included in every LLM call.                                                                                                                |
+| **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                                |
+| **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                              |
+| **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                                    |
+| **Extensible**                  | Abstract base classes for all 5 roles. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                                                                 |
 
 ---
 
@@ -78,11 +78,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 ## Installation
 
 ```bash
-npm install @lukeocodes/composite-voice
-# or
 pnpm add @lukeocodes/composite-voice
-# or
-yarn add @lukeocodes/composite-voice
 ```
 
 Node.js 18 or later is required.
