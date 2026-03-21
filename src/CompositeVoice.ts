@@ -2029,6 +2029,7 @@ export class CompositeVoice {
     let activeToolName = '';
     let activeToolId = '';
     let insideCodeFence = false;
+    let codeBlockBuffer = '';
 
     // Ensure Live TTS WebSocket is connected before streaming begins
     if (isLiveTTS(tts) && !this._outputMuted) {
@@ -2045,18 +2046,36 @@ export class CompositeVoice {
 
       if (chunk.type === 'text') {
         fullText += chunk.text;
-        this.emitEvent({
-          type: 'llm.chunk',
-          chunk: chunk.text,
-          accumulated: fullText,
-          timestamp: Date.now(),
-        });
-        // Skip code fences for TTS — they're visual-only in the chat
+
         if (chunk.text.includes('```')) {
-          insideCodeFence = !insideCodeFence;
-        }
-        if (!insideCodeFence && isLiveTTS(tts) && !this._outputMuted) {
-          tts.sendText(chunk.text);
+          if (!insideCodeFence) {
+            // Entering a code fence — split: send text before fence, buffer the rest
+            const fenceIdx = chunk.text.indexOf('```');
+            const before = chunk.text.slice(0, fenceIdx);
+            if (before) {
+              this.emitEvent({ type: 'llm.chunk', chunk: before, accumulated: fullText, timestamp: Date.now() });
+              if (isLiveTTS(tts) && !this._outputMuted) {
+                tts.sendText(before);
+              }
+            }
+            insideCodeFence = true;
+            codeBlockBuffer = chunk.text.slice(fenceIdx);
+          } else {
+            // Closing a code fence — flush the buffered code block as a single visual chunk
+            codeBlockBuffer += chunk.text;
+            this.emitEvent({ type: 'llm.chunk', chunk: codeBlockBuffer, accumulated: fullText, timestamp: Date.now() });
+            codeBlockBuffer = '';
+            insideCodeFence = false;
+          }
+        } else if (insideCodeFence) {
+          // Inside a code fence — buffer silently, no TTS, no streaming display
+          codeBlockBuffer += chunk.text;
+        } else {
+          // Normal text — stream to UI and TTS
+          this.emitEvent({ type: 'llm.chunk', chunk: chunk.text, accumulated: fullText, timestamp: Date.now() });
+          if (isLiveTTS(tts) && !this._outputMuted) {
+            tts.sendText(chunk.text);
+          }
         }
       } else if (chunk.type === 'tool_call_start') {
         activeToolId = chunk.toolCall.id;
@@ -2129,17 +2148,32 @@ export class CompositeVoice {
               if (signal.aborted) break;
               if (chunk2.type === 'text') {
                 fullText += chunk2.text;
-                this.emitEvent({
-                  type: 'llm.chunk',
-                  chunk: chunk2.text,
-                  accumulated: textBeforeTools + fullText,
-                  timestamp: Date.now(),
-                });
+
                 if (chunk2.text.includes('```')) {
-                  insideCodeFence = !insideCodeFence;
-                }
-                if (!insideCodeFence && isLiveTTS(tts) && !this._outputMuted) {
-                  tts.sendText(chunk2.text);
+                  if (!insideCodeFence) {
+                    const fenceIdx = chunk2.text.indexOf('```');
+                    const before = chunk2.text.slice(0, fenceIdx);
+                    if (before) {
+                      this.emitEvent({ type: 'llm.chunk', chunk: before, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
+                      if (isLiveTTS(tts) && !this._outputMuted) {
+                        tts.sendText(before);
+                      }
+                    }
+                    insideCodeFence = true;
+                    codeBlockBuffer = chunk2.text.slice(fenceIdx);
+                  } else {
+                    codeBlockBuffer += chunk2.text;
+                    this.emitEvent({ type: 'llm.chunk', chunk: codeBlockBuffer, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
+                    codeBlockBuffer = '';
+                    insideCodeFence = false;
+                  }
+                } else if (insideCodeFence) {
+                  codeBlockBuffer += chunk2.text;
+                } else {
+                  this.emitEvent({ type: 'llm.chunk', chunk: chunk2.text, accumulated: textBeforeTools + fullText, timestamp: Date.now() });
+                  if (isLiveTTS(tts) && !this._outputMuted) {
+                    tts.sendText(chunk2.text);
+                  }
                 }
               } else if (chunk2.type === 'tool_call_start') {
                 activeToolId = chunk2.toolCall.id;
