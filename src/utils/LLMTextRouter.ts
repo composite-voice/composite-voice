@@ -12,7 +12,7 @@ export class LLMTextRouter {
 
   constructor(
     private onVisual: (visual: string, spoken: string, accumulated: string) => void,
-    private onSpoken: (text: string) => void,
+    private onSpoken: (text: string) => void
   ) {}
 
   /** Feed a raw LLM text chunk. Produces zero or more visual/spoken events in order. */

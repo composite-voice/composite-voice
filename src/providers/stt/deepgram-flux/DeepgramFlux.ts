@@ -192,19 +192,22 @@ export class DeepgramFlux extends LiveSTTProvider {
     const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
     const opts = this.config.options;
 
-    const params = buildQueryParams({
-      model: opts?.model ?? 'flux-general-en',
-      encoding: opts?.encoding,
-      sampleRate: opts?.sampleRate,
-      eotThreshold: opts?.eotThreshold,
-      eagerEotThreshold: opts?.eagerEotThreshold,
-      eotTimeoutMs: opts?.eotTimeoutMs,
-      keyterms: opts?.keyterms,
-      tag: opts?.tag,
-      mipOptOut: opts?.mipOptOut,
-    }, {
-      keyterms: 'keyterm',
-    });
+    const params = buildQueryParams(
+      {
+        model: opts?.model ?? 'flux-general-en',
+        encoding: opts?.encoding,
+        sampleRate: opts?.sampleRate,
+        eotThreshold: opts?.eotThreshold,
+        eagerEotThreshold: opts?.eagerEotThreshold,
+        eotTimeoutMs: opts?.eotTimeoutMs,
+        keyterms: opts?.keyterms,
+        tag: opts?.tag,
+        mipOptOut: opts?.mipOptOut,
+      },
+      {
+        keyterms: 'keyterm',
+      }
+    );
 
     return `${base}/v2/listen?${params.toString()}`;
   }

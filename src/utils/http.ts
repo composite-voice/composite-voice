@@ -200,9 +200,7 @@ export class HttpClient {
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       // Combine caller signal with timeout signal
       const timeoutSignal = AbortSignal.timeout(this.timeout);
-      const combinedSignal = signal
-        ? AbortSignal.any([signal, timeoutSignal])
-        : timeoutSignal;
+      const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 
       try {
         this.logger?.debug(`${this.providerName} request attempt ${attempt + 1}`, {
@@ -228,8 +226,7 @@ export class HttpClient {
         let errorMessage: string;
         try {
           const parsed = JSON.parse(errorBody);
-          errorMessage =
-            parsed?.error?.message ?? parsed?.message ?? parsed?.detail ?? errorBody;
+          errorMessage = parsed?.error?.message ?? parsed?.message ?? parsed?.detail ?? errorBody;
         } catch {
           errorMessage = errorBody || response.statusText;
         }
@@ -281,7 +278,9 @@ export class HttpClient {
     }
 
     // Exhausted all retries
-    throw lastError ?? new ProviderResponseError(this.providerName, undefined, 'Max retries exceeded');
+    throw (
+      lastError ?? new ProviderResponseError(this.providerName, undefined, 'Max retries exceeded')
+    );
   }
 
   /**

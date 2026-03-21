@@ -366,42 +366,45 @@ export class DeepgramSTT extends LiveSTTProvider {
     const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
     const opts = this.config.options;
 
-    const params = buildQueryParams({
-      // Core params (always set)
-      model: opts?.model ?? 'nova-3',
-      language: this.config.language ?? 'en-US',
-      punctuation: opts?.punctuation ?? true,
-      smartFormat: opts?.smartFormat ?? true,
-      interimResults: this.config.interimResults ?? true,
-      endpointing: opts?.endpointing ?? false,
-      vadEvents: opts?.vadEvents ?? false,
-      profanityFilter: opts?.profanityFilter ?? false,
-      diarize: opts?.diarize ?? false,
-      // Optional params (undefined values are skipped)
-      encoding: opts?.encoding,
-      sampleRate: opts?.sampleRate,
-      channels: opts?.channels,
-      redact: opts?.redact,
-      keywords: opts?.keywords,
-      keyterms: opts?.keyterms,
-      numerals: opts?.numerals,
-      multichannel: opts?.multichannel,
-      dictation: opts?.dictation,
-      replace: opts?.replace,
-      search: opts?.search,
-      utteranceEndMs: opts?.utteranceEndMs,
-      version: opts?.version,
-      tag: opts?.tag,
-      mipOptOut: opts?.mipOptOut,
-      extra: opts?.extra,
-      detectEntities: opts?.detectEntities,
-      alternatives: opts?.alternatives,
-      utterances: opts?.utterances,
-    }, {
-      // Naming exceptions where camelToSnake doesn't match the API
-      punctuation: 'punctuate',
-      keyterms: 'keyterm',
-    });
+    const params = buildQueryParams(
+      {
+        // Core params (always set)
+        model: opts?.model ?? 'nova-3',
+        language: this.config.language ?? 'en-US',
+        punctuation: opts?.punctuation ?? true,
+        smartFormat: opts?.smartFormat ?? true,
+        interimResults: this.config.interimResults ?? true,
+        endpointing: opts?.endpointing ?? false,
+        vadEvents: opts?.vadEvents ?? false,
+        profanityFilter: opts?.profanityFilter ?? false,
+        diarize: opts?.diarize ?? false,
+        // Optional params (undefined values are skipped)
+        encoding: opts?.encoding,
+        sampleRate: opts?.sampleRate,
+        channels: opts?.channels,
+        redact: opts?.redact,
+        keywords: opts?.keywords,
+        keyterms: opts?.keyterms,
+        numerals: opts?.numerals,
+        multichannel: opts?.multichannel,
+        dictation: opts?.dictation,
+        replace: opts?.replace,
+        search: opts?.search,
+        utteranceEndMs: opts?.utteranceEndMs,
+        version: opts?.version,
+        tag: opts?.tag,
+        mipOptOut: opts?.mipOptOut,
+        extra: opts?.extra,
+        detectEntities: opts?.detectEntities,
+        alternatives: opts?.alternatives,
+        utterances: opts?.utterances,
+      },
+      {
+        // Naming exceptions where camelToSnake doesn't match the API
+        punctuation: 'punctuate',
+        keyterms: 'keyterm',
+      }
+    );
 
     return `${base}/v1/listen?${params.toString()}`;
   }

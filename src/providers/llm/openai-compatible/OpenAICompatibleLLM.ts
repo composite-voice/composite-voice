@@ -364,7 +364,10 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
             ...options.extra,
           };
 
-          const response = await client.request('/chat/completions', { body, ...(signal ? { signal } : {}) });
+          const response = await client.request('/chat/completions', {
+            body,
+            ...(signal ? { signal } : {}),
+          });
           const data = await response.json();
 
           const content = data.choices?.[0]?.message?.content ?? '';

@@ -11,7 +11,7 @@
  */
 export function buildQueryParams(
   opts: Record<string, string | string[] | number | boolean | undefined>,
-  keyMap?: Record<string, string>,
+  keyMap?: Record<string, string>
 ): URLSearchParams {
   const params = new URLSearchParams();
 

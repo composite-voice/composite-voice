@@ -318,10 +318,7 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
 
             const data = JSON.parse(event.data);
 
-            if (
-              data.type === 'content_block_delta' &&
-              data.delta?.type === 'text_delta'
-            ) {
+            if (data.type === 'content_block_delta' && data.delta?.type === 'text_delta') {
               yield data.delta.text;
             }
           }
@@ -370,7 +367,10 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             ...(options.extra ?? {}),
           };
 
-          const response = await client.request('/v1/messages', { body, ...(signal ? { signal } : {}) });
+          const response = await client.request('/v1/messages', {
+            body,
+            ...(signal ? { signal } : {}),
+          });
           const data = await response.json();
 
           const content = data.content?.[0];
@@ -461,7 +461,6 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
           // Track active tool call state during streaming
           let activeToolId = '';
           let activeToolName = '';
-          let activeToolArgs = '';
 
           for await (const event of parseSSEStream(response.body!, signal)) {
             if (signal?.aborted) break;
@@ -473,7 +472,6 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
               if (block?.type === 'tool_use') {
                 activeToolId = block.id ?? '';
                 activeToolName = block.name ?? '';
-                activeToolArgs = '';
                 yield {
                   type: 'tool_call_start',
                   toolCall: { id: activeToolId, name: activeToolName },
@@ -483,7 +481,6 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
               if (data.delta?.type === 'text_delta' && data.delta.text) {
                 yield { type: 'text', text: data.delta.text };
               } else if (data.delta?.type === 'input_json_delta' && data.delta.partial_json) {
-                activeToolArgs += data.delta.partial_json;
                 yield {
                   type: 'tool_call_delta',
                   toolCallId: activeToolId,

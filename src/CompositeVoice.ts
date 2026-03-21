@@ -2038,11 +2038,18 @@ export class CompositeVoice {
     let activeToolId = '';
 
     const router = new LLMTextRouter(
-      (visual, spoken, acc) => this.emitEvent({
-        type: 'llm.chunk', chunk: visual, accumulated: acc,
-        visual, spoken, timestamp: Date.now(),
-      }),
-      (spoken) => { if (isLiveTTS(tts) && !this._outputMuted) tts.sendText(spoken); },
+      (visual, spoken, acc) =>
+        this.emitEvent({
+          type: 'llm.chunk',
+          chunk: visual,
+          accumulated: acc,
+          visual,
+          spoken,
+          timestamp: Date.now(),
+        }),
+      (spoken) => {
+        if (isLiveTTS(tts) && !this._outputMuted) tts.sendText(spoken);
+      }
     );
 
     // Ensure Live TTS WebSocket is connected before streaming begins
@@ -2163,7 +2170,11 @@ export class CompositeVoice {
                   messages.push({ role: 'assistant', content: fullText, toolCalls });
                   for (const tc of toolCalls) {
                     const result = await toolConfig.onToolCall(tc);
-                    messages.push({ role: 'tool', content: result.content, toolCallId: result.toolCallId });
+                    messages.push({
+                      role: 'tool',
+                      content: result.content,
+                      toolCallId: result.toolCallId,
+                    });
                   }
 
                   fullText = '';
