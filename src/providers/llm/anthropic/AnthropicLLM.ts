@@ -1,5 +1,5 @@
 /**
- * Anthropic LLM provider using the official `@anthropic-ai/sdk` package.
+ * Anthropic LLM provider using native `fetch` with SSE streaming.
  *
  * @packageDocumentation
  *
@@ -10,9 +10,8 @@
  * `content_block_delta` streaming events, and `stop_sequences` (rather than
  * `stop`).
  *
- * The `@anthropic-ai/sdk` npm package is a **peer dependency** and is
- * dynamically imported during initialization. It does not need to be bundled
- * unless this provider is used.
+ * Uses native `fetch` via the shared {@link HttpClient} and {@link SSEParser}
+ * utilities — no SDK dependency required.
  *
  * @see {@link BaseLLMProvider} for the abstract base class all LLM providers extend.
  * @see {@link OpenAICompatibleLLM} for the OpenAI-compatible base class used by other providers.
@@ -28,13 +27,24 @@ import type {
   ToolAwareLLMProvider,
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError } from '../../../utils/errors';
+import { HttpClient } from '../../../utils/http';
+import { parseSSEStream } from '../../../utils/sse';
+import { throwIfAborted, rethrowIfAborted } from '../../../utils/abort';
 
-// Type-safe imports for optional peer dependency
-type AnthropicSDK = typeof import('@anthropic-ai/sdk').default;
-type AnthropicInstance = InstanceType<AnthropicSDK>;
-type MessageParam = import('@anthropic-ai/sdk/resources/messages').MessageParam;
-type MessageStreamEvent = import('@anthropic-ai/sdk/resources/messages').MessageStreamEvent;
+/**
+ * Anthropic message format — a subset of the Messages API types we actually use.
+ * @internal
+ */
+interface AnthropicMessageParam {
+  role: 'user' | 'assistant';
+  content:
+    | string
+    | Array<
+        | { type: 'text'; text: string }
+        | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+        | { type: 'tool_result'; tool_use_id: string; content: string }
+      >;
+}
 
 /**
  * Configuration for the Anthropic LLM provider.
@@ -96,14 +106,19 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
   maxRetries?: number;
 }
 
+/** @internal Default Anthropic API base URL. */
+const ANTHROPIC_DEFAULT_URL = 'https://api.anthropic.com';
+
+/** @internal Anthropic API version header value. */
+const ANTHROPIC_VERSION = '2023-06-01';
+
 /**
  * Anthropic LLM provider for Claude models.
  *
  * @remarks
- * Uses the official `@anthropic-ai/sdk` for the Messages API with full support
- * for streaming (`messages.stream`) and non-streaming (`messages.create`)
- * responses. The provider handles the Anthropic-specific message format
- * automatically:
+ * Uses native `fetch` via {@link HttpClient} for the Messages API with full
+ * support for streaming (SSE) and non-streaming responses. The provider
+ * handles the Anthropic-specific message format automatically:
  *
  * - **System messages** are extracted from the message array and passed as the
  *   top-level `system` parameter (Anthropic does not accept `role: 'system'`
@@ -111,7 +126,7 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  * - **Streaming** yields text from `content_block_delta` events with
  *   `type: 'text_delta'`.
  * - **Abort** support is provided via the `options.signal` parameter, which is
- *   forwarded to the Anthropic SDK to cancel in-flight HTTP requests.
+ *   forwarded to the underlying fetch request.
  *
  * @example Basic usage with direct API access
  * ```ts
@@ -155,20 +170,14 @@ export interface AnthropicLLMConfig extends LLMProviderConfig {
  */
 export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvider {
   declare public config: AnthropicLLMConfig;
-  private client: AnthropicInstance | null = null;
+  private client: HttpClient | null = null;
 
   /**
    * Creates a new Anthropic LLM provider instance.
    *
-   * @remarks
-   * The constructor normalizes the configuration by applying defaults:
-   * `maxTokens` defaults to `1024`, `stream` defaults to `true`, and
-   * `model` defaults to `'claude-haiku-4-5'`.
-   *
    * @param config - Anthropic provider configuration. Must include at least
    *   `model` and either `apiKey` or `proxyUrl`.
-   * @param logger - Optional custom logger instance. If omitted, a default
-   *   logger is created by the base class.
+   * @param logger - Optional custom logger instance.
    */
   constructor(config: AnthropicLLMConfig, logger?: Logger) {
     const normalizedConfig: AnthropicLLMConfig = {
@@ -181,95 +190,54 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   }
 
   /**
-   * Initialize the Anthropic client.
-   *
-   * @remarks
-   * Dynamically imports the `@anthropic-ai/sdk` peer dependency, resolves the
-   * base URL (preferring `proxyUrl` over `baseURL`), and creates the SDK client
-   * instance. Called automatically by {@link BaseLLMProvider.initialize}.
+   * Initialize the HTTP client for the Anthropic Messages API.
    *
    * @throws {@link ProviderInitializationError}
-   * Thrown if neither `apiKey` nor `proxyUrl` is configured, or if the
-   * `@anthropic-ai/sdk` package cannot be found (peer dependency not installed).
+   * Thrown if neither `apiKey` nor `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
     this.assertAuth();
 
-    try {
-      // Dynamically import Anthropic SDK (peer dependency)
-      const AnthropicModule = await import('@anthropic-ai/sdk');
-      const Anthropic = AnthropicModule.default;
+    const baseUrl = this.resolveBaseUrl(ANTHROPIC_DEFAULT_URL)!;
+    const apiKey = this.resolveApiKey();
 
-      // Initialize Anthropic client
-      this.client = new Anthropic({
-        apiKey: this.resolveApiKey(),
-        baseURL: this.resolveBaseUrl(),
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-      });
+    // Anthropic uses x-api-key header (not Bearer)
+    const headers: Record<string, string> = {
+      'anthropic-version': ANTHROPIC_VERSION,
+    };
 
-      this.logger.info('Anthropic LLM initialized', {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'AnthropicLLM',
-          new Error(
-            'Anthropic SDK not found. Install with: npm install @anthropic-ai/sdk\n' +
-              'The Anthropic SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('AnthropicLLM', error as Error);
+    if (!this.isProxyMode) {
+      headers['x-api-key'] = apiKey;
     }
+
+    this.client = new HttpClient({
+      baseUrl,
+      headers,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      logger: this.logger,
+      providerName: 'AnthropicLLM',
+    });
+
+    this.logger.info('Anthropic LLM initialized', {
+      model: this.config.model,
+      stream: this.config.stream ?? true,
+    });
   }
 
   /**
-   * Dispose of the Anthropic client and release resources.
-   *
-   * @remarks
-   * Nullifies the client reference so that it can be garbage-collected.
-   * Called automatically by {@link BaseLLMProvider.dispose}.
+   * Dispose of the HTTP client.
    */
   protected async onDispose(): Promise<void> {
     this.client = null;
     this.logger.info('Anthropic LLM disposed');
   }
 
-  /**
-   * Generate an LLM response from a single text prompt.
-   *
-   * @remarks
-   * Convenience wrapper that converts the prompt to a message array (prepending
-   * the system prompt if configured) and delegates to
-   * {@link AnthropicLLM.generateFromMessages | generateFromMessages}.
-   *
-   * @param prompt - The user's text prompt.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the client is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   */
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     const messages = this.promptToMessages(prompt);
     return this.generateFromMessages(messages, options);
   }
 
-  /**
-   * Implement the abstract {@link BaseLLMProvider.processMessages} method.
-   *
-   * @remarks
-   * Delegates to {@link generateFromMessages}.
-   */
   async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
@@ -281,117 +249,45 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
    * Generate an LLM response from a multi-turn conversation.
    *
    * @remarks
-   * This is the primary generation method. It extracts system messages from the
-   * array and passes them as Anthropic's top-level `system` parameter (since
-   * Anthropic does not accept `role: 'system'` inline). Remaining messages are
-   * converted to the Anthropic `MessageParam` format.
-   *
-   * Dispatches to either the streaming (`messages.stream`) or non-streaming
-   * (`messages.create`) code path based on `config.stream`.
-   *
-   * @param messages - Array of conversation messages (system, user, assistant).
-   *   System messages are extracted and concatenated into the top-level `system`
-   *   parameter.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally from `content_block_delta`
-   *   events; otherwise, a single chunk containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the client is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   *
-   * @example
-   * ```ts
-   * const messages: LLMMessage[] = [
-   *   { role: 'system', content: 'You are a helpful assistant.' },
-   *   { role: 'user', content: 'Summarize the theory of relativity.' },
-   * ];
-   *
-   * const stream = await anthropicLLM.generateFromMessages(messages);
-   * for await (const chunk of stream) {
-   *   process.stdout.write(chunk);
-   * }
-   * ```
+   * Extracts system messages from the array and passes them as Anthropic's
+   * top-level `system` parameter. Dispatches to either the streaming or
+   * non-streaming code path based on `config.stream`.
    */
   async generateFromMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
     this.assertReady();
-
-    if (!this.client) {
-      throw new Error('Anthropic client not initialized');
-    }
+    if (!this.client) throw new Error('Anthropic client not initialized');
 
     const mergedOptions = this.mergeOptions(options);
     const shouldStream = this.config.stream ?? true;
 
-    // Extract system message (Anthropic uses a top-level system param)
-    // Combine config.systemPrompt with any inline system messages (deduplicating)
-    const systemMessages = messages.filter((m) => m.role === 'system');
-    const userMessages = messages.filter((m) => m.role !== 'system');
-
-    const parts: string[] = [];
-    if (this.config.systemPrompt) parts.push(this.config.systemPrompt);
-    for (const sm of systemMessages) {
-      // Don't duplicate if the system message IS the config prompt
-      if (sm.content !== this.config.systemPrompt) {
-        parts.push(sm.content);
-      }
-    }
-    const system = parts.length > 0 ? parts.join('\n\n') : undefined;
-
-    // Convert to Anthropic message format
-    const anthropicMessages: MessageParam[] = userMessages.map((msg) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-    }));
+    const { system, anthropicMessages } = this.convertMessages(messages);
 
     if (shouldStream) {
-      return this.streamResponse(anthropicMessages, system, mergedOptions);
+      return this.streamResponse(anthropicMessages, system, mergedOptions, options?.signal);
     } else {
-      return this.nonStreamResponse(anthropicMessages, system, mergedOptions);
+      return this.nonStreamResponse(anthropicMessages, system, mergedOptions, options?.signal);
     }
   }
 
   /**
-   * Stream a response from the Anthropic Messages API.
-   *
-   * @remarks
-   * Uses `client.messages.stream()` to open a server-sent events stream.
-   * Yields text from `content_block_delta` events where `delta.type` is
-   * `'text_delta'`. The abort signal is forwarded to the SDK so that in-flight
-   * HTTP requests can be cancelled.
-   *
-   * @param messages - Messages in Anthropic `MessageParam` format (no system role).
-   * @param system - Concatenated system prompt, or `undefined` if none.
-   * @param options - Merged generation options including an optional abort signal.
-   * @returns An async iterable of streamed text tokens.
+   * Stream a response from the Anthropic Messages API via SSE.
    */
   private async streamResponse(
-    messages: MessageParam[],
+    messages: AnthropicMessageParam[],
     system: string | undefined,
-    options: LLMGenerationOptions
+    options: LLMGenerationOptions,
+    signal?: AbortSignal
   ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error('Anthropic client not initialized');
-    }
-
-    const client = this.client;
+    const client = this.client!;
     const config = this.config;
     const logger = this.logger;
-    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
+        throwIfAborted(signal);
 
         try {
           logger.debug('Starting Anthropic streaming request', {
@@ -399,35 +295,40 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             messageCount: messages.length,
           });
 
-          const streamParams = {
+          const body = {
             model: config.model,
             max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
             messages,
+            stream: true,
             ...(system ? { system } : {}),
             ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(options.stopSequences ? { stop_sequences: options.stopSequences } : {}),
             ...(options.extra ?? {}),
           };
-          // Pass AbortSignal to the Anthropic SDK so it can cancel the HTTP request
-          const stream = signal
-            ? client.messages.stream(streamParams, { signal })
-            : client.messages.stream(streamParams);
 
-          for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
+          const response = await client.request('/v1/messages', {
+            body,
+            ...(signal ? { signal } : {}),
+            stream: true,
+          });
+
+          for await (const event of parseSSEStream(response.body!, signal)) {
             if (signal?.aborted) break;
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              yield event.delta.text;
+
+            const data = JSON.parse(event.data);
+
+            if (
+              data.type === 'content_block_delta' &&
+              data.delta?.type === 'text_delta'
+            ) {
+              yield data.delta.text;
             }
           }
 
           logger.debug('Anthropic streaming request completed');
         } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
+          rethrowIfAborted(error, signal);
           logger.error('Anthropic streaming request failed', error);
           throw error;
         }
@@ -437,38 +338,20 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
 
   /**
    * Perform a non-streaming request to the Anthropic Messages API.
-   *
-   * @remarks
-   * Makes a single API call with `stream: false` and yields the entire text
-   * content of the first content block as one string. Usage statistics
-   * (input/output tokens) are logged at debug level.
-   *
-   * @param messages - Messages in Anthropic `MessageParam` format (no system role).
-   * @param system - Concatenated system prompt, or `undefined` if none.
-   * @param options - Merged generation options including an optional abort signal.
-   * @returns An async iterable that yields a single string containing the full response.
    */
   private async nonStreamResponse(
-    messages: MessageParam[],
+    messages: AnthropicMessageParam[],
     system: string | undefined,
-    options: LLMGenerationOptions
+    options: LLMGenerationOptions,
+    signal?: AbortSignal
   ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error('Anthropic client not initialized');
-    }
-
-    const client = this.client;
+    const client = this.client!;
     const config = this.config;
     const logger = this.logger;
-    const signal = options.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
+        throwIfAborted(signal);
 
         try {
           logger.debug('Starting Anthropic non-streaming request', {
@@ -476,7 +359,7 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             messageCount: messages.length,
           });
 
-          const createParams = {
+          const body = {
             model: config.model,
             max_tokens: options.maxTokens ?? config.maxTokens ?? 1024,
             messages,
@@ -484,28 +367,23 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
             ...(config.topP !== undefined ? { top_p: config.topP } : {}),
             ...(options.stopSequences ? { stop_sequences: options.stopSequences } : {}),
-            stream: false as const,
             ...(options.extra ?? {}),
           };
-          const response = signal
-            ? await client.messages.create(createParams, { signal })
-            : await client.messages.create(createParams);
 
-          const content = response.content[0];
+          const response = await client.request('/v1/messages', { body, ...(signal ? { signal } : {}) });
+          const data = await response.json();
+
+          const content = data.content?.[0];
           if (content?.type === 'text') {
             yield content.text;
           }
 
           logger.debug('Anthropic non-streaming request completed', {
-            inputTokens: response.usage.input_tokens,
-            outputTokens: response.usage.output_tokens,
+            inputTokens: data.usage?.input_tokens,
+            outputTokens: data.usage?.output_tokens,
           });
         } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
+          rethrowIfAborted(error, signal);
           logger.error('Anthropic non-streaming request failed', error);
           throw error;
         }
@@ -529,46 +407,9 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
     if (!this.client) throw new Error('Anthropic client not initialized');
 
     const mergedOptions = this.mergeOptions(options);
+    const signal = mergedOptions.signal ?? options?.signal;
 
-    // Extract system messages (Anthropic uses top-level system param)
-    const systemMessages = messages.filter((m) => m.role === 'system');
-    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-
-    const parts: string[] = [];
-    if (this.config.systemPrompt) parts.push(this.config.systemPrompt);
-    if (systemMessages.length > 0) parts.push(...systemMessages.map((m) => m.content));
-    const system = parts.length > 0 ? parts.join('\n\n') : undefined;
-
-    // Convert messages to Anthropic format, handling tool messages
-    const anthropicMessages: MessageParam[] = nonSystemMessages.map((msg) => {
-      if (msg.role === 'assistant' && msg.toolCalls?.length) {
-        // Assistant message with tool use — create content blocks
-        const content: Array<
-          | { type: 'text'; text: string }
-          | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
-        > = [];
-        if (msg.content) content.push({ type: 'text', text: msg.content });
-        for (const tc of msg.toolCalls) {
-          content.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.arguments });
-        }
-        return { role: 'assistant' as const, content };
-      }
-      if (msg.role === 'tool') {
-        // Tool result — Anthropic uses role: 'user' with tool_result content
-        return {
-          role: 'user' as const,
-          content: [
-            {
-              type: 'tool_result' as const,
-              tool_use_id: msg.toolCallId!,
-              content: msg.content,
-              ...(msg.toolCallId ? {} : {}),
-            },
-          ],
-        };
-      }
-      return { role: msg.role as 'user' | 'assistant', content: msg.content };
-    });
+    const { system, anthropicMessages } = this.convertMessages(messages, true);
 
     // Convert tool definitions to Anthropic format
     const tools = options?.tools?.map((t) => ({
@@ -584,15 +425,10 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
     const client = this.client;
     const config = this.config;
     const logger = this.logger;
-    const signal = mergedOptions.signal;
 
     return {
       async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
+        throwIfAborted(signal);
 
         try {
           logger.debug('Starting Anthropic tool-aware streaming request', {
@@ -601,10 +437,11 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             toolCount: tools?.length ?? 0,
           });
 
-          const streamParams = {
+          const body = {
             model: config.model,
             max_tokens: mergedOptions.maxTokens ?? config.maxTokens ?? 1024,
             messages: anthropicMessages,
+            stream: true,
             ...(system ? { system } : {}),
             ...(tools?.length ? { tools } : {}),
             ...(mergedOptions.temperature !== undefined
@@ -615,23 +452,25 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             ...(mergedOptions.extra ?? {}),
           };
 
-          const stream = signal
-            ? client.messages.stream(streamParams, { signal })
-            : client.messages.stream(streamParams);
+          const response = await client.request('/v1/messages', {
+            body,
+            ...(signal ? { signal } : {}),
+            stream: true,
+          });
 
           // Track active tool call state during streaming
           let activeToolId = '';
           let activeToolName = '';
           let activeToolArgs = '';
 
-          for await (const event of stream as AsyncIterable<MessageStreamEvent>) {
+          for await (const event of parseSSEStream(response.body!, signal)) {
             if (signal?.aborted) break;
 
-            if (event.type === 'content_block_start') {
-              const block = (
-                event as unknown as { content_block: { type: string; id?: string; name?: string } }
-              ).content_block;
-              if (block.type === 'tool_use') {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'content_block_start') {
+              const block = data.content_block;
+              if (block?.type === 'tool_use') {
                 activeToolId = block.id ?? '';
                 activeToolName = block.name ?? '';
                 activeToolArgs = '';
@@ -640,30 +479,24 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
                   toolCall: { id: activeToolId, name: activeToolName },
                 };
               }
-            } else if (event.type === 'content_block_delta') {
-              const delta = (
-                event as unknown as {
-                  delta: { type: string; text?: string; partial_json?: string };
-                }
-              ).delta;
-              if (delta.type === 'text_delta' && delta.text) {
-                yield { type: 'text', text: delta.text };
-              } else if (delta.type === 'input_json_delta' && delta.partial_json) {
-                activeToolArgs += delta.partial_json;
+            } else if (data.type === 'content_block_delta') {
+              if (data.delta?.type === 'text_delta' && data.delta.text) {
+                yield { type: 'text', text: data.delta.text };
+              } else if (data.delta?.type === 'input_json_delta' && data.delta.partial_json) {
+                activeToolArgs += data.delta.partial_json;
                 yield {
                   type: 'tool_call_delta',
                   toolCallId: activeToolId,
-                  argumentsDelta: delta.partial_json,
+                  argumentsDelta: data.delta.partial_json,
                 };
               }
-            } else if (event.type === 'content_block_stop') {
+            } else if (data.type === 'content_block_stop') {
               if (activeToolId) {
                 yield { type: 'tool_call_end', toolCallId: activeToolId };
                 activeToolId = '';
               }
-            } else if (event.type === 'message_delta') {
-              const messageDelta = event as unknown as { delta: { stop_reason?: string } };
-              const reason = messageDelta.delta?.stop_reason;
+            } else if (data.type === 'message_delta') {
+              const reason = data.delta?.stop_reason;
               if (reason) {
                 yield {
                   type: 'done',
@@ -675,15 +508,71 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
 
           logger.debug('Anthropic tool-aware streaming request completed');
         } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
+          rethrowIfAborted(error, signal);
           logger.error('Anthropic tool-aware streaming request failed', error);
           throw error;
         }
       },
     };
+  }
+
+  /**
+   * Convert SDK messages to Anthropic format, extracting system messages.
+   * @internal
+   */
+  private convertMessages(
+    messages: LLMMessage[],
+    toolAware = false
+  ): { system: string | undefined; anthropicMessages: AnthropicMessageParam[] } {
+    // Extract system message (Anthropic uses a top-level system param)
+    const systemMessages = messages.filter((m) => m.role === 'system');
+    const userMessages = messages.filter((m) => m.role !== 'system');
+
+    const parts: string[] = [];
+    if (this.config.systemPrompt) parts.push(this.config.systemPrompt);
+    for (const sm of systemMessages) {
+      if (sm.content !== this.config.systemPrompt) {
+        parts.push(sm.content);
+      }
+    }
+    const system = parts.length > 0 ? parts.join('\n\n') : undefined;
+
+    // Convert to Anthropic message format
+    const anthropicMessages: AnthropicMessageParam[] = userMessages.map((msg) => {
+      if (toolAware && msg.role === 'assistant' && msg.toolCalls?.length) {
+        const content: AnthropicMessageParam['content'] = [];
+        if (msg.content)
+          (content as Array<{ type: 'text'; text: string }>).push({
+            type: 'text',
+            text: msg.content,
+          });
+        for (const tc of msg.toolCalls) {
+          (
+            content as Array<{
+              type: 'tool_use';
+              id: string;
+              name: string;
+              input: Record<string, unknown>;
+            }>
+          ).push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.arguments });
+        }
+        return { role: 'assistant' as const, content };
+      }
+      if (toolAware && msg.role === 'tool') {
+        return {
+          role: 'user' as const,
+          content: [
+            {
+              type: 'tool_result' as const,
+              tool_use_id: msg.toolCallId!,
+              content: msg.content,
+            },
+          ],
+        };
+      }
+      return { role: msg.role as 'user' | 'assistant', content: msg.content };
+    });
+
+    return { system, anthropicMessages };
   }
 }

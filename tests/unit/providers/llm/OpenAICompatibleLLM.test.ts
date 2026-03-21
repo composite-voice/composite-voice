@@ -1,32 +1,104 @@
 /**
  * OpenAICompatibleLLM base class tests
+ *
+ * Tests the OpenAICompatibleLLM provider which uses native `fetch` via HttpClient
+ * and SSEParser (no openai SDK dependency).
  */
+
+// Polyfill Web APIs that jsdom does not provide but Node.js does.
+// These are needed for HttpClient and SSE parsing.
+import { TextEncoder, TextDecoder } from 'util';
+import { ReadableStream } from 'stream/web';
+
+global.TextEncoder = TextEncoder as unknown as typeof global.TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
+
+// Polyfill AbortSignal.timeout and AbortSignal.any (not available in jsdom)
+if (typeof AbortSignal.timeout !== 'function') {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+    return controller.signal;
+  };
+}
+if (typeof AbortSignal.any !== 'function') {
+  AbortSignal.any = (signals: AbortSignal[]): AbortSignal => {
+    const controller = new AbortController();
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        break;
+      }
+      signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    }
+    return controller.signal;
+  };
+}
 
 import { OpenAICompatibleLLM } from '../../../../src/providers/llm/openai-compatible/OpenAICompatibleLLM';
 import type { OpenAICompatibleLLMConfig } from '../../../../src/providers/llm/openai-compatible/OpenAICompatibleLLM';
 
-// Mock the OpenAI SDK before imports
-jest.mock('openai', () => {
-  const mockCreate = jest.fn();
-  const MockOpenAI = jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockCreate,
-      },
-    },
-  }));
+// ---------------------------------------------------------------------------
+// Fetch mock helpers
+// ---------------------------------------------------------------------------
 
+/** Create a mock Response-like object with an SSE body stream. */
+function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Response> {
+  const encoder = new TextEncoder();
+  const lines =
+    chunks
+      .map(
+        (c) =>
+          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
+      )
+      .join('') + 'data: [DONE]\n\n';
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(lines));
+      controller.close();
+    },
+  });
   return {
-    __esModule: true,
-    default: MockOpenAI,
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' }),
+    body: stream as any,
+    text: async () => lines,
+    json: async () => ({}),
   };
-});
+}
+
+/** Create a mock Response-like object with a JSON body. */
+function createJSONResponse(data: unknown): Partial<Response> {
+  const text = JSON.stringify(data);
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: null,
+    text: async () => text,
+    json: async () => data,
+  };
+}
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('OpenAICompatibleLLM', () => {
   let provider: OpenAICompatibleLLM;
   let config: OpenAICompatibleLLMConfig;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Default streaming mock so initialization and basic tests work
+    mockFetch.mockResolvedValue(createSSEResponse([{ content: 'Hello' }]));
+
     config = {
       apiKey: 'test-api-key',
       model: 'gpt-4',
@@ -42,6 +114,10 @@ describe('OpenAICompatibleLLM', () => {
       await provider.dispose();
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------------------
 
   describe('initialization', () => {
     it('should initialize successfully with apiKey', async () => {
@@ -85,20 +161,23 @@ describe('OpenAICompatibleLLM', () => {
       expect(provider.type).toBe('rest');
     });
 
-    it('should pass baseURL to OpenAI SDK when using apiKey', async () => {
+    it('should send fetch to {baseUrl}/chat/completions with authorization header when using apiKey', async () => {
       provider = new OpenAICompatibleLLM(config);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'test-api-key',
-          baseURL: 'https://api.example.com/v1',
-        })
-      );
+      const messages = [{ role: 'user' as const, content: 'Hello' }];
+      const result = await provider.processMessages(messages);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      expect(mockFetch).toHaveBeenCalled();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://api.example.com/v1/chat/completions');
+      expect(options.headers['authorization']).toBe('Bearer test-api-key');
     });
 
-    it('should use proxyUrl as baseURL and set apiKey to "proxy" when proxyUrl is configured', async () => {
+    it('should use proxyUrl as baseUrl and omit authorization header when proxyUrl is configured', async () => {
       const proxyConfig: OpenAICompatibleLLMConfig = {
         model: 'gpt-4',
         proxyUrl: 'http://localhost:3000/proxy/custom',
@@ -106,66 +185,45 @@ describe('OpenAICompatibleLLM', () => {
       provider = new OpenAICompatibleLLM(proxyConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'proxy',
-          baseURL: 'http://localhost:3000/proxy/custom',
-        })
-      );
-    });
+      const messages = [{ role: 'user' as const, content: 'Hello' }];
+      const result = await provider.processMessages(messages);
+      for await (const _chunk of result) {
+        // consume
+      }
 
-    it('should pass maxRetries and timeout to OpenAI SDK', async () => {
-      const customConfig: OpenAICompatibleLLMConfig = {
-        ...config,
-        maxRetries: 5,
-        timeout: 30000,
-      };
-      provider = new OpenAICompatibleLLM(customConfig);
-      await provider.initialize();
-
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          maxRetries: 5,
-          timeout: 30000,
-        })
-      );
-    });
-
-    it('should enable dangerouslyAllowBrowser for client-side usage', async () => {
-      provider = new OpenAICompatibleLLM(config);
-      await provider.initialize();
-
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          dangerouslyAllowBrowser: true,
-        })
-      );
+      expect(mockFetch).toHaveBeenCalled();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/proxy/custom/chat/completions');
+      expect(options.headers['authorization']).toBeUndefined();
     });
   });
 
-  describe('buildClientOptions hook', () => {
-    it('should merge custom options from buildClientOptions into SDK config', async () => {
-      // Create a subclass that overrides buildClientOptions
+  // -------------------------------------------------------------------------
+  // buildHeaders hook
+  // -------------------------------------------------------------------------
+
+  describe('buildHeaders hook', () => {
+    it('should merge custom headers from buildHeaders into request', async () => {
       class CustomLLM extends OpenAICompatibleLLM {
         protected override readonly providerName = 'CustomLLM';
 
-        protected override buildClientOptions(): Record<string, unknown> {
-          return { organization: 'org-123' };
+        protected override buildHeaders(): Record<string, string> {
+          return { 'x-custom-header': 'custom-value' };
         }
       }
 
       const customProvider = new CustomLLM(config);
       await customProvider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          organization: 'org-123',
-        })
-      );
+      const messages = [{ role: 'user' as const, content: 'Hello' }];
+      const result = await customProvider.processMessages(messages);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      expect(mockFetch).toHaveBeenCalled();
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.headers['x-custom-header']).toBe('custom-value');
 
       await customProvider.dispose();
     });
@@ -184,6 +242,10 @@ describe('OpenAICompatibleLLM', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // Disposal
+  // -------------------------------------------------------------------------
+
   describe('disposal', () => {
     it('should dispose successfully', async () => {
       provider = new OpenAICompatibleLLM(config);
@@ -198,6 +260,10 @@ describe('OpenAICompatibleLLM', () => {
       await expect(provider.dispose()).resolves.not.toThrow();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // processText
+  // -------------------------------------------------------------------------
 
   describe('processText', () => {
     beforeEach(async () => {
@@ -214,18 +280,7 @@ describe('OpenAICompatibleLLM', () => {
     });
 
     it('should convert prompt to messages with system prompt', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello!' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hello!' }]));
 
       const result = await provider.processText('Hello');
       const chunks: string[] = [];
@@ -233,38 +288,31 @@ describe('OpenAICompatibleLLM', () => {
         chunks.push(chunk);
       }
 
-      expect(mockCreate).toHaveBeenCalled();
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.messages).toEqual([
+      expect(mockFetch).toHaveBeenCalled();
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.messages).toEqual([
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Hello' },
       ]);
     });
 
     it('should merge options with config defaults', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Response' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Response' }]));
 
       const result = await provider.processText('Test', { temperature: 0.9 });
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 
-      expect(mockCreate).toHaveBeenCalled();
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.temperature).toBe(0.9);
-      expect(callArgs.max_tokens).toBe(1000); // from config
+      expect(mockFetch).toHaveBeenCalled();
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.temperature).toBe(0.9);
+      expect(body.max_tokens).toBe(1000); // from config
     });
   });
+
+  // -------------------------------------------------------------------------
+  // processMessages
+  // -------------------------------------------------------------------------
 
   describe('processMessages', () => {
     beforeEach(async () => {
@@ -273,20 +321,9 @@ describe('OpenAICompatibleLLM', () => {
     });
 
     it('should handle streaming responses', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello' } }] };
-          yield { choices: [{ delta: { content: ' world' } }] };
-          yield { choices: [{ delta: { content: '!' } }] };
-        },
-      };
-
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createSSEResponse([{ content: 'Hello' }, { content: ' world' }, { content: '!' }])
+      );
 
       const messages = [
         { role: 'system' as const, content: 'System prompt' },
@@ -301,12 +338,10 @@ describe('OpenAICompatibleLLM', () => {
       }
 
       expect(chunks).toEqual(['Hello', ' world', '!']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: true,
-          messages: expect.any(Array),
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(true);
+      expect(body.messages).toEqual(expect.any(Array));
     });
 
     it('should handle non-streaming responses', async () => {
@@ -314,16 +349,12 @@ describe('OpenAICompatibleLLM', () => {
       provider = new OpenAICompatibleLLM(nonStreamConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      const mockCreate = jest.fn().mockResolvedValue({
-        choices: [{ message: { content: 'Complete response' } }],
-        usage: { total_tokens: 5 },
-      });
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createJSONResponse({
+          choices: [{ message: { content: 'Complete response' } }],
+          usage: { total_tokens: 5 },
+        })
+      );
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
@@ -334,26 +365,13 @@ describe('OpenAICompatibleLLM', () => {
       }
 
       expect(chunks).toEqual(['Complete response']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: false,
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(false);
     });
 
-    it('should pass correct parameters to SDK', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Test' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+    it('should pass correct parameters in the request body', async () => {
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Test' }]));
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const options = {
@@ -367,61 +385,18 @@ describe('OpenAICompatibleLLM', () => {
       const iterator = result[Symbol.asyncIterator]();
       await iterator.next();
 
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: 'gpt-4',
-          messages: expect.any(Array),
-          temperature: 0.8,
-          max_tokens: 500,
-          stop: ['STOP'],
-          frequency_penalty: 0.5,
-        })
-      );
-    });
-
-    it('should handle AbortSignal for streaming', async () => {
-      const OpenAI = require('openai').default;
-      const abortController = new AbortController();
-
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'First' } }] };
-          // Signal abort before second chunk
-          abortController.abort();
-          yield { choices: [{ delta: { content: 'Second' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
-
-      const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.processMessages(messages, {
-        signal: abortController.signal,
-      });
-
-      const chunks: string[] = [];
-      for await (const chunk of result) {
-        chunks.push(chunk);
-      }
-
-      // Should stop after first chunk since signal is aborted
-      expect(chunks).toEqual(['First']);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model).toBe('gpt-4');
+      expect(body.messages).toEqual(expect.any(Array));
+      expect(body.temperature).toBe(0.8);
+      expect(body.max_tokens).toBe(500);
+      expect(body.stop).toEqual(['STOP']);
+      expect(body.frequency_penalty).toBe(0.5);
     });
 
     it('should throw AbortError when signal is already aborted', async () => {
-      const OpenAI = require('openai').default;
       const abortController = new AbortController();
       abortController.abort();
-
-      const mockCreate = jest.fn();
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages, {
@@ -436,21 +411,29 @@ describe('OpenAICompatibleLLM', () => {
     });
 
     it('should skip empty delta content', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello' } }] };
-          yield { choices: [{ delta: {} }] }; // no content
-          yield { choices: [{ delta: { content: '' } }] }; // empty string
-          yield { choices: [{ delta: { content: ' world' } }] };
+      const encoder = new TextEncoder();
+      const lines = [
+        `data: ${JSON.stringify({ choices: [{ delta: { content: 'Hello' } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: {} }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: '' } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: ' world' } }] })}\n\n`,
+        'data: [DONE]\n\n',
+      ].join('');
+
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(lines));
+          controller.close();
         },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: stream as any,
+        text: async () => lines,
+        json: async () => ({}),
+      });
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
@@ -462,37 +445,11 @@ describe('OpenAICompatibleLLM', () => {
 
       expect(chunks).toEqual(['Hello', ' world']);
     });
-
-    it('should pass signal to SDK when streaming', async () => {
-      const OpenAI = require('openai').default;
-      const abortController = new AbortController();
-
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Test' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
-
-      const messages = [{ role: 'user' as const, content: 'Test' }];
-      const result = await provider.processMessages(messages, {
-        signal: abortController.signal,
-      });
-      for await (const _chunk of result) {
-        // consume
-      }
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.objectContaining({ signal: abortController.signal })
-      );
-    });
   });
+
+  // -------------------------------------------------------------------------
+  // Subclass usage
+  // -------------------------------------------------------------------------
 
   describe('subclass usage', () => {
     it('should work as a base for custom providers', async () => {
@@ -511,13 +468,18 @@ describe('OpenAICompatibleLLM', () => {
 
       expect(groqProvider.isReady()).toBe(true);
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'groq-key',
-          baseURL: 'https://api.groq.com/openai/v1',
-        })
-      );
+      // Verify the fetch URL and headers when making a request
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await groqProvider.processMessages([
+        { role: 'user', content: 'Hello' },
+      ]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
+      expect(options.headers['authorization']).toBe('Bearer groq-key');
 
       await groqProvider.dispose();
     });

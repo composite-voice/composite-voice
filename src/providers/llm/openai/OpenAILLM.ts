@@ -116,19 +116,19 @@ export class OpenAILLM extends OpenAICompatibleLLM {
   }
 
   /**
-   * Build OpenAI-specific SDK constructor options.
+   * Build OpenAI-specific request headers.
    *
    * @remarks
-   * Injects the `organization` field into the OpenAI SDK constructor when
+   * Injects the `OpenAI-Organization` header when
    * {@link OpenAILLMConfig.organizationId | organizationId} is configured.
    *
-   * @returns An object containing the `organization` key if set, or an empty object.
+   * @returns An object containing the organization header if set, or an empty object.
    */
-  protected override buildClientOptions(): Record<string, unknown> {
-    const options: Record<string, unknown> = {};
+  protected override buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
     if (this.config.organizationId) {
-      options.organization = this.config.organizationId;
+      headers['openai-organization'] = this.config.organizationId;
     }
-    return options;
+    return headers;
   }
 }

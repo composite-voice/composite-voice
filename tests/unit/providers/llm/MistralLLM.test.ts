@@ -1,32 +1,103 @@
 /**
  * Mistral LLM Provider tests
+ *
+ * Tests the MistralLLM provider which uses native `fetch` via HttpClient
+ * and SSEParser (no openai SDK dependency).
  */
+
+// Polyfill Web APIs that jsdom does not provide but Node.js does.
+import { TextEncoder, TextDecoder } from 'util';
+import { ReadableStream } from 'stream/web';
+
+global.TextEncoder = TextEncoder as unknown as typeof global.TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
+
+// Polyfill AbortSignal.timeout and AbortSignal.any (not available in jsdom)
+if (typeof AbortSignal.timeout !== 'function') {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+    return controller.signal;
+  };
+}
+if (typeof AbortSignal.any !== 'function') {
+  AbortSignal.any = (signals: AbortSignal[]): AbortSignal => {
+    const controller = new AbortController();
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        break;
+      }
+      signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    }
+    return controller.signal;
+  };
+}
 
 import { MistralLLM } from '../../../../src/providers/llm/mistral/MistralLLM';
 import type { MistralLLMConfig } from '../../../../src/providers/llm/mistral/MistralLLM';
 
-// Mock the OpenAI SDK before imports
-jest.mock('openai', () => {
-  const mockCreate = jest.fn();
-  const MockOpenAI = jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockCreate,
-      },
-    },
-  }));
+// ---------------------------------------------------------------------------
+// Fetch mock helpers
+// ---------------------------------------------------------------------------
 
+/** Create a mock Response-like object with an SSE body stream. */
+function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Response> {
+  const encoder = new TextEncoder();
+  const lines =
+    chunks
+      .map(
+        (c) =>
+          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
+      )
+      .join('') + 'data: [DONE]\n\n';
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(lines));
+      controller.close();
+    },
+  });
   return {
-    __esModule: true,
-    default: MockOpenAI,
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' }),
+    body: stream as any,
+    text: async () => lines,
+    json: async () => ({}),
   };
-});
+}
+
+/** Create a mock Response-like object with a JSON body. */
+function createJSONResponse(data: unknown): Partial<Response> {
+  const text = JSON.stringify(data);
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: null,
+    text: async () => text,
+    json: async () => data,
+  };
+}
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('MistralLLM', () => {
   let provider: MistralLLM;
   let config: MistralLLMConfig;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Default streaming mock so initialization and basic tests work
+    mockFetch.mockResolvedValue(createSSEResponse([{ content: 'Hello' }]));
+
     config = {
       mistralApiKey: 'test-mistral-key',
       model: 'mistral-small-latest',
@@ -41,6 +112,10 @@ describe('MistralLLM', () => {
       await provider.dispose();
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------------------
 
   describe('initialization', () => {
     it('should initialize successfully with mistralApiKey', async () => {
@@ -70,12 +145,15 @@ describe('MistralLLM', () => {
       provider = new MistralLLM(bothConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'mistral-key-wins',
-        })
-      );
+      // Verify the authorization header uses mistralApiKey
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.headers['authorization']).toBe('Bearer mistral-key-wins');
     });
 
     it('should store configuration', async () => {
@@ -111,17 +189,23 @@ describe('MistralLLM', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // Mistral-specific defaults
+  // -------------------------------------------------------------------------
+
   describe('Mistral-specific defaults', () => {
-    it('should default baseURL to Mistral API endpoint', async () => {
+    it('should default fetch URL to Mistral API endpoint', async () => {
       provider = new MistralLLM(config);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://api.mistral.ai/v1',
-        })
-      );
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://api.mistral.ai/v1/chat/completions');
     });
 
     it('should allow overriding endpoint', async () => {
@@ -132,12 +216,14 @@ describe('MistralLLM', () => {
       provider = new MistralLLM(customConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://custom.mistral.endpoint/v1',
-        })
-      );
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://custom.mistral.endpoint/v1/chat/completions');
     });
 
     it('should default model to mistral-small-latest', async () => {
@@ -159,7 +245,7 @@ describe('MistralLLM', () => {
       expect(provider.getConfig().model).toBe('mistral-large-latest');
     });
 
-    it('should use proxyUrl as baseURL when in proxy mode', async () => {
+    it('should use proxyUrl as baseUrl and omit auth header when in proxy mode', async () => {
       const proxyConfig: MistralLLMConfig = {
         proxyUrl: 'http://localhost:3000/proxy/mistral',
         model: 'mistral-small-latest',
@@ -167,15 +253,21 @@ describe('MistralLLM', () => {
       provider = new MistralLLM(proxyConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'http://localhost:3000/proxy/mistral',
-          apiKey: 'proxy',
-        })
-      );
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/proxy/mistral/chat/completions');
+      expect(options.headers['authorization']).toBeUndefined();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Disposal
+  // -------------------------------------------------------------------------
 
   describe('disposal', () => {
     it('should dispose successfully', async () => {
@@ -192,6 +284,10 @@ describe('MistralLLM', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // processText
+  // -------------------------------------------------------------------------
+
   describe('processText', () => {
     beforeEach(async () => {
       provider = new MistralLLM(config);
@@ -207,34 +303,26 @@ describe('MistralLLM', () => {
     });
 
     it('should convert prompt to messages', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello!' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hello!' }]));
 
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
-
-      const result = provider.processText('Hello', { temperature: 0.5 });
-      const iterator = await result;
+      const result = await provider.processText('Hello', { temperature: 0.5 });
       const chunks: string[] = [];
-      for await (const chunk of iterator) {
+      for await (const chunk of result) {
         chunks.push(chunk);
       }
 
-      expect(mockCreate).toHaveBeenCalled();
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.messages).toEqual([
+      expect(mockFetch).toHaveBeenCalled();
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.messages).toEqual([
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Hello' },
       ]);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // processMessages
+  // -------------------------------------------------------------------------
 
   describe('processMessages', () => {
     beforeEach(async () => {
@@ -243,20 +331,9 @@ describe('MistralLLM', () => {
     });
 
     it('should handle streaming responses', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello' } }] };
-          yield { choices: [{ delta: { content: ' world' } }] };
-          yield { choices: [{ delta: { content: '!' } }] };
-        },
-      };
-
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createSSEResponse([{ content: 'Hello' }, { content: ' world' }, { content: '!' }])
+      );
 
       const messages = [
         { role: 'system' as const, content: 'System prompt' },
@@ -271,13 +348,11 @@ describe('MistralLLM', () => {
       }
 
       expect(chunks).toEqual(['Hello', ' world', '!']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: true,
-          messages: expect.any(Array),
-          model: 'mistral-small-latest',
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(true);
+      expect(body.messages).toEqual(expect.any(Array));
+      expect(body.model).toBe('mistral-small-latest');
     });
 
     it('should handle non-streaming responses', async () => {
@@ -285,16 +360,12 @@ describe('MistralLLM', () => {
       provider = new MistralLLM(nonStreamConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      const mockCreate = jest.fn().mockResolvedValue({
-        choices: [{ message: { content: 'Complete response' } }],
-        usage: { total_tokens: 5 },
-      });
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createJSONResponse({
+          choices: [{ message: { content: 'Complete response' } }],
+          usage: { total_tokens: 5 },
+        })
+      );
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
@@ -305,13 +376,15 @@ describe('MistralLLM', () => {
       }
 
       expect(chunks).toEqual(['Complete response']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: false,
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(false);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Configuration
+  // -------------------------------------------------------------------------
 
   describe('configuration', () => {
     it('should support custom max retries', async () => {

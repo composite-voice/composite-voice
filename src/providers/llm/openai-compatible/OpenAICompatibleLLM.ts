@@ -7,13 +7,12 @@
  * Groq, Mistral, Gemini, DeepSeek, Perplexity, and others all expose
  * OpenAI-compatible `/v1/chat/completions` endpoints. This module provides the
  * {@link OpenAICompatibleLLM} base class that handles the shared logic --
- * dynamic SDK import, streaming, non-streaming, abort, and proxy mode -- so
- * concrete subclasses only need to supply a `baseURL` and `providerName`.
+ * native fetch via {@link HttpClient}, SSE streaming, non-streaming, abort,
+ * and proxy mode -- so concrete subclasses only need to supply a `baseURL`
+ * and `providerName`.
  *
- * This module follows the **Template Method** design pattern: the base class
- * defines the algorithm skeleton (`generate`, `generateFromMessages`,
- * `onInitialize`) and defers provider-specific behavior to overridable hooks
- * (`providerName`, `buildClientOptions`).
+ * Uses native `fetch` via the shared {@link HttpClient} and {@link SSEParser}
+ * utilities — no SDK dependency required.
  *
  * @see {@link BaseLLMProvider} for the abstract base class all LLM providers extend.
  * @see {@link OpenAILLM} for the OpenAI-specific subclass.
@@ -29,13 +28,9 @@ import type {
   LLMMessage,
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
-import { ProviderInitializationError } from '../../../utils/errors';
-
-// Type-safe imports for optional peer dependency
-type OpenAI = typeof import('openai').default;
-type OpenAIInstance = InstanceType<OpenAI>;
-type ChatCompletionMessageParam =
-  import('openai/resources/chat/completions').ChatCompletionMessageParam;
+import { HttpClient } from '../../../utils/http';
+import { parseSSEStream } from '../../../utils/sse';
+import { throwIfAborted, rethrowIfAborted } from '../../../utils/abort';
 
 /**
  * Configuration for any OpenAI-compatible LLM provider.
@@ -44,11 +39,8 @@ type ChatCompletionMessageParam =
  * Provide either {@link OpenAICompatibleLLMConfig.apiKey | apiKey} (direct API
  * access) or {@link OpenAICompatibleLLMConfig.proxyUrl | proxyUrl} (server-side
  * proxy). At least one must be set; if both are provided, `proxyUrl` takes
- * precedence and the SDK sends requests through the proxy, which injects the
+ * precedence and requests are sent through the proxy, which injects the
  * real API key server-side.
- *
- * All subclass config interfaces (e.g., `OpenAILLMConfig`, `GroqLLMConfig`)
- * extend this interface and may add provider-specific fields.
  *
  * @example
  * ```ts
@@ -85,26 +77,31 @@ export interface OpenAICompatibleLLMConfig extends LLMProviderConfig {
 }
 
 /**
+ * OpenAI-compatible chat completions message format.
+ * @internal
+ */
+interface ChatCompletionMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/** @internal Default OpenAI API base URL. */
+const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
+
+/**
  * Base LLM provider for any service that speaks the OpenAI chat completions format.
  *
  * @remarks
  * This class implements the **Template Method** pattern. The base class provides
- * the full generation pipeline -- SDK initialization, streaming, non-streaming,
- * abort handling, and proxy support -- while subclasses customize behavior by
- * overriding a small number of hooks:
+ * the full generation pipeline -- HTTP client initialization, SSE streaming,
+ * non-streaming, abort handling, and proxy support -- while subclasses customize
+ * behavior by overriding a small number of hooks:
  *
  * 1. **{@link OpenAICompatibleLLM.providerName | providerName}** -- Display name
  *    used in log messages and error reports.
- * 2. **{@link OpenAICompatibleLLM.buildClientOptions | buildClientOptions()}** --
- *    Return an object of provider-specific options merged into the `new OpenAI()`
- *    constructor call (e.g., `organization` for OpenAI).
- *
- * Subclasses typically also define their own config interface that extends
- * {@link OpenAICompatibleLLMConfig} to add provider-specific fields.
- *
- * The `openai` npm package is a **peer dependency** and is dynamically imported
- * during {@link OpenAICompatibleLLM.onInitialize | initialization}. It does not
- * need to be bundled unless one of the OpenAI-compatible providers is used.
+ * 2. **{@link OpenAICompatibleLLM.buildHeaders | buildHeaders()}** --
+ *    Return provider-specific headers merged into every request
+ *    (e.g., `OpenAI-Organization` for OpenAI).
  *
  * @example Creating a custom provider for a new OpenAI-compatible API
  * ```ts
@@ -122,13 +119,13 @@ export interface OpenAICompatibleLLMConfig extends LLMProviderConfig {
  *   constructor(config: MyProviderConfig) {
  *     super({
  *       ...config,
- *       baseURL: config.baseURL ?? 'https://api.myprovider.com/v1',
+ *       endpoint: config.endpoint ?? 'https://api.myprovider.com/v1',
  *       model: config.model ?? 'my-default-model',
  *     });
  *   }
  *
- *   protected override buildClientOptions(): Record<string, unknown> {
- *     return { customHeader: this.config.customField };
+ *   protected override buildHeaders(): Record<string, string> {
+ *     return { 'X-Custom': this.config.customField ?? '' };
  *   }
  * }
  * ```
@@ -139,15 +136,10 @@ export interface OpenAICompatibleLLMConfig extends LLMProviderConfig {
  */
 export class OpenAICompatibleLLM extends BaseLLMProvider {
   declare public config: OpenAICompatibleLLMConfig;
-  private client: OpenAIInstance | null = null;
+  private client: HttpClient | null = null;
 
   /**
    * Display name used in log messages and errors.
-   *
-   * @remarks
-   * Override this property in subclasses to provide a meaningful name
-   * (e.g., `'GroqLLM'`, `'GeminiLLM'`). The name appears in all log output
-   * and in {@link ProviderInitializationError} messages.
    *
    * @defaultValue `'OpenAICompatibleLLM'`
    */
@@ -158,138 +150,84 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
    *
    * @param config - Provider configuration. Must include at least `model` and
    *   either `apiKey` or `proxyUrl`.
-   * @param logger - Optional custom logger instance. If omitted, a default
-   *   logger is created by the base class.
+   * @param logger - Optional custom logger instance.
    */
   constructor(config: OpenAICompatibleLLMConfig, logger?: Logger) {
     super(config, logger);
   }
 
   /**
-   * Build the options object passed to `new OpenAI(...)`.
+   * Build provider-specific headers merged into every request.
    *
    * @remarks
-   * Override in subclasses to inject provider-specific SDK constructor options.
-   * The returned object is spread into the OpenAI client constructor after
-   * the base options (`apiKey`, `baseURL`, `maxRetries`, `timeout`,
-   * `dangerouslyAllowBrowser`).
+   * Override in subclasses to inject provider-specific headers. The returned
+   * headers are merged on top of the base headers (`Authorization`, `Content-Type`).
    *
-   * @returns An object of additional options to pass to the OpenAI SDK constructor.
+   * @returns An object of additional headers.
    *
    * @example
    * ```ts
-   * // In a subclass (e.g., OpenAILLM):
-   * protected override buildClientOptions(): Record<string, unknown> {
-   *   return { organization: this.config.organizationId };
+   * // In OpenAILLM:
+   * protected override buildHeaders(): Record<string, string> {
+   *   if (this.config.organizationId) {
+   *     return { 'OpenAI-Organization': this.config.organizationId };
+   *   }
+   *   return {};
    * }
    * ```
    */
-  protected buildClientOptions(): Record<string, unknown> {
+  protected buildHeaders(): Record<string, string> {
     return {};
   }
 
   /**
-   * Initialize the OpenAI-compatible client.
-   *
-   * @remarks
-   * Dynamically imports the `openai` peer dependency, resolves the base URL
-   * (preferring `proxyUrl` over `baseURL`), and creates the SDK client instance.
-   * Called automatically by {@link BaseLLMProvider.initialize}.
+   * Initialize the HTTP client for the OpenAI-compatible API.
    *
    * @throws {@link ProviderInitializationError}
-   * Thrown if neither `apiKey` nor `proxyUrl` is configured, or if the `openai`
-   * package cannot be found (peer dependency not installed).
+   * Thrown if neither `apiKey` nor `proxyUrl` is configured.
    */
   protected async onInitialize(): Promise<void> {
     this.assertAuth();
 
-    try {
-      // Dynamically import OpenAI SDK (peer dependency)
-      const OpenAIModule = await import('openai');
-      const OpenAI = OpenAIModule.default;
+    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL)!;
+    const apiKey = this.resolveApiKey();
 
-      // Initialize OpenAI-compatible client
-      this.client = new OpenAI({
-        apiKey: this.resolveApiKey(),
-        baseURL: this.resolveBaseUrl(),
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-        ...this.buildClientOptions(),
-      });
+    const headers: Record<string, string> = {
+      ...this.buildHeaders(),
+    };
 
-      this.logger.info(`${this.providerName} initialized`, {
-        model: this.config.model,
-        stream: this.config.stream ?? true,
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          this.providerName,
-          new Error(
-            'OpenAI SDK not found. Install with: npm install openai\n' +
-              'The OpenAI SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError(this.providerName, error as Error);
+    if (!this.isProxyMode) {
+      headers['authorization'] = `Bearer ${apiKey}`;
     }
+
+    this.client = new HttpClient({
+      baseUrl,
+      headers,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      logger: this.logger,
+      providerName: this.providerName,
+    });
+
+    this.logger.info(`${this.providerName} initialized`, {
+      model: this.config.model,
+      stream: this.config.stream ?? true,
+    });
   }
 
   /**
-   * Dispose of the OpenAI client and release resources.
-   *
-   * @remarks
-   * Nullifies the client reference so that it can be garbage-collected.
-   * Called automatically by {@link BaseLLMProvider.dispose}.
+   * Dispose of the HTTP client.
    */
   protected async onDispose(): Promise<void> {
     this.client = null;
     this.logger.info(`${this.providerName} disposed`);
   }
 
-  /**
-   * Generate an LLM response from a single text prompt.
-   *
-   * @remarks
-   * Convenience wrapper that converts the prompt to a message array (prepending
-   * the system prompt if configured) and delegates to
-   * {@link OpenAICompatibleLLM.generateFromMessages | generateFromMessages}.
-   *
-   * @param prompt - The user's text prompt.
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the client is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   *
-   * @example
-   * ```ts
-   * const provider = new OpenAICompatibleLLM({ apiKey: 'sk-...', model: 'gpt-4' });
-   * await provider.initialize();
-   *
-   * const stream = await provider.generate('Explain quantum computing briefly.');
-   * for await (const chunk of stream) {
-   *   process.stdout.write(chunk);
-   * }
-   * ```
-   */
   async generate(prompt: string, options?: LLMGenerationOptions): Promise<AsyncIterable<string>> {
     const messages = this.promptToMessages(prompt);
     return this.generateFromMessages(messages, options);
   }
 
-  /**
-   * Implement the abstract {@link BaseLLMProvider.processMessages} method.
-   *
-   * @remarks
-   * Delegates to {@link generateFromMessages}.
-   */
   async processMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
@@ -301,63 +239,24 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
    * Generate an LLM response from a multi-turn conversation.
    *
    * @remarks
-   * This is the primary generation method. It merges per-call options with
-   * the provider config defaults, converts the messages to OpenAI's
-   * `ChatCompletionMessageParam` format, and dispatches to either the
-   * streaming or non-streaming code path based on `config.stream`.
-   *
-   * The returned async iterable respects the `options.signal` abort signal.
-   * When aborted, iteration stops and an `AbortError` is thrown. This is used
-   * by the CompositeVoice eager/preflight pipeline to cancel speculative
-   * generations.
-   *
-   * @param messages - Array of conversation messages (system, user, assistant).
-   * @param options - Optional generation overrides (temperature, maxTokens, signal, etc.).
-   * @returns An async iterable that yields text chunks. When streaming is enabled
-   *   (the default), chunks arrive incrementally; otherwise, a single chunk
-   *   containing the full response is yielded.
-   *
-   * @throws {@link Error}
-   * Thrown if the provider has not been initialized or the client is unavailable.
-   *
-   * @throws `AbortError`
-   * Thrown if the provided `options.signal` is aborted before or during generation.
-   *
-   * @example
-   * ```ts
-   * const provider = new OpenAICompatibleLLM({ apiKey: 'sk-...', model: 'gpt-4' });
-   * await provider.initialize();
-   *
-   * const messages: LLMMessage[] = [
-   *   { role: 'system', content: 'You are a helpful assistant.' },
-   *   { role: 'user', content: 'What is the capital of France?' },
-   * ];
-   *
-   * const stream = await provider.generateFromMessages(messages);
-   * for await (const chunk of stream) {
-   *   process.stdout.write(chunk);
-   * }
-   * ```
+   * Converts messages to OpenAI's `ChatCompletionMessageParam` format and
+   * dispatches to either the streaming or non-streaming code path.
    */
   async generateFromMessages(
     messages: LLMMessage[],
     options?: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
     this.assertReady();
-
-    if (!this.client) {
-      throw new Error(`${this.providerName} client not initialized`);
-    }
+    if (!this.client) throw new Error(`${this.providerName} client not initialized`);
 
     const mergedOptions = this.mergeOptions(options);
-    // mergeOptions doesn't carry signal — preserve it explicitly
     if (options?.signal) {
       mergedOptions.signal = options.signal;
     }
     const shouldStream = this.config.stream ?? true;
 
     // Convert messages to OpenAI format (filter out tool messages — not yet supported)
-    const openaiMessages: ChatCompletionMessageParam[] = messages
+    const openaiMessages: ChatCompletionMessage[] = messages
       .filter((msg) => msg.role !== 'tool')
       .map((msg) => ({
         role: msg.role as 'system' | 'user' | 'assistant',
@@ -373,26 +272,12 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
 
   /**
    * Stream a response using the OpenAI-compatible chat completions API.
-   *
-   * @remarks
-   * Creates an async iterable that opens a streaming request to the provider.
-   * Each chunk's `delta.content` is yielded as a string token. The iteration
-   * respects the `options.signal` abort signal: if aborted, the loop breaks
-   * and an `AbortError` is thrown.
-   *
-   * @param messages - Messages in OpenAI `ChatCompletionMessageParam` format.
-   * @param options - Merged generation options including an optional abort signal.
-   * @returns An async iterable of streamed text tokens.
    */
   private async streamResponse(
-    messages: ChatCompletionMessageParam[],
+    messages: ChatCompletionMessage[],
     options: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error(`${this.providerName} client not initialized`);
-    }
-
-    const client = this.client;
+    const client = this.client!;
     const config = this.config;
     const logger = this.logger;
     const signal = options.signal;
@@ -400,11 +285,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
 
     return {
       async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
+        throwIfAborted(signal);
 
         try {
           logger.debug(`Starting ${providerName} streaming request`, {
@@ -412,23 +293,28 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
             messageCount: messages.length,
           });
 
-          const streamParams = {
+          const body = {
             model: config.model,
             messages,
             temperature: options.temperature ?? null,
             max_tokens: options.maxTokens ?? null,
             top_p: config.topP ?? null,
             stop: options.stopSequences ?? null,
-            stream: true as const,
+            stream: true,
             ...options.extra,
           };
-          const stream = signal
-            ? await client.chat.completions.create(streamParams, { signal })
-            : await client.chat.completions.create(streamParams);
 
-          for await (const chunk of stream) {
+          const response = await client.request('/chat/completions', {
+            body,
+            ...(signal ? { signal } : {}),
+            stream: true,
+          });
+
+          for await (const event of parseSSEStream(response.body!, signal)) {
             if (signal?.aborted) break;
-            const delta = chunk.choices[0]?.delta?.content;
+
+            const chunk = JSON.parse(event.data);
+            const delta = chunk.choices?.[0]?.delta?.content;
             if (delta) {
               yield delta;
             }
@@ -436,11 +322,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
 
           logger.debug(`${providerName} streaming request completed`);
         } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
+          rethrowIfAborted(error, signal);
           logger.error(`${providerName} streaming request failed`, error);
           throw error;
         }
@@ -450,25 +332,12 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
 
   /**
    * Perform a non-streaming request using the OpenAI-compatible chat completions API.
-   *
-   * @remarks
-   * Makes a single, non-streamed API call and yields the entire response as one
-   * string. The abort signal is checked before the request and passed to the SDK
-   * so that in-flight HTTP requests can be cancelled.
-   *
-   * @param messages - Messages in OpenAI `ChatCompletionMessageParam` format.
-   * @param options - Merged generation options including an optional abort signal.
-   * @returns An async iterable that yields a single string containing the full response.
    */
   private async nonStreamResponse(
-    messages: ChatCompletionMessageParam[],
+    messages: ChatCompletionMessage[],
     options: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
-    if (!this.client) {
-      throw new Error(`${this.providerName} client not initialized`);
-    }
-
-    const client = this.client;
+    const client = this.client!;
     const config = this.config;
     const logger = this.logger;
     const signal = options.signal;
@@ -476,11 +345,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
 
     return {
       async *[Symbol.asyncIterator]() {
-        if (signal?.aborted) {
-          const err = new Error('AbortError');
-          err.name = 'AbortError';
-          throw err;
-        }
+        throwIfAborted(signal);
 
         try {
           logger.debug(`Starting ${providerName} non-streaming request`, {
@@ -488,32 +353,28 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
             messageCount: messages.length,
           });
 
-          const createParams = {
+          const body = {
             model: config.model,
             messages,
             temperature: options.temperature ?? null,
             max_tokens: options.maxTokens ?? null,
             top_p: config.topP ?? null,
             stop: options.stopSequences ?? null,
-            stream: false as const,
+            stream: false,
             ...options.extra,
           };
-          const response = signal
-            ? await client.chat.completions.create(createParams, { signal })
-            : await client.chat.completions.create(createParams);
 
-          const content = response.choices[0]?.message?.content ?? '';
+          const response = await client.request('/chat/completions', { body, ...(signal ? { signal } : {}) });
+          const data = await response.json();
+
+          const content = data.choices?.[0]?.message?.content ?? '';
           yield content;
 
           logger.debug(`${providerName} non-streaming request completed`, {
-            tokensUsed: response.usage?.total_tokens,
+            tokensUsed: data.usage?.total_tokens,
           });
         } catch (error) {
-          if (signal?.aborted || (error as Error).name === 'AbortError') {
-            const err = new Error('AbortError');
-            err.name = 'AbortError';
-            throw err;
-          }
+          rethrowIfAborted(error, signal);
           logger.error(`${providerName} non-streaming request failed`, error);
           throw error;
         }

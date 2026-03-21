@@ -1,15 +1,15 @@
 /**
- * OpenAI TTS provider using the official OpenAI SDK.
+ * OpenAI TTS provider using native `fetch`.
  *
  * @remarks
  * This module provides a REST-based text-to-speech provider powered by
  * OpenAI's TTS models (`tts-1` and `tts-1-hd`). Each call to `synthesize()`
  * makes a single HTTP request and returns the complete audio as a `Blob`.
  *
- * Transport: REST (HTTP POST via `openai` SDK)
+ * Transport: REST (HTTP POST via native `fetch` + {@link HttpClient})
  * Audio format: Configurable (mp3, opus, aac, flac, wav); default is `mp3`
  *
- * The `openai` package is a peer dependency and must be installed separately.
+ * No SDK dependency required.
  *
  * @packageDocumentation
  */
@@ -17,11 +17,8 @@
 import { RestTTSProvider } from '../../base/RestTTSProvider';
 import type { TTSProviderConfig } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
+import { HttpClient } from '../../../utils/http';
 import { ProviderInitializationError } from '../../../utils/errors';
-
-// Type-safe imports for optional peer dependency
-type OpenAI = typeof import('openai').default;
-type OpenAIInstance = InstanceType<OpenAI>;
 
 /**
  * Supported OpenAI TTS voice identifiers.
@@ -141,20 +138,17 @@ const FORMAT_MIME_TYPES: Record<OpenAITTSFormat, string> = {
   wav: 'audio/wav',
 };
 
+/** @internal Default OpenAI API base URL. */
+const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
+
 /**
- * OpenAI TTS provider using the official OpenAI SDK for text-to-speech synthesis.
+ * OpenAI TTS provider using native `fetch` for text-to-speech synthesis.
  *
  * @remarks
  * This is a REST-based provider: each `synthesize()` call makes a single HTTP request
  * to the OpenAI TTS API and returns the complete audio response as a `Blob`. It supports
  * both the standard `tts-1` (fast) and `tts-1-hd` (high quality) models, with six
  * available voices and five audio formats.
- *
- * The lifecycle is:
- * 1. Construct with {@link OpenAITTSConfig}
- * 2. Call `initialize()` to load the OpenAI SDK and create the client
- * 3. Call `synthesize(text)` to convert text to audio
- * 4. Call `dispose()` to release resources
  *
  * Audio flow: `Text -> OpenAI REST API -> Complete audio Blob`
  *
@@ -179,38 +173,22 @@ const FORMAT_MIME_TYPES: Record<OpenAITTSFormat, string> = {
  */
 export class OpenAITTS extends RestTTSProvider {
   declare public config: OpenAITTSConfig;
-  private client: OpenAIInstance | null = null;
+  private client: HttpClient | null = null;
 
   /**
    * Creates a new OpenAITTS provider instance.
    *
    * @param config - Configuration for the OpenAI TTS provider.
    * @param logger - Optional logger instance for debug and diagnostic output.
-   *
-   * @example
-   * ```typescript
-   * const tts = new OpenAITTS({
-   *   apiKey: 'sk-xxxxxxxxxxxx',
-   *   voice: 'alloy',
-   * });
-   * ```
    */
   constructor(config: OpenAITTSConfig, logger?: Logger) {
     super(config, logger);
   }
 
   /**
-   * Initializes the OpenAI client by dynamically importing the SDK.
-   *
-   * @remarks
-   * The `openai` package is loaded dynamically as a peer dependency. If using
-   * `proxyUrl`, the client is configured with a placeholder API key and the
-   * proxy URL as the base URL. The client is created with
-   * `dangerouslyAllowBrowser: true` to enable browser usage.
+   * Initializes the HTTP client for the OpenAI TTS API.
    *
    * @throws {@link ProviderInitializationError} if neither `apiKey` nor `proxyUrl` is configured.
-   * @throws {@link ProviderInitializationError} if the `openai` package is not installed.
-   * @throws {@link ProviderInitializationError} if any other initialization error occurs.
    */
   protected async onInitialize(): Promise<void> {
     if (!this.config.apiKey && !this.config.proxyUrl) {
@@ -220,45 +198,37 @@ export class OpenAITTS extends RestTTSProvider {
       );
     }
 
-    try {
-      // Dynamically import OpenAI SDK (peer dependency)
-      const OpenAIModule = await import('openai');
-      const OpenAI = OpenAIModule.default;
+    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL)!;
+    const apiKey = this.resolveApiKey();
 
-      const baseURL = this.resolveBaseUrl();
-      const apiKey = this.resolveApiKey();
+    const headers: Record<string, string> = {};
 
-      // Initialize OpenAI client
-      this.client = new OpenAI({
-        apiKey,
-        organization: this.config.organizationId,
-        baseURL,
-        maxRetries: this.config.maxRetries ?? 3,
-        timeout: this.config.timeout ?? 60000,
-        dangerouslyAllowBrowser: true,
-      });
-
-      this.logger.info('OpenAI TTS initialized', {
-        model: this.config.model ?? 'tts-1',
-        voice: this.config.voice ?? 'alloy',
-        responseFormat: this.config.responseFormat ?? 'mp3',
-      });
-    } catch (error) {
-      if ((error as Error).message?.includes('Cannot find module')) {
-        throw new ProviderInitializationError(
-          'OpenAITTS',
-          new Error(
-            'OpenAI SDK not found. Install with: npm install openai\n' +
-              'The OpenAI SDK is a peer dependency and must be installed separately.'
-          )
-        );
-      }
-      throw new ProviderInitializationError('OpenAITTS', error as Error);
+    if (!this.isProxyMode) {
+      headers['authorization'] = `Bearer ${apiKey}`;
     }
+
+    if (this.config.organizationId) {
+      headers['openai-organization'] = this.config.organizationId;
+    }
+
+    this.client = new HttpClient({
+      baseUrl,
+      headers,
+      maxRetries: this.config.maxRetries ?? 3,
+      timeout: this.config.timeout ?? 60000,
+      logger: this.logger,
+      providerName: 'OpenAITTS',
+    });
+
+    this.logger.info('OpenAI TTS initialized', {
+      model: this.config.model ?? 'tts-1',
+      voice: this.config.voice ?? 'alloy',
+      responseFormat: this.config.responseFormat ?? 'mp3',
+    });
   }
 
   /**
-   * Disposes the provider and releases the OpenAI client.
+   * Disposes the provider and releases the HTTP client.
    */
   protected async onDispose(): Promise<void> {
     this.client = null;
@@ -268,23 +238,17 @@ export class OpenAITTS extends RestTTSProvider {
   /**
    * Synthesizes text to audio using the OpenAI TTS REST API.
    *
-   * @remarks
-   * Makes a single HTTP POST request to the OpenAI `audio.speech.create` endpoint.
-   * The complete audio response is returned as a `Blob` with the appropriate MIME type
-   * based on the configured `responseFormat`.
-   *
-   * @param text - The text to synthesize into speech. Maximum length depends on the
-   *   OpenAI API limits (currently 4096 characters).
+   * @param text - The text to synthesize into speech.
    * @returns A `Blob` containing the synthesized audio in the configured format.
    *
-   * @throws Error if the provider is not initialized or the OpenAI client is null.
-   * @throws Error if the OpenAI API request fails (network error, rate limit, etc.).
+   * @throws Error if the provider is not initialized.
+   * @throws Error if the OpenAI API request fails.
    */
   async synthesize(text: string): Promise<Blob> {
     this.assertReady();
 
     if (!this.client) {
-      throw new Error('OpenAI client not initialized');
+      throw new Error('OpenAI TTS client not initialized');
     }
 
     const model = this.config.model ?? 'tts-1';
@@ -298,7 +262,7 @@ export class OpenAITTS extends RestTTSProvider {
       textLength: text.length,
     });
 
-    const params: Parameters<OpenAIInstance['audio']['speech']['create']>[0] = {
+    const body: Record<string, unknown> = {
       model,
       voice,
       input: text,
@@ -306,10 +270,10 @@ export class OpenAITTS extends RestTTSProvider {
     };
 
     if (this.config.speed != null) {
-      params.speed = this.config.speed;
+      body.speed = this.config.speed;
     }
 
-    const response = await this.client.audio.speech.create(params);
+    const response = await this.client.request('/audio/speech', { body });
 
     const arrayBuffer = await response.arrayBuffer();
     const mimeType = FORMAT_MIME_TYPES[responseFormat];

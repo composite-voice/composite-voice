@@ -8,15 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: '>=0.67.0'
-        version: 0.67.0(zod@3.25.76)
       '@mlc-ai/web-llm':
         specifier: '>=0.2.74'
         version: 0.2.81
-      openai:
-        specifier: '>=6.5.0'
-        version: 6.5.0(ws@8.18.3)(zod@3.25.76)
       ws:
         specifier: '>=8.0.0'
         version: 8.18.3

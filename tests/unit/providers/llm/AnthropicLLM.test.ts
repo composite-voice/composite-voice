@@ -1,44 +1,111 @@
 /**
  * Anthropic LLM Provider tests
+ *
+ * Tests the AnthropicLLM provider which uses native `fetch` via HttpClient
+ * and SSEParser (no @anthropic-ai/sdk dependency).
  */
+
+// Polyfill Web APIs that jsdom does not provide but Node.js does.
+// These are needed for HttpClient and SSE parsing.
+import { TextEncoder, TextDecoder } from 'util';
+import { ReadableStream } from 'stream/web';
+
+global.TextEncoder = TextEncoder as unknown as typeof global.TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
+
+// Polyfill AbortSignal.timeout and AbortSignal.any (not available in jsdom)
+if (typeof AbortSignal.timeout !== 'function') {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+    return controller.signal;
+  };
+}
+if (typeof AbortSignal.any !== 'function') {
+  AbortSignal.any = (signals: AbortSignal[]): AbortSignal => {
+    const controller = new AbortController();
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        break;
+      }
+      signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    }
+    return controller.signal;
+  };
+}
 
 import { AnthropicLLM } from '../../../../src/providers/llm/anthropic/AnthropicLLM';
 import type { AnthropicLLMConfig } from '../../../../src/providers/llm/anthropic/AnthropicLLM';
 
-// Mock the Anthropic SDK before imports
-const mockStream = {
-  async *[Symbol.asyncIterator]() {
-    yield {
-      type: 'content_block_delta' as const,
-      index: 0,
-      delta: { type: 'text_delta' as const, text: 'Hello' },
-    };
-    yield {
-      type: 'content_block_delta' as const,
-      index: 0,
-      delta: { type: 'text_delta' as const, text: ' world' },
-    };
-    yield {
-      type: 'message_stop' as const,
-      // non-text event should be ignored
-    };
+// --- Helpers for mock fetch responses ---
+
+/**
+ * Create a mock Response-like object with an SSE body stream.
+ * Each event object is serialized as `data: <json>\n\n`.
+ */
+function createSSEResponse(
+  events: Array<{ type: string; [key: string]: unknown }>
+): Partial<Response> {
+  const encoder = new TextEncoder();
+  const lines = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('');
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(lines));
+      controller.close();
+    },
+  });
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' }),
+    body: stream as any,
+    text: async () => lines,
+    json: async () => ({}),
+  };
+}
+
+/**
+ * Create a mock Response-like object with a JSON body.
+ */
+function createJSONResponse(data: unknown): Partial<Response> {
+  const text = JSON.stringify(data);
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: null,
+    text: async () => text,
+    json: async () => data,
+  };
+}
+
+// --- Global fetch mock ---
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// Standard SSE events for streaming tests
+const STREAMING_EVENTS = [
+  {
+    type: 'content_block_delta',
+    index: 0,
+    delta: { type: 'text_delta', text: 'Hello' },
   },
+  {
+    type: 'content_block_delta',
+    index: 0,
+    delta: { type: 'text_delta', text: ' world' },
+  },
+  { type: 'message_stop' },
+];
+
+// Standard JSON response for non-streaming tests
+const NON_STREAMING_RESPONSE = {
+  content: [{ type: 'text', text: 'Complete response' }],
+  usage: { input_tokens: 10, output_tokens: 5 },
 };
-
-const mockMessagesCreate = jest.fn();
-const mockMessagesStream = jest.fn();
-
-const MockAnthropic = jest.fn().mockImplementation(() => ({
-  messages: {
-    create: mockMessagesCreate,
-    stream: mockMessagesStream,
-  },
-}));
-
-jest.mock('@anthropic-ai/sdk', () => ({
-  __esModule: true,
-  default: MockAnthropic,
-}));
 
 describe('AnthropicLLM', () => {
   let provider: AnthropicLLM;
@@ -46,7 +113,7 @@ describe('AnthropicLLM', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockMessagesStream.mockReturnValue(mockStream);
+    mockFetch.mockResolvedValue(createSSEResponse(STREAMING_EVENTS));
     config = {
       apiKey: 'test-api-key',
       model: 'claude-haiku-4-5',
@@ -136,17 +203,18 @@ describe('AnthropicLLM', () => {
       await expect(uninitProvider.processText('Hello')).rejects.toThrow();
     });
 
-    it('should include system prompt from config in messages', async () => {
+    it('should include system prompt from config in request body', async () => {
       const result = await provider.processText('Hello');
-      // Must iterate to execute the async generator
       for await (const _ of result) {
         // consume
       }
 
-      expect(mockMessagesStream).toHaveBeenCalled();
-      const callArgs = mockMessagesStream.mock.calls[0][0];
-      expect(callArgs.system).toBe('You are a helpful assistant.');
-      expect(callArgs.messages).toEqual([{ role: 'user', content: 'Hello' }]);
+      expect(mockFetch).toHaveBeenCalled();
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://api.anthropic.com/v1/messages');
+      const body = JSON.parse(options.body);
+      expect(body.system).toBe('You are a helpful assistant.');
+      expect(body.messages).toEqual([{ role: 'user', content: 'Hello' }]);
     });
 
     it('should stream tokens from response', async () => {
@@ -158,18 +226,15 @@ describe('AnthropicLLM', () => {
       expect(chunks).toEqual(['Hello', ' world']);
     });
 
-    it('should pass temperature and max_tokens to SDK', async () => {
+    it('should pass temperature and max_tokens in fetch body', async () => {
       const result = await provider.processText('Test', { temperature: 0.9, maxTokens: 200 });
       for await (const _ of result) {
         /* consume */
       }
 
-      expect(mockMessagesStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.9,
-          max_tokens: 200,
-        })
-      );
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.temperature).toBe(0.9);
+      expect(body.max_tokens).toBe(200);
     });
 
     it('should use config max_tokens as default', async () => {
@@ -178,11 +243,8 @@ describe('AnthropicLLM', () => {
         /* consume */
       }
 
-      expect(mockMessagesStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          max_tokens: 500, // from config
-        })
-      );
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.max_tokens).toBe(500); // from config
     });
   });
 
@@ -219,13 +281,10 @@ describe('AnthropicLLM', () => {
         /* consume */
       }
 
-      expect(mockMessagesStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          // Config systemPrompt + inline system message are combined (deduped)
-          system: 'You are a helpful assistant.\n\nCustom system prompt',
-          messages: [{ role: 'user', content: 'Hello' }],
-        })
-      );
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      // Config systemPrompt + inline system message are combined (deduped)
+      expect(body.system).toBe('You are a helpful assistant.\n\nCustom system prompt');
+      expect(body.messages).toEqual([{ role: 'user', content: 'Hello' }]);
     });
 
     it('should filter out system messages from messages array', async () => {
@@ -240,8 +299,8 @@ describe('AnthropicLLM', () => {
         /* consume */
       }
 
-      const callArgs = mockMessagesStream.mock.calls[0][0];
-      const messageRoles = callArgs.messages.map((m: { role: string }) => m.role);
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const messageRoles = body.messages.map((m: { role: string }) => m.role);
       expect(messageRoles).not.toContain('system');
       expect(messageRoles).toContain('user');
       expect(messageRoles).toContain('assistant');
@@ -252,10 +311,7 @@ describe('AnthropicLLM', () => {
       provider = new AnthropicLLM(nonStreamConfig);
       await provider.initialize();
 
-      mockMessagesCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'Complete response' }],
-        usage: { input_tokens: 10, output_tokens: 5 },
-      });
+      mockFetch.mockResolvedValueOnce(createJSONResponse(NON_STREAMING_RESPONSE));
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
@@ -266,14 +322,12 @@ describe('AnthropicLLM', () => {
       }
 
       expect(chunks).toEqual(['Complete response']);
-      expect(mockMessagesCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: false,
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBeUndefined();
     });
 
-    it('should pass stop sequences to SDK', async () => {
+    it('should pass stop sequences in fetch body', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages, {
         stopSequences: ['STOP', 'END'],
@@ -282,25 +336,19 @@ describe('AnthropicLLM', () => {
         /* consume */
       }
 
-      expect(mockMessagesStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stop_sequences: ['STOP', 'END'],
-        })
-      );
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stop_sequences).toEqual(['STOP', 'END']);
     });
 
-    it('should pass model to SDK', async () => {
+    it('should pass model in fetch body', async () => {
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
       for await (const _ of result) {
         /* consume */
       }
 
-      expect(mockMessagesStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: 'claude-haiku-4-5',
-        })
-      );
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.model).toBe('claude-haiku-4-5');
     });
   });
 
@@ -335,6 +383,23 @@ describe('AnthropicLLM', () => {
       expect(provider.config.endpoint).toBe('https://custom.anthropic.com');
     });
 
+    it('should use custom endpoint in fetch URL', async () => {
+      const configWithEndpoint: AnthropicLLMConfig = {
+        ...config,
+        endpoint: 'https://custom.anthropic.com',
+      };
+      provider = new AnthropicLLM(configWithEndpoint);
+      await provider.initialize();
+
+      const result = await provider.processText('Hello');
+      for await (const _ of result) {
+        /* consume */
+      }
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://custom.anthropic.com/v1/messages');
+    });
+
     it('should support custom max retries', async () => {
       const configWithRetries: AnthropicLLMConfig = {
         ...config,
@@ -343,6 +408,33 @@ describe('AnthropicLLM', () => {
       provider = new AnthropicLLM(configWithRetries);
       await provider.initialize();
       expect(provider.config.maxRetries).toBe(5);
+    });
+
+    it('should send x-api-key header (not Bearer) for auth', async () => {
+      provider = new AnthropicLLM(config);
+      await provider.initialize();
+
+      const result = await provider.processText('Hello');
+      for await (const _ of result) {
+        /* consume */
+      }
+
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers['x-api-key']).toBe('test-api-key');
+      expect(headers['Authorization']).toBeUndefined();
+    });
+
+    it('should send anthropic-version header', async () => {
+      provider = new AnthropicLLM(config);
+      await provider.initialize();
+
+      const result = await provider.processText('Hello');
+      for await (const _ of result) {
+        /* consume */
+      }
+
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers['anthropic-version']).toBe('2023-06-01');
     });
   });
 });

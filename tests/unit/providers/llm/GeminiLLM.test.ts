@@ -1,32 +1,103 @@
 /**
  * Gemini LLM Provider tests
+ *
+ * Tests the GeminiLLM provider which uses native `fetch` via HttpClient
+ * and SSEParser (no openai SDK dependency).
  */
+
+// Polyfill Web APIs that jsdom does not provide but Node.js does.
+import { TextEncoder, TextDecoder } from 'util';
+import { ReadableStream } from 'stream/web';
+
+global.TextEncoder = TextEncoder as unknown as typeof global.TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
+
+// Polyfill AbortSignal.timeout and AbortSignal.any (not available in jsdom)
+if (typeof AbortSignal.timeout !== 'function') {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+    return controller.signal;
+  };
+}
+if (typeof AbortSignal.any !== 'function') {
+  AbortSignal.any = (signals: AbortSignal[]): AbortSignal => {
+    const controller = new AbortController();
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        break;
+      }
+      signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    }
+    return controller.signal;
+  };
+}
 
 import { GeminiLLM } from '../../../../src/providers/llm/gemini/GeminiLLM';
 import type { GeminiLLMConfig } from '../../../../src/providers/llm/gemini/GeminiLLM';
 
-// Mock the OpenAI SDK before imports
-jest.mock('openai', () => {
-  const mockCreate = jest.fn();
-  const MockOpenAI = jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockCreate,
-      },
-    },
-  }));
+// ---------------------------------------------------------------------------
+// Fetch mock helpers
+// ---------------------------------------------------------------------------
 
+/** Create a mock Response-like object with an SSE body stream. */
+function createSSEResponse(chunks: Array<{ content?: string }>): Partial<Response> {
+  const encoder = new TextEncoder();
+  const lines =
+    chunks
+      .map(
+        (c) =>
+          `data: ${JSON.stringify({ choices: [{ delta: { content: c.content } }] })}\n\n`
+      )
+      .join('') + 'data: [DONE]\n\n';
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(lines));
+      controller.close();
+    },
+  });
   return {
-    __esModule: true,
-    default: MockOpenAI,
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' }),
+    body: stream as any,
+    text: async () => lines,
+    json: async () => ({}),
   };
-});
+}
+
+/** Create a mock Response-like object with a JSON body. */
+function createJSONResponse(data: unknown): Partial<Response> {
+  const text = JSON.stringify(data);
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: null,
+    text: async () => text,
+    json: async () => data,
+  };
+}
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('GeminiLLM', () => {
   let provider: GeminiLLM;
   let config: GeminiLLMConfig;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Default streaming mock so initialization and basic tests work
+    mockFetch.mockResolvedValue(createSSEResponse([{ content: 'Hello' }]));
+
     config = {
       geminiApiKey: 'test-gemini-key',
       model: 'gemini-2.0-flash',
@@ -41,6 +112,10 @@ describe('GeminiLLM', () => {
       await provider.dispose();
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------------------
 
   describe('initialization', () => {
     it('should initialize successfully with geminiApiKey', async () => {
@@ -70,12 +145,15 @@ describe('GeminiLLM', () => {
       provider = new GeminiLLM(bothConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'gemini-key-wins',
-        })
-      );
+      // Verify the authorization header uses geminiApiKey
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.headers['authorization']).toBe('Bearer gemini-key-wins');
     });
 
     it('should store configuration', async () => {
@@ -111,16 +189,24 @@ describe('GeminiLLM', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // Gemini-specific defaults
+  // -------------------------------------------------------------------------
+
   describe('Gemini-specific defaults', () => {
-    it('should default baseURL to Gemini API endpoint', async () => {
+    it('should default fetch URL to Gemini API endpoint', async () => {
       provider = new GeminiLLM(config);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai',
-        })
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
       );
     });
 
@@ -132,12 +218,14 @@ describe('GeminiLLM', () => {
       provider = new GeminiLLM(customConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'https://custom.gemini.endpoint/v1',
-        })
-      );
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://custom.gemini.endpoint/v1/chat/completions');
     });
 
     it('should default model to gemini-2.0-flash', async () => {
@@ -159,7 +247,7 @@ describe('GeminiLLM', () => {
       expect(provider.getConfig().model).toBe('gemini-2.0-flash-lite');
     });
 
-    it('should use proxyUrl as baseURL when in proxy mode', async () => {
+    it('should use proxyUrl as baseUrl and omit auth header when in proxy mode', async () => {
       const proxyConfig: GeminiLLMConfig = {
         proxyUrl: 'http://localhost:3000/proxy/gemini',
         model: 'gemini-2.0-flash',
@@ -167,15 +255,21 @@ describe('GeminiLLM', () => {
       provider = new GeminiLLM(proxyConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      expect(OpenAI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'http://localhost:3000/proxy/gemini',
-          apiKey: 'proxy',
-        })
-      );
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hi' }]));
+      const result = await provider.processMessages([{ role: 'user', content: 'Hello' }]);
+      for await (const _chunk of result) {
+        // consume
+      }
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('http://localhost:3000/proxy/gemini/chat/completions');
+      expect(options.headers['authorization']).toBeUndefined();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Disposal
+  // -------------------------------------------------------------------------
 
   describe('disposal', () => {
     it('should dispose successfully', async () => {
@@ -192,6 +286,10 @@ describe('GeminiLLM', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // processText
+  // -------------------------------------------------------------------------
+
   describe('processText', () => {
     beforeEach(async () => {
       provider = new GeminiLLM(config);
@@ -207,34 +305,26 @@ describe('GeminiLLM', () => {
     });
 
     it('should convert prompt to messages', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello!' } }] };
-        },
-      };
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
+      mockFetch.mockResolvedValueOnce(createSSEResponse([{ content: 'Hello!' }]));
 
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
-
-      const result = provider.processText('Hello', { temperature: 0.5 });
-      const iterator = await result;
+      const result = await provider.processText('Hello', { temperature: 0.5 });
       const chunks: string[] = [];
-      for await (const chunk of iterator) {
+      for await (const chunk of result) {
         chunks.push(chunk);
       }
 
-      expect(mockCreate).toHaveBeenCalled();
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.messages).toEqual([
+      expect(mockFetch).toHaveBeenCalled();
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.messages).toEqual([
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Hello' },
       ]);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // processMessages
+  // -------------------------------------------------------------------------
 
   describe('processMessages', () => {
     beforeEach(async () => {
@@ -243,20 +333,9 @@ describe('GeminiLLM', () => {
     });
 
     it('should handle streaming responses', async () => {
-      const OpenAI = require('openai').default;
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { choices: [{ delta: { content: 'Hello' } }] };
-          yield { choices: [{ delta: { content: ' world' } }] };
-          yield { choices: [{ delta: { content: '!' } }] };
-        },
-      };
-
-      const mockCreate = jest.fn().mockResolvedValue(mockStream);
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createSSEResponse([{ content: 'Hello' }, { content: ' world' }, { content: '!' }])
+      );
 
       const messages = [
         { role: 'system' as const, content: 'System prompt' },
@@ -271,13 +350,11 @@ describe('GeminiLLM', () => {
       }
 
       expect(chunks).toEqual(['Hello', ' world', '!']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: true,
-          messages: expect.any(Array),
-          model: 'gemini-2.0-flash',
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(true);
+      expect(body.messages).toEqual(expect.any(Array));
+      expect(body.model).toBe('gemini-2.0-flash');
     });
 
     it('should handle non-streaming responses', async () => {
@@ -285,16 +362,12 @@ describe('GeminiLLM', () => {
       provider = new GeminiLLM(nonStreamConfig);
       await provider.initialize();
 
-      const OpenAI = require('openai').default;
-      const mockCreate = jest.fn().mockResolvedValue({
-        choices: [{ message: { content: 'Complete response' } }],
-        usage: { total_tokens: 5 },
-      });
-
-      const mockInstance = new OpenAI();
-      mockInstance.chat.completions.create = mockCreate;
-
-      (provider as any).client = mockInstance;
+      mockFetch.mockResolvedValueOnce(
+        createJSONResponse({
+          choices: [{ message: { content: 'Complete response' } }],
+          usage: { total_tokens: 5 },
+        })
+      );
 
       const messages = [{ role: 'user' as const, content: 'Test' }];
       const result = await provider.processMessages(messages);
@@ -305,13 +378,15 @@ describe('GeminiLLM', () => {
       }
 
       expect(chunks).toEqual(['Complete response']);
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stream: false,
-        })
-      );
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.stream).toBe(false);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Configuration
+  // -------------------------------------------------------------------------
 
   describe('configuration', () => {
     it('should support custom max retries', async () => {
