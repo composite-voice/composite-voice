@@ -1,0 +1,2 @@
+# Rewrite /design/* to root — Astro base:'/design' prefixes links but files are at root
+/design/*  /:splat  200

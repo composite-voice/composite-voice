@@ -1,0 +1,2 @@
+# Rewrite /docs/* to root — Astro base:'/docs' prefixes links but files are at root
+/docs/*  /:splat  200

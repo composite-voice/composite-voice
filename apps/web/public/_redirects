@@ -1,5 +1,5 @@
-# Proxy /docs/* to the docs site (docs site builds with base: '/docs')
-/docs/*  https://composite-voice-docs.netlify.app/docs/:splat  200
+# Proxy /docs/* to the docs site (strip /docs/ prefix — docs site serves from root)
+/docs/*  https://composite-voice-docs.netlify.app/:splat  200
 
-# Proxy /design/* to the design system site (design site builds with base: '/design')
-/design/*  https://composite-voice-design.netlify.app/design/:splat  200
+# Proxy /design/* to the design system site (strip /design/ prefix — design site serves from root)
+/design/*  https://composite-voice-design.netlify.app/:splat  200
