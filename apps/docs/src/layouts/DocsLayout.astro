@@ -33,19 +33,26 @@ const sites = [
 /* Build sidebar from nav config + content collection */
 const entries = await getCollection("docs");
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 function buildFolderGroup(folder: string, label: string) {
   const children = entries
     .filter((e) => e.id.startsWith(`${folder}/`) && !e.id.slice(folder.length + 1).includes("/"))
     .sort((a, b) => (a.data.order ?? Infinity) - (b.data.order ?? Infinity))
-    .map((e) => ({ href: `/${e.id}`, label: e.data.title }));
+    .map((e) => ({ href: `${base}/${e.id}`, label: e.data.title }));
   return { label, children };
+}
+
+function prefixHref(href: string): string {
+  if (href.startsWith('http') || href.startsWith('#')) return href;
+  return `${base}${href}`;
 }
 
 const sections: SidebarItem[] = nav.map((item) => {
   if (isNavSection(item)) {
     const children: SidebarItem[] = [];
     if (item.href) {
-      children.push({ href: item.href, label: "Overview" });
+      children.push({ href: prefixHref(item.href), label: "Overview" });
     }
     children.push(
       ...item.subfolders
@@ -57,7 +64,8 @@ const sections: SidebarItem[] = nav.map((item) => {
   if (isNavFolder(item)) {
     return buildFolderGroup(item.folder, item.label);
   }
-  return item;
+  // NavLink — prefix the href
+  return { ...item, href: prefixHref((item as NavLink).href) };
 });
 
 const currentPath = Astro.url.pathname;

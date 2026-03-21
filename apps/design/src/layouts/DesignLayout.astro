@@ -27,24 +27,26 @@ const sites = [
   { href: CV_DESIGN_URL, label: "Design", current: true },
 ];
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 const sections = [
-  { href: "/", label: "Overview" },
-  { href: "/colors", label: "Colors" },
-  { href: "/typography", label: "Typography" },
-  { href: "/icons", label: "Icons" },
-  { href: "/buttons", label: "Buttons" },
-  { href: "/alerts", label: "Alerts" },
-  { href: "/badges", label: "Badges" },
-  { href: "/forms", label: "Forms" },
-  { href: "/cards", label: "Cards" },
-  { href: "/loading", label: "Loading" },
-  { href: "/tooltips", label: "Tooltips" },
-  { href: "/tabs", label: "Tabs" },
-  { href: "/pagination", label: "Pagination" },
-  { href: "/tables", label: "Tables" },
-  { href: "/overlays", label: "Overlays" },
-  { href: "/banners", label: "Banners" },
-  { href: "/code", label: "Code & Prose" },
+  { href: `${base}/`, label: "Overview" },
+  { href: `${base}/colors`, label: "Colors" },
+  { href: `${base}/typography`, label: "Typography" },
+  { href: `${base}/icons`, label: "Icons" },
+  { href: `${base}/buttons`, label: "Buttons" },
+  { href: `${base}/alerts`, label: "Alerts" },
+  { href: `${base}/badges`, label: "Badges" },
+  { href: `${base}/forms`, label: "Forms" },
+  { href: `${base}/cards`, label: "Cards" },
+  { href: `${base}/loading`, label: "Loading" },
+  { href: `${base}/tooltips`, label: "Tooltips" },
+  { href: `${base}/tabs`, label: "Tabs" },
+  { href: `${base}/pagination`, label: "Pagination" },
+  { href: `${base}/tables`, label: "Tables" },
+  { href: `${base}/overlays`, label: "Overlays" },
+  { href: `${base}/banners`, label: "Banners" },
+  { href: `${base}/code`, label: "Code & Prose" },
 ];
 
 const currentPath = Astro.url.pathname;

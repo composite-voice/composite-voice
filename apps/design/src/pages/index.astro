@@ -1,10 +1,11 @@
 ---
 import DesignLayout from "../layouts/DesignLayout.astro";
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <DesignLayout title="Design System" description="A comprehensive component library built on semantic HTML, accessible patterns, and Tailwind v4 theme tokens.">
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-    <a href="/colors" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/colors`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center mb-3">
         <div class="w-5 h-5 rounded-full bg-primary-500"></div>
       </div>
@@ -12,7 +13,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">8 semantic palettes, 50–950 shades</p>
     </a>
 
-    <a href="/typography" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/typography`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-accent-100 flex items-center justify-center mb-3">
         <span class="text-lg font-bold text-accent-600">Aa</span>
       </div>
@@ -20,7 +21,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Headings, text, inline elements</p>
     </a>
 
-    <a href="/icons" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/icons`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-secondary-100 flex items-center justify-center mb-3">
         <svg class="w-5 h-5 text-secondary-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </div>
@@ -28,7 +29,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">90+ royalty-free SVG icons</p>
     </a>
 
-    <a href="/buttons" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/buttons`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center mb-3">
         <div class="w-8 h-4 rounded bg-success-500"></div>
       </div>
@@ -36,7 +37,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">6 variants, 5 sizes, icon buttons</p>
     </a>
 
-    <a href="/alerts" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/alerts`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-warning-100 flex items-center justify-center mb-3">
         <span class="text-warning-600 text-lg">⚠</span>
       </div>
@@ -44,7 +45,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">4 severity levels, dismissible</p>
     </a>
 
-    <a href="/badges" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/badges`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-danger-100 flex items-center justify-center mb-3">
         <span class="px-2 py-0.5 text-xs font-medium bg-danger-500 text-on-filled rounded-full">New</span>
       </div>
@@ -52,7 +53,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Status dots, removable, outlines</p>
     </a>
 
-    <a href="/forms" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/forms`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-info-100 flex items-center justify-center mb-3">
         <div class="w-7 h-3 border-2 border-info-500 rounded"></div>
       </div>
@@ -60,7 +61,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Inputs, selects, checkboxes, radios</p>
     </a>
 
-    <a href="/cards" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/cards`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-secondary-100 flex items-center justify-center mb-3">
         <div class="w-7 h-5 border border-secondary-400 rounded bg-surface"></div>
       </div>
@@ -68,7 +69,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Containers with Schema.org support</p>
     </a>
 
-    <a href="/loading" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/loading`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center mb-3">
         <div class="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
@@ -76,7 +77,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Spinners, skeletons, progress bars</p>
     </a>
 
-    <a href="/tooltips" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/tooltips`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-3">
         <div class="px-1.5 py-0.5 bg-neutral-800 text-on-filled text-xs rounded">tip</div>
       </div>
@@ -84,7 +85,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">4 positions, keyboard accessible</p>
     </a>
 
-    <a href="/tabs" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/tabs`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-accent-100 flex items-center justify-center mb-3">
         <div class="flex gap-0.5">
           <div class="w-3 h-1.5 rounded-t bg-accent-500"></div>
@@ -95,7 +96,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">WAI-ARIA tabs with keyboard nav</p>
     </a>
 
-    <a href="/pagination" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/pagination`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-success-100 flex items-center justify-center mb-3">
         <span class="text-xs font-mono text-success-600">1 2 3</span>
       </div>
@@ -103,7 +104,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Ellipsis algorithm, page navigation</p>
     </a>
 
-    <a href="/tables" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/tables`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-info-100 flex items-center justify-center mb-3">
         <div class="grid grid-cols-3 gap-px">
           <div class="w-1.5 h-1.5 bg-info-500"></div>
@@ -118,7 +119,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Striped, sortable, Schema.org</p>
     </a>
 
-    <a href="/overlays" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/overlays`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-3">
         <div class="w-6 h-4 border border-neutral-400 rounded bg-surface shadow-sm"></div>
       </div>
@@ -126,7 +127,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Modals with focus trapping</p>
     </a>
 
-    <a href="/banners" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/banners`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-warning-100 flex items-center justify-center mb-3">
         <div class="w-8 h-2 rounded bg-warning-500"></div>
       </div>
@@ -134,7 +135,7 @@ import DesignLayout from "../layouts/DesignLayout.astro";
       <p class="text-xs text-foreground-muted mt-1">Full-width notifications, sticky</p>
     </a>
 
-    <a href="/code" class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
+    <a href={`${base}/code`} class="group block p-5 bg-surface rounded-xl border border-neutral-200 hover:shadow-card-hover hover:-translate-y-0.5 transition-all">
       <div class="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-3">
         <span class="text-xs font-mono font-bold text-neutral-600">&lt;/&gt;</span>
       </div>
