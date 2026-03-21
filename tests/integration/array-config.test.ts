@@ -31,7 +31,7 @@ import {
   MockTTSProvider,
 } from '../mocks/MockProviders';
 
-// ─── Browser API mocks for NativeSTT/NativeTTS auto-fill defaults ────────────
+// ─── Browser API mocks for MicrophoneInput/BrowserAudioOutput auto-fill defaults ──
 
 const mockGetUserMedia = jest.fn().mockResolvedValue({
   getTracks: () => [{ stop: jest.fn() }],
@@ -235,26 +235,30 @@ describe('Array-based provider configuration', () => {
       expect(() => resolveProviders([input, stt, tts, output])).toThrow(/llm/);
     });
 
-    it('throws ConfigurationError when only input is uncovered (no auto-fill for partial pair)', () => {
-      // stt is covered but input is not — auto-fill only works for BOTH input+stt
+    it('auto-fills MicrophoneInput when only input is uncovered (stt is covered)', () => {
+      // stt is covered but input is not — auto-fill MicrophoneInput for the input slot
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() => resolveProviders([stt, llm, tts, output])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([stt, llm, tts, output])).toThrow(/input/);
+      const pipeline = resolveProviders([stt, llm, tts, output]);
+
+      expect(pipeline.input.constructor.name).toBe('MicrophoneInput');
+      expect(pipeline.stt).toBe(stt);
     });
 
-    it('throws ConfigurationError when only output is uncovered (no auto-fill for partial pair)', () => {
-      // tts is covered but output is not — auto-fill only works for BOTH tts+output
+    it('auto-fills BrowserAudioOutput when only output is uncovered (tts is covered)', () => {
+      // tts is covered but output is not — auto-fill BrowserAudioOutput for the output slot
       const input = new MockInputProvider();
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
       const tts = new MockTTSProvider();
 
-      expect(() => resolveProviders([input, stt, llm, tts])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([input, stt, llm, tts])).toThrow(/output/);
+      const pipeline = resolveProviders([input, stt, llm, tts]);
+
+      expect(pipeline.output.constructor.name).toBe('BrowserAudioOutput');
+      expect(pipeline.tts).toBe(tts);
     });
 
     it('throws ConfigurationError with empty providers array', () => {

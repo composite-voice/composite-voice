@@ -209,41 +209,41 @@ describe('Multi-role provider resolution', () => {
   });
 
   describe('default auto-fill with multi-role providers', () => {
-    it('auto-fills NativeSTT (input+stt) when only LLM + NativeTTS provided', () => {
+    it('auto-fills NullInput (input+stt) when only LLM + NativeTTS provided', () => {
       const llm = new MockLLMProvider();
       const nativeTTS = new NativeTTS();
 
       const pipeline = resolveProviders([llm, nativeTTS]);
 
-      // Auto-filled NativeSTT should cover both input and stt
+      // Auto-filled NullInput should cover both input and stt
       expect(pipeline.input).toBe(pipeline.stt);
-      expect(pipeline.input.constructor.name).toBe('NativeSTT');
+      expect(pipeline.input.constructor.name).toBe('NullInput');
       expect(pipeline.tts).toBe(nativeTTS);
       expect(pipeline.output).toBe(nativeTTS);
     });
 
-    it('auto-fills NativeTTS (tts+output) when only NativeSTT + LLM provided', () => {
+    it('auto-fills NullOutput (tts+output) when only NativeSTT + LLM provided', () => {
       const nativeSTT = new NativeSTT();
       const llm = new MockLLMProvider();
 
       const pipeline = resolveProviders([nativeSTT, llm]);
 
-      // Auto-filled NativeTTS should cover both tts and output
+      // Auto-filled NullOutput should cover both tts and output
       expect(pipeline.tts).toBe(pipeline.output);
-      expect(pipeline.tts.constructor.name).toBe('NativeTTS');
+      expect(pipeline.tts.constructor.name).toBe('NullOutput');
       expect(pipeline.input).toBe(nativeSTT);
       expect(pipeline.stt).toBe(nativeSTT);
     });
 
-    it('auto-fills both NativeSTT and NativeTTS when only LLM provided', () => {
+    it('auto-fills both NullInput and NullOutput when only LLM provided', () => {
       const llm = new MockLLMProvider();
 
       const pipeline = resolveProviders([llm]);
 
       expect(pipeline.input).toBe(pipeline.stt);
-      expect(pipeline.input.constructor.name).toBe('NativeSTT');
+      expect(pipeline.input.constructor.name).toBe('NullInput');
       expect(pipeline.tts).toBe(pipeline.output);
-      expect(pipeline.tts.constructor.name).toBe('NativeTTS');
+      expect(pipeline.tts.constructor.name).toBe('NullOutput');
       expect(pipeline.llm).toBe(llm);
     });
   });

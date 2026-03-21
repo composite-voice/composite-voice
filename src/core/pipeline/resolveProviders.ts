@@ -8,9 +8,11 @@
  *
  * 1. Reads the `roles` property from each provider and assigns it to the
  *    corresponding pipeline slot(s).
- * 2. Auto-fills default providers when both roles in a pair are uncovered:
- *    - `input` + `stt` uncovered → `new NativeSTT()` (covers both)
- *    - `tts` + `output` uncovered → `new NativeTTS()` (covers both)
+ * 2. Auto-fills default providers for uncovered roles:
+ *    - `input` + `stt` both uncovered → `new NullInput()` (text-only, no mic)
+ *    - `stt` covered but `input` uncovered → `new MicrophoneInput()`
+ *    - `tts` + `output` both uncovered → `new NullOutput()` (text-only, no speakers)
+ *    - `tts` covered but `output` uncovered → `new BrowserAudioOutput()`
  * 3. Validates that every slot is filled (throws {@link ConfigurationError} for
  *    uncovered roles).
  * 4. Validates that no slot is claimed by more than one provider (throws
@@ -27,7 +29,7 @@
  * │  each provider       │
  * ├─────────────────────┤
  * │  Auto-fill defaults  │
- * │  (NativeSTT/TTS)    │
+ * │  (Null/Mic/Browser)  │
  * ├─────────────────────┤
  * │  Validate coverage   │
  * │  & no duplicates     │
@@ -75,8 +77,10 @@ import type {
 import type { ProviderRole } from '../types/roles';
 import { ALL_PROVIDER_ROLES } from '../types/roles';
 import { ConfigurationError } from '../../utils/errors';
-import { NativeSTT } from '../../providers/stt/native/NativeSTT';
-import { NativeTTS } from '../../providers/tts/native/NativeTTS';
+import { NullInput } from '../../providers/input/NullInput';
+import { MicrophoneInput } from '../../providers/input/MicrophoneInput';
+import { NullOutput } from '../../providers/output/NullOutput';
+import { BrowserAudioOutput } from '../../providers/output/BrowserAudioOutput';
 
 /**
  * Required method names for each pipeline role.
@@ -249,19 +253,29 @@ export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
     }
   }
 
-  // Step 2: Auto-fill defaults for uncovered role pairs
-  // NativeSTT covers input + stt; NativeTTS covers tts + output
-  // Only auto-fill when BOTH roles in the pair are uncovered
+  // Step 2: Auto-fill defaults for uncovered roles
+  //
+  // Input side:
+  //   - Both input+stt uncovered → NullInput (text-only, no mic)
+  //   - stt covered but input uncovered → MicrophoneInput (voice needs a mic)
+  //
+  // Output side:
+  //   - Both tts+output uncovered → NullOutput (text-only, no speakers)
+  //   - tts covered but output uncovered → BrowserAudioOutput (TTS needs speakers)
   if (!slots.input && !slots.stt) {
-    const defaultSTT = new NativeSTT();
-    slots.input = defaultSTT;
-    slots.stt = defaultSTT;
+    const defaultInput = new NullInput();
+    slots.input = defaultInput;
+    slots.stt = defaultInput;
+  } else if (!slots.input && slots.stt) {
+    slots.input = new MicrophoneInput();
   }
 
   if (!slots.tts && !slots.output) {
-    const defaultTTS = new NativeTTS();
-    slots.tts = defaultTTS;
-    slots.output = defaultTTS;
+    const defaultOutput = new NullOutput();
+    slots.tts = defaultOutput;
+    slots.output = defaultOutput;
+  } else if (!slots.output && slots.tts) {
+    slots.output = new BrowserAudioOutput();
   }
 
   // Step 3: Validate all roles are covered

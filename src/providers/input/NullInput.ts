@@ -148,4 +148,18 @@ export class NullInput implements AudioInputProvider {
       bitDepth: 16,
     };
   }
+
+  // ── STTProvider interface (no-ops — satisfies duck-type validation) ──
+
+  /** No-op — no transcription will occur. */
+  async transcribe(_audio: Blob): Promise<void> {
+    // No-op: no STT processing
+  }
+
+  /** No-op — no transcription events will be emitted. */
+  onTranscription(
+    _callback: (result: import('../../core/types/providers').TranscriptionResult) => void
+  ): void {
+    // No-op: no transcription results
+  }
 }

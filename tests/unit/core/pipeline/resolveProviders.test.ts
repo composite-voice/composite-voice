@@ -8,11 +8,11 @@ import type { ProviderRole } from '../../../../src/core/types/roles';
 import type { AudioChunk, AudioMetadata } from '../../../../src/core/types/audio';
 import type { TranscriptionResult } from '../../../../src/core/types/providers';
 
-// ─── Browser mocks for NativeSTT / NativeTTS defaults ───────────────────────
+// ─── Browser mocks for MicrophoneInput / BrowserAudioOutput defaults ────────
 //
-// resolveProviders imports NativeSTT and NativeTTS statically and may
-// construct them when auto-filling defaults. Their constructors are safe
-// (no browser API calls), but the classes exist in browser-only modules,
+// resolveProviders imports MicrophoneInput and BrowserAudioOutput statically
+// and may construct them when auto-filling defaults. Their constructors are
+// safe (no browser API calls), but the classes exist in browser-only modules,
 // so we set up minimal global mocks.
 
 const mockGetUserMedia = jest.fn().mockResolvedValue({
@@ -334,28 +334,28 @@ describe('resolveProviders', () => {
       expect(pipeline.tts).toBe(tts);
     });
 
-    it('resolves with custom STT + LLM, auto-fills NativeTTS for tts+output', () => {
+    it('resolves with custom STT + LLM, auto-fills NullOutput for tts+output', () => {
       const input = new StubInput();
       const stt = new StubLiveSTT();
       const llm = new StubLLM();
 
       const pipeline = resolveProviders([input, stt, llm]);
 
-      // tts and output should be the same NativeTTS instance
+      // tts and output should be the same NullOutput instance
       expect(pipeline.tts).toBe(pipeline.output);
-      expect(pipeline.tts.constructor.name).toBe('NativeTTS');
+      expect(pipeline.tts.constructor.name).toBe('NullOutput');
     });
 
-    it('resolves with custom LLM + TTS + output, auto-fills NativeSTT for input+stt', () => {
+    it('resolves with custom LLM + TTS + output, auto-fills NullInput for input+stt', () => {
       const llm = new StubLLM();
       const tts = new StubLiveTTS();
       const output = new StubOutput();
 
       const pipeline = resolveProviders([llm, tts, output]);
 
-      // input and stt should be the same NativeSTT instance
+      // input and stt should be the same NullInput instance
       expect(pipeline.input).toBe(pipeline.stt);
-      expect(pipeline.input.constructor.name).toBe('NativeSTT');
+      expect(pipeline.input.constructor.name).toBe('NullInput');
     });
 
     it('providers can be passed in any order', () => {
@@ -376,28 +376,30 @@ describe('resolveProviders', () => {
   });
 
   describe('default provider auto-fill', () => {
-    it('auto-fills NativeSTT and NativeTTS when only LLM is provided', () => {
+    it('auto-fills NullInput and NullOutput when only LLM is provided', () => {
       const llm = new StubLLM();
 
       const pipeline = resolveProviders([llm]);
 
       expect(pipeline.input).toBe(pipeline.stt);
-      expect(pipeline.input.constructor.name).toBe('NativeSTT');
+      expect(pipeline.input.constructor.name).toBe('NullInput');
       expect(pipeline.tts).toBe(pipeline.output);
-      expect(pipeline.tts.constructor.name).toBe('NativeTTS');
+      expect(pipeline.tts.constructor.name).toBe('NullOutput');
       expect(pipeline.llm).toBe(llm);
     });
 
-    it('does NOT auto-fill NativeSTT when only input is uncovered (stt is covered)', () => {
+    it('auto-fills MicrophoneInput when only input is uncovered (stt is covered)', () => {
       const stt = new StubLiveSTT();
       const llm = new StubLLM();
       const ttsOutput = new StubTTSOutput();
 
-      expect(() => resolveProviders([stt, llm, ttsOutput])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([stt, llm, ttsOutput])).toThrow(/input/);
+      const pipeline = resolveProviders([stt, llm, ttsOutput]);
+
+      expect(pipeline.input.constructor.name).toBe('MicrophoneInput');
+      expect(pipeline.stt).toBe(stt);
     });
 
-    it('does NOT auto-fill NativeSTT when only stt is uncovered (input is covered)', () => {
+    it('does NOT auto-fill when only stt is uncovered (input is covered)', () => {
       const input = new StubInput();
       const llm = new StubLLM();
       const ttsOutput = new StubTTSOutput();
@@ -406,7 +408,7 @@ describe('resolveProviders', () => {
       expect(() => resolveProviders([input, llm, ttsOutput])).toThrow(/stt/);
     });
 
-    it('does NOT auto-fill NativeTTS when only tts is uncovered (output is covered)', () => {
+    it('does NOT auto-fill when only tts is uncovered (output is covered)', () => {
       const inputStt = new StubInputSTT();
       const llm = new StubLLM();
       const output = new StubOutput();
@@ -415,13 +417,15 @@ describe('resolveProviders', () => {
       expect(() => resolveProviders([inputStt, llm, output])).toThrow(/tts/);
     });
 
-    it('does NOT auto-fill NativeTTS when only output is uncovered (tts is covered)', () => {
+    it('auto-fills BrowserAudioOutput when only output is uncovered (tts is covered)', () => {
       const inputStt = new StubInputSTT();
       const llm = new StubLLM();
       const tts = new StubLiveTTS();
 
-      expect(() => resolveProviders([inputStt, llm, tts])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([inputStt, llm, tts])).toThrow(/output/);
+      const pipeline = resolveProviders([inputStt, llm, tts]);
+
+      expect(pipeline.output.constructor.name).toBe('BrowserAudioOutput');
+      expect(pipeline.tts).toBe(tts);
     });
   });
 
