@@ -16,3 +16,4 @@
 export { MicrophoneInput } from './MicrophoneInput';
 export type { MicrophoneInputConfig } from './MicrophoneInput';
 export { BufferInput } from './BufferInput';
+export { NullInput } from './NullInput';

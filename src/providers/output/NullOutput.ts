@@ -9,9 +9,10 @@
  * no-ops. It is designed for server-side environments (Node.js, Bun, Deno)
  * where TTS audio does not need to be played through speakers.
  *
- * `NullOutput` is a single-role provider (`'output'`) and has zero browser
- * dependencies — it does not reference `navigator`, `window`, `AudioContext`,
- * or any Web API.
+ * `NullOutput` is a multi-role provider (`'tts'` + `'output'`) and has zero
+ * browser dependencies — it does not reference `navigator`, `window`,
+ * `AudioContext`, or any Web API. It covers both the TTS and output slots,
+ * so no separate TTS provider is needed when text-only output is desired.
  *
  * **Data-flow diagram:**
  *
@@ -54,11 +55,13 @@ import type { ProviderRole } from '../../core/types/roles';
  * No-op audio output provider that discards all audio.
  *
  * @remarks
- * `NullOutput` implements the Null Object pattern for the `'output'` pipeline
- * role. Every method is a no-op, making it safe to use wherever an
+ * `NullOutput` implements the Null Object pattern for the `'tts'` + `'output'`
+ * pipeline roles. Every method is a no-op, making it safe to use wherever an
  * {@link AudioOutputProvider} is required but audio playback is not needed.
  *
  * Common use cases:
+ * - **Text-only agents** — `NullInput` + LLM + `NullOutput` = ChatGPT-style text interface
+ * - **Voice-in, text-out** — `MicrophoneInput` + STT + LLM + `NullOutput` = user speaks, agent replies with text only
  * - Server-side pipelines where only the transcription/LLM response matters
  * - Testing pipelines without audio playback side-effects
  * - Headless environments without audio hardware
@@ -98,10 +101,11 @@ export class NullOutput implements AudioOutputProvider {
    * Pipeline roles covered by this provider.
    *
    * @remarks
-   * `NullOutput` is a single-role provider covering only the `'output'` slot.
-   * It requires a separate TTS provider for the `'tts'` role.
+   * `NullOutput` covers both `'tts'` and `'output'`, so no separate TTS
+   * provider is needed. LLM text is still emitted via `llm.chunk` and
+   * `llm.complete` events — it just isn't synthesized into speech.
    */
-  public readonly roles: readonly ProviderRole[] = ['output'];
+  public readonly roles: readonly ProviderRole[] = ['tts', 'output'];
 
   /** Whether this provider has been initialized. */
   private initialized = false;
@@ -137,6 +141,48 @@ export class NullOutput implements AudioOutputProvider {
    */
   isReady(): boolean {
     return this.initialized;
+  }
+
+  // ── TTSProvider interface (no-ops — satisfies duck-type validation) ──
+
+  /** No-op — text is discarded, no synthesis occurs. */
+  processChunk(_text: string): void {
+    // No-op: no TTS synthesis
+  }
+
+  /** No-op — nothing to finalize. */
+  async finalize(): Promise<void> {
+    // No-op: no TTS synthesis
+  }
+
+  /** No-op — nothing to connect. */
+  async connect(): Promise<void> {
+    // No-op: no TTS connection
+  }
+
+  /** No-op — text is discarded. */
+  sendText(_text: string): void {
+    // No-op: no TTS synthesis
+  }
+
+  /** No-op — nothing to disconnect. */
+  async disconnect(): Promise<void> {
+    // No-op: no TTS connection
+  }
+
+  /** No-op — no audio will be produced. */
+  onAudio(_callback: (chunk: AudioChunk) => void): void {
+    // No-op: no audio produced
+  }
+
+  /** No-op — no metadata will be produced. */
+  onMetadata(_callback: (metadata: AudioMetadata) => void): void {
+    // No-op: no metadata produced
+  }
+
+  /** No-op — returns empty blob. */
+  async synthesize(_text: string): Promise<Blob> {
+    return new Blob();
   }
 
   // ── AudioOutputProvider interface (all no-ops) ───────────────────

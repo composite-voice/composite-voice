@@ -117,31 +117,30 @@ describe('Array-based provider configuration', () => {
   });
 
   describe('server-side output (MockInput + NullOutput)', () => {
-    it('resolves [input, stt, llm, tts, nullOutput] for server-side output', () => {
+    it('resolves [input, stt, llm, nullOutput] — NullOutput covers tts+output', () => {
       const input = new MockInputProvider();
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
-      const tts = new MockTTSProvider();
       const nullOutput = new NullOutput();
 
-      const pipeline = resolveProviders([input, stt, llm, tts, nullOutput]);
+      const pipeline = resolveProviders([input, stt, llm, nullOutput]);
 
       expect(pipeline.input).toBe(input);
       expect(pipeline.stt).toBe(stt);
       expect(pipeline.llm).toBe(llm);
-      expect(pipeline.tts).toBe(tts);
+      expect(pipeline.tts).toBe(nullOutput);
       expect(pipeline.output).toBe(nullOutput);
       expect(pipeline.output.constructor.name).toBe('NullOutput');
     });
 
-    it('NullOutput declares the output role', () => {
+    it('NullOutput declares tts and output roles', () => {
       const nullOutput = new NullOutput();
-      expect(nullOutput.roles).toEqual(['output']);
+      expect(nullOutput.roles).toEqual(['tts', 'output']);
     });
   });
 
   describe('fully server-side pipeline (BufferInput + NullOutput)', () => {
-    it('resolves [bufferInput, stt, llm, tts, nullOutput] for fully server-side', () => {
+    it('resolves [bufferInput, stt, llm, nullOutput] for fully server-side', () => {
       const bufferInput = new BufferInput({
         sampleRate: 16000,
         encoding: 'linear16',
@@ -150,16 +149,15 @@ describe('Array-based provider configuration', () => {
       });
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
-      const tts = new MockTTSProvider();
       const nullOutput = new NullOutput();
 
-      const pipeline = resolveProviders([bufferInput, stt, llm, tts, nullOutput]);
+      const pipeline = resolveProviders([bufferInput, stt, llm, nullOutput]);
 
       expect(pipeline.input).toBe(bufferInput);
       expect(pipeline.input.constructor.name).toBe('BufferInput');
       expect(pipeline.stt).toBe(stt);
       expect(pipeline.llm).toBe(llm);
-      expect(pipeline.tts).toBe(tts);
+      expect(pipeline.tts).toBe(nullOutput);
       expect(pipeline.output).toBe(nullOutput);
       expect(pipeline.output.constructor.name).toBe('NullOutput');
     });
@@ -183,22 +181,20 @@ describe('Array-based provider configuration', () => {
       });
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
-      const tts = new MockTTSProvider();
       const nullOutput = new NullOutput();
 
       // Should not throw — BufferInput has all required AudioInputProvider methods
-      expect(() => resolveProviders([bufferInput, stt, llm, tts, nullOutput])).not.toThrow();
+      expect(() => resolveProviders([bufferInput, stt, llm, nullOutput])).not.toThrow();
     });
 
     it('NullOutput passes duck-type validation for AudioOutputProvider', () => {
       const input = new MockInputProvider();
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
-      const tts = new MockTTSProvider();
       const nullOutput = new NullOutput();
 
-      // Should not throw — NullOutput has all required AudioOutputProvider methods
-      expect(() => resolveProviders([input, stt, llm, tts, nullOutput])).not.toThrow();
+      // Should not throw — NullOutput covers tts+output
+      expect(() => resolveProviders([input, stt, llm, nullOutput])).not.toThrow();
     });
   });
 
@@ -331,7 +327,7 @@ describe('Array-based provider configuration', () => {
       const llm = new MockLLMProvider();
       const tts = new MockTTSProvider();
       const output1 = new MockOutputProvider();
-      const output2 = new NullOutput();
+      const output2 = new MockOutputProvider();
 
       expect(() => resolveProviders([input, stt, llm, tts, output1, output2])).toThrow(
         ConfigurationError
@@ -499,16 +495,15 @@ describe('Array-based provider configuration', () => {
       });
       const stt = new MockLiveSTTProvider();
       const llm = new MockLLMProvider();
-      const tts = new MockTTSProvider();
       const nullOutput = new NullOutput();
 
-      // Scrambled order
-      const pipeline = resolveProviders([nullOutput, llm, bufferInput, tts, stt]);
+      // Scrambled order — NullOutput covers tts+output
+      const pipeline = resolveProviders([nullOutput, llm, bufferInput, stt]);
 
       expect(pipeline.input).toBe(bufferInput);
       expect(pipeline.stt).toBe(stt);
       expect(pipeline.llm).toBe(llm);
-      expect(pipeline.tts).toBe(tts);
+      expect(pipeline.tts).toBe(nullOutput);
       expect(pipeline.output).toBe(nullOutput);
     });
   });
