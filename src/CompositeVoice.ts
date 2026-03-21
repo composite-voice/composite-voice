@@ -53,7 +53,7 @@ import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
 import { trimConversationHistory } from './utils/conversationHistory';
 import { stripMarkdownForTTS } from './utils/ttsStrip';
-import { ChunkSplitter } from './utils/chunkSplitter';
+import { LLMTextRouter } from './utils/LLMTextRouter';
 import { getBrowserAPISupport } from './utils/browserCapabilities';
 import { resolveProviders } from './core/pipeline/resolveProviders';
 import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
@@ -2036,7 +2036,14 @@ export class CompositeVoice {
     let activeToolArgs = '';
     let activeToolName = '';
     let activeToolId = '';
-    const chunkSplitter = new ChunkSplitter();
+
+    const router = new LLMTextRouter(
+      (visual, spoken, acc) => this.emitEvent({
+        type: 'llm.chunk', chunk: visual, accumulated: acc,
+        visual, spoken, timestamp: Date.now(),
+      }),
+      (spoken) => { if (isLiveTTS(tts) && !this._outputMuted) tts.sendText(spoken); },
+    );
 
     // Ensure Live TTS WebSocket is connected before streaming begins
     if (isLiveTTS(tts) && !this._outputMuted) {
@@ -2053,18 +2060,7 @@ export class CompositeVoice {
 
       if (chunk.type === 'text') {
         fullText += chunk.text;
-
-        for (const seg of chunkSplitter.process(chunk.text)) {
-          if (seg.visual) {
-            this.emitEvent({
-              type: 'llm.chunk', chunk: seg.visual, accumulated: fullText,
-              visual: seg.visual, spoken: seg.spoken, timestamp: Date.now(),
-            });
-          }
-          if (seg.spoken && isLiveTTS(tts) && !this._outputMuted) {
-            tts.sendText(seg.spoken);
-          }
-        }
+        router.push(chunk.text);
       } else if (chunk.type === 'tool_call_start') {
         activeToolId = chunk.toolCall.id;
         activeToolName = chunk.toolCall.name;
@@ -2111,7 +2107,6 @@ export class CompositeVoice {
           }
 
           // Reset for the follow-up call
-          const textBeforeTools = fullText;
           fullText = '';
           toolCalls = [];
 
@@ -2138,19 +2133,7 @@ export class CompositeVoice {
               if (signal.aborted) break;
               if (chunk2.type === 'text') {
                 fullText += chunk2.text;
-                const acc = textBeforeTools + fullText;
-
-                for (const seg of chunkSplitter.process(chunk2.text)) {
-                  if (seg.visual) {
-                    this.emitEvent({
-                      type: 'llm.chunk', chunk: seg.visual, accumulated: acc,
-                      visual: seg.visual, spoken: seg.spoken, timestamp: Date.now(),
-                    });
-                  }
-                  if (seg.spoken && isLiveTTS(tts) && !this._outputMuted) {
-                    tts.sendText(seg.spoken);
-                  }
-                }
+                router.push(chunk2.text);
               } else if (chunk2.type === 'tool_call_start') {
                 activeToolId = chunk2.toolCall.id;
                 activeToolName = chunk2.toolCall.name;
