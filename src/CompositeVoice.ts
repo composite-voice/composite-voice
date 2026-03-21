@@ -470,11 +470,24 @@ export class CompositeVoice {
    */
   constructor(config: CompositeVoiceConfig) {
     // Resolve providers into a fully typed 5-role pipeline
-    this.pipeline = resolveProviders(config.providers);
+    this.pipeline = resolveProviders(config.providers ?? []);
     this.stt = this.pipeline.stt;
     this.llm = this.pipeline.llm;
     this.tts = this.pipeline.tts;
     this.config = config;
+
+    // Log the resolved pipeline when debug is enabled
+    if (config.logging?.enabled) {
+      const p = this.pipeline;
+      console.log(
+        '[CompositeVoice] Resolved pipeline:',
+        `input=${p.input.constructor.name}`,
+        `stt=${p.stt.constructor.name}`,
+        `llm=${p.llm.constructor.name}`,
+        `tts=${p.tts.constructor.name}`,
+        `output=${p.output.constructor.name}`
+      );
+    }
 
     // Create audio buffer queues (configurable via config.queue)
     this.inputQueue = new AudioBufferQueue({

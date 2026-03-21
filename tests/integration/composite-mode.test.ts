@@ -90,13 +90,13 @@ describe('Composite Mode Integration', () => {
       expect(agent.isReady()).toBe(true);
     });
 
-    it('should throw error if missing providers', () => {
+    it('should auto-fill missing providers with defaults', () => {
+      // NativeSTT covers input+stt; LLM and tts+output auto-filled
       expect(() => {
         new CompositeVoice({
           providers: [new NativeSTT()],
-          // Missing LLM and TTS roles
         });
-      }).toThrow();
+      }).not.toThrow();
     });
   });
 

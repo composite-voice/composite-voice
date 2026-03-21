@@ -430,9 +430,11 @@ describe('resolveProviders', () => {
   });
 
   describe('error cases', () => {
-    it('throws ConfigurationError for empty array', () => {
-      expect(() => resolveProviders([])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([])).toThrow(/non-empty/);
+    it('auto-fills all defaults with empty array', () => {
+      const pipeline = resolveProviders([]);
+      expect(pipeline.input.constructor.name).toBe('NullInput');
+      expect(pipeline.llm.constructor.name).toBe('AnthropicLLM');
+      expect(pipeline.output.constructor.name).toBe('NullOutput');
     });
 
     it('throws ConfigurationError for null/undefined input', () => {
@@ -440,12 +442,12 @@ describe('resolveProviders', () => {
       expect(() => resolveProviders(undefined as any)).toThrow(ConfigurationError);
     });
 
-    it('throws ConfigurationError when LLM role is missing', () => {
+    it('auto-fills AnthropicLLM when LLM role is missing', () => {
       const inputStt = new StubInputSTT();
       const ttsOutput = new StubTTSOutput();
 
-      expect(() => resolveProviders([inputStt, ttsOutput])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([inputStt, ttsOutput])).toThrow(/llm/);
+      const pipeline = resolveProviders([inputStt, ttsOutput]);
+      expect(pipeline.llm.constructor.name).toBe('AnthropicLLM');
     });
 
     it('throws ConfigurationError for duplicate roles naming both providers', () => {

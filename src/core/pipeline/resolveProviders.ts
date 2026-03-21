@@ -13,6 +13,7 @@
  *    - `stt` covered but `input` uncovered → `new MicrophoneInput()`
  *    - `tts` + `output` both uncovered → `new NullOutput()` (text-only, no speakers)
  *    - `tts` covered but `output` uncovered → `new BrowserAudioOutput()`
+ *    - `llm` uncovered → `new AnthropicLLM({ model: 'claude-haiku-4-5' })`
  * 3. Validates that every slot is filled (throws {@link ConfigurationError} for
  *    uncovered roles).
  * 4. Validates that no slot is claimed by more than one provider (throws
@@ -81,6 +82,7 @@ import { NullInput } from '../../providers/input/NullInput';
 import { MicrophoneInput } from '../../providers/input/MicrophoneInput';
 import { NullOutput } from '../../providers/output/NullOutput';
 import { BrowserAudioOutput } from '../../providers/output/BrowserAudioOutput';
+import { AnthropicLLM } from '../../providers/llm/anthropic/AnthropicLLM';
 
 /**
  * Required method names for each pipeline role.
@@ -220,8 +222,8 @@ function validateSlotInterface(provider: BaseProvider, role: ProviderRole): void
  * @see {@link ConfigurationError} for error details
  */
 export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
-  if (!providers || !Array.isArray(providers) || providers.length === 0) {
-    throw new ConfigurationError('resolveProviders requires a non-empty providers array');
+  if (!providers || !Array.isArray(providers)) {
+    throw new ConfigurationError('resolveProviders requires a providers array');
   }
 
   // Step 1: Assign providers to slots based on their declared roles
@@ -276,6 +278,11 @@ export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
     slots.output = defaultOutput;
   } else if (!slots.output && slots.tts) {
     slots.output = new BrowserAudioOutput();
+  }
+
+  // LLM: default to AnthropicLLM when uncovered
+  if (!slots.llm) {
+    slots.llm = new AnthropicLLM({ model: 'claude-haiku-4-5' });
   }
 
   // Step 3: Validate all roles are covered

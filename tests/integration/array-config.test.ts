@@ -225,14 +225,14 @@ describe('Array-based provider configuration', () => {
   });
 
   describe('missing role error cases', () => {
-    it('throws ConfigurationError naming the missing role when LLM is missing', () => {
+    it('auto-fills AnthropicLLM when LLM is missing', () => {
       const input = new MockInputProvider();
       const stt = new MockLiveSTTProvider();
       const tts = new MockTTSProvider();
       const output = new MockOutputProvider();
 
-      expect(() => resolveProviders([input, stt, tts, output])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([input, stt, tts, output])).toThrow(/llm/);
+      const pipeline = resolveProviders([input, stt, tts, output]);
+      expect(pipeline.llm.constructor.name).toBe('AnthropicLLM');
     });
 
     it('auto-fills MicrophoneInput when only input is uncovered (stt is covered)', () => {
@@ -261,9 +261,13 @@ describe('Array-based provider configuration', () => {
       expect(pipeline.tts).toBe(tts);
     });
 
-    it('throws ConfigurationError with empty providers array', () => {
-      expect(() => resolveProviders([])).toThrow(ConfigurationError);
-      expect(() => resolveProviders([])).toThrow(/non-empty/);
+    it('auto-fills all defaults with empty providers array', () => {
+      const pipeline = resolveProviders([]);
+      expect(pipeline.input.constructor.name).toBe('NullInput');
+      expect(pipeline.stt.constructor.name).toBe('NullInput');
+      expect(pipeline.llm.constructor.name).toBe('AnthropicLLM');
+      expect(pipeline.tts.constructor.name).toBe('NullOutput');
+      expect(pipeline.output.constructor.name).toBe('NullOutput');
     });
   });
 
