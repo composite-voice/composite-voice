@@ -16,9 +16,9 @@ const { title = "CompositeVoice", description = "Build voice interfaces for the 
 const version = pkg.version;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
 
-const CV_WEB_URL = import.meta.env.CV_WEB_URL || "/";
-const CV_DOCS_URL = import.meta.env.CV_DOCS_URL || "/";
-const CV_DESIGN_URL = import.meta.env.CV_DESIGN_URL || "/";
+const CV_WEB_URL = process.env.CV_WEB_URL || "/";
+const CV_DOCS_URL = process.env.CV_DOCS_URL || "/";
+const CV_DESIGN_URL = process.env.CV_DESIGN_URL || "/";
 
 const sites = [
   { href: CV_WEB_URL, label: "Home", current: true },
