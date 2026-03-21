@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.0.5](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.4...composite-voice-v0.0.5) (2026-03-21)
+
+
+### Features
+
+* accept string | string[] for all array query params ([f82df35](https://github.com/lukeocodes/composite-voice/commit/f82df3510d4a72ad8b2c772c513c9d529ce47612))
+* dual visual/spoken chunks with markdown stripping for TTS ([1ee1565](https://github.com/lukeocodes/composite-voice/commit/1ee15659f3cb6301abab4abd09e2ef45a019ff8a))
+* multi-round tool use loop (up to 5 rounds) ([e3d8e37](https://github.com/lukeocodes/composite-voice/commit/e3d8e37a24fa4d4fae06876f0946579436edc7bd))
+* skip code fences in TTS output ([d788fb2](https://github.com/lukeocodes/composite-voice/commit/d788fb2bb222ae3e5f251db8c2ac53f68444fd06))
+
+
+### Bug Fixes
+
+* buffer code fences entirely — never send to TTS or stream to UI ([1c8aa58](https://github.com/lukeocodes/composite-voice/commit/1c8aa58d083732ba5bfa25afc87cb8dcb011d043))
+* make AudioWorkletProcessor declare abstract to fix TypeDoc build ([b68494d](https://github.com/lukeocodes/composite-voice/commit/b68494db3edc1f618613ea97e7b8cebb1183ee1d))
+* resolve all lint errors and warnings across codebase ([a379422](https://github.com/lukeocodes/composite-voice/commit/a379422472f02576c66858e7730c198c091bf6c2))
+* resolve CI example compile failures ([6d0c519](https://github.com/lukeocodes/composite-voice/commit/6d0c5197fa032df0c932307e1c0a7004ad274ddb))
+* restore manifest to 0.0.4 so release-please computes correct diff ([ac3802a](https://github.com/lukeocodes/composite-voice/commit/ac3802a967f8971432c0318a630ee2257e9a6748))
+
+
+### Reverts
+
+* remove manual CHANGELOG entries — release-please manages this ([130c2d2](https://github.com/lukeocodes/composite-voice/commit/130c2d2ad75b833aa4233db87df90eec19633cbf))
+
+
+### Documentation
+
+* add smart text routing, update zero-dependency messaging across all docs ([769ac10](https://github.com/lukeocodes/composite-voice/commit/769ac10159b2b205198d472d9c9d597174c84149))
+
+
+### Miscellaneous Chores
+
+* release 0.0.5 ([1f73639](https://github.com/lukeocodes/composite-voice/commit/1f736396401ae396dd85f075a3b80b612daebeef))
+
 ## [0.0.4](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.3...composite-voice-v0.0.4) (2026-03-16)
 
 
