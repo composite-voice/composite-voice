@@ -82,3 +82,6 @@ __check_ts_imports.ts
 # Generated API docs (typedoc output, regenerated at build)
 apps/docs/src/content/docs/api/
 
+
+# Local Netlify folder
+.netlify
