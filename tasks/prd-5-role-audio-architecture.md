@@ -187,7 +187,7 @@ This codebase generates API documentation via TypeDoc. Every new interface, clas
 **Acceptance Criteria:**
 - [ ] Create `src/core/pipeline/resolveProviders.ts` with `resolveProviders(providers: BaseProvider[]): ResolvedPipeline` function
 - [ ] Read `roles` from each provider and assign to pipeline slots
-- [ ] **Default providers:** When `input` and `stt` roles are both uncovered, auto-fill with `new NativeSTT()` (covers `input`+`stt`). When `tts` and `output` roles are both uncovered, auto-fill with `new NativeTTS()` (covers `tts`+`output`). Only `llm` role is strictly required — no default LLM provider.
+- [x] **Default providers:** When `input` and `stt` roles are both uncovered, auto-fill with `new NullInput()` (covers `input`+`stt` — text-only mode). When `tts` and `output` roles are both uncovered, auto-fill with `new NullOutput()` (covers `tts`+`output` — text-only mode). When `stt` provided without `input`, auto-fill `MicrophoneInput()`. When `tts` provided without `output`, auto-fill `BrowserAudioOutput()`. When `llm` uncovered, auto-fill `AnthropicLLM({ model: 'claude-haiku-4-5' })`.
 - [ ] Throw `ConfigurationError` for uncovered roles that cannot be auto-filled (e.g., `llm` always required, partial coverage like only `input` uncovered)
 - [ ] Throw `ConfigurationError` for duplicate roles with message naming both conflicting providers
 - [ ] Duck-type check: verify each slot has required methods for its role interface (`AudioInputProvider` for `input`, `LiveSTTProvider`/`RestSTTProvider` for `stt`, `LLMProvider` for `llm`, `LiveTTSProvider`/`RestTTSProvider` for `tts`, `AudioOutputProvider` for `output`)

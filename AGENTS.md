@@ -66,9 +66,11 @@ const voice = new CompositeVoice({
 
 ### Auto-Fill Defaults
 
-- If `input` and `stt` are both uncovered, `NativeSTT()` is auto-filled (covers both)
-- If `tts` and `output` are both uncovered, `NativeTTS()` is auto-filled (covers both)
-- `llm` is always required — no default LLM provider
+- If `input` and `stt` are both uncovered, `NullInput()` is auto-filled (covers both — text-only mode)
+- If `tts` and `output` are both uncovered, `NullOutput()` is auto-filled (covers both — text-only mode)
+- If `stt` is provided without `input`, `MicrophoneInput()` is auto-filled
+- If `tts` is provided without `output`, `BrowserAudioOutput()` is auto-filled
+- If `llm` is uncovered, `AnthropicLLM({ model: 'claude-haiku-4-5' })` is auto-filled
 
 ### Audio Buffering (Race Condition Fix)
 

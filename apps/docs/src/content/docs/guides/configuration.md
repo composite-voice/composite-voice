@@ -60,7 +60,7 @@ const voice = new CompositeVoice({
 
   // Eager LLM -- speculative generation from preflight signals
   eagerLLM: {
-    enabled: false,             // requires DeepgramFlux provider (currently disabled)
+    enabled: false,             // requires DeepgramFlux provider
     cancelOnTextChange: true,   // cancel and restart if text diverges (default: true)
     similarityThreshold: 0.8,   // 0-1 word-overlap threshold (default: 0.8)
   },
@@ -192,7 +192,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-> **Note:** DeepgramFlux is currently disabled and will throw on construction. It is preserved for future re-enablement when the Deepgram V2 SDK stabilizes.
+> **Note:** Eager LLM requires a DeepgramFlux STT provider, which emits `EagerEndOfTurn` signals the pipeline uses for speculative generation.
 
 ## Tool use
 

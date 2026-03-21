@@ -290,8 +290,8 @@ const agent = new CompositeVoice({
 | Provider        | Transport      | Browser support     | Peer dependency |
 | --------------- | -------------- | ------------------- | --------------- |
 | `NativeSTT`     | Web Speech API | Chrome, Edge        | None            |
-| `DeepgramSTT`   | WebSocket      | All modern browsers | `@deepgram/sdk` |
-| `DeepgramFlux`  | WebSocket      | All modern browsers | `@deepgram/sdk` |
+| `DeepgramSTT`   | WebSocket      | All modern browsers | None            |
+| `DeepgramFlux`  | WebSocket      | All modern browsers | None            |
 | `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
 | `ElevenLabsSTT` | WebSocket      | All modern browsers | None            |
 
@@ -326,8 +326,6 @@ new DeepgramSTT({
 ```
 
 **`DeepgramFlux` options (V2/Flux — supports eager LLM):**
-
-> **Note:** DeepgramFlux is currently disabled and throws on construction. It requires `@deepgram/sdk` V5 (`listen.v2` API), which is not yet stable. Use `DeepgramSTT` with Nova models instead. The class is preserved for future re-enablement when the V5 SDK stabilizes.
 
 ```typescript
 new DeepgramFlux({
@@ -367,15 +365,15 @@ new ElevenLabsSTT({
 
 ### Language Models (LLM)
 
-| Provider              | Transport         | Peer dependency     | Notes                                                   |
-| --------------------- | ----------------- | ------------------- | ------------------------------------------------------- |
-| `AnthropicLLM`        | HTTP streaming    | `@anthropic-ai/sdk` | Claude models. Streams by default.                      |
-| `OpenAILLM`           | HTTP              | `openai`            | GPT models.                                             |
-| `GroqLLM`             | HTTP              | `openai`            | Groq-hosted models. Ultra-fast inference.               |
-| `GeminiLLM`           | HTTP              | `openai`            | Google Gemini models via OpenAI-compatible API.         |
-| `MistralLLM`          | HTTP              | `openai`            | Mistral open and commercial models.                     |
-| `WebLLMLLM`           | In-browser WebGPU | `@mlc-ai/web-llm`   | Fully offline. No API keys. Runs entirely client-side.  |
-| `OpenAICompatibleLLM` | HTTP              | `openai`            | Base class — extend for any OpenAI-compatible endpoint. |
+| Provider              | Transport         | Peer dependency    | Notes                                                   |
+| --------------------- | ----------------- | ------------------ | ------------------------------------------------------- |
+| `AnthropicLLM`        | HTTP streaming    | None               | Claude models. Streams by default. **Pipeline default.** |
+| `OpenAILLM`           | HTTP              | None               | GPT models.                                             |
+| `GroqLLM`             | HTTP              | None               | Groq-hosted models. Ultra-fast inference.               |
+| `GeminiLLM`           | HTTP              | None               | Google Gemini models via OpenAI-compatible API.         |
+| `MistralLLM`          | HTTP              | None               | Mistral open and commercial models.                     |
+| `WebLLMLLM`           | In-browser WebGPU | `@mlc-ai/web-llm`  | Fully offline. No API keys. Runs entirely client-side.  |
+| `OpenAICompatibleLLM` | HTTP              | None               | Base class — extend for any OpenAI-compatible endpoint. |
 
 **`AnthropicLLM` options:**
 
@@ -450,8 +448,8 @@ new WebLLMLLM({
 | Provider        | Transport           | Browser support     | Peer dependency |
 | --------------- | ------------------- | ------------------- | --------------- |
 | `NativeTTS`     | SpeechSynthesis API | All modern browsers | None            |
-| `DeepgramTTS`   | WebSocket           | All modern browsers | `@deepgram/sdk` |
-| `OpenAITTS`     | HTTP (REST)         | All modern browsers | `openai`        |
+| `DeepgramTTS`   | WebSocket           | All modern browsers | None            |
+| `OpenAITTS`     | HTTP (REST)         | All modern browsers | None            |
 | `ElevenLabsTTS` | WebSocket           | All modern browsers | None            |
 | `CartesiaTTS`   | WebSocket           | All modern browsers | None            |
 

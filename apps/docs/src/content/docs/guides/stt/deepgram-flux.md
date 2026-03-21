@@ -13,11 +13,8 @@ Use DeepgramFlux for the lowest-latency voice pipelines. It connects to Deepgram
 ## Prerequisites
 
 - A [Deepgram](https://deepgram.com) API key
-- The `@deepgram/sdk` (v5+) peer dependency installed:
 
-```bash
-pnpm add @deepgram/sdk@^5
-```
+No extra packages needed — DeepgramFlux uses a native WebSocket connection directly to the Deepgram V2 API.
 
 For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
@@ -201,7 +198,7 @@ await agent.startListening();
 ## Tips and gotchas
 
 - **Always use a proxy in production.** Pass `proxyUrl` instead of `apiKey` so your Deepgram key never reaches the browser. The SDK converts `http(s)` to `ws(s)` automatically.
-- **Install the peer dependency.** DeepgramFlux dynamically imports `@deepgram/sdk` V5 at initialization. If the package is missing, you get a clear error with install instructions.
+- **No peer dependencies.** DeepgramFlux connects directly to the Deepgram V2 WebSocket API using native WebSocket — no `@deepgram/sdk` required.
 - **Set `eagerEotThreshold` to enable preflight.** Without this option, DeepgramFlux will not emit `EagerEndOfTurn` events, and the eager LLM pipeline will have no preflight signals to work with.
 - **Connection timeout.** The WebSocket connection defaults to a 10-second timeout. Adjust with `timeout` in the config if your network is slow.
 - **Keep-alive.** Use `sendKeepAlive()` to prevent the V2 WebSocket from timing out during long pauses.
