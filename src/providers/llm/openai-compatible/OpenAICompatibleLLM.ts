@@ -26,6 +26,9 @@ import type {
   LLMProviderConfig,
   LLMGenerationOptions,
   LLMMessage,
+  LLMToolDefinition,
+  LLMStreamChunk,
+  ToolAwareLLMProvider,
 } from '../../../core/types/providers';
 import { Logger } from '../../../utils/logger';
 import { HttpClient } from '../../../utils/http';
@@ -81,8 +84,10 @@ export interface OpenAICompatibleLLMConfig extends LLMProviderConfig {
  * @internal
  */
 interface ChatCompletionMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[];
+  tool_call_id?: string;
 }
 
 /** @internal Default OpenAI API base URL. */
@@ -134,7 +139,7 @@ const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
  * @see {@link OpenAICompatibleLLMConfig} for configuration options.
  * @see {@link OpenAILLM} for the first-party OpenAI subclass.
  */
-export class OpenAICompatibleLLM extends BaseLLMProvider {
+export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLMProvider {
   declare public config: OpenAICompatibleLLMConfig;
   private client: HttpClient | null = null;
 
@@ -256,19 +261,202 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
     }
     const shouldStream = this.config.stream ?? true;
 
-    // Convert messages to OpenAI format (filter out tool messages — not yet supported)
-    const openaiMessages: ChatCompletionMessage[] = messages
-      .filter((msg) => msg.role !== 'tool')
-      .map((msg) => ({
+    // Convert messages to OpenAI format
+    const openaiMessages: ChatCompletionMessage[] = messages.map((msg) => {
+      if (msg.role === 'tool') {
+        return {
+          role: 'tool' as const,
+          content: msg.content,
+          tool_call_id: msg.toolCallId ?? '',
+        };
+      }
+      if (msg.role === 'assistant' && msg.toolCalls?.length) {
+        return {
+          role: 'assistant' as const,
+          content: msg.content || null,
+          tool_calls: msg.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+          })),
+        };
+      }
+      return {
         role: msg.role as 'system' | 'user' | 'assistant',
         content: msg.content,
-      }));
+      };
+    });
 
     if (shouldStream) {
       return this.streamResponse(openaiMessages, mergedOptions);
     } else {
       return this.nonStreamResponse(openaiMessages, mergedOptions);
     }
+  }
+
+  /**
+   * Generate with tool support using the OpenAI-compatible function calling format.
+   *
+   * @remarks
+   * Converts `LLMToolDefinition` to OpenAI's `{ type: "function", function: {...} }`
+   * format. Streaming responses yield `LLMStreamChunk` discriminated unions that
+   * separate text from tool invocations. All OpenAI-compatible providers (OpenAI,
+   * Groq, Gemini, Mistral) support this format.
+   */
+  async generateWithTools(
+    messages: LLMMessage[],
+    options?: LLMGenerationOptions & { tools?: LLMToolDefinition[] }
+  ): Promise<AsyncIterable<LLMStreamChunk>> {
+    this.assertReady();
+    if (!this.client) throw new Error(`${this.providerName} client not initialized`);
+
+    const mergedOptions = this.mergeOptions(options);
+    const signal = mergedOptions.signal ?? options?.signal;
+
+    // Convert messages to OpenAI format (including tool messages)
+    const openaiMessages: ChatCompletionMessage[] = messages.map((msg) => {
+      if (msg.role === 'tool') {
+        return {
+          role: 'tool' as const,
+          content: msg.content,
+          tool_call_id: msg.toolCallId ?? '',
+        };
+      }
+      if (msg.role === 'assistant' && msg.toolCalls?.length) {
+        return {
+          role: 'assistant' as const,
+          content: msg.content || null,
+          tool_calls: msg.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+          })),
+        };
+      }
+      return {
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      };
+    });
+
+    // Convert tool definitions to OpenAI format
+    const tools = options?.tools?.map((t) => ({
+      type: 'function' as const,
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: {
+          type: 'object' as const,
+          properties: t.parameters.properties,
+          required: t.parameters.required ?? undefined,
+        },
+      },
+    }));
+
+    const client = this.client;
+    const config = this.config;
+    const logger = this.logger;
+    const providerName = this.providerName;
+
+    return {
+      async *[Symbol.asyncIterator]() {
+        throwIfAborted(signal);
+
+        try {
+          logger.debug(`Starting ${providerName} tool-aware streaming request`, {
+            model: config.model,
+            messageCount: openaiMessages.length,
+            toolCount: tools?.length ?? 0,
+          });
+
+          const body = {
+            model: config.model,
+            messages: openaiMessages,
+            temperature: mergedOptions.temperature ?? null,
+            max_tokens: mergedOptions.maxTokens ?? null,
+            top_p: config.topP ?? null,
+            stop: mergedOptions.stopSequences ?? null,
+            stream: true,
+            ...(tools?.length ? { tools } : {}),
+            ...(mergedOptions.extra ?? {}),
+          };
+
+          const response = await client.request('/chat/completions', {
+            body,
+            ...(signal ? { signal } : {}),
+            stream: true,
+          });
+
+          if (!response.body) throw new Error(`${providerName} streaming response body is null`);
+
+          // Track active tool calls (OpenAI can stream multiple in parallel)
+          const activeToolCalls = new Map<number, { id: string; name: string }>();
+
+          for await (const event of parseSSEStream(response.body, signal)) {
+            if (signal?.aborted) break;
+
+            const chunk = JSON.parse(event.data);
+            const choice = chunk.choices?.[0];
+            if (!choice) continue;
+
+            const delta = choice.delta;
+
+            // Text content
+            if (delta?.content) {
+              yield { type: 'text', text: delta.content };
+            }
+
+            // Tool calls
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+
+                if (tc.id) {
+                  // New tool call starting
+                  activeToolCalls.set(idx, { id: tc.id, name: tc.function?.name ?? '' });
+                  yield {
+                    type: 'tool_call_start',
+                    toolCall: { id: tc.id, name: tc.function?.name ?? '' },
+                  };
+                }
+
+                if (tc.function?.arguments) {
+                  const active = activeToolCalls.get(idx);
+                  if (active) {
+                    yield {
+                      type: 'tool_call_delta',
+                      toolCallId: active.id,
+                      argumentsDelta: tc.function.arguments,
+                    };
+                  }
+                }
+              }
+            }
+
+            // Finish reason — emit tool_call_end for any active calls, then done
+            if (choice.finish_reason) {
+              for (const [, tc] of activeToolCalls) {
+                yield { type: 'tool_call_end', toolCallId: tc.id };
+              }
+              activeToolCalls.clear();
+
+              const reason = choice.finish_reason === 'tool_calls'
+                ? 'tool_use'
+                : choice.finish_reason === 'stop'
+                  ? 'end_turn'
+                  : (choice.finish_reason as 'end_turn' | 'tool_use' | 'stop_sequence' | 'max_tokens');
+              yield { type: 'done', stopReason: reason };
+            }
+          }
+
+          logger.debug(`${providerName} tool-aware streaming request completed`);
+        } catch (error) {
+          rethrowIfAborted(error, signal);
+          logger.error(`${providerName} tool-aware streaming request failed`, error);
+          throw error;
+        }
+      },
+    };
   }
 
   /**

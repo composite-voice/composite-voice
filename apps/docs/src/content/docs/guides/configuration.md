@@ -196,7 +196,7 @@ const voice = new CompositeVoice({
 
 ## Tool use
 
-When the LLM provider supports tool use (currently [AnthropicLLM](/guides/llm/anthropic) only), you can define tools on the top-level config. The `onToolCall` callback is async -- return a `LLMToolResult` with the serialized result content.
+When the LLM provider supports tool use ([AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), and any [OpenAICompatibleLLM](/guides/llm/openai-compatible) subclass), you can define tools on the top-level config. The `onToolCall` callback is async -- return a `LLMToolResult` with the serialized result content.
 
 ```typescript
 const voice = new CompositeVoice({

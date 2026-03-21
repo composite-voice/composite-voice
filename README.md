@@ -849,7 +849,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-> **Note:** Only `AnthropicLLM` supports tools currently via the `ToolAwareLLMProvider` interface. Other LLM providers will ignore the `tools` configuration.
+> **Note:** Tool use is supported by `AnthropicLLM` and all OpenAI-compatible providers (`OpenAILLM`, `GroqLLM`, `GeminiLLM`, `MistralLLM`, `OpenAICompatibleLLM`) via the `ToolAwareLLMProvider` interface. `WebLLMLLM` does not support tools.
 
 ---
 

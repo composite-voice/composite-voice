@@ -137,7 +137,7 @@ const voice = new CompositeVoice({
 
 Tool calls are transparent to the event stream -- you still receive the same `llm.chunk` and `llm.complete` events. The tool execution loop runs internally: when the LLM emits a `tool_use` stop reason, the SDK calls your `onToolCall` handler, appends the result to the conversation, and re-invokes the LLM.
 
-> **Note:** Only AnthropicLLM supports tool use currently. Other LLM providers (OpenAILLM, WebLLMLLM) will ignore the `tools` config.
+> **Note:** Tool use is supported by AnthropicLLM and all OpenAI-compatible providers (OpenAILLM, GroqLLM, GeminiLLM, MistralLLM, OpenAICompatibleLLM). WebLLMLLM does not support tools.
 
 ## Tips
 
