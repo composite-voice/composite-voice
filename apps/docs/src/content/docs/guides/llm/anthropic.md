@@ -60,13 +60,16 @@ await agent.startListening();
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   AnthropicLLM,
   DeepgramSTT,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: '/api/proxy/deepgram',
       language: 'en',
@@ -83,6 +86,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       voice: 'aura-2-thalia-en',
     }),
+    new BrowserAudioOutput(),
   ],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });
@@ -100,9 +104,11 @@ Configure tools on the top-level `CompositeVoice` config:
 ```typescript
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-sonnet-4-6' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
   tools: {
     definitions: [

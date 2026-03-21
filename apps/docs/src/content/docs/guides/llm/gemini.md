@@ -59,13 +59,16 @@ await agent.startListening();
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   GeminiLLM,
   DeepgramSTT,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: '/api/proxy/deepgram',
       language: 'en',
@@ -82,6 +85,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       voice: 'aura-2-thalia-en',
     }),
+    new BrowserAudioOutput(),
   ],
   conversationHistory: { enabled: true, maxTurns: 10 },
 });

@@ -15,10 +15,11 @@ Use ElevenLabsTTS for high-fidelity voice cloning and expressive synthesis. Text
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, ElevenLabsTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
@@ -30,6 +31,7 @@ const voice = new CompositeVoice({
       modelId: 'eleven_turbo_v2_5',
       outputFormat: 'pcm_24000',
     }),
+    new BrowserAudioOutput(),
   ],
 });
 
@@ -72,7 +74,7 @@ await voice.startListening();
 ## Complete example
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, ElevenLabsTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const tts = new ElevenLabsTTS({
   proxyUrl: '/api/proxy/elevenlabs',
@@ -85,12 +87,14 @@ const tts = new ElevenLabsTTS({
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5',
     }),
     tts,
+    new BrowserAudioOutput(),
   ],
   logging: { enabled: true, level: 'debug' },
 });

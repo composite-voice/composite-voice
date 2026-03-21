@@ -110,13 +110,15 @@ This makes the Node.js adapter a good choice for self-hosted Next.js deployments
 Point each provider at the proxy URL:
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
 });
 ```

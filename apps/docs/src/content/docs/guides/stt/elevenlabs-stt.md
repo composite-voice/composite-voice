@@ -18,10 +18,11 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, ElevenLabsSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new ElevenLabsSTT({
       proxyUrl: '/api/proxy/elevenlabs',
       model: 'scribe_v2_realtime',
@@ -102,10 +103,11 @@ Omit the `language` option entirely to enable auto-detection (90+ languages).
 ## Complete example
 
 ```typescript
-import { CompositeVoice, ElevenLabsSTT, AnthropicLLM, ElevenLabsTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new ElevenLabsSTT({
       proxyUrl: '/api/proxy/elevenlabs',
       model: 'scribe_v2_realtime',
@@ -125,6 +127,7 @@ const agent = new CompositeVoice({
       voiceId: '21m00Tcm4TlvDq8ikWAM',
       modelId: 'eleven_turbo_v2_5',
     }),
+    new BrowserAudioOutput(),
   ],
   conversationHistory: { enabled: true, maxTurns: 10 },
   logging: { enabled: true, level: 'info' },

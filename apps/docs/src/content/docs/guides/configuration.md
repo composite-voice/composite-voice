@@ -11,9 +11,11 @@ Pass a configuration object to the `CompositeVoice` constructor. Only the `provi
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
@@ -21,9 +23,11 @@ const voice = new CompositeVoice({
   // Each provider declares its roles (input, stt, llm, tts, output).
   // Uncovered input+stt defaults to NativeSTT; uncovered tts+output defaults to NativeTTS.
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
 
   // Audio buffer queues between pipeline stages
@@ -137,9 +141,11 @@ When `enabled: true`, each STT final result and LLM response is appended to an i
 ```typescript
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
   conversationHistory: {
     enabled: true,
@@ -160,10 +166,11 @@ Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, whic
 If `cancelOnTextChange` is `true` and the final transcript differs beyond `similarityThreshold` (default: 0.8), the speculative generation is cancelled via `AbortSignal` and restarted with the confirmed text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 
 ```typescript
-import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramFlux({
       proxyUrl: '/api/proxy/deepgram',
       options: {
@@ -173,6 +180,7 @@ const voice = new CompositeVoice({
     }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
   eagerLLM: {
     enabled: true,

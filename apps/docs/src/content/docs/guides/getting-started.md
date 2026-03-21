@@ -110,19 +110,23 @@ The browser sends requests to `/api/proxy/anthropic` and the proxy forwards them
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5',
     }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
 });
 ```

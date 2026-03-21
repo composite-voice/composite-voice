@@ -200,10 +200,11 @@ const agent = new CompositeVoice({
 
 **Production Deepgram pipeline with full-duplex:**
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: '/api/proxy/deepgram',
       interimResults: true,
@@ -219,6 +220,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
+    new BrowserAudioOutput(),
   ],
   turnTaking: {
     pauseCaptureOnPlayback: false,  // full-duplex -- DeepgramSTT handles echo cancellation

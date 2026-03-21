@@ -24,10 +24,11 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramFlux({
       proxyUrl: '/api/proxy/deepgram',
       options: {
@@ -44,6 +45,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       voice: 'aura-2-thalia-en',
     }),
+    new BrowserAudioOutput(),
   ],
   eagerLLM: {
     enabled: true,
@@ -128,9 +130,11 @@ Enable the eager pipeline in CompositeVoice:
 ```typescript
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     stt,
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
   eagerLLM: {
     enabled: true,
@@ -145,10 +149,11 @@ The `similarityThreshold` controls how different the final text can be from the 
 ## Complete example
 
 ```typescript
-import { CompositeVoice, DeepgramFlux, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramFlux({
       proxyUrl: '/api/proxy/deepgram',
       language: 'en',
@@ -170,6 +175,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       voice: 'aura-2-thalia-en',
     }),
+    new BrowserAudioOutput(),
   ],
   eagerLLM: {
     enabled: true,

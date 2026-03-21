@@ -17,10 +17,11 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new AssemblyAISTT({
       proxyUrl: '/api/proxy/assemblyai',
       sampleRate: 16000,
@@ -55,10 +56,11 @@ See the [API reference](/api/classes/assemblyaistt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new AssemblyAISTT({
       proxyUrl: '/api/proxy/assemblyai',
       sampleRate: 16000,

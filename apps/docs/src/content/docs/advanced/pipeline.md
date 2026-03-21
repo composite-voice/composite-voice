@@ -104,6 +104,7 @@ The SDK uses [textSimilarity](/api/functions/textsimilarity) to compare prefligh
 ```typescript
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramFlux({
       proxyUrl: '/api/proxy/deepgram',
       options: {
@@ -113,6 +114,7 @@ const voice = new CompositeVoice({
     }),
     new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic' }),
     new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
   ],
   eagerLLM: {
     enabled: true,

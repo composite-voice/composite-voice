@@ -302,15 +302,18 @@ agent.on('agent.error', () => {
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
+  BrowserAudioOutput,
   CompositeVoiceError,
   MicrophonePermissionError,
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
       interimResults: true,
@@ -326,6 +329,7 @@ const agent = new CompositeVoice({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
+    new BrowserAudioOutput(),
   ],
   autoRecover: true,
   reconnection: {

@@ -189,13 +189,16 @@ const agent = new CompositeVoice({
 ```typescript
 import {
   CompositeVoice,
+  MicrophoneInput,
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
+  BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
       language: 'en-US',
@@ -218,6 +221,7 @@ const agent = new CompositeVoice({
       proxyUrl: `${window.location.origin}/proxy/deepgram`,
       options: { model: 'aura-2-thalia-en', encoding: 'linear16', sampleRate: 24000 },
     }),
+    new BrowserAudioOutput(),
   ],
   conversationHistory: {
     enabled: true,

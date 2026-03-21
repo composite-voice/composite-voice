@@ -15,10 +15,11 @@ Use CartesiaTTS for the lowest-latency streaming synthesis available. Cartesia's
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, CartesiaTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
@@ -31,6 +32,7 @@ const voice = new CompositeVoice({
       outputEncoding: 'pcm_s16le',
       outputSampleRate: 24000,
     }),
+    new BrowserAudioOutput(),
   ],
 });
 
@@ -73,7 +75,7 @@ await voice.startListening();
 ## Complete example
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, CartesiaTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const tts = new CartesiaTTS({
   proxyUrl: '/api/proxy/cartesia',
@@ -87,12 +89,14 @@ const tts = new CartesiaTTS({
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5',
     }),
     tts,
+    new BrowserAudioOutput(),
   ],
   logging: { enabled: true, level: 'debug' },
 });

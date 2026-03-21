@@ -16,10 +16,11 @@ DeepgramTTS connects through a raw native WebSocket -- no external SDK or WebSoc
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
@@ -31,6 +32,7 @@ const voice = new CompositeVoice({
       sampleRate: 24000,
       outputFormat: 'linear16',
     }),
+    new BrowserAudioOutput(),
   ],
 });
 
@@ -67,7 +69,7 @@ Spanish voices: `aura-2-sirio-es`, `aura-2-nestor-es`, `aura-2-carina-es`, `aura
 ## Complete example
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const tts = new DeepgramTTS({
   proxyUrl: '/api/proxy/deepgram',
@@ -78,12 +80,14 @@ const tts = new DeepgramTTS({
 
 const voice = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
     new AnthropicLLM({
       proxyUrl: '/api/proxy/anthropic',
       model: 'claude-haiku-4-5',
     }),
     tts,
+    new BrowserAudioOutput(),
   ],
   logging: { enabled: true, level: 'debug' },
 });

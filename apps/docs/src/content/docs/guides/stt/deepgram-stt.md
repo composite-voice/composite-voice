@@ -20,10 +20,11 @@ For production, set up a [proxy server](https://github.com/lukeocodes/composite-
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: '/api/proxy/deepgram',
       options: {
@@ -87,10 +88,11 @@ V1 uses an event-streaming model with `Results` events containing `is_final` and
 ## Complete example
 
 ```typescript
-import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
+    new MicrophoneInput(),
     new DeepgramSTT({
       proxyUrl: '/api/proxy/deepgram',
       language: 'en',
@@ -113,6 +115,7 @@ const agent = new CompositeVoice({
       proxyUrl: '/api/proxy/deepgram',
       voice: 'aura-2-thalia-en',
     }),
+    new BrowserAudioOutput(),
   ],
   // eagerLLM requires DeepgramFlux — see the DeepgramFlux guide for eager pipeline setup
   conversationHistory: { enabled: true, maxTurns: 10 },
