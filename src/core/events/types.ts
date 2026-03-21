@@ -333,11 +333,24 @@ export interface LLMChunkEvent extends BaseEvent {
   /** Discriminant for this event type. */
   type: 'llm.chunk';
 
-  /** The individual text chunk received in this streaming update. */
+  /** The individual text chunk received in this streaming update (raw, includes markdown). */
   chunk: string;
 
   /** The full response text accumulated so far (all chunks concatenated). */
   accumulated: string;
+
+  /**
+   * The visual version of this chunk — raw text including code fences and markdown.
+   * Use this for rendering in a chat UI.
+   */
+  visual: string;
+
+  /**
+   * The spoken version of this chunk — markdown stripped, code fences omitted.
+   * SSML, XML, and JSON outside of code fences are preserved.
+   * Use this for TTS. Empty string when inside a code fence.
+   */
+  spoken: string;
 }
 
 /**

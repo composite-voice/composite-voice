@@ -42,3 +42,4 @@ export * from './audioFormat';
 export * from './importPeerDep';
 export * from './conversationHistory';
 export * from './queryParams';
+export * from './ttsStrip';
