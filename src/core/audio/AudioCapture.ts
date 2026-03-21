@@ -336,7 +336,7 @@ export class AudioCapture {
             this.handleAudioData(event.data.data as Float32Array);
           }
         };
-        this.sourceNode!.connect(this.workletNode);
+        this.sourceNode?.connect(this.workletNode);
         this.useWorklet = true;
         this.logger?.info('Using AudioWorkletNode for audio capture');
         return;
@@ -357,8 +357,12 @@ export class AudioCapture {
    * source through a ScriptProcessorNode to the AudioContext destination.
    */
   private setupScriptProcessor(): void {
+    if (!this.audioContext || !this.sourceNode) {
+      return;
+    }
+
     const bufferSize = this.calculateBufferSize();
-    this.processorNode = this.audioContext!.createScriptProcessor(
+    this.processorNode = this.audioContext.createScriptProcessor(
       bufferSize,
       this.config.channels ?? 1,
       this.config.channels ?? 1
@@ -368,8 +372,8 @@ export class AudioCapture {
       this.processAudioEvent(event);
     };
 
-    this.sourceNode!.connect(this.processorNode);
-    this.processorNode.connect(this.audioContext!.destination);
+    this.sourceNode.connect(this.processorNode);
+    this.processorNode.connect(this.audioContext.destination);
     this.useWorklet = false;
     this.logger?.info('Using ScriptProcessorNode for audio capture (fallback)');
   }

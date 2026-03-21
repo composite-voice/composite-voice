@@ -198,7 +198,8 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
   protected async onInitialize(): Promise<void> {
     this.assertAuth();
 
-    const baseUrl = this.resolveBaseUrl(ANTHROPIC_DEFAULT_URL)!;
+    const baseUrl = this.resolveBaseUrl(ANTHROPIC_DEFAULT_URL);
+    if (!baseUrl) throw new Error('Anthropic base URL could not be resolved');
     const apiKey = this.resolveApiKey();
 
     // Anthropic uses x-api-key header (not Bearer)
@@ -281,7 +282,8 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
     options: LLMGenerationOptions,
     signal?: AbortSignal
   ): Promise<AsyncIterable<string>> {
-    const client = this.client!;
+    const client = this.client;
+    if (!client) throw new Error('Anthropic client not initialized');
     const config = this.config;
     const logger = this.logger;
 
@@ -313,7 +315,8 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
             stream: true,
           });
 
-          for await (const event of parseSSEStream(response.body!, signal)) {
+          if (!response.body) throw new Error('Anthropic streaming response body is null');
+          for await (const event of parseSSEStream(response.body, signal)) {
             if (signal?.aborted) break;
 
             const data = JSON.parse(event.data);
@@ -342,7 +345,8 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
     options: LLMGenerationOptions,
     signal?: AbortSignal
   ): Promise<AsyncIterable<string>> {
-    const client = this.client!;
+    const client = this.client;
+    if (!client) throw new Error('Anthropic client not initialized');
     const config = this.config;
     const logger = this.logger;
 
@@ -462,7 +466,8 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
           let activeToolId = '';
           let activeToolName = '';
 
-          for await (const event of parseSSEStream(response.body!, signal)) {
+          if (!response.body) throw new Error('Anthropic streaming response body is null');
+          for await (const event of parseSSEStream(response.body, signal)) {
             if (signal?.aborted) break;
 
             const data = JSON.parse(event.data);
@@ -561,7 +566,7 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
           content: [
             {
               type: 'tool_result' as const,
-              tool_use_id: msg.toolCallId!,
+              tool_use_id: msg.toolCallId ?? '',
               content: msg.content,
             },
           ],

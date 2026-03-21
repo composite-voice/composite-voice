@@ -189,7 +189,13 @@ export class DeepgramFlux extends LiveSTTProvider {
    * Direct mode: `wss://api.deepgram.com/v2/listen?model=flux-general-en&...`
    */
   private buildConnectionUrl(): string {
-    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
+    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL);
+    if (!base) {
+      throw new ProviderConnectionError(
+        'DeepgramFlux',
+        new Error('Failed to resolve base WebSocket URL')
+      );
+    }
     const opts = this.config.options;
 
     const params = buildQueryParams(
@@ -241,14 +247,21 @@ export class DeepgramFlux extends LiveSTTProvider {
           reject(new Error('Connection timeout'));
         }, timeoutMs);
 
-        this.ws!.onopen = () => {
+        const ws = this.ws;
+        if (!ws) {
+          clearTimeout(timeout);
+          reject(new Error('WebSocket instance was not created'));
+          return;
+        }
+
+        ws.onopen = () => {
           clearTimeout(timeout);
           this.isConnected = true;
           this.logger.info('Connected to Deepgram Flux WebSocket');
           resolve();
         };
 
-        this.ws!.onerror = (event) => {
+        ws.onerror = (event) => {
           clearTimeout(timeout);
           reject(
             new Error(`WebSocket error: ${(event as ErrorEvent).message ?? 'connection failed'}`)

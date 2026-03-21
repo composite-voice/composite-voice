@@ -244,7 +244,7 @@ export function resolveLanguageCode(language: string | undefined): string | unde
   }
 
   // Extract the base language from BCP 47 (e.g., "en-US" → "en", "fr" → "fr")
-  const base = language.split(/[-_]/)[0]!.toLowerCase();
+  const base = language.split(/[-_]/)[0]?.toLowerCase() ?? language.toLowerCase();
 
   // Look up the 2-letter code in the mapping
   return LANGUAGE_MAP[base] ?? language;
@@ -504,7 +504,14 @@ export class ElevenLabsSTT extends LiveSTTProvider {
           reject(new Error('Timed out waiting for session_started message'));
         }, this.config.timeout ?? 10000);
 
-        this.wsManager!.setHandlers({
+        const manager = this.wsManager;
+        if (!manager) {
+          clearTimeout(timeout);
+          reject(new Error('WebSocketManager was not created'));
+          return;
+        }
+
+        manager.setHandlers({
           onMessage: (event: MessageEvent) => {
             try {
               const message = JSON.parse(event.data as string);
@@ -520,7 +527,7 @@ export class ElevenLabsSTT extends LiveSTTProvider {
                 });
 
                 // Switch to normal message handling after handshake
-                this.wsManager!.setHandlers({
+                manager.setHandlers({
                   onMessage: (evt: MessageEvent) => this.handleMessage(evt),
                   onClose: () => {
                     this.logger.info('ElevenLabs STT WebSocket closed');

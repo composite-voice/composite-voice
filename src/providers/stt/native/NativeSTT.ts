@@ -451,7 +451,9 @@ export class NativeSTT extends LiveSTTProvider {
         if (this.recognition) {
           this.recognition.onstart = prevOnStart;
         }
-        prevOnStart?.call(this.recognition!, event);
+        if (this.recognition) {
+          prevOnStart?.call(this.recognition, event);
+        }
         this.logger.info('✅ Started recognition');
         resolve();
       };

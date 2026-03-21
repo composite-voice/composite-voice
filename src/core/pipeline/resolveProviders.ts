@@ -275,7 +275,10 @@ export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
 
   // Step 4: Duck-type validate each slot
   for (const role of ALL_PROVIDER_ROLES) {
-    validateSlotInterface(slots[role]!, role);
+    const slot = slots[role];
+    if (slot) {
+      validateSlotInterface(slot, role);
+    }
   }
 
   // Step 5: Return the typed pipeline

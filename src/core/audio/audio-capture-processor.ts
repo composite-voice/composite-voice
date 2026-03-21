@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * AudioWorklet processor for microphone audio capture.
  *
@@ -16,6 +15,17 @@
  *
  * @see {@link AudioCapture} for the main-thread counterpart.
  */
+
+// AudioWorklet globals — these exist in the worklet scope, not the main thread.
+declare class AudioWorkletProcessor {
+  readonly port: MessagePort;
+  process(
+    inputs: Float32Array[][],
+    outputs: Float32Array[][],
+    parameters: Record<string, Float32Array>
+  ): boolean;
+}
+declare function registerProcessor(name: string, ctor: new () => AudioWorkletProcessor): void;
 
 /**
  * AudioWorklet processor that captures input audio and posts it to the main thread.

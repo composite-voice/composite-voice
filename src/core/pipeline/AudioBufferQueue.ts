@@ -375,7 +375,8 @@ export class AudioBufferQueue {
       this.draining = true;
 
       while (this.buffer.length > 0) {
-        const chunk = this.buffer.shift()!;
+        const chunk = this.buffer.shift();
+        if (!chunk) break;
         this.dequeuedCount++;
         callback(chunk);
       }
@@ -395,7 +396,8 @@ export class AudioBufferQueue {
 
       let sent = 0;
       while (this.buffer.length > 0 && sent < batchSize) {
-        const chunk = this.buffer.shift()!;
+        const chunk = this.buffer.shift();
+        if (!chunk) break;
         this.dequeuedCount++;
         this.drainCallback(chunk);
         sent++;

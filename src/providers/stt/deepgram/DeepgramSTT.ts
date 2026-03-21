@@ -363,7 +363,13 @@ export class DeepgramSTT extends LiveSTTProvider {
    * Direct mode: `wss://api.deepgram.com/v1/listen?model=nova-3&...`
    */
   private buildConnectionUrl(): string {
-    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
+    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL);
+    if (!base) {
+      throw new ProviderConnectionError(
+        'DeepgramSTT',
+        new Error('Failed to resolve base WebSocket URL')
+      );
+    }
     const opts = this.config.options;
 
     const params = buildQueryParams(
@@ -446,14 +452,21 @@ export class DeepgramSTT extends LiveSTTProvider {
           reject(new Error('Connection timeout'));
         }, timeoutMs);
 
-        this.ws!.onopen = () => {
+        const ws = this.ws;
+        if (!ws) {
+          clearTimeout(timeout);
+          reject(new Error('WebSocket instance was not created'));
+          return;
+        }
+
+        ws.onopen = () => {
           clearTimeout(timeout);
           this.isConnected = true;
           this.logger.info('Connected to Deepgram WebSocket');
           resolve();
         };
 
-        this.ws!.onerror = (event) => {
+        ws.onerror = (event) => {
           clearTimeout(timeout);
           reject(
             new Error(`WebSocket error: ${(event as ErrorEvent).message ?? 'connection failed'}`)

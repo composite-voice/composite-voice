@@ -79,7 +79,7 @@ export async function* parseSSEStream(
       // Process complete lines
       const lines = buffer.split('\n');
       // Keep the last (possibly incomplete) line in the buffer
-      buffer = lines.pop()!;
+      buffer = lines.pop() ?? '';
 
       for (const line of lines) {
         if (signal?.aborted) break;

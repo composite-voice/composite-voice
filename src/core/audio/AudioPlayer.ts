@@ -359,8 +359,12 @@ export class AudioPlayer {
         }
 
         if (chunks.length === 1) {
-          await this.playChunk(chunks[0]!);
+          const single = chunks[0];
+          if (single) await this.playChunk(single);
         } else if (chunks.length > 1) {
+          const firstChunk = chunks[0];
+          if (!firstChunk) continue;
+
           const totalBytes = chunks.reduce((sum, c) => sum + c.data.byteLength, 0);
           const merged = new Uint8Array(totalBytes);
           let offset = 0;
@@ -370,10 +374,10 @@ export class AudioPlayer {
           }
           const mergedChunk: AudioChunk = {
             data: merged.buffer,
-            timestamp: chunks[0]!.timestamp,
+            timestamp: firstChunk.timestamp,
           };
-          if (chunks[0]!.metadata) {
-            mergedChunk.metadata = chunks[0]!.metadata;
+          if (firstChunk.metadata) {
+            mergedChunk.metadata = firstChunk.metadata;
           }
           await this.playChunk(mergedChunk);
         }

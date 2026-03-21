@@ -174,12 +174,13 @@ export function detectAudioFormat(buffer: ArrayBuffer): DetectedAudioFormat | nu
   // ADTS is more specific, so check it first to avoid MP3 false-positive.
 
   // AAC ADTS: 0xFF followed by 0xF0 with specific bit pattern
-  if (view[0] === 0xff && (view[1]! & 0xf6) === 0xf0) {
+  const byte1 = view[1] ?? 0;
+  if (view[0] === 0xff && (byte1 & 0xf6) === 0xf0) {
     return 'aac';
   }
 
   // MP3: raw sync word (no ID3 tag)
-  if (view[0] === 0xff && (view[1]! & 0xe0) === 0xe0) {
+  if (view[0] === 0xff && (byte1 & 0xe0) === 0xe0) {
     return 'mp3';
   }
 

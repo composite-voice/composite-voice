@@ -198,7 +198,8 @@ export class OpenAITTS extends RestTTSProvider {
       );
     }
 
-    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL)!;
+    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL);
+    if (!baseUrl) throw new Error('OpenAI TTS base URL could not be resolved');
     const apiKey = this.resolveApiKey();
 
     const headers: Record<string, string> = {};

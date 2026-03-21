@@ -214,7 +214,13 @@ export class DeepgramTTS extends LiveTTSProvider {
    * Direct mode: `wss://api.deepgram.com/v1/speak?model=aura-2-thalia-en&...`
    */
   private buildConnectionUrl(): string {
-    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL)!;
+    const base = this.resolveBaseUrl(DEEPGRAM_WS_URL);
+    if (!base) {
+      throw new ProviderConnectionError(
+        'DeepgramTTS',
+        new Error('Failed to resolve base WebSocket URL')
+      );
+    }
 
     const params = buildQueryParams({
       model: this.config.options?.model ?? this.config.voice ?? 'aura-2-thalia-en',
@@ -267,14 +273,21 @@ export class DeepgramTTS extends LiveTTSProvider {
           reject(new Error('Connection timeout'));
         }, timeoutMs);
 
-        this.ws!.onopen = () => {
+        const ws = this.ws;
+        if (!ws) {
+          clearTimeout(timeout);
+          reject(new Error('WebSocket instance was not created'));
+          return;
+        }
+
+        ws.onopen = () => {
           clearTimeout(timeout);
           this.isConnected = true;
           this.logger.info('Connected to Deepgram TTS WebSocket');
           resolve();
         };
 
-        this.ws!.onerror = (event) => {
+        ws.onerror = (event) => {
           clearTimeout(timeout);
           reject(
             new Error(`WebSocket error: ${(event as ErrorEvent).message ?? 'connection failed'}`)

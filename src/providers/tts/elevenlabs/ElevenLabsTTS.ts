@@ -584,7 +584,7 @@ export class ElevenLabsTTS extends LiveTTSProvider {
         const timeout = setTimeout(resolve, 2000);
 
         // Listen for the final message from ElevenLabs
-        const originalHandler = this.wsManager!.isConnected()
+        const originalHandler = this.wsManager?.isConnected()
           ? () => {
               clearTimeout(timeout);
               resolve();

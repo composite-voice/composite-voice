@@ -189,7 +189,8 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
     this.assertAuth();
 
-    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL)!;
+    const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL);
+    if (!baseUrl) throw new Error(`${this.providerName} base URL could not be resolved`);
     const apiKey = this.resolveApiKey();
 
     const headers: Record<string, string> = {
@@ -277,7 +278,8 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
     messages: ChatCompletionMessage[],
     options: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
-    const client = this.client!;
+    const client = this.client;
+    if (!client) throw new Error(`${this.providerName} client not initialized`);
     const config = this.config;
     const logger = this.logger;
     const signal = options.signal;
@@ -310,7 +312,8 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
             stream: true,
           });
 
-          for await (const event of parseSSEStream(response.body!, signal)) {
+          if (!response.body) throw new Error(`${providerName} streaming response body is null`);
+          for await (const event of parseSSEStream(response.body, signal)) {
             if (signal?.aborted) break;
 
             const chunk = JSON.parse(event.data);
@@ -337,7 +340,8 @@ export class OpenAICompatibleLLM extends BaseLLMProvider {
     messages: ChatCompletionMessage[],
     options: LLMGenerationOptions
   ): Promise<AsyncIterable<string>> {
-    const client = this.client!;
+    const client = this.client;
+    if (!client) throw new Error(`${this.providerName} client not initialized`);
     const config = this.config;
     const logger = this.logger;
     const signal = options.signal;
