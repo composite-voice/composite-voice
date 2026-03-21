@@ -178,18 +178,30 @@ imports = []
 for src in source_files:
     with open(src) as f:
         content = f.read()
+    # Strip template literal strings to avoid matching imports inside code examples
+    content = re.sub(r'`[^`]*`', '""', content, flags=re.DOTALL)
     for m in re.finditer(
-        r"(import\s*(?:type\s*)?\{[^}]+\}\s*from\s*['\"]@lukeocodes/composite-voice[^'\"]*['\"])\s*;?",
+        r"(import\s*(?:type\s*)?\{[^}]+\}\s*from\s*['\"]@lukeocodes/composite-voice(?:/[^'\"]*)?['\"])\s*;?",
         content, re.DOTALL
     ):
+        # Skip UI package imports — only check SDK imports
+        if '-ui' in m.group(0):
+            continue
         stmt = m.group(1).strip()
         stmt = re.sub(r'\s+', ' ', stmt)
         imports.append(stmt + ';')
 
+seen = set()
+unique = []
+for imp in imports:
+    if imp not in seen:
+        seen.add(imp)
+        unique.append(imp)
+
 with open(out_path, 'w') as f:
-    for imp in imports:
+    for imp in unique:
         f.write(imp + '\n')
-    if not imports:
+    if not unique:
         f.write('export {};\n')
 PYEOF
 

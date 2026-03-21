@@ -32,6 +32,8 @@ interface ButtonBaseProps {
   leftIcon?: React.ReactNode;
   /** Icon placed after children */
   rightIcon?: React.ReactNode;
+  /** Disable the button */
+  disabled?: boolean;
   /** Additional class names */
   className?: string;
   /** Content */

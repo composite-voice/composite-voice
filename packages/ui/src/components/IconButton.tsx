@@ -10,8 +10,10 @@ import { Button } from "./Button";
 import type { ButtonProps } from "./Button";
 import { VisuallyHidden } from "./VisuallyHidden";
 
+type ButtonAsButton = Extract<ButtonProps, { as?: "button" }>;
+
 interface IconButtonProps
-  extends Omit<ButtonProps, "leftIcon" | "rightIcon" | "children" | "as"> {
+  extends Omit<ButtonAsButton, "leftIcon" | "rightIcon" | "children" | "as"> {
   /** Required accessible label for screen readers */
   "aria-label": string;
   /** The icon to display */

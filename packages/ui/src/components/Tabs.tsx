@@ -147,8 +147,11 @@ export function TabList({
     }
 
     e.preventDefault();
-    tabs[nextIndex].focus();
-    tabs[nextIndex].click();
+    const nextTab = nextIndex != null ? tabs[nextIndex] : undefined;
+    if (nextTab) {
+      nextTab.focus();
+      nextTab.click();
+    }
   };
 
   return (

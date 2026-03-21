@@ -6,8 +6,9 @@ import {
 } from '@lukeocodes/composite-voice';
 import type {
   LLMProvider,
+  LLMProviderConfig,
+  LLMGenerationOptions,
   LLMMessage,
-  LLMStreamCallbacks,
   ProviderType,
 } from '@lukeocodes/composite-voice';
 import type { ProviderRole } from '@lukeocodes/composite-voice';
@@ -38,12 +39,13 @@ const DEFAULT_RESPONSE = 'I heard you, but I do not have a canned response for t
 class MockLLM implements LLMProvider {
   public readonly type: ProviderType = 'rest';
   public readonly roles: readonly ProviderRole[] = ['llm'];
+  public config: LLMProviderConfig = { model: 'mock-v1' };
 
   private initialized = false;
   private delay: number;
 
-  constructor(config: { delay?: number } = {}) {
-    this.delay = config.delay ?? 50;
+  constructor(options: { delay?: number } = {}) {
+    this.delay = options.delay ?? 50;
   }
 
   async initialize(): Promise<void> {
@@ -58,13 +60,32 @@ class MockLLM implements LLMProvider {
     return this.initialized;
   }
 
+  getConfig(): LLMProviderConfig {
+    return { ...this.config };
+  }
+
+  updateConfig(config: Partial<LLMProviderConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+
   async generate(
+    prompt: string,
+    options?: LLMGenerationOptions,
+  ): Promise<AsyncIterable<string>> {
+    return this.generateFromMessages(
+      [{ role: 'user', content: prompt }],
+      options,
+    );
+  }
+
+  async generateFromMessages(
     messages: LLMMessage[],
-    callbacks: LLMStreamCallbacks,
-    _signal?: AbortSignal,
-  ): Promise<string> {
+    options?: LLMGenerationOptions,
+  ): Promise<AsyncIterable<string>> {
     const lastMessage = messages[messages.length - 1];
     const text = lastMessage?.content?.toLowerCase() ?? '';
+    const delay = this.delay;
+    const signal = options?.signal;
 
     // Find matching canned response
     let response = DEFAULT_RESPONSE;
@@ -75,28 +96,17 @@ class MockLLM implements LLMProvider {
       }
     }
 
-    // Simulate streaming by emitting word by word
-    callbacks.onStart?.();
-
-    const words = response.split(' ');
-    let accumulated = '';
-    for (const word of words) {
-      await new Promise((resolve) => setTimeout(resolve, this.delay));
-      const chunk = (accumulated ? ' ' : '') + word;
-      accumulated += chunk;
-      callbacks.onChunk?.(chunk, accumulated);
-    }
-
-    callbacks.onComplete?.(accumulated);
-    return accumulated;
-  }
-
-  async generateFromMessages(
-    messages: LLMMessage[],
-    callbacks: LLMStreamCallbacks,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    return this.generate(messages, callbacks, signal);
+    // Return an async iterable that streams word by word
+    return {
+      async *[Symbol.asyncIterator]() {
+        const words = response.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          if (signal?.aborted) break;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          yield (i > 0 ? ' ' : '') + words[i];
+        }
+      },
+    };
   }
 }
 
@@ -201,65 +211,52 @@ export default function App() {
           <CardBody>
             <CardTitle>Custom Provider Implementation</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript" code={`import type { LLMProvider, LLMMessage, LLMStreamCallbacks, ProviderType } from '@lukeocodes/composite-voice';
+              <CodeBlock language="typescript" code={`import type {
+  LLMProvider, LLMProviderConfig, LLMGenerationOptions,
+  LLMMessage, ProviderType,
+} from '@lukeocodes/composite-voice';
 import type { ProviderRole } from '@lukeocodes/composite-voice';
 
 class MockLLM implements LLMProvider {
-  // Required: declare provider type and roles
   public readonly type: ProviderType = 'rest';
   public readonly roles: readonly ProviderRole[] = ['llm'];
+  public config: LLMProviderConfig = { model: 'mock-v1' };
 
   private initialized = false;
 
-  // Lifecycle methods
-  async initialize(): Promise<void> { this.initialized = true; }
-  async dispose(): Promise<void> { this.initialized = false; }
-  isReady(): boolean { return this.initialized; }
+  async initialize() { this.initialized = true; }
+  async dispose() { this.initialized = false; }
+  isReady() { return this.initialized; }
+  getConfig() { return { ...this.config }; }
+  updateConfig(c: Partial<LLMProviderConfig>) { this.config = { ...this.config, ...c }; }
 
-  // Core method: generate a response from messages
-  async generate(
-    messages: LLMMessage[],
-    callbacks: LLMStreamCallbacks,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const input = messages[messages.length - 1]?.content ?? '';
-
-    callbacks.onStart?.();
-
-    // Simulate streaming word by word
-    const response = 'Hello from MockLLM!';
-    const words = response.split(' ');
-    let accumulated = '';
-
-    for (const word of words) {
-      if (signal?.aborted) break;
-      await new Promise(r => setTimeout(r, 50));
-      const chunk = (accumulated ? ' ' : '') + word;
-      accumulated += chunk;
-      callbacks.onChunk?.(chunk, accumulated);
-    }
-
-    callbacks.onComplete?.(accumulated);
-    return accumulated;
+  async generate(prompt: string, options?: LLMGenerationOptions) {
+    return this.generateFromMessages([{ role: 'user', content: prompt }], options);
   }
 
-  // Alias required by the SDK interface
   async generateFromMessages(
     messages: LLMMessage[],
-    callbacks: LLMStreamCallbacks,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    return this.generate(messages, callbacks, signal);
+    options?: LLMGenerationOptions,
+  ): Promise<AsyncIterable<string>> {
+    const input = messages[messages.length - 1]?.content ?? '';
+    const signal = options?.signal;
+
+    return {
+      async *[Symbol.asyncIterator]() {
+        const words = 'Hello from MockLLM!'.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          if (signal?.aborted) break;
+          await new Promise(r => setTimeout(r, 50));
+          yield (i > 0 ? ' ' : '') + words[i];
+        }
+      },
+    };
   }
 }
 
 // Use it like any other provider:
 const agent = new CompositeVoice({
-  providers: [
-    new NativeSTT(),
-    new MockLLM(),
-    new NativeTTS(),
-  ],
+  providers: [new NativeSTT(), new MockLLM(), new NativeTTS()],
 });`} />
             </div>
           </CardBody>
