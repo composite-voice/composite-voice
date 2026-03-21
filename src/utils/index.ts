@@ -43,3 +43,4 @@ export * from './importPeerDep';
 export * from './conversationHistory';
 export * from './queryParams';
 export * from './ttsStrip';
+export * from './chunkSplitter';

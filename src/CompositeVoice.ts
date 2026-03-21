@@ -53,6 +53,7 @@ import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
 import { trimConversationHistory } from './utils/conversationHistory';
 import { stripMarkdownForTTS } from './utils/ttsStrip';
+import { ChunkSplitter } from './utils/chunkSplitter';
 import { getBrowserAPISupport } from './utils/browserCapabilities';
 import { resolveProviders } from './core/pipeline/resolveProviders';
 import { AudioBufferQueue } from './core/pipeline/AudioBufferQueue';
@@ -2035,8 +2036,7 @@ export class CompositeVoice {
     let activeToolArgs = '';
     let activeToolName = '';
     let activeToolId = '';
-    let insideCodeFence = false;
-    let codeBlockBuffer = '';
+    const chunkSplitter = new ChunkSplitter();
 
     // Ensure Live TTS WebSocket is connected before streaming begins
     if (isLiveTTS(tts) && !this._outputMuted) {
@@ -2054,44 +2054,16 @@ export class CompositeVoice {
       if (chunk.type === 'text') {
         fullText += chunk.text;
 
-        // Produce visual + spoken for every chunk
-        let visual = '';
-        let spoken = '';
-
-        if (chunk.text.includes('```')) {
-          if (!insideCodeFence) {
-            // Entering a code fence
-            const fenceIdx = chunk.text.indexOf('```');
-            const before = chunk.text.slice(0, fenceIdx);
-            spoken = stripMarkdownForTTS(before);
-            visual = before; // text before fence streams immediately
-            insideCodeFence = true;
-            codeBlockBuffer = chunk.text.slice(fenceIdx);
-          } else {
-            // Closing a code fence — flush buffered code as visual
-            codeBlockBuffer += chunk.text;
-            visual = codeBlockBuffer;
-            spoken = ''; // code is never spoken
-            codeBlockBuffer = '';
-            insideCodeFence = false;
+        for (const seg of chunkSplitter.process(chunk.text)) {
+          if (seg.visual) {
+            this.emitEvent({
+              type: 'llm.chunk', chunk: seg.visual, accumulated: fullText,
+              visual: seg.visual, spoken: seg.spoken, timestamp: Date.now(),
+            });
           }
-        } else if (insideCodeFence) {
-          codeBlockBuffer += chunk.text;
-          visual = ''; // buffered — appears when fence closes
-          spoken = '';
-        } else {
-          visual = chunk.text;
-          spoken = stripMarkdownForTTS(chunk.text);
-        }
-
-        if (visual) {
-          this.emitEvent({
-            type: 'llm.chunk', chunk: visual, accumulated: fullText,
-            visual, spoken, timestamp: Date.now(),
-          });
-        }
-        if (spoken && isLiveTTS(tts) && !this._outputMuted) {
-          tts.sendText(spoken);
+          if (seg.spoken && isLiveTTS(tts) && !this._outputMuted) {
+            tts.sendText(seg.spoken);
+          }
         }
       } else if (chunk.type === 'tool_call_start') {
         activeToolId = chunk.toolCall.id;
@@ -2168,39 +2140,16 @@ export class CompositeVoice {
                 fullText += chunk2.text;
                 const acc = textBeforeTools + fullText;
 
-                let visual2 = '';
-                let spoken2 = '';
-
-                if (chunk2.text.includes('```')) {
-                  if (!insideCodeFence) {
-                    const fenceIdx = chunk2.text.indexOf('```');
-                    const before = chunk2.text.slice(0, fenceIdx);
-                    spoken2 = stripMarkdownForTTS(before);
-                    visual2 = before;
-                    insideCodeFence = true;
-                    codeBlockBuffer = chunk2.text.slice(fenceIdx);
-                  } else {
-                    codeBlockBuffer += chunk2.text;
-                    visual2 = codeBlockBuffer;
-                    spoken2 = '';
-                    codeBlockBuffer = '';
-                    insideCodeFence = false;
+                for (const seg of chunkSplitter.process(chunk2.text)) {
+                  if (seg.visual) {
+                    this.emitEvent({
+                      type: 'llm.chunk', chunk: seg.visual, accumulated: acc,
+                      visual: seg.visual, spoken: seg.spoken, timestamp: Date.now(),
+                    });
                   }
-                } else if (insideCodeFence) {
-                  codeBlockBuffer += chunk2.text;
-                } else {
-                  visual2 = chunk2.text;
-                  spoken2 = stripMarkdownForTTS(chunk2.text);
-                }
-
-                if (visual2) {
-                  this.emitEvent({
-                    type: 'llm.chunk', chunk: visual2, accumulated: acc,
-                    visual: visual2, spoken: spoken2, timestamp: Date.now(),
-                  });
-                }
-                if (spoken2 && isLiveTTS(tts) && !this._outputMuted) {
-                  tts.sendText(spoken2);
+                  if (seg.spoken && isLiveTTS(tts) && !this._outputMuted) {
+                    tts.sendText(seg.spoken);
+                  }
                 }
               } else if (chunk2.type === 'tool_call_start') {
                 activeToolId = chunk2.toolCall.id;
