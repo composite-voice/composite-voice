@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.0.0](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.5...composite-voice-v1.0.0) (2026-03-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* Empty providers array now auto-fills a complete text-only pipeline (NullInput + AnthropicLLM + NullOutput) instead of throwing. Missing LLM auto-fills AnthropicLLM (claude-haiku-4-5).
+* LLM-only configs now default to text-only (NullInput + NullOutput) instead of voice (NativeSTT + NativeTTS). Add NativeSTT or a cloud STT provider to enable voice input. Add NativeTTS or a cloud TTS provider to enable voice output.
+
+### Features
+
+* add DeepgramAgent provider and BaseAgentProvider base class ([5798455](https://github.com/lukeocodes/composite-voice/commit/57984554f5a419e3b002092e8e38ada3ec77b190))
+* add NullInput provider, expand NullOutput to cover tts+output ([8e6b7a7](https://github.com/lukeocodes/composite-voice/commit/8e6b7a7a997d8c58bff9cdec1506420667cc320b))
+* add tool use support to all OpenAI-compatible LLM providers ([7d0f513](https://github.com/lukeocodes/composite-voice/commit/7d0f51360e155dc41d0765460e434757d665c2ac))
+* auto-brand CompositeVoice in docs prose and design showcases ([f6a83ff](https://github.com/lukeocodes/composite-voice/commit/f6a83ff29652a6e6d7d728153cfb5f0672e4caf2))
+* auto-fill AnthropicLLM default, allow empty providers array ([932b0f3](https://github.com/lukeocodes/composite-voice/commit/932b0f39289e969aa532eb25caed621f260e2862))
+* change auto-fill defaults to NullInput/NullOutput ([d7ced72](https://github.com/lukeocodes/composite-voice/commit/d7ced724d22c8c30268e782b8dcf4c9ef4a6f979))
+
+
+### Bug Fixes
+
+* propagate abort signal through mergeOptions and omit null params ([0380a29](https://github.com/lukeocodes/composite-voice/commit/0380a293f06ae1c07ebb12f0b71ae437f522e07a))
+* use _redirects instead of netlify.toml, hardcode Astro base paths ([caa823b](https://github.com/lukeocodes/composite-voice/commit/caa823b92139b23a8155ceb9afb5f68f9ab16f92))
+* use process.env.CV_ for build-time env vars in Astro frontmatter ([f890613](https://github.com/lukeocodes/composite-voice/commit/f8906131c622755c2b8550f33dc5ccd6d8e19e7b))
+
+
+### Documentation
+
+* remove false peer dependency claims and stale disabled notices ([9e0a810](https://github.com/lukeocodes/composite-voice/commit/9e0a810343889d0169f046d0ce983bbca6ba89e9))
+* standardize all install commands to pnpm ([420ec01](https://github.com/lukeocodes/composite-voice/commit/420ec01d65bf31ace06aae41175ebe58b99ff73b))
+* update all references to new progressive auto-fill defaults ([716eca9](https://github.com/lukeocodes/composite-voice/commit/716eca9e263f88854b50f53e5d1f8f4ee80ababf))
+
 ## [0.0.5](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.4...composite-voice-v0.0.5) (2026-03-21)
 
 

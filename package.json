@@ -1,6 +1,6 @@
 {
   "name": "@lukeocodes/composite-voice",
-  "version": "0.0.5",
+  "version": "1.0.0",
   "description": "Extensible composite AI voice-agent browser SDK",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
