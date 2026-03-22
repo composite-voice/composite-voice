@@ -137,6 +137,21 @@ export interface CompositeVoiceProxyConfig {
   geminiApiKey?: string;
 
   /**
+   * Deepgram API key for the Agent API -- used for WebSocket Voice Agent proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/deepgram-agent`
+   * that forwards connections to `wss://agent.deepgram.com`. This is separate
+   * from the standard Deepgram STT/TTS route because the Agent API uses a
+   * different host (`agent.deepgram.com` vs `api.deepgram.com`).
+   *
+   * If omitted but `deepgramApiKey` is set, the agent route reuses the same key.
+   *
+   * @defaultValue `undefined` (falls back to `deepgramApiKey` when present)
+   */
+  deepgramAgentApiKey?: string;
+
+  /**
    * Cartesia API key -- used for WebSocket TTS proxying.
    *
    * @remarks

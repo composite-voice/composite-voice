@@ -97,44 +97,101 @@ export class NullInput implements AudioInputProvider {
   /** Whether this provider has been initialized. */
   private initialized = false;
 
+  /**
+   * Initialize the provider.
+   *
+   * @remarks
+   * Sets the initialized flag. No resources are acquired because there is
+   * no microphone or STT engine to set up in text-only mode.
+   */
   async initialize(): Promise<void> {
     this.initialized = true;
   }
 
+  /**
+   * Dispose of the provider.
+   *
+   * @remarks
+   * Clears the initialized flag. No resources need to be released because
+   * none were acquired during initialization.
+   */
   async dispose(): Promise<void> {
     this.initialized = false;
   }
 
+  /**
+   * Check whether the provider has been initialized.
+   *
+   * @returns `true` when {@link initialize} has completed and {@link dispose}
+   *   has not yet been called.
+   */
   isReady(): boolean {
     return this.initialized;
   }
 
-  /** No-op — no audio to capture. */
+  /**
+   * No-op — no audio to capture.
+   *
+   * @remarks
+   * In text-only mode there is no microphone, so starting audio capture
+   * is meaningless. This exists to satisfy the {@link AudioInputProvider}
+   * interface without side-effects.
+   */
   start(): void {
     // No-op: no audio source
   }
 
-  /** No-op — nothing to stop. */
+  /**
+   * No-op — nothing to stop.
+   *
+   * @remarks
+   * No audio capture is running, so there is nothing to stop.
+   */
   stop(): void {
     // No-op: no audio source
   }
 
-  /** No-op — nothing to pause. */
+  /**
+   * No-op — nothing to pause.
+   *
+   * @remarks
+   * No audio capture is running, so there is nothing to pause.
+   */
   pause(): void {
     // No-op: no audio source
   }
 
-  /** No-op — nothing to resume. */
+  /**
+   * No-op — nothing to resume.
+   *
+   * @remarks
+   * No audio capture was paused, so there is nothing to resume.
+   */
   resume(): void {
     // No-op: no audio source
   }
 
-  /** Always returns `false` — no audio is being captured. */
+  /**
+   * Always returns `false` — no audio is being captured.
+   *
+   * @remarks
+   * There is no microphone, so audio capture is never active.
+   *
+   * @returns `false` always.
+   */
   isActive(): boolean {
     return false;
   }
 
-  /** No-op — no audio chunks will be emitted. */
+  /**
+   * No-op — no audio chunks will be emitted.
+   *
+   * @remarks
+   * The callback is accepted to satisfy the interface but is never invoked
+   * because no microphone audio is produced in text-only mode.
+   *
+   * @param _callback - Ignored.
+   */
   onAudio(_callback: (chunk: AudioChunk) => void): void {
     // No-op: no audio will be produced
   }
@@ -151,12 +208,28 @@ export class NullInput implements AudioInputProvider {
 
   // ── STTProvider interface (no-ops — satisfies duck-type validation) ──
 
-  /** No-op — no transcription will occur. */
+  /**
+   * No-op — no transcription will occur.
+   *
+   * @remarks
+   * There is no STT engine, so audio blobs cannot be transcribed.
+   * This exists to satisfy the duck-type validation for the `'stt'` role.
+   *
+   * @param _audio - Ignored.
+   */
   async transcribe(_audio: Blob): Promise<void> {
     // No-op: no STT processing
   }
 
-  /** No-op — no transcription events will be emitted. */
+  /**
+   * No-op — no transcription events will be emitted.
+   *
+   * @remarks
+   * The callback is accepted to satisfy the interface but is never invoked
+   * because no STT engine is running in text-only mode.
+   *
+   * @param _callback - Ignored.
+   */
   onTranscription(
     _callback: (result: import('../../core/types/providers').TranscriptionResult) => void
   ): void {

@@ -8,6 +8,7 @@ export interface ExampleConfig {
   title?: string;
   proxies?: {
     deepgram?: boolean;
+    deepgramAgent?: boolean;
     anthropic?: boolean;
     openai?: boolean;
     groq?: boolean;
@@ -68,6 +69,11 @@ const PROXY_TARGETS: Record<string, ProxyTarget> = {
     target: 'wss://api.cartesia.ai',
     ws: true,
     headerFn: (env) => ({ 'X-API-Key': env.CARTESIA_API_KEY ?? '' }),
+  },
+  deepgramAgent: {
+    target: 'wss://agent.deepgram.com',
+    ws: true,
+    headerFn: (env) => ({ Authorization: `Token ${env.DEEPGRAM_API_KEY ?? ''}` }),
   },
 };
 

@@ -19,6 +19,8 @@ Audio flows left to right. Each role processes its input incrementally and passe
 4. **TTS** receives text tokens as they arrive and streams audio chunks.
 5. **Output** buffers and plays audio through the speakers. Built-in providers: `BrowserAudioOutput` (Web Audio API playback) and `NullOutput` (discards audio, useful for testing).
 
+> **Agent providers** like `DeepgramAgent` collapse the STT + LLM + TTS roles into a single persistent WebSocket connection. From the pipeline's perspective, an agent provider covers three roles at once — the SDK auto-fills `MicrophoneInput` for `input` and `BrowserAudioOutput` for `output`. The audio flow is the same (`Input -> [Agent] -> Output`), but the middle three stages happen server-side over one connection instead of three separate provider instances.
+
 ### State machine
 The SDK tracks a high-level agent state derived from three sub-states: capture, processing, and playback.
 
@@ -223,6 +225,8 @@ BaseProvider
 ├── BaseTTSProvider
 │   ├── LiveTTSProvider    ← WebSocket TTS (implement connect, sendTextToSocket, finalizeSocket, disconnect)
 │   └── RestTTSProvider    ← REST TTS (implement synthesize)
+├── BaseAgentProvider      ← agent providers covering stt+llm+tts (implement connect, sendAudio, emitOutputMetadata)
+│   └── DeepgramAgent      ← Deepgram Voice Agent API (single WebSocket)
 └── AudioOutputProvider (interface) ← audio output (implement playAudio, stopPlayback)
     ├── BrowserAudioOutput ← Web Audio API playback
     └── NullOutput         ← discards audio (testing)

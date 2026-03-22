@@ -1,0 +1,22 @@
+export { DeepgramAgent } from './DeepgramAgent';
+export type {
+  DeepgramAgentConfig,
+  AgentFunctionDefinition,
+  AgentAudioConfig,
+  AgentListenConfig,
+  AgentThinkConfig,
+  AgentSpeakConfig,
+  DeepgramAgentEvent,
+  ThinkProvider,
+  SpeakProvider,
+  OpenAIThinkProvider,
+  AnthropicThinkProvider,
+  GoogleThinkProvider,
+  GroqThinkProvider,
+  AwsBedrockThinkProvider,
+  DeepgramSpeakProvider,
+  ElevenLabsSpeakProvider,
+  CartesiaSpeakProvider,
+  OpenAISpeakProvider,
+  AwsPollySpeakProvider,
+} from './types';

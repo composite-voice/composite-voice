@@ -76,12 +76,13 @@ curl -X POST http://localhost:3000/api/proxy/anthropic/v1/messages \
 | Groq | HTTP | Supported |
 | Mistral | HTTP | Supported |
 | Gemini | HTTP | Supported |
-| Deepgram | WebSocket | Not supported |
+| Deepgram STT/TTS | WebSocket | Not supported |
+| Deepgram Agent | WebSocket | Not supported |
 | ElevenLabs | WebSocket | Not supported |
 | Cartesia | WebSocket | Not supported |
 | AssemblyAI | WebSocket | Not supported |
 
-**If you need WebSocket providers**, deploy a separate Node.js server using the [Node.js adapter](/guides/proxy/node) or the [Express adapter](/guides/proxy/express) and point your WebSocket providers at that server. You can keep the Next.js adapter for HTTP providers.
+**If you need WebSocket providers** (including Deepgram Agent), deploy a separate Node.js server using the [Node.js adapter](/guides/proxy/node) or the [Express adapter](/guides/proxy/express) and point your WebSocket providers at that server. You can keep the Next.js adapter for HTTP providers. Configure the separate server with `deepgramAgentApiKey` (or let it fall back to `deepgramApiKey`) to enable the `deepgram-agent` route.
 
 For self-hosted Next.js deployments (not Vercel), use a custom server with `createNodeProxy` to handle both HTTP and WebSocket traffic.
 

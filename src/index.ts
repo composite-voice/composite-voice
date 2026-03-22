@@ -145,6 +145,7 @@ export {
   BaseSTTProvider,
   BaseLLMProvider,
   BaseTTSProvider,
+  BaseAgentProvider,
 } from './providers/base/index';
 
 // Built-in providers - STT
@@ -207,6 +208,20 @@ export type {
   CartesiaOutputEncoding,
   CartesiaOutputFormat,
 } from './providers/tts/cartesia/index';
+
+// Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
+export { DeepgramAgent } from './providers/agent/index';
+export type {
+  DeepgramAgentConfig,
+  AgentFunctionDefinition,
+  AgentAudioConfig,
+  AgentListenConfig,
+  AgentThinkConfig,
+  AgentSpeakConfig,
+  DeepgramAgentEvent,
+  ThinkProvider,
+  SpeakProvider,
+} from './providers/agent/index';
 
 // Built-in providers - Input
 export { MicrophoneInput } from './providers/input/index';

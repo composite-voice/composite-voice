@@ -183,6 +183,19 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
     });
   }
 
+  // Deepgram Agent API uses a separate host (agent.deepgram.com)
+  const agentKey = config.deepgramAgentApiKey ?? config.deepgramApiKey;
+  if (agentKey) {
+    routes.push({
+      provider: 'deepgram-agent',
+      type: 'websocket',
+      targetBase: 'wss://agent.deepgram.com',
+      authHeaders: {
+        Authorization: `Token ${agentKey}`,
+      },
+    });
+  }
+
   if (config.cartesiaApiKey) {
     routes.push({
       provider: 'cartesia',

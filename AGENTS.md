@@ -71,6 +71,7 @@ const voice = new CompositeVoice({
 - If `stt` is provided without `input`, `MicrophoneInput()` is auto-filled
 - If `tts` is provided without `output`, `BrowserAudioOutput()` is auto-filled
 - If `llm` is uncovered, `AnthropicLLM({ model: 'claude-haiku-4-5' })` is auto-filled
+- `[DeepgramAgent]` (covers `stt` + `llm` + `tts`) → auto-fills `MicrophoneInput` (input) + `BrowserAudioOutput` (output)
 
 ### Audio Buffering (Race Condition Fix)
 
@@ -101,11 +102,13 @@ src/
 │   ├── state/                 # AgentStateMachine, audio/processing state machines
 │   └── audio/                 # AudioCapture, AudioPlayer (browser internals)
 ├── providers/
-│   ├── base/                  # Abstract base classes (BaseProvider → Base{STT,LLM,TTS}Provider)
+│   ├── base/                  # Abstract base classes (BaseProvider → Base{STT,LLM,TTS,Agent}Provider)
 │   ├── input/                 # MicrophoneInput, BufferInput
 │   ├── stt/                   # NativeSTT, DeepgramSTT, DeepgramFlux, AssemblyAISTT, ElevenLabsSTT
 │   ├── llm/                   # AnthropicLLM, OpenAILLM, GroqLLM, MistralLLM, GeminiLLM, WebLLMLLM
 │   ├── tts/                   # NativeTTS, DeepgramTTS, OpenAITTS, ElevenLabsTTS, CartesiaTTS
+│   ├── agent/                 # Agent providers (single connection covers stt+llm+tts)
+│   │   └── deepgram/          # DeepgramAgent (Deepgram Voice Agent API)
 │   └── output/                # BrowserAudioOutput, NullOutput
 ├── proxy/                     # Server-side proxy adapters (Express, Next.js, Node)
 └── utils/                     # Logger, errors, audio utilities, format detection, WebSocket manager
@@ -121,6 +124,9 @@ src/
 - **Constructor-name detection:** `provider.constructor.name` identifies providers in pipeline utilities (not duck-typing)
 - **Queue events on hot paths:** `AudioBufferQueue` uses `emitSync()` (not async) via an `onOverflow()` callback
 - **TSDoc everywhere:** Module files start with `@packageDocumentation`; interfaces use `@remarks`, `@example`, `@see`, ASCII diagrams
+- **Agent provider — persistent connection:** `BaseAgentProvider.disconnect()` is a no-op; the single WebSocket stays open between turns so there is no reconnect overhead
+- **Agent provider — single WebSocket for stt+llm+tts:** Agent providers declare `roles: ['stt', 'llm', 'tts']` and cover all three middle pipeline slots through one connection; the client only sends raw audio and receives raw audio back
+- **Agent provider — async iterable bridge:** `generateFromMessages()` returns an `AsyncIterable<string>` that blocks until the server pushes text; subclasses call `emitAssistantText()` / `markAudioDone()` to resolve the pending iterator
 
 ## Quality Gates
 

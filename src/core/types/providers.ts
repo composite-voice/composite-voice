@@ -478,24 +478,28 @@ export interface RestSTTProvider extends BaseProvider {
   /**
    * Check whether a transcription result signals an utterance-complete event.
    * @param result - The transcription result to check.
+   * @returns `true` when the result indicates the user has finished speaking.
    */
   isUtteranceComplete(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is a preflight (speculative) signal.
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a speculative early signal used by the eager LLM pipeline.
    */
   isPreflight(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is interim (not yet finalised).
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a partial, non-committed transcript.
    */
   isInterim(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is final (committed text).
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a committed, final transcript.
    */
   isFinal(result: TranscriptionResult): boolean;
 }
@@ -591,24 +595,28 @@ export interface LiveSTTProvider extends BaseProvider {
   /**
    * Check whether a transcription result signals an utterance-complete event.
    * @param result - The transcription result to check.
+   * @returns `true` when the result indicates the user has finished speaking.
    */
   isUtteranceComplete(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is a preflight (speculative) signal.
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a speculative early signal used by the eager LLM pipeline.
    */
   isPreflight(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is interim (not yet finalised).
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a partial, non-committed transcript.
    */
   isInterim(result: TranscriptionResult): boolean;
 
   /**
    * Check whether a transcription result is final (committed text).
    * @param result - The transcription result to check.
+   * @returns `true` when the result is a committed, final transcript.
    */
   isFinal(result: TranscriptionResult): boolean;
 }

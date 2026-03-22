@@ -103,6 +103,25 @@ const server = app.listen(3000, () => {
 
 The browser sends requests to `/api/proxy/anthropic` and the proxy forwards them to `https://api.anthropic.com` with the real key attached. WebSocket providers ([Deepgram](/guides/stt/deepgram-stt), [ElevenLabs](/guides/tts/elevenlabs-tts), [AssemblyAI](/guides/stt/assemblyai-stt), [Cartesia](/guides/tts/cartesia-tts)) require the `attachWebSocket` call to handle upgrade requests.
 
+## Agent providers — the simplest setup
+
+If you want production-quality voice with minimal configuration, **agent providers** are the fastest path. A single agent provider like [DeepgramAgent](/guides/agents/deepgram-agent) handles STT, LLM, and TTS in one server-side WebSocket — you only need one provider and one API key.
+
+```typescript
+import {
+  CompositeVoice,
+  DeepgramAgent,
+} from '@lukeocodes/composite-voice';
+
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramAgent({ proxyUrl: '/api/proxy/deepgram-agent' }),
+  ],
+});
+```
+
+This replaces three separate providers with a single connection. See the [Agent Providers guide](/guides/agents) and the [70-deepgram-agent example](https://github.com/lukeocodes/composite-voice/tree/main/examples/70-deepgram-agent) for a full walkthrough.
+
 ## Upgrade to cloud providers
 
 [NativeSTT](/guides/stt/native-stt) and [NativeTTS](/guides/tts/native-tts) work for prototyping. For production-quality speech recognition and synthesis, swap in cloud providers. [DeepgramSTT](/guides/stt/deepgram-stt) and [DeepgramTTS](/guides/tts/deepgram-tts) use low-latency WebSocket connections.
@@ -145,6 +164,7 @@ Every provider you configure in the proxy gets its own route. Add keys for only 
 
 ## Next steps
 
+- [Agent Providers](/guides/agents) -- the simplest setup: one provider, one API key
 - [Configuration](/guides/configuration) -- pipeline options, turn-taking, and audio settings
 - [Providers](/reference/providers) -- all available STT, LLM, and TTS providers
 - [Events](/reference/events) -- the full event reference

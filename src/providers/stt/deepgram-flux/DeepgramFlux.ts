@@ -221,6 +221,18 @@ export class DeepgramFlux extends LiveSTTProvider {
   /**
    * Open a WebSocket connection to Deepgram for real-time V2 transcription.
    *
+   * @remarks
+   * The handshake flow is:
+   *
+   * 1. Build the connection URL with query parameters (model, thresholds, etc.)
+   * 2. Resolve WebSocket sub-protocols (`token` for API-key authentication)
+   * 3. Open the WebSocket and wait for the `onopen` event (with a configurable
+   *    timeout, defaulting to 10 seconds)
+   * 4. On success, register message/error/close event handlers via
+   *    {@link setupEventHandlers}
+   *
+   * If the connection is already open, the call is a no-op with a warning log.
+   *
    * @throws {@link ProviderConnectionError}
    * Thrown when the provider is not initialized, or the connection times out / errors.
    */
@@ -463,6 +475,12 @@ export class DeepgramFlux extends LiveSTTProvider {
 
   /**
    * Send a keep-alive signal to prevent the WebSocket from timing out.
+   *
+   * @remarks
+   * Sends a `{ type: "KeepAlive" }` JSON message over the WebSocket.
+   * Call this periodically during silence to keep the connection alive
+   * when no audio is being streamed. If the WebSocket is not connected,
+   * the call is a no-op with a warning log.
    */
   sendKeepAlive(): void {
     if (!this.isConnected || !this.ws) {
@@ -481,6 +499,14 @@ export class DeepgramFlux extends LiveSTTProvider {
   /**
    * Send a finalize signal to flush any pending audio and force a final
    * transcription result.
+   *
+   * @remarks
+   * Sends a `{ type: "Finalize" }` JSON message over the WebSocket.
+   * This tells Deepgram to process any buffered audio immediately and
+   * emit an `EndOfTurn` event, rather than waiting for the normal
+   * end-of-turn confidence threshold. Useful when the application knows
+   * the user has finished speaking (e.g., a push-to-talk release).
+   * If the WebSocket is not connected, the call is a no-op with a warning log.
    */
   sendFinalize(): void {
     if (!this.isConnected || !this.ws) {
@@ -550,6 +576,8 @@ export class DeepgramFlux extends LiveSTTProvider {
 
   /**
    * Check whether the Deepgram Flux WebSocket connection is currently open.
+   *
+   * @returns `true` when the WebSocket is connected and ready to receive audio.
    */
   isWebSocketConnected(): boolean {
     return this.isConnected;

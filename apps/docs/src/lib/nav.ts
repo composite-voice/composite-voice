@@ -50,6 +50,7 @@ export const nav: NavItem[] = [
       { folder: "guides/stt", label: "Speech-to-Text" },
       { folder: "guides/llm", label: "Language Models" },
       { folder: "guides/tts", label: "Text-to-Speech" },
+      { folder: "guides/agents", label: "Agent Providers" },
       { folder: "guides/proxy", label: "Server Proxy" },
     ],
   },

@@ -145,42 +145,96 @@ export class NullOutput implements AudioOutputProvider {
 
   // ── TTSProvider interface (no-ops — satisfies duck-type validation) ──
 
-  /** No-op — text is discarded, no synthesis occurs. */
+  /**
+   * No-op — text is discarded, no synthesis occurs.
+   *
+   * @remarks
+   * There is no TTS engine, so text chunks are silently discarded.
+   * This exists to satisfy the duck-type validation for the `'tts'` role.
+   *
+   * @param _text - Ignored.
+   */
   processChunk(_text: string): void {
     // No-op: no TTS synthesis
   }
 
-  /** No-op — nothing to finalize. */
+  /**
+   * No-op — nothing to finalize.
+   *
+   * @remarks
+   * There is no TTS engine with buffered state, so finalization is a no-op.
+   */
   async finalize(): Promise<void> {
     // No-op: no TTS synthesis
   }
 
-  /** No-op — nothing to connect. */
+  /**
+   * No-op — nothing to connect.
+   *
+   * @remarks
+   * There is no TTS WebSocket or service to connect to in text-only mode.
+   */
   async connect(): Promise<void> {
     // No-op: no TTS connection
   }
 
-  /** No-op — text is discarded. */
+  /**
+   * No-op — text is discarded.
+   *
+   * @remarks
+   * There is no TTS engine to receive text for synthesis.
+   *
+   * @param _text - Ignored.
+   */
   sendText(_text: string): void {
     // No-op: no TTS synthesis
   }
 
-  /** No-op — nothing to disconnect. */
+  /**
+   * No-op — nothing to disconnect.
+   *
+   * @remarks
+   * No TTS connection was established, so there is nothing to close.
+   */
   async disconnect(): Promise<void> {
     // No-op: no TTS connection
   }
 
-  /** No-op — no audio will be produced. */
+  /**
+   * No-op — no audio will be produced.
+   *
+   * @remarks
+   * The callback is accepted to satisfy the interface but is never invoked
+   * because no TTS audio is synthesized in text-only mode.
+   *
+   * @param _callback - Ignored.
+   */
   onAudio(_callback: (chunk: AudioChunk) => void): void {
     // No-op: no audio produced
   }
 
-  /** No-op — no metadata will be produced. */
+  /**
+   * No-op — no metadata will be produced.
+   *
+   * @remarks
+   * The callback is accepted to satisfy the interface but is never invoked
+   * because no TTS audio is synthesized.
+   *
+   * @param _callback - Ignored.
+   */
   onMetadata(_callback: (metadata: AudioMetadata) => void): void {
     // No-op: no metadata produced
   }
 
-  /** No-op — returns empty blob. */
+  /**
+   * No-op — returns an empty blob.
+   *
+   * @remarks
+   * There is no TTS engine, so synthesis always returns an empty `Blob`.
+   *
+   * @param _text - Ignored.
+   * @returns An empty `Blob`.
+   */
   async synthesize(_text: string): Promise<Blob> {
     return new Blob();
   }

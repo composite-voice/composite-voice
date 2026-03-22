@@ -40,7 +40,8 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                                |
 | **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                              |
 | **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                                    |
-| **Extensible**                  | Abstract base classes for all 5 roles. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                                                                 |
+| **Agent providers**             | Collapse STT + LLM + TTS into a single connection. `DeepgramAgent` uses one WebSocket to the Deepgram Voice Agent API — the SDK auto-fills mic input and speaker output.                          |
+| **Extensible**                  | Abstract base classes for all 5 roles plus `BaseAgentProvider` for multi-role agents. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                   |
 
 ---
 
@@ -515,6 +516,14 @@ new CartesiaTTS({
   emotion: ['positivity:high'], // emotion tags for voice expression
 });
 ```
+
+### Agent Providers
+
+Agent providers collapse the three middle pipeline roles (`stt` + `llm` + `tts`) into a single connection. Instead of wiring up separate STT, LLM, and TTS providers, one agent provider handles the entire server-side loop over a single WebSocket. The SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for audio I/O, so a working voice agent requires just one provider in your config.
+
+| Provider        | Transport | Roles               | Peer Dependency | Description                                                                    |
+| --------------- | --------- | ------------------- | --------------- | ------------------------------------------------------------------------------ |
+| `DeepgramAgent` | WebSocket | `stt` + `llm` + `tts` | None            | Deepgram Voice Agent API — single WebSocket handles STT, LLM, and TTS server-side |
 
 ### Audio Output
 
@@ -1078,6 +1087,7 @@ All built-in providers implement abstract base classes. You can plug in any prov
 | `BaseLLMProvider`      | `llm`    | Any language model                                               |
 | `OpenAICompatibleLLM`  | `llm`    | Any LLM with an OpenAI-compatible API (Groq, Gemini, Mistral...) |
 | `BaseTTSProvider`      | `tts`    | Any text-to-speech provider                                      |
+| `BaseAgentProvider`    | `stt` + `llm` + `tts` | Agent providers that handle STT, LLM, and TTS in one connection |
 | `AudioOutputProvider`  | `output` | Custom audio playback (speakers, file, stream)                   |
 
 Every custom provider must declare its `roles` property.
@@ -1295,7 +1305,7 @@ For a full implementation guide, see [CONTRIBUTING.md](./CONTRIBUTING.md#adding-
 
 ## Examples
 
-29 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
+30 standalone Vite apps in [`examples/`](./examples/), organized by category. Each introduces a real feature or provider — no filler.
 
 ### Getting started (00–06)
 
@@ -1333,6 +1343,14 @@ Production-quality STT and TTS with Deepgram-specific features.
 | [22](./examples/22-deepgram-options/)              | STT configuration panel (model, VAD, etc.) | Deepgram + Anthropic | 3022 |
 | [23](./examples/23-deepgram-voices/)               | TTS voice gallery — preview Aura 2 voices  | Deepgram + Anthropic | 3023 |
 | [24](./examples/24-deepgram-conversation-history/) | Deepgram pipeline + conversation history   | Deepgram + Anthropic | 3024 |
+
+### Deepgram Voice Agent (70)
+
+Single-WebSocket voice agent using the Deepgram Voice Agent API.
+
+| #                                        | What it demonstrates                                               | API keys needed | Port |
+| ---------------------------------------- | ------------------------------------------------------------------ | --------------- | ---- |
+| [70](./examples/70-deepgram-agent/)      | Deepgram Voice Agent API (single-WebSocket STT+LLM+TTS)           | Deepgram        | 3070 |
 
 ### Anthropic (30–31)
 
@@ -1436,6 +1454,9 @@ pnpm example:21-eager-pipeline:dev               # http://localhost:3021
 pnpm example:22-deepgram-options:dev             # http://localhost:3022
 pnpm example:23-deepgram-voices:dev              # http://localhost:3023
 pnpm example:24-deepgram-conversation-history:dev # http://localhost:3024
+
+# Deepgram Voice Agent
+pnpm example:70-deepgram-agent:dev               # http://localhost:3070
 
 # Anthropic
 pnpm example:30-anthropic-models:dev             # http://localhost:3030

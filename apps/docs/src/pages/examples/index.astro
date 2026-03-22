@@ -22,7 +22,8 @@ const groups = [
   { label: "Foundation", min: 0, max: 9 },
   { label: "Server & Deployment", min: 10, max: 19 },
   { label: "Deepgram Pipelines", min: 20, max: 29 },
-  { label: "Provider Showcases", min: 30, max: 199 },
+  { label: "Provider Showcases", min: 30, max: 69 },
+  { label: "Agent Providers", min: 70, max: 99 },
 ];
 
 /* Read the examples directory at build time */
@@ -128,6 +129,11 @@ pnpm --filter {examples[0]?.name || "00-minimal-voice-agent"} dev</code></pre>
           {" "}for cloud-grade STT/TTS, then add{" "}
           <a href={`${REPO_URL}/tree/main/examples/10-proxy-server`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">10-proxy-server</a>
           {" "}for secure key management.
+        </p>
+        <p>
+          <strong>Simplest setup?</strong> Try{" "}
+          <a href={`${REPO_URL}/tree/main/examples/70-deepgram-agent`} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">70-deepgram-agent</a>
+          {" "}&mdash; one provider handles STT, LLM, and TTS over a single WebSocket.
         </p>
         <p>
           <strong>Privacy-sensitive?</strong> See{" "}

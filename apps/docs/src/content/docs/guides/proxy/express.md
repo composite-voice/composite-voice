@@ -38,6 +38,7 @@ app.use(express.json());
 
 const proxy = createExpressProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  deepgramAgentApiKey: process.env.DEEPGRAM_AGENT_API_KEY, // falls back to deepgramApiKey if not set
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   pathPrefix: '/api/proxy',
@@ -64,6 +65,7 @@ Create a `.env` file:
 
 ```
 DEEPGRAM_API_KEY=your-deepgram-key
+DEEPGRAM_AGENT_API_KEY=your-deepgram-agent-key  # optional, falls back to DEEPGRAM_API_KEY
 ANTHROPIC_API_KEY=your-anthropic-key
 OPENAI_API_KEY=your-openai-key
 ```
@@ -81,6 +83,7 @@ Express supports WebSocket upgrades through the underlying `http.Server`. The `a
 | Provider | Transport | Route |
 |----------|-----------|-------|
 | Deepgram STT/TTS | WebSocket | `/api/proxy/deepgram` |
+| Deepgram Agent | WebSocket | `/api/proxy/deepgram-agent` |
 | ElevenLabs TTS | WebSocket | `/api/proxy/elevenlabs` |
 | Cartesia TTS | WebSocket | `/api/proxy/cartesia` |
 | AssemblyAI STT | WebSocket | `/api/proxy/assemblyai` |
@@ -115,6 +118,27 @@ const voice = new CompositeVoice({
 ```
 
 The browser never sees API keys. The proxy injects them server-side.
+
+### DeepgramAgent
+
+The Deepgram Agent provider connects through its own proxy route (`deepgram-agent`) because it targets a different upstream host (`wss://agent.deepgram.com`):
+
+```typescript
+import { CompositeVoice, DeepgramAgent, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramAgent({
+      proxyUrl: '/api/proxy/deepgram-agent',
+      think: {
+        provider: { type: 'open_ai', model: 'gpt-4o' },
+        prompt: 'You are a helpful voice assistant.',
+      },
+    }),
+    new BrowserAudioOutput(),
+  ],
+});
+```
 
 ## CORS configuration
 

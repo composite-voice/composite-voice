@@ -194,6 +194,36 @@ const voice = new CompositeVoice({
 
 > **Note:** Eager LLM requires a DeepgramFlux STT provider, which emits `EagerEndOfTurn` signals the pipeline uses for speculative generation.
 
+## Agent providers
+
+Agent providers like `DeepgramAgent` collapse the STT + LLM + TTS pipeline into a single connection. Instead of configuring 3-5 separate providers, you pass one agent provider and the SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for the remaining `input` and `output` roles.
+
+```typescript
+import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramAgent({
+      proxyUrl: '/api/proxy/deepgram-agent',
+      think: {
+        provider: { type: 'open_ai', model: 'gpt-4o-mini' },
+        prompt: 'You are a helpful voice assistant.',
+      },
+      speak: {
+        provider: { type: 'deepgram', model: 'aura-2-thalia-en' },
+      },
+      greeting: 'Hello! How can I help you?',
+    }),
+  ],
+});
+```
+
+The above is equivalent to a 5-provider pipeline with `MicrophoneInput` + STT + LLM + TTS + `BrowserAudioOutput`, but the STT, LLM, and TTS stages are all handled server-side by Deepgram's Voice Agent API over a single WebSocket.
+
+The `think` block configures which LLM provider Deepgram uses server-side (OpenAI, Anthropic, Google, Groq, or AWS Bedrock). The `speak` block configures which TTS provider Deepgram uses (Deepgram, ElevenLabs, Cartesia, OpenAI, or AWS Polly). The `listen` block (optional) configures STT settings -- it defaults to Deepgram Nova 3.
+
+> Agent providers manage their own conversation history server-side. The `conversationHistory` and `eagerLLM` config options do not apply when using an agent provider.
+
 ## Tool use
 
 When the LLM provider supports tool use ([AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), and any [OpenAICompatibleLLM](/guides/llm/openai-compatible) subclass), you can define tools on the top-level config. The `onToolCall` callback is async -- return a `LLMToolResult` with the serialized result content.

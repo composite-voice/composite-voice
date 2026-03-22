@@ -4,11 +4,11 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 17 provider classes, plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 11 provider companies across 18 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
-Every provider and the pipeline role(s) it fills. Multi-role providers cover two adjacent stages — use them for simpler configs (3 providers instead of 5).
+Every provider and the pipeline role(s) it fills. Multi-role providers cover two or more adjacent stages — use them for simpler configs (3 providers instead of 5). Agent providers cover `stt` + `llm` + `tts` in a single connection (1 provider instead of 5).
 
 | Provider | `input` | `stt` | `llm` | `tts` | `output` |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -31,11 +31,12 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **OpenAITTS** | | | | **yes** | |
 | **ElevenLabsTTS** | | | | **yes** | |
 | **CartesiaTTS** | | | | **yes** | |
+| **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
 | **NullOutput** | | | | **yes** | **yes** |
 
-> The pipeline requires all 5 roles to be filled. If both `input` and `stt` are uncovered, `NullInput` is auto-filled (text-only, no microphone). If both `tts` and `output` are uncovered, `NullOutput` is auto-filled (text-only, no speakers). If an STT is provided without an `input`, `MicrophoneInput` is auto-filled. If a TTS is provided without an `output`, `BrowserAudioOutput` is auto-filled. If no `llm` is provided, `AnthropicLLM` (`claude-haiku-4-5`) is auto-filled.
+> The pipeline requires all 5 roles to be filled. If both `input` and `stt` are uncovered, `NullInput` is auto-filled (text-only, no microphone). If both `tts` and `output` are uncovered, `NullOutput` is auto-filled (text-only, no speakers). If an STT is provided without an `input`, `MicrophoneInput` is auto-filled. If a TTS is provided without an `output`, `BrowserAudioOutput` is auto-filled. If no `llm` is provided, `AnthropicLLM` (`claude-haiku-4-5`) is auto-filled. Agent providers like `DeepgramAgent` cover `stt` + `llm` + `tts` — the SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for the remaining `input` and `output` roles.
 
 ---
 
@@ -79,6 +80,30 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 **TTS models:** Aura 2 (recommended — 40 English voices + 10 Spanish voices), Aura 1 (legacy — 12 English voices).
 
 **Guides:** [DeepgramSTT](/guides/stt/deepgram-stt) · [DeepgramFlux](/guides/stt/deepgram-flux) · [DeepgramTTS](/guides/tts/deepgram-tts) · **Examples:** [20](https://github.com/lukeocodes/composite-voice/tree/main/examples/20-deepgram-pipeline), [21](https://github.com/lukeocodes/composite-voice/tree/main/examples/21-eager-pipeline), [22](https://github.com/lukeocodes/composite-voice/tree/main/examples/22-deepgram-options), [23](https://github.com/lukeocodes/composite-voice/tree/main/examples/23-deepgram-voices), [24](https://github.com/lukeocodes/composite-voice/tree/main/examples/24-deepgram-conversation-history)
+
+---
+
+### Deepgram Agent
+
+| | Agent |
+|---|---|
+| **Class** | `DeepgramAgent` |
+| **Transport** | WebSocket |
+| **Streaming** | Yes |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Roles** | `stt` + `llm` + `tts` |
+
+**DeepgramAgent** connects to the Deepgram Voice Agent API (`wss://agent.deepgram.com/v1/agent/converse`) via a single WebSocket that collapses the entire STT + LLM + TTS pipeline into one connection. Deepgram handles speech recognition, LLM inference, and text-to-speech synthesis server-side — the client only sends raw audio and receives raw audio back.
+
+**Agent features:** Configurable listen (STT), think (LLM), and speak (TTS) sub-providers via the Settings message, greeting message on session start, mid-session prompt/voice/model updates (`updatePrompt`, `updateSpeak`, `updateThink`), message injection (`injectUserMessage`, `injectAgentMessage`), client-side and server-side function calling, conversation context pre-seeding, latency metrics (`AgentStartedSpeaking` with `total_latency`, `tts_latency`, `ttt_latency`), keep-alive, barge-in support.
+
+**Think (LLM) providers:** OpenAI, Anthropic, Google, Groq, AWS Bedrock.
+
+**Speak (TTS) providers:** Deepgram, ElevenLabs, Cartesia, OpenAI, AWS Polly.
+
+**Examples:** [70](https://github.com/lukeocodes/composite-voice/tree/main/examples/70-deepgram-agent)
 
 ---
 
@@ -290,8 +315,9 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 | Capability | Providers that support it |
 |---|---|
-| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), DeepgramAgent, [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
+| **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral) |

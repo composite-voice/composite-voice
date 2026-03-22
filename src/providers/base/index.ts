@@ -40,3 +40,4 @@ export * from './RestSTTProvider';
 export * from './LiveSTTProvider';
 export * from './RestTTSProvider';
 export * from './LiveTTSProvider';
+export * from './BaseAgentProvider';

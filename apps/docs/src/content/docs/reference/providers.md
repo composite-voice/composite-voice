@@ -462,6 +462,50 @@ const tts = new CartesiaTTS({
 
 ---
 
+## Agent Providers
+
+Agent providers collapse the STT + LLM + TTS pipeline into a single persistent connection. Instead of configuring three separate providers, you configure one agent provider that covers all three roles. The SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for the remaining `input` and `output` roles.
+
+| Provider | Transport | Roles | Description |
+|---|---|---|---|
+| [DeepgramAgent](#deepgramagent) | WebSocket | `stt` + `llm` + `tts` | Deepgram Voice Agent API -- single WebSocket handles STT, LLM, and TTS server-side |
+
+### DeepgramAgent
+
+Connects to the Deepgram Voice Agent API via a single WebSocket. Deepgram handles speech recognition, LLM inference, and text-to-speech synthesis server-side -- the client only sends raw audio and receives raw audio back.
+
+```typescript
+import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramAgent({
+      proxyUrl: '/api/proxy/deepgram-agent',
+      think: {
+        provider: { type: 'open_ai', model: 'gpt-4o-mini' },
+        prompt: 'You are a helpful voice assistant.',
+      },
+      speak: {
+        provider: { type: 'deepgram', model: 'aura-2-thalia-en' },
+      },
+      greeting: 'Hello! How can I help you?',
+    }),
+  ],
+});
+```
+
+- Covers `stt` + `llm` + `tts` -- only 1 provider needed (SDK auto-fills `MicrophoneInput` + `BrowserAudioOutput`)
+- Configurable LLM: OpenAI, Anthropic, Google, Groq, AWS Bedrock
+- Configurable TTS: Deepgram, ElevenLabs, Cartesia, OpenAI, AWS Polly
+- Mid-session updates: `updatePrompt()`, `updateSpeak()`, `updateThink()`
+- Message injection: `injectUserMessage()`, `injectAgentMessage()`
+- Client-side and server-side function calling via `onFunctionCall` callback
+- Greeting message on session start
+- Barge-in support
+- Latency metrics via `AgentStartedSpeaking` events
+
+---
+
 ## Audio Output
 
 | Provider | Environment | Roles | Description |
@@ -507,3 +551,5 @@ const output = new NullOutput();
 **For privacy:** [NativeSTT](/guides/stt/native-stt) + [WebLLMLLM](/guides/llm/webllm) + [NativeTTS](/guides/tts/native-tts) -- everything runs in the browser. No data leaves the device.
 
 **For lowest latency:** [DeepgramFlux](/guides/stt/deepgram-flux) + [GroqLLM](/guides/llm/groq) + [DeepgramTTS](/guides/tts/deepgram-tts) -- eager end-of-turn signals, fastest LLM inference, low-latency streaming TTS.
+
+**For simplest config:** [DeepgramAgent](#deepgramagent) -- one provider replaces the entire STT + LLM + TTS pipeline. Deepgram handles everything server-side.
