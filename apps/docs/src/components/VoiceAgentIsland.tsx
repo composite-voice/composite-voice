@@ -68,9 +68,11 @@ let pagefindInstance: {
   }>;
 } | null = null;
 
+const PAGEFIND_BASE = '/docs';
+
 async function getPagefind() {
   if (pagefindInstance) return pagefindInstance;
-  const mod = await import(/* @vite-ignore */ '/docs/pagefind/pagefind.js');
+  const mod = await import(/* @vite-ignore */ `${PAGEFIND_BASE}/pagefind/pagefind.js`);
   if (mod.init) await mod.init();
   pagefindInstance = mod;
   return mod;
