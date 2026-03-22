@@ -8,11 +8,14 @@ import pagefind from 'astro-pagefind';
 import llmsTxt from '@4hse/astro-llms-txt';
 import playformInline from '@playform/inline';
 import compress from '@playform/compress';
+import netlify from '@astrojs/netlify';
 import { remarkBaseUrl } from './src/lib/remark-base-url.mjs';
 import { remarkBrandName } from './src/lib/remark-brand-name.mjs';
 
 // https://astro.build/config
 export default defineConfig({
+	output: 'static',
+	adapter: netlify(),
 	site: process.env.CV_WEB_URL || 'http://localhost:4321',
 	base: '/docs',
 	markdown: {
@@ -33,6 +36,11 @@ export default defineConfig({
 	],
 	vite: {
 		plugins: [tailwindcss()],
-		resolve: { dedupe: ['react', 'react-dom'] },
+		resolve: {
+			dedupe: ['react', 'react-dom'],
+			alias: {
+				'@lukeocodes/composite-voice': new URL('../../dist/index.mjs', import.meta.url).pathname,
+			},
+		},
 	},
 });
