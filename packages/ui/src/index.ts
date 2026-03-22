@@ -238,24 +238,3 @@ export { Blockquote } from "./components/Blockquote";
 export { Kbd } from "./components/Kbd";
 export { Mark } from "./components/Mark";
 export { Prose } from "./components/Prose";
-
-/* ── Voice Agent Panel ──────────────────────── */
-export {
-  AgentPanel,
-  AgentPanelHeader,
-  ChatPanel,
-  ChatMessage,
-  ChatInput,
-  ThinkingIndicator,
-  InterimTranscript,
-  useVoiceAgent,
-} from "./agent/index";
-export type {
-  ChatMessageType,
-  SourceLink,
-  AgentStatus,
-  TokenProvider,
-  VoiceAgentConfig,
-  VoiceAgentState,
-  VoiceAgentActions,
-} from "./agent/index";
