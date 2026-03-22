@@ -3,6 +3,18 @@
     ".": {
       "release-type": "node",
       "package-name": "@lukeocodes/composite-voice",
+      "exclude-paths": [
+        "apps/docs",
+        "apps/web",
+        "apps/design",
+        "examples",
+        "packages/ui",
+        ".github",
+        "AGENTS.md",
+        "README.md",
+        "CLAUDE.md",
+        ".husky"
+      ],
       "changelog-sections": [
         {
           "type": "feat",
