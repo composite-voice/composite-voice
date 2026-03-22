@@ -11,6 +11,45 @@
 }
 
 /* ═══════════════════════════════════════════════════
+   Pagefind UI — theme overrides
+   Maps pagefind CSS variables to our design tokens
+   so the search modal follows light/dark mode.
+   ═══════════════════════════════════════════════════ */
+
+.pagefind-search-modal {
+  --pagefind-ui-scale: 0.9;
+  --pagefind-ui-primary: var(--color-primary-600);
+  --pagefind-ui-text: var(--color-foreground);
+  --pagefind-ui-background: var(--color-surface);
+  --pagefind-ui-border: var(--color-neutral-200);
+  --pagefind-ui-tag: var(--color-primary-100);
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 8px;
+  --pagefind-ui-font: inherit;
+}
+
+/* Remove the default pagefind input border/shadow and match our input style */
+.pagefind-search-modal .pagefind-ui__search-input {
+  font-size: 1rem;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+}
+
+/* Result links inherit foreground color */
+.pagefind-search-modal .pagefind-ui__result-link {
+  color: var(--color-primary-600);
+}
+
+.pagefind-search-modal .pagefind-ui__result-excerpt {
+  color: var(--color-foreground-muted);
+}
+
+/* Constrain results area height so the modal doesn't grow unbounded */
+.pagefind-search-modal .pagefind-ui__results-area {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════
    Prism code blocks — mirrors packages/ui/src/code-theme.ts
    so markdown-rendered code blocks match the CodeBlock
    React component exactly.

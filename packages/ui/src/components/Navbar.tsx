@@ -12,6 +12,7 @@ import { BrandName } from "./BrandName";
 import { VersionPill } from "./VersionPill";
 import { ThemeToggle } from "./ThemeToggle";
 import { MenuIcon, GitHubIcon } from "../icons";
+import { NavbarSearch } from "./NavbarSearch";
 
 export interface NavbarSite {
   href: string;
@@ -26,6 +27,10 @@ export interface NavbarProps {
   version?: string;
   /** Enable sidebar mode: shows mobile menu toggle, adjusts layout */
   hasSidebar?: boolean;
+  /** Show search button (requires pagefind build output) */
+  showSearch?: boolean;
+  /** Base URL path for pagefind assets (e.g. "/docs") */
+  searchBasePath?: string;
   /** Additional classes for the header element */
   className?: string;
 }
@@ -34,6 +39,8 @@ export function Navbar({
   sites,
   version,
   hasSidebar = false,
+  showSearch = false,
+  searchBasePath,
   className,
 }: NavbarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -92,6 +99,10 @@ export function Navbar({
         </nav>
 
         <div className="flex-1" />
+
+        {showSearch && (
+          <NavbarSearch basePath={searchBasePath} />
+        )}
 
         <a
           href="https://github.com/lukeocodes/composite-voice"
