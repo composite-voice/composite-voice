@@ -77,7 +77,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
         AnthropicLLM,
         DeepgramTTS,
         BrowserAudioOutput,
-      } = await import('@lukeocodes/composite-voice');
+      } = await import(/* @vite-ignore */ '@lukeocodes/composite-voice');
 
       const cfg = configRef.current;
 
