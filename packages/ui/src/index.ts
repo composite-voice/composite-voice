@@ -216,6 +216,7 @@ export { PreferencesPanel } from "./components/PreferencesPanel";
 /* ── Layout ──────────────────────────────────── */
 export { Navbar } from "./components/Navbar";
 export type { NavbarProps, NavbarSite } from "./components/Navbar";
+export { NavbarSearch } from "./components/NavbarSearch";
 export { Sidebar } from "./components/Sidebar";
 export type {
   SidebarProps,
@@ -237,3 +238,24 @@ export { Blockquote } from "./components/Blockquote";
 export { Kbd } from "./components/Kbd";
 export { Mark } from "./components/Mark";
 export { Prose } from "./components/Prose";
+
+/* ── Voice Agent Panel ──────────────────────── */
+export {
+  AgentPanel,
+  AgentPanelHeader,
+  ChatPanel,
+  ChatMessage,
+  ChatInput,
+  ThinkingIndicator,
+  InterimTranscript,
+  useVoiceAgent,
+} from "./agent/index";
+export type {
+  ChatMessageType,
+  SourceLink,
+  AgentStatus,
+  TokenProvider,
+  VoiceAgentConfig,
+  VoiceAgentState,
+  VoiceAgentActions,
+} from "./agent/index";

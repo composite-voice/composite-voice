@@ -7,6 +7,7 @@ import { Breadcrumbs } from "astro-breadcrumbs";
 import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
 import type { SidebarItem } from "@lukeocodes/composite-voice-ui";
 import { nav, isNavFolder, isNavSection } from "../lib/nav";
+import VoiceAgentIsland from "../components/VoiceAgentIsland";
 import pkg from "../../../../package.json";
 
 interface Props {
@@ -155,7 +156,7 @@ const currentPath = Astro.url.pathname;
       Skip to content
     </a>
 
-    <Navbar client:load sites={sites} version={pkg.version} hasSidebar />
+    <Navbar client:load sites={sites} version={pkg.version} hasSidebar showSearch searchBasePath="/docs" />
 
     <div class="flex min-h-screen pt-14">
       <Sidebar client:load sections={sections} currentPath={currentPath} ariaLabel="Documentation sections" />
@@ -183,6 +184,8 @@ const currentPath = Astro.url.pathname;
         <Footer client:load sites={sites} className="mt-auto" />
       </main>
     </div>
+    <VoiceAgentIsland client:idle />
+
     <script is:inline>
       // Inject copy-to-clipboard buttons on Prism code blocks
       document.querySelectorAll('pre[class*="language-"]').forEach(function(pre) {
