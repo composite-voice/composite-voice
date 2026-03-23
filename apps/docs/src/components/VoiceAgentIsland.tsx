@@ -152,7 +152,7 @@ Respond in plain text for voice — no markdown formatting, no bullet points, no
       setSessionReady(true);
     }
 
-    if (state.status === 'idle' && !state.messages.length) {
+    if (state.status === 'idle') {
       await actions.initialize();
       await actions.startListening();
     }
