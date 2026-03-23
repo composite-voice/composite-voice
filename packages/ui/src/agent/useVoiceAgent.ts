@@ -114,6 +114,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
           new BrowserAudioOutput({ minBufferDuration: 300, enableSmoothing: true }),
         ],
         conversationHistory: { enabled: true, maxTurns: 20 },
+        turnTaking: { pauseCaptureOnPlayback: false },
         logging: { enabled: false },
         ...(cfg.tools && {
           tools: {
