@@ -82,6 +82,16 @@ const sectionMap: Record<string, string> = {
   examples: 'Examples',
 };
 const pagefindSection = sectionMap[topSegment] ?? 'Overview';
+
+/* Rank guides/reference/advanced higher than API reference in search */
+const pagefindWeight: Record<string, string> = {
+  guides: '2',
+  reference: '2',
+  advanced: '1.5',
+  examples: '1',
+  api: '0.3',
+};
+const weight = pagefindWeight[topSegment] ?? '1';
 ---
 
 <html lang="en">
@@ -176,6 +186,7 @@ const pagefindSection = sectionMap[topSegment] ?? 'Overview';
       <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           <meta data-pagefind-filter="section[content]" content={pagefindSection} />
+          <meta data-pagefind-weight={weight} />
 
           <Breadcrumbs indexText="Docs" linkTextFormat="capitalized">
             <span slot="separator">/</span>

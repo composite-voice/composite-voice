@@ -174,7 +174,7 @@ export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
 
           {/* Search panel */}
           <div
-            className="pagefind-search-modal relative w-full max-w-2xl bg-surface rounded-xl shadow-2xl border border-neutral-200 overflow-hidden"
+            className="pagefind-search-modal relative w-full max-w-4xl bg-surface rounded-xl shadow-2xl border border-neutral-200 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div ref={containerRef} />
