@@ -269,6 +269,9 @@ export class DeepgramSTT extends LiveSTTProvider {
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /** In-flight connection promise to prevent concurrent connect() calls. */
+  private connectingPromise: Promise<void> | null = null;
+
   /**
    * Accumulates `is_final` transcript segments within an utterance.
    *
@@ -437,8 +440,30 @@ export class DeepgramSTT extends LiveSTTProvider {
       return;
     }
 
+    // Coalesce concurrent connect() calls onto a single attempt
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
+    this.connectingPromise = this.doConnect();
+    try {
+      await this.connectingPromise;
+    } finally {
+      this.connectingPromise = null;
+    }
+  }
+
+  /** Internal connect implementation — callers go through connect(). */
+  private async doConnect(): Promise<void> {
     try {
       this.logger.debug('Connecting to Deepgram WebSocket');
+
+      // Close any stale socket before opening a new one
+      if (this.ws) {
+        try { this.ws.close(); } catch { /* ignore */ }
+        this.ws = null;
+        this.isConnected = false;
+      }
 
       const url = this.buildConnectionUrl();
 
@@ -478,6 +503,7 @@ export class DeepgramSTT extends LiveSTTProvider {
       this.setupEventHandlers();
     } catch (error) {
       this.ws = null;
+      this.isConnected = false;
       throw new ProviderConnectionError('DeepgramSTT', error as Error);
     }
   }

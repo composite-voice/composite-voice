@@ -157,6 +157,9 @@ export class DeepgramTTS extends LiveTTSProvider {
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /** In-flight connection promise to prevent concurrent connect() calls. */
+  private connectingPromise: Promise<void> | null = null;
+
   /** Resolve callback for the pending `finalize()` flush, if any. */
   private pendingFlushResolve: (() => void) | null = null;
 
@@ -255,8 +258,30 @@ export class DeepgramTTS extends LiveTTSProvider {
       return;
     }
 
+    // Coalesce concurrent connect() calls onto a single attempt
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
+    this.connectingPromise = this.doConnect();
+    try {
+      await this.connectingPromise;
+    } finally {
+      this.connectingPromise = null;
+    }
+  }
+
+  /** Internal connect implementation — callers go through connect(). */
+  private async doConnect(): Promise<void> {
     try {
       this.logger.debug('Connecting to Deepgram TTS WebSocket');
+
+      // Close any stale socket before opening a new one
+      if (this.ws) {
+        try { this.ws.close(); } catch { /* ignore */ }
+        this.ws = null;
+        this.isConnected = false;
+      }
 
       const url = this.buildConnectionUrl();
 
@@ -299,6 +324,7 @@ export class DeepgramTTS extends LiveTTSProvider {
       this.setupEventHandlers();
     } catch (error) {
       this.ws = null;
+      this.isConnected = false;
       throw new ProviderConnectionError('DeepgramTTS', error as Error);
     }
   }
