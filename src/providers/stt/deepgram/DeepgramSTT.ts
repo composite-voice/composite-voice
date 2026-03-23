@@ -269,6 +269,9 @@ export class DeepgramSTT extends LiveSTTProvider {
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /** Keep-alive interval timer. */
+  private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
   /** In-flight connection promise to prevent concurrent connect() calls. */
   private connectingPromise: Promise<void> | null = null;
 
@@ -348,8 +351,17 @@ export class DeepgramSTT extends LiveSTTProvider {
     }
   }
 
+  /** Stop the keep-alive interval timer. */
+  private stopKeepAlive(): void {
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
   /** Disconnect the WebSocket (if connected) and release resources. */
   protected async onDispose(): Promise<void> {
+    this.stopKeepAlive();
     if (this.isConnected) {
       await this.disconnect();
     }
@@ -501,6 +513,10 @@ export class DeepgramSTT extends LiveSTTProvider {
 
       // Register event handlers after connection is open
       this.setupEventHandlers();
+
+      // Start keep-alive to prevent idle timeout (every 8s)
+      this.stopKeepAlive();
+      this.keepAliveTimer = setInterval(() => this.sendKeepAlive(), 8000);
     } catch (error) {
       this.ws = null;
       this.isConnected = false;
@@ -817,6 +833,8 @@ export class DeepgramSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
+    this.stopKeepAlive();
+
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram');
       return;

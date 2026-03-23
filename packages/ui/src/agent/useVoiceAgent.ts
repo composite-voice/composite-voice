@@ -229,9 +229,47 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
     voiceRef.current?.clearHistory();
   }, []);
 
+  // Inactivity timeout — dispose pipeline after 2 minutes of no input,
+  // or when the user switches to another browser tab.
+  const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const teardown = useCallback(() => {
+    if (!voiceRef.current) return;
+    addMessage({ role: 'system', content: 'Closing connections while inactive.' });
+    voiceRef.current.dispose();
+    voiceRef.current = null;
+    setStatus('idle');
+    setIsListening(false);
+  }, [addMessage]);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    if (voiceRef.current) {
+      inactivityTimer.current = setTimeout(teardown, INACTIVITY_TIMEOUT_MS);
+    }
+  }, [teardown]);
+
+  // Reset timer on user activity (speech transcribed or text sent)
+  useEffect(() => {
+    resetInactivityTimer();
+  }, [messages, resetInactivityTimer]);
+
+  // Tear down when tab becomes hidden
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && voiceRef.current) {
+        teardown();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [teardown]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
       voiceRef.current?.dispose();
       voiceRef.current = null;
     };

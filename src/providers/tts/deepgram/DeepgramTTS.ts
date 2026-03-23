@@ -160,6 +160,9 @@ export class DeepgramTTS extends LiveTTSProvider {
   /** In-flight connection promise to prevent concurrent connect() calls. */
   private connectingPromise: Promise<void> | null = null;
 
+  /** Keep-alive interval timer. */
+  private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
   /** Resolve callback for the pending `finalize()` flush, if any. */
   private pendingFlushResolve: (() => void) | null = null;
 
@@ -198,10 +201,29 @@ export class DeepgramTTS extends LiveTTSProvider {
     }
   }
 
+  /** Stop the keep-alive interval timer. */
+  private stopKeepAlive(): void {
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
+  /** Send a keep-alive signal to prevent the WebSocket from timing out. */
+  sendKeepAlive(): void {
+    if (!this.isConnected || !this.ws) return;
+    try {
+      this.ws.send(JSON.stringify({ type: 'KeepAlive' }));
+    } catch {
+      // Connection may be closing
+    }
+  }
+
   /**
    * Disposes the provider, disconnecting from the WebSocket and releasing resources.
    */
   protected async onDispose(): Promise<void> {
+    this.stopKeepAlive();
     if (this.isConnected) {
       await this.disconnect();
     }
@@ -322,6 +344,10 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       // Set up event handlers after connection is open
       this.setupEventHandlers();
+
+      // Start keep-alive to prevent idle timeout (every 8s)
+      this.stopKeepAlive();
+      this.keepAliveTimer = setInterval(() => this.sendKeepAlive(), 8000);
     } catch (error) {
       this.ws = null;
       this.isConnected = false;
@@ -540,6 +566,8 @@ export class DeepgramTTS extends LiveTTSProvider {
    * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
+    this.stopKeepAlive();
+
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram TTS');
       return;
