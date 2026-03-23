@@ -29,15 +29,18 @@
 }
 
 /* ── Search form (input area) ── */
+/* The form uses position:relative with ::before pseudo-element for the
+   search icon (absolute positioned). Padding on the form itself shifts
+   the icon — use margin instead to preserve the icon/clear positioning. */
 
 .pagefind-search-modal .pagefind-ui__form {
-  padding: 1rem 1.25rem;
+  margin: 0.75rem 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--color-neutral-200);
 }
 
 .pagefind-search-modal .pagefind-ui__search-input {
   font-size: 1rem;
-  padding: 0.625rem 2.5rem 0.625rem 2.5rem;
   background: var(--color-surface-sunken);
   border: 1px solid var(--color-neutral-200);
   border-radius: 0.5rem;
@@ -52,14 +55,6 @@
   border-color: var(--color-primary-600);
   box-shadow: 0 0 0 1px var(--color-primary-600);
   outline: none;
-}
-
-.pagefind-search-modal .pagefind-ui__search-clear {
-  color: var(--color-foreground-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-  top: calc(50% - 0.5em);
-  right: 0.75rem;
 }
 
 .pagefind-search-modal .pagefind-ui__search-clear:hover {
