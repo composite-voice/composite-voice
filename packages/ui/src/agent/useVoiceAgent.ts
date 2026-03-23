@@ -92,6 +92,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
           new MicrophoneInput(),
           new DeepgramFlux({
             apiKey: getDeepgramKey,
+            authType: 'bearer',
             options: {
               model: 'flux-general-en',
               eagerEotThreshold: 0.5,
@@ -107,6 +108,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
           }),
           new DeepgramTTS({
             apiKey: getDeepgramKey,
+            authType: 'bearer',
             voice: cfg.voice ?? 'aura-2-thalia-en',
           }),
           new BrowserAudioOutput({ minBufferDuration: 300, enableSmoothing: true }),
