@@ -194,17 +194,20 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
     }
   }, []);
 
-  const toggleMic = useCallback(() => {
-    if (!voiceRef.current) return;
+  const toggleMic = useCallback(async () => {
     if (isListening) {
-      voiceRef.current.stopListening();
+      voiceRef.current?.stopListening();
       setIsListening(false);
       setIsMuted(true);
     } else {
-      voiceRef.current.startListening();
+      // Reinitialize the pipeline if it was torn down (e.g. inactivity)
+      if (!voiceRef.current) {
+        await initialize();
+      }
+      await voiceRef.current?.startListening();
       setIsMuted(false);
     }
-  }, [isListening]);
+  }, [isListening, initialize]);
 
   const toggleSpeaker = useCallback(() => {
     if (!voiceRef.current) return;
