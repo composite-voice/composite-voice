@@ -85,6 +85,7 @@ export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
             element: containerRef.current,
             showImages: false,
             showSubResults: true,
+            showEmptyFilters: false,
           });
         }
 

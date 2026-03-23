@@ -70,6 +70,18 @@ const sections: SidebarItem[] = nav.map((item) => {
 });
 
 const currentPath = Astro.url.pathname;
+
+/* Derive pagefind section filter from the URL path */
+const pathWithoutBase = currentPath.replace(/^\/docs\/?/, '');
+const topSegment = pathWithoutBase.split('/')[0];
+const sectionMap: Record<string, string> = {
+  guides: 'Guides',
+  reference: 'Reference',
+  advanced: 'Advanced',
+  api: 'API Reference',
+  examples: 'Examples',
+};
+const pagefindSection = sectionMap[topSegment] ?? 'Overview';
 ---
 
 <html lang="en">
@@ -163,6 +175,8 @@ const currentPath = Astro.url.pathname;
 
       <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <meta data-pagefind-filter="section[content]" content={pagefindSection} />
+
           <Breadcrumbs indexText="Docs" linkTextFormat="capitalized">
             <span slot="separator">/</span>
           </Breadcrumbs>

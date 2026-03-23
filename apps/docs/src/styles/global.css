@@ -152,6 +152,39 @@
   margin-top: 0.0625rem;
 }
 
+/* ── Filter panel ── */
+
+.pagefind-search-modal .pagefind-ui__filter-panel {
+  padding: 0 1rem 0.5rem;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.pagefind-search-modal .pagefind-ui__filter-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-value {
+  font-size: 0.8125rem;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-label {
+  color: var(--color-foreground);
+}
+
+.pagefind-search-modal .pagefind-ui__filter-checkbox {
+  border-color: var(--color-neutral-300);
+  border-radius: 3px;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-checkbox:checked {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
 /* ── Search highlight marks ── */
 /* Override browser default yellow and any pagefind specificity */
 
