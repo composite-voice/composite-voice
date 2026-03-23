@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request, params }) => {
     });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = import.meta.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Anthropic API key not configured' }), {
       status: 500,

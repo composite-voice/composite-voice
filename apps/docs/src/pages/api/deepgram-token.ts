@@ -56,7 +56,7 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   // Generate Deepgram JWT
-  const apiKey = process.env.DEEPGRAM_API_KEY;
+  const apiKey = import.meta.env.DEEPGRAM_API_KEY ?? process.env.DEEPGRAM_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'Deepgram API key not configured' }), {
       status: 500,
