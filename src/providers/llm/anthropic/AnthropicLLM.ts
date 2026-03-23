@@ -200,7 +200,7 @@ export class AnthropicLLM extends BaseLLMProvider implements ToolAwareLLMProvide
 
     const baseUrl = this.resolveBaseUrl(ANTHROPIC_DEFAULT_URL);
     if (!baseUrl) throw new Error('Anthropic base URL could not be resolved');
-    const apiKey = this.resolveApiKey();
+    const apiKey = await this.resolveApiKey();
 
     // Anthropic uses x-api-key header (not Bearer)
     const headers: Record<string, string> = {

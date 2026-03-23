@@ -260,7 +260,7 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       const url = this.buildConnectionUrl();
 
-      const protocols = this.resolveWsProtocols('token');
+      const protocols = await this.resolveWsProtocols('token');
       this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Receive binary audio as ArrayBuffer (not Blob)

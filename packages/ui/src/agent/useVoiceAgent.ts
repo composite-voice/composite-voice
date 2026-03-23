@@ -81,50 +81,34 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
 
       const cfg = configRef.current;
 
-      // Build providers — each Deepgram provider gets a fresh JWT on connect
-      const stt = new DeepgramFlux({
-        apiKey: 'pending',
-        authType: 'token',
-        options: {
-          model: 'flux-general-en',
-          eagerEotThreshold: 0.5,
-          encoding: 'linear16',
-          sampleRate: 16000,
-        },
-      });
-
-      const tts = new DeepgramTTS({
-        apiKey: 'pending',
-        authType: 'token',
-        voice: cfg.voice ?? 'aura-2-thalia-en',
-      });
-
-      // Override connect() to fetch a fresh short-lived JWT before each connection
-      const origSTTConnect = stt.connect.bind(stt);
-      stt.connect = async () => {
+      // Factory that fetches a fresh short-lived Deepgram JWT on each connection
+      const getDeepgramKey = async () => {
         const { token } = await cfg.getToken();
-        stt.config.apiKey = token;
-        return origSTTConnect();
-      };
-
-      const origTTSConnect = tts.connect.bind(tts);
-      tts.connect = async () => {
-        const { token } = await cfg.getToken();
-        tts.config.apiKey = token;
-        return origTTSConnect();
+        return token;
       };
 
       const voice = new CompositeVoice({
         providers: [
           new MicrophoneInput(),
-          stt,
+          new DeepgramFlux({
+            apiKey: getDeepgramKey,
+            options: {
+              model: 'flux-general-en',
+              eagerEotThreshold: 0.5,
+              encoding: 'linear16',
+              sampleRate: 16000,
+            },
+          }),
           new AnthropicLLM({
             proxyUrl: cfg.anthropicProxyUrl,
             model: cfg.model ?? 'claude-opus-4-6',
             maxTokens: cfg.maxTokens ?? 1024,
             systemPrompt: cfg.systemPrompt ?? 'You are a helpful voice assistant for CompositeVoice SDK documentation. Answer questions concisely and conversationally.',
           }),
-          tts,
+          new DeepgramTTS({
+            apiKey: getDeepgramKey,
+            voice: cfg.voice ?? 'aura-2-thalia-en',
+          }),
           new BrowserAudioOutput({ minBufferDuration: 300, enableSmoothing: true }),
         ],
         conversationHistory: { enabled: true, maxTurns: 20 },

@@ -21,15 +21,15 @@ class TestProvider extends BaseProvider {
     return this.resolveBaseUrl(defaultUrl);
   }
 
-  public callResolveApiKey(): string {
+  public callResolveApiKey(): Promise<string> {
     return this.resolveApiKey();
   }
 
-  public callResolveWsProtocols(defaultAuthType?: 'token' | 'bearer'): string[] | undefined {
+  public callResolveWsProtocols(defaultAuthType?: 'token' | 'bearer'): Promise<string[] | undefined> {
     return this.resolveWsProtocols(defaultAuthType);
   }
 
-  public callResolveAuthHeader(defaultAuthType?: 'token' | 'bearer'): string | undefined {
+  public callResolveAuthHeader(defaultAuthType?: 'token' | 'bearer'): Promise<string | undefined> {
     return this.resolveAuthHeader(defaultAuthType);
   }
 
@@ -51,6 +51,12 @@ describe('BaseProvider helpers', () => {
 
     it('should not throw when apiKey is set', () => {
       const provider = new TestProvider('rest', { apiKey: 'sk-123' });
+
+      expect(() => provider.callAssertAuth()).not.toThrow();
+    });
+
+    it('should not throw when apiKey is a factory function', () => {
+      const provider = new TestProvider('rest', { apiKey: async () => 'sk-123' });
 
       expect(() => provider.callAssertAuth()).not.toThrow();
     });
@@ -172,25 +178,33 @@ describe('BaseProvider helpers', () => {
   // resolveApiKey()
   // -------------------------------------------------------------------------
   describe('resolveApiKey()', () => {
-    it("should return 'proxy' when isProxyMode is true", () => {
+    it("should return 'proxy' when isProxyMode is true", async () => {
       const provider = new TestProvider('rest', {
         proxyUrl: 'http://localhost:3000/proxy',
         apiKey: 'sk-real-key',
       });
 
-      expect(provider.callResolveApiKey()).toBe('proxy');
+      await expect(provider.callResolveApiKey()).resolves.toBe('proxy');
     });
 
-    it('should return apiKey when set and not proxy mode', () => {
+    it('should return apiKey when set and not proxy mode', async () => {
       const provider = new TestProvider('rest', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveApiKey()).toBe('sk-123');
+      await expect(provider.callResolveApiKey()).resolves.toBe('sk-123');
     });
 
-    it('should return empty string when no apiKey and not proxy mode', () => {
+    it('should call factory function and return result', async () => {
+      const factory = jest.fn().mockResolvedValue('fresh-token');
+      const provider = new TestProvider('rest', { apiKey: factory });
+
+      await expect(provider.callResolveApiKey()).resolves.toBe('fresh-token');
+      expect(factory).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return empty string when no apiKey and not proxy mode', async () => {
       const provider = new TestProvider('rest', {});
 
-      expect(provider.callResolveApiKey()).toBe('');
+      await expect(provider.callResolveApiKey()).resolves.toBe('');
     });
   });
 
@@ -198,41 +212,48 @@ describe('BaseProvider helpers', () => {
   // resolveWsProtocols()
   // -------------------------------------------------------------------------
   describe('resolveWsProtocols()', () => {
-    it("should return ['token', apiKey] by default", () => {
+    it("should return ['token', apiKey] by default", async () => {
       const provider = new TestProvider('websocket', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveWsProtocols()).toEqual(['token', 'sk-123']);
+      await expect(provider.callResolveWsProtocols()).resolves.toEqual(['token', 'sk-123']);
     });
 
-    it("should return ['bearer', apiKey] when defaultAuthType is 'bearer'", () => {
+    it("should return ['bearer', apiKey] when defaultAuthType is 'bearer'", async () => {
       const provider = new TestProvider('websocket', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveWsProtocols('bearer')).toEqual(['bearer', 'sk-123']);
+      await expect(provider.callResolveWsProtocols('bearer')).resolves.toEqual(['bearer', 'sk-123']);
     });
 
-    it('should return undefined in proxy mode', () => {
+    it('should call factory and use fresh token', async () => {
+      const factory = jest.fn().mockResolvedValue('jwt-token');
+      const provider = new TestProvider('websocket', { apiKey: factory });
+
+      await expect(provider.callResolveWsProtocols()).resolves.toEqual(['token', 'jwt-token']);
+    });
+
+    it('should return undefined in proxy mode', async () => {
       const provider = new TestProvider('websocket', {
         apiKey: 'sk-123',
         proxyUrl: 'http://localhost:3000/proxy',
       });
 
-      expect(provider.callResolveWsProtocols()).toBeUndefined();
+      await expect(provider.callResolveWsProtocols()).resolves.toBeUndefined();
     });
 
-    it('should return undefined when no apiKey', () => {
+    it('should return undefined when no apiKey', async () => {
       const provider = new TestProvider('websocket', {});
 
-      expect(provider.callResolveWsProtocols()).toBeUndefined();
+      await expect(provider.callResolveWsProtocols()).resolves.toBeUndefined();
     });
 
-    it('should respect config.authType over default parameter', () => {
+    it('should respect config.authType over default parameter', async () => {
       const provider = new TestProvider('websocket', {
         apiKey: 'sk-123',
         authType: 'bearer',
       });
 
       // Default param is 'token' but config.authType = 'bearer' should win
-      expect(provider.callResolveWsProtocols('token')).toEqual(['bearer', 'sk-123']);
+      await expect(provider.callResolveWsProtocols('token')).resolves.toEqual(['bearer', 'sk-123']);
     });
   });
 
@@ -240,41 +261,41 @@ describe('BaseProvider helpers', () => {
   // resolveAuthHeader()
   // -------------------------------------------------------------------------
   describe('resolveAuthHeader()', () => {
-    it("should return 'Token <key>' by default", () => {
+    it("should return 'Token <key>' by default", async () => {
       const provider = new TestProvider('rest', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveAuthHeader()).toBe('Token sk-123');
+      await expect(provider.callResolveAuthHeader()).resolves.toBe('Token sk-123');
     });
 
-    it("should return 'Bearer <key>' when defaultAuthType is 'bearer'", () => {
+    it("should return 'Bearer <key>' when defaultAuthType is 'bearer'", async () => {
       const provider = new TestProvider('rest', { apiKey: 'sk-123' });
 
-      expect(provider.callResolveAuthHeader('bearer')).toBe('Bearer sk-123');
+      await expect(provider.callResolveAuthHeader('bearer')).resolves.toBe('Bearer sk-123');
     });
 
-    it('should return undefined in proxy mode', () => {
+    it('should return undefined in proxy mode', async () => {
       const provider = new TestProvider('rest', {
         apiKey: 'sk-123',
         proxyUrl: 'http://localhost:3000/proxy',
       });
 
-      expect(provider.callResolveAuthHeader()).toBeUndefined();
+      await expect(provider.callResolveAuthHeader()).resolves.toBeUndefined();
     });
 
-    it('should return undefined when no apiKey', () => {
+    it('should return undefined when no apiKey', async () => {
       const provider = new TestProvider('rest', {});
 
-      expect(provider.callResolveAuthHeader()).toBeUndefined();
+      await expect(provider.callResolveAuthHeader()).resolves.toBeUndefined();
     });
 
-    it('should respect config.authType over default parameter', () => {
+    it('should respect config.authType over default parameter', async () => {
       const provider = new TestProvider('rest', {
         apiKey: 'sk-123',
         authType: 'bearer',
       });
 
       // Default param is 'token' but config.authType = 'bearer' should win
-      expect(provider.callResolveAuthHeader('token')).toBe('Bearer sk-123');
+      await expect(provider.callResolveAuthHeader('token')).resolves.toBe('Bearer sk-123');
     });
   });
 });

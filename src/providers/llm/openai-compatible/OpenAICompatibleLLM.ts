@@ -196,7 +196,7 @@ export class OpenAICompatibleLLM extends BaseLLMProvider implements ToolAwareLLM
 
     const baseUrl = this.resolveBaseUrl(OPENAI_DEFAULT_URL);
     if (!baseUrl) throw new Error(`${this.providerName} base URL could not be resolved`);
-    const apiKey = this.resolveApiKey();
+    const apiKey = await this.resolveApiKey();
 
     const headers: Record<string, string> = {
       ...this.buildHeaders(),
