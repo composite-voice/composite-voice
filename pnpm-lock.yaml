@@ -160,6 +160,9 @@ importers:
       '@astrojs/sitemap':
         specifier: ^3.7.0
         version: 3.7.0
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
       '@lukeocodes/composite-voice-ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1477,6 +1480,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@lukeocodes/composite-voice':
+        specifier: workspace:*
+        version: link:../..
       prism-react-renderer:
         specifier: ^2.4.1
         version: 2.4.1(react@19.2.4)

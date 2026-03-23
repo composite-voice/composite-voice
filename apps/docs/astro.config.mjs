@@ -37,13 +37,5 @@ export default defineConfig({
 	vite: {
 		plugins: [tailwindcss()],
 		resolve: { dedupe: ['react', 'react-dom'] },
-		build: {
-			rollupOptions: {
-				// useVoiceAgent dynamically imports the SDK at runtime in the browser;
-				// the SDK isn't installed as a dependency — mark it external so Rollup
-				// doesn't try to resolve or bundle it.
-				external: ['@lukeocodes/composite-voice'],
-			},
-		},
 	},
 });
