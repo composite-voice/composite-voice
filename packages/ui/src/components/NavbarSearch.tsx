@@ -14,6 +14,23 @@ interface NavbarSearchProps {
   basePath?: string;
 }
 
+/** Load a script tag and resolve when it's ready. */
+function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Already loaded?
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
 export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,12 +58,17 @@ export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
 
     async function init() {
       try {
-        const mod = await import(
-          /* @vite-ignore */ `${basePath}/pagefind/pagefind-ui.js`
-        );
+        // pagefind-ui.js is an IIFE that sets window.PagefindUI —
+        // load it via script tag, not import() which requires ES modules
+        await loadScript(`${basePath}/pagefind/pagefind-ui.js`);
         if (cancelled || !containerRef.current) return;
 
-        const PagefindUI = mod.PagefindUI || mod.default;
+        const PagefindUI = (window as Record<string, unknown>).PagefindUI as
+          | (new (opts: Record<string, unknown>) => unknown)
+          | undefined;
+
+        if (!PagefindUI) throw new Error("PagefindUI not found on window");
+
         if (!uiRef.current) {
           uiRef.current = new PagefindUI({
             element: containerRef.current,
