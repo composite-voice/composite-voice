@@ -2,8 +2,9 @@
  * NavbarSearch — cmd+K search dialog powered by Pagefind.
  *
  * Renders a compact trigger button in the navbar. On click (or ⌘K / Ctrl+K),
- * opens a modal dialog and dynamically loads PagefindUI from the build output.
- * Falls back gracefully in dev mode if pagefind hasn't been built yet.
+ * opens a modal dialog and initializes PagefindUI. The astro-pagefind
+ * integration already loads PagefindUI onto window — we just use it.
+ * Falls back to script tag injection if it's not already loaded.
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -14,10 +15,22 @@ interface NavbarSearchProps {
   basePath?: string;
 }
 
-/** Load a script tag and resolve when it's ready. */
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Already loaded?
+type PagefindUIConstructor = new (opts: Record<string, unknown>) => {
+  destroy?: () => void;
+};
+
+/** Get PagefindUI constructor — already on window via astro-pagefind, or load via script tag. */
+async function getPagefindUI(basePath: string): Promise<PagefindUIConstructor> {
+  const win = window as Record<string, unknown>;
+
+  // astro-pagefind already loads PagefindUI onto window
+  if (typeof win.PagefindUI === "function") {
+    return win.PagefindUI as PagefindUIConstructor;
+  }
+
+  // Fallback: load via script tag
+  await new Promise<void>((resolve, reject) => {
+    const src = `${basePath}/pagefind/pagefind-ui.js`;
     if (document.querySelector(`script[src="${src}"]`)) {
       resolve();
       return;
@@ -29,6 +42,12 @@ function loadScript(src: string): Promise<void> {
     script.onerror = () => reject(new Error(`Failed to load ${src}`));
     document.head.appendChild(script);
   });
+
+  if (typeof win.PagefindUI === "function") {
+    return win.PagefindUI as PagefindUIConstructor;
+  }
+
+  throw new Error("PagefindUI not available");
 }
 
 export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
@@ -58,16 +77,8 @@ export function NavbarSearch({ basePath = "" }: NavbarSearchProps) {
 
     async function init() {
       try {
-        // pagefind-ui.js is an IIFE that sets window.PagefindUI —
-        // load it via script tag, not import() which requires ES modules
-        await loadScript(`${basePath}/pagefind/pagefind-ui.js`);
+        const PagefindUI = await getPagefindUI(basePath);
         if (cancelled || !containerRef.current) return;
-
-        const PagefindUI = (window as Record<string, unknown>).PagefindUI as
-          | (new (opts: Record<string, unknown>) => unknown)
-          | undefined;
-
-        if (!PagefindUI) throw new Error("PagefindUI not found on window");
 
         if (!uiRef.current) {
           uiRef.current = new PagefindUI({
