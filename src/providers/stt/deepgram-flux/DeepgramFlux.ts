@@ -320,10 +320,6 @@ export class DeepgramFlux extends LiveSTTProvider {
 
       // Register event handlers after connection is open
       this.setupEventHandlers();
-
-      // Start keep-alive to prevent idle timeout (every 8s)
-      this.stopKeepAlive();
-      this.keepAliveTimer = setInterval(() => this.sendKeepAlive(), 8000);
     } catch (error) {
       this.ws = null;
       this.isConnected = false;
