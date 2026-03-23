@@ -91,12 +91,14 @@
   font-weight: 600;
 }
 
-.pagefind-search-modal .pagefind-ui__result-link {
-  color: var(--color-primary-600);
+.pagefind-search-modal .pagefind-ui__result-link,
+.pagefind-search-modal .pagefind-ui__result-title a {
+  color: var(--color-primary-600) !important;
   text-decoration: none;
 }
 
-.pagefind-search-modal .pagefind-ui__result-link:hover {
+.pagefind-search-modal .pagefind-ui__result-link:hover,
+.pagefind-search-modal .pagefind-ui__result-title a:hover {
   text-decoration: underline;
 }
 
@@ -129,10 +131,13 @@
 }
 
 /* ── Search highlight marks ── */
+/* Override browser default yellow and any pagefind specificity */
 
+.pagefind-search-modal .pagefind-ui mark,
+.pagefind-search-modal .pagefind-ui__result mark,
 .pagefind-search-modal mark {
-  background-color: color-mix(in srgb, var(--color-primary-500) 20%, transparent);
-  color: inherit;
+  background-color: color-mix(in srgb, var(--color-primary-500) 20%, transparent) !important;
+  color: inherit !important;
   border-radius: 2px;
   padding: 0.05em 0.15em;
 }
