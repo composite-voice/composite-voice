@@ -142,6 +142,10 @@
   color: var(--color-foreground) !important;
 }
 
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link::before {
+  content: none !important;
+}
+
 .pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link:hover {
   color: var(--color-primary-600) !important;
 }
