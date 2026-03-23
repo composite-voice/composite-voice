@@ -81,33 +81,50 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
 
       const cfg = configRef.current;
 
-      // Get initial Deepgram JWT
-      const { token } = await cfg.getToken();
+      // Build providers — each Deepgram provider gets a fresh JWT on connect
+      const stt = new DeepgramFlux({
+        apiKey: 'pending',
+        authType: 'token',
+        options: {
+          model: 'flux-general-en',
+          eagerEotThreshold: 0.5,
+          encoding: 'linear16',
+          sampleRate: 16000,
+        },
+      });
+
+      const tts = new DeepgramTTS({
+        apiKey: 'pending',
+        authType: 'token',
+        voice: cfg.voice ?? 'aura-2-thalia-en',
+      });
+
+      // Override connect() to fetch a fresh short-lived JWT before each connection
+      const origSTTConnect = stt.connect.bind(stt);
+      stt.connect = async () => {
+        const { token } = await cfg.getToken();
+        stt.config.apiKey = token;
+        return origSTTConnect();
+      };
+
+      const origTTSConnect = tts.connect.bind(tts);
+      tts.connect = async () => {
+        const { token } = await cfg.getToken();
+        tts.config.apiKey = token;
+        return origTTSConnect();
+      };
 
       const voice = new CompositeVoice({
         providers: [
           new MicrophoneInput(),
-          new DeepgramFlux({
-            apiKey: token,
-            authType: 'token',
-            options: {
-              model: 'flux-general-en',
-              eagerEotThreshold: 0.5,
-              encoding: 'linear16',
-              sampleRate: 16000,
-            },
-          }),
+          stt,
           new AnthropicLLM({
             proxyUrl: cfg.anthropicProxyUrl,
             model: cfg.model ?? 'claude-opus-4-6',
             maxTokens: cfg.maxTokens ?? 1024,
             systemPrompt: cfg.systemPrompt ?? 'You are a helpful voice assistant for CompositeVoice SDK documentation. Answer questions concisely and conversationally.',
           }),
-          new DeepgramTTS({
-            apiKey: token,
-            authType: 'token',
-            voice: cfg.voice ?? 'aura-2-thalia-en',
-          }),
+          tts,
           new BrowserAudioOutput({ minBufferDuration: 300, enableSmoothing: true }),
         ],
         conversationHistory: { enabled: true, maxTurns: 20 },
