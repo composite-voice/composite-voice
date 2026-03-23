@@ -93,6 +93,8 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
             options: {
               model: 'flux-general-en',
               eagerEotThreshold: 0.5,
+              encoding: 'linear16',
+              sampleRate: 16000,
             },
           }),
           new AnthropicLLM({
