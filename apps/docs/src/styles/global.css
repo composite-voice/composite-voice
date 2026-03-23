@@ -17,7 +17,7 @@
    ═══════════════════════════════════════════════════ */
 
 .pagefind-search-modal {
-  --pagefind-ui-scale: 0.9;
+  --pagefind-ui-scale: 0.85;
   --pagefind-ui-primary: var(--color-primary-600);
   --pagefind-ui-text: var(--color-foreground);
   --pagefind-ui-background: var(--color-surface);
@@ -28,25 +28,133 @@
   --pagefind-ui-font: inherit;
 }
 
-/* Remove the default pagefind input border/shadow and match our input style */
+/* ── Search input ── */
+
 .pagefind-search-modal .pagefind-ui__search-input {
   font-size: 1rem;
   padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background: var(--color-surface-sunken);
+  border-color: var(--color-neutral-200);
+  color: var(--color-foreground);
 }
 
-/* Result links inherit foreground color */
+.pagefind-search-modal .pagefind-ui__search-input:focus {
+  border-color: var(--color-primary-600);
+  box-shadow: 0 0 0 1px var(--color-primary-600);
+}
+
+.pagefind-search-modal .pagefind-ui__search-clear {
+  color: var(--color-foreground-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  top: calc(50% - 0.5em);
+}
+
+.pagefind-search-modal .pagefind-ui__search-clear:hover {
+  color: var(--color-foreground);
+}
+
+/* ── Results count message ── */
+
+.pagefind-search-modal .pagefind-ui__message {
+  color: var(--color-foreground-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+/* ── Results area ── */
+
+.pagefind-search-modal .pagefind-ui__results-area {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 0.5rem;
+}
+
+.pagefind-search-modal .pagefind-ui__results {
+  padding: 0;
+}
+
+/* ── Individual results ── */
+
+.pagefind-search-modal .pagefind-ui__result {
+  border-top: 1px solid var(--color-neutral-200);
+  padding: 0.75rem 0.5rem;
+}
+
+.pagefind-search-modal .pagefind-ui__result:first-child {
+  border-top: none;
+}
+
+.pagefind-search-modal .pagefind-ui__result-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
 .pagefind-search-modal .pagefind-ui__result-link {
   color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.pagefind-search-modal .pagefind-ui__result-link:hover {
+  text-decoration: underline;
 }
 
 .pagefind-search-modal .pagefind-ui__result-excerpt {
   color: var(--color-foreground-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
-/* Constrain results area height so the modal doesn't grow unbounded */
-.pagefind-search-modal .pagefind-ui__results-area {
-  max-height: 60vh;
-  overflow-y: auto;
+/* ── Sub-results (nested matches) ── */
+
+.pagefind-search-modal .pagefind-ui__result-nested {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-neutral-200);
+  margin-top: 0.25rem;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link:hover {
+  color: var(--color-primary-600);
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-excerpt {
+  font-size: 0.75rem;
+}
+
+/* ── Search highlight marks ── */
+
+.pagefind-search-modal mark {
+  background-color: color-mix(in srgb, var(--color-primary-500) 20%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0.05em 0.15em;
+}
+
+/* ── Load more button ── */
+
+.pagefind-search-modal .pagefind-ui__button {
+  background: var(--color-surface-sunken);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0.5rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pagefind-search-modal .pagefind-ui__button:hover {
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-300);
 }
 
 /* ═══════════════════════════════════════════════════
