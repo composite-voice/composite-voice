@@ -127,7 +127,7 @@ export default function VoiceAgentIsland() {
   const [state, actions] = useVoiceAgent({
     getToken,
     anthropicProxyUrl: '/docs/api/proxy/anthropic',
-    model: 'claude-opus-4-6',
+    model: 'claude-haiku-4-5',
     maxTokens: 1024,
     voice: 'aura-2-thalia-en',
     systemPrompt: `You are a helpful voice assistant for the CompositeVoice SDK documentation site.

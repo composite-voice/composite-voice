@@ -102,7 +102,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
           }),
           new AnthropicLLM({
             proxyUrl: cfg.anthropicProxyUrl,
-            model: cfg.model ?? 'claude-opus-4-6',
+            model: cfg.model ?? 'claude-haiku-4-5',
             maxTokens: cfg.maxTokens ?? 1024,
             systemPrompt: cfg.systemPrompt ?? 'You are a helpful voice assistant for CompositeVoice SDK documentation. Answer questions concisely and conversationally.',
           }),
