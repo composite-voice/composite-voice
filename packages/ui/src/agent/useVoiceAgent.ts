@@ -39,7 +39,7 @@ function saveMessages(messages: ChatMessage[]): void {
 
 export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [status, setStatus] = useState<AgentStatus>('idle');
-  const [messages, setMessages] = useState<ChatMessage[]>(loadMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [streamingText, setStreamingText] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -50,6 +50,12 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
   const voiceRef = useRef<CompositeVoiceType | null>(null);
   const configRef = useRef(config);
   configRef.current = config;
+
+  // Hydrate messages from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const saved = loadMessages();
+    if (saved.length > 0) setMessages(saved);
+  }, []);
 
   // Persist messages
   useEffect(() => {
