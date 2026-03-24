@@ -237,13 +237,18 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
   const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const teardown = useCallback(() => {
+  const teardown = useCallback(async () => {
     if (!voiceRef.current) return;
-    addMessage({ role: 'system', content: 'Closing connections while inactive.' });
-    voiceRef.current.dispose();
+    const voice = voiceRef.current;
     voiceRef.current = null;
     setStatus('idle');
     setIsListening(false);
+    setIsMuted(false);
+    setError(null);
+    setInterimTranscript('');
+    setStreamingText('');
+    addMessage({ role: 'system', content: 'Closing connections while inactive.' });
+    await voice.dispose();
   }, [addMessage]);
 
   const resetInactivityTimer = useCallback(() => {
