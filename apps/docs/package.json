@@ -13,8 +13,10 @@
   },
   "dependencies": {
     "@4hse/astro-llms-txt": "^1.0.4",
+    "@astrojs/netlify": "^6.6.5",
     "@astrojs/react": "^4.2.1",
     "@astrojs/sitemap": "^3.7.0",
+    "@lukeocodes/composite-voice": "workspace:*",
     "@lukeocodes/composite-voice-ui": "workspace:*",
     "@playform/compress": "^0.2.1",
     "@playform/inline": "^0.1.2",

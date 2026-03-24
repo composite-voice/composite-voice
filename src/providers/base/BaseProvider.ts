@@ -314,23 +314,22 @@ export abstract class BaseProvider implements IBaseProvider {
   }
 
   /**
-   * Resolve the API key for this provider.
+   * Resolve the API key, calling the factory if `apiKey` is a function.
    *
-   * @remarks
-   * Returns `'proxy'` in proxy mode so that SDK clients (which require a
-   * non-empty API key string) can be instantiated without the real key.
-   *
-   * @returns The configured API key, or `'proxy'` in proxy mode.
+   * @returns The resolved API key string, or `'proxy'` in proxy mode.
    */
-  protected resolveApiKey(): string {
+  protected async resolveApiKey(): Promise<string> {
     if (this.isProxyMode) return 'proxy';
-    return this.config.apiKey ?? '';
+    const raw = this.config.apiKey;
+    if (typeof raw === 'function') return raw();
+    return raw ?? '';
   }
 
   /**
    * Resolve WebSocket subprotocol for authentication.
    *
    * @remarks
+   * If `apiKey` is a factory function it is called to get a fresh token.
    * Returns the subprotocol array for direct mode based on `authType`:
    * - `'token'` → `['token', apiKey]` (Deepgram default)
    * - `'bearer'` → `['bearer', apiKey]` (OAuth/Bearer tokens)
@@ -340,12 +339,12 @@ export abstract class BaseProvider implements IBaseProvider {
    * @param defaultAuthType - The default auth type for this provider.
    * @returns Subprotocol array for `new WebSocket(url, protocols)`, or `undefined`.
    */
-  protected resolveWsProtocols(
+  protected async resolveWsProtocols(
     defaultAuthType: 'token' | 'bearer' = 'token'
-  ): string[] | undefined {
+  ): Promise<string[] | undefined> {
     if (this.isProxyMode) return undefined;
     const authType = this.config.authType ?? defaultAuthType;
-    const key = this.config.apiKey;
+    const key = await this.resolveApiKey();
     if (!key) return undefined;
     return [authType, key];
   }
@@ -354,6 +353,7 @@ export abstract class BaseProvider implements IBaseProvider {
    * Resolve Authorization header value for the configured auth type.
    *
    * @remarks
+   * If `apiKey` is a factory function it is called to get a fresh token.
    * Returns the header value for REST or server-side WebSocket connections:
    * - `'token'` → `'Token <apiKey>'`
    * - `'bearer'` → `'Bearer <apiKey>'`
@@ -363,10 +363,10 @@ export abstract class BaseProvider implements IBaseProvider {
    * @param defaultAuthType - The default auth type for this provider.
    * @returns The `Authorization` header value, or `undefined` in proxy mode.
    */
-  protected resolveAuthHeader(defaultAuthType: 'token' | 'bearer' = 'token'): string | undefined {
+  protected async resolveAuthHeader(defaultAuthType: 'token' | 'bearer' = 'token'): Promise<string | undefined> {
     if (this.isProxyMode) return undefined;
     const authType = this.config.authType ?? defaultAuthType;
-    const key = this.config.apiKey;
+    const key = await this.resolveApiKey();
     if (!key) return undefined;
     return authType === 'bearer' ? `Bearer ${key}` : `Token ${key}`;
   }

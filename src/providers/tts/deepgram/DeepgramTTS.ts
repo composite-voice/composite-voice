@@ -157,6 +157,12 @@ export class DeepgramTTS extends LiveTTSProvider {
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /** In-flight connection promise to prevent concurrent connect() calls. */
+  private connectingPromise: Promise<void> | null = null;
+
+  /** Keep-alive interval timer. */
+  private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
   /** Resolve callback for the pending `finalize()` flush, if any. */
   private pendingFlushResolve: (() => void) | null = null;
 
@@ -195,10 +201,29 @@ export class DeepgramTTS extends LiveTTSProvider {
     }
   }
 
+  /** Stop the keep-alive interval timer. */
+  private stopKeepAlive(): void {
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
+  /** Send a keep-alive signal to prevent the WebSocket from timing out. */
+  sendKeepAlive(): void {
+    if (!this.isConnected || !this.ws) return;
+    try {
+      this.ws.send(JSON.stringify({ type: 'KeepAlive' }));
+    } catch {
+      // Connection may be closing
+    }
+  }
+
   /**
    * Disposes the provider, disconnecting from the WebSocket and releasing resources.
    */
   protected async onDispose(): Promise<void> {
+    this.stopKeepAlive();
     if (this.isConnected) {
       await this.disconnect();
     }
@@ -255,12 +280,34 @@ export class DeepgramTTS extends LiveTTSProvider {
       return;
     }
 
+    // Coalesce concurrent connect() calls onto a single attempt
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
+    this.connectingPromise = this.doConnect();
+    try {
+      await this.connectingPromise;
+    } finally {
+      this.connectingPromise = null;
+    }
+  }
+
+  /** Internal connect implementation — callers go through connect(). */
+  private async doConnect(): Promise<void> {
     try {
       this.logger.debug('Connecting to Deepgram TTS WebSocket');
 
+      // Close any stale socket before opening a new one
+      if (this.ws) {
+        try { this.ws.close(); } catch { /* ignore */ }
+        this.ws = null;
+        this.isConnected = false;
+      }
+
       const url = this.buildConnectionUrl();
 
-      const protocols = this.resolveWsProtocols('token');
+      const protocols = await this.resolveWsProtocols('token');
       this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Receive binary audio as ArrayBuffer (not Blob)
@@ -297,8 +344,13 @@ export class DeepgramTTS extends LiveTTSProvider {
 
       // Set up event handlers after connection is open
       this.setupEventHandlers();
+
+      // Start keep-alive to prevent idle timeout (every 8s)
+      this.stopKeepAlive();
+      this.keepAliveTimer = setInterval(() => this.sendKeepAlive(), 8000);
     } catch (error) {
       this.ws = null;
+      this.isConnected = false;
       throw new ProviderConnectionError('DeepgramTTS', error as Error);
     }
   }
@@ -514,6 +566,8 @@ export class DeepgramTTS extends LiveTTSProvider {
    * @throws Rethrows any error that occurs during disconnection.
    */
   async disconnect(): Promise<void> {
+    this.stopKeepAlive();
+
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram TTS');
       return;

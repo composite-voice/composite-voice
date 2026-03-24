@@ -7,11 +7,18 @@
     ".": "./src/index.ts",
     "./theme.css": "./src/theme.css",
     "./icons": "./src/icons.tsx",
-    "./components/*": "./src/components/*.tsx"
+    "./components/*": "./src/components/*.tsx",
+    "./agent": "./src/agent/index.ts"
   },
   "peerDependencies": {
+    "@lukeocodes/composite-voice": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@lukeocodes/composite-voice": {
+      "optional": true
+    }
   },
   "dependencies": {
     "prism-react-renderer": "^2.4.1"

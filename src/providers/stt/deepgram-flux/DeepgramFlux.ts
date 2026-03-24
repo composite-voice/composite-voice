@@ -139,6 +139,12 @@ export class DeepgramFlux extends LiveSTTProvider {
   /** Whether the WebSocket connection is currently open. */
   private isConnected = false;
 
+  /** Keep-alive interval timer. */
+  private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** In-flight connection promise to prevent concurrent connect() calls. */
+  private connectingPromise: Promise<void> | null = null;
+
   /**
    * Create a new DeepgramFlux provider.
    *
@@ -172,8 +178,17 @@ export class DeepgramFlux extends LiveSTTProvider {
     }
   }
 
+  /** Stop the keep-alive interval timer. */
+  private stopKeepAlive(): void {
+    if (this.keepAliveTimer) {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+  }
+
   /** Disconnect the WebSocket (if connected) and release resources. */
   protected async onDispose(): Promise<void> {
+    this.stopKeepAlive();
     if (this.isConnected) {
       await this.disconnect();
     }
@@ -244,12 +259,34 @@ export class DeepgramFlux extends LiveSTTProvider {
       return;
     }
 
+    // Coalesce concurrent connect() calls onto a single attempt
+    if (this.connectingPromise) {
+      return this.connectingPromise;
+    }
+
+    this.connectingPromise = this.doConnect();
+    try {
+      await this.connectingPromise;
+    } finally {
+      this.connectingPromise = null;
+    }
+  }
+
+  /** Internal connect implementation — callers go through connect(). */
+  private async doConnect(): Promise<void> {
     try {
       this.logger.debug('Connecting to Deepgram Flux WebSocket');
 
+      // Close any stale socket before opening a new one
+      if (this.ws) {
+        try { this.ws.close(); } catch { /* ignore */ }
+        this.ws = null;
+        this.isConnected = false;
+      }
+
       const url = this.buildConnectionUrl();
 
-      const protocols = this.resolveWsProtocols('token');
+      const protocols = await this.resolveWsProtocols('token');
       this.ws = protocols ? new WebSocket(url, protocols) : new WebSocket(url);
 
       // Wait for the connection to open (with timeout)
@@ -285,6 +322,7 @@ export class DeepgramFlux extends LiveSTTProvider {
       this.setupEventHandlers();
     } catch (error) {
       this.ws = null;
+      this.isConnected = false;
       throw new ProviderConnectionError('DeepgramFlux', error as Error);
     }
   }
@@ -526,6 +564,8 @@ export class DeepgramFlux extends LiveSTTProvider {
    * Gracefully close the Deepgram Flux WebSocket connection.
    */
   async disconnect(): Promise<void> {
+    this.stopKeepAlive();
+
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram Flux');
       return;

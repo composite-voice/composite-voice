@@ -7,6 +7,7 @@ import { Breadcrumbs } from "astro-breadcrumbs";
 import { Navbar, Sidebar, Footer } from "@lukeocodes/composite-voice-ui";
 import type { SidebarItem } from "@lukeocodes/composite-voice-ui";
 import { nav, isNavFolder, isNavSection } from "../lib/nav";
+import VoiceAgentIsland from "../components/VoiceAgentIsland";
 import pkg from "../../../../package.json";
 
 interface Props {
@@ -69,6 +70,28 @@ const sections: SidebarItem[] = nav.map((item) => {
 });
 
 const currentPath = Astro.url.pathname;
+
+/* Derive pagefind section filter from the URL path */
+const pathWithoutBase = currentPath.replace(/^\/docs\/?/, '');
+const topSegment = pathWithoutBase.split('/')[0];
+const sectionMap: Record<string, string> = {
+  guides: 'Guides',
+  reference: 'Reference',
+  advanced: 'Advanced',
+  api: 'API Reference',
+  examples: 'Examples',
+};
+const pagefindSection = sectionMap[topSegment] ?? 'Overview';
+
+/* Rank guides/reference/advanced higher than API reference in search */
+const pagefindWeight: Record<string, string> = {
+  guides: '2',
+  reference: '2',
+  advanced: '1.5',
+  examples: '1',
+  api: '0.3',
+};
+const weight = pagefindWeight[topSegment] ?? '1';
 ---
 
 <html lang="en">
@@ -155,13 +178,16 @@ const currentPath = Astro.url.pathname;
       Skip to content
     </a>
 
-    <Navbar client:load sites={sites} version={pkg.version} hasSidebar />
+    <Navbar client:load sites={sites} version={pkg.version} hasSidebar showSearch searchBasePath="/docs" />
 
     <div class="flex min-h-screen pt-14">
       <Sidebar client:load sections={sections} currentPath={currentPath} ariaLabel="Documentation sections" />
 
       <main id="main-content" class="flex-1 min-w-0 md:ml-64">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <meta data-pagefind-filter="section[content]" content={pagefindSection} />
+          <meta data-pagefind-weight={weight} />
+
           <Breadcrumbs indexText="Docs" linkTextFormat="capitalized">
             <span slot="separator">/</span>
           </Breadcrumbs>
@@ -183,6 +209,8 @@ const currentPath = Astro.url.pathname;
         <Footer client:load sites={sites} className="mt-auto" />
       </main>
     </div>
+    <VoiceAgentIsland client:idle />
+
     <script is:inline>
       // Inject copy-to-clipboard buttons on Prism code blocks
       document.querySelectorAll('pre[class*="language-"]').forEach(function(pre) {

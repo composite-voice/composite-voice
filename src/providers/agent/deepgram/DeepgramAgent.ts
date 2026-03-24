@@ -162,9 +162,9 @@ export class DeepgramAgent extends BaseAgentProvider {
     }
 
     const url = this.buildWebSocketUrl();
+    const protocols = await this.resolveWsProtocols();
 
     await new Promise<void>((resolve, reject) => {
-      const protocols = this.resolveWsProtocols();
       this.ws = new WebSocket(url, protocols);
       this.ws.binaryType = 'arraybuffer';
 

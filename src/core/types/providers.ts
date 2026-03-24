@@ -61,10 +61,14 @@ export interface BaseProviderConfig {
    * API key or authentication token for the provider.
    *
    * @remarks
+   * Can be a static string or an async factory function that returns a fresh
+   * token on each call. Use a factory for short-lived tokens (e.g. Deepgram
+   * JWTs) so each WebSocket connection gets a valid credential.
+   *
    * For client-side usage, consider using a proxy server to keep API keys
    * secure. The SDK provides Express, Next.js, and Node adapters for this purpose.
    */
-  apiKey?: string;
+  apiKey?: string | (() => Promise<string>);
 
   /**
    * Custom endpoint URL to override the provider's default API endpoint.

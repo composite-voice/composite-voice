@@ -216,6 +216,7 @@ export { PreferencesPanel } from "./components/PreferencesPanel";
 /* ── Layout ──────────────────────────────────── */
 export { Navbar } from "./components/Navbar";
 export type { NavbarProps, NavbarSite } from "./components/Navbar";
+export { NavbarSearch } from "./components/NavbarSearch";
 export { Sidebar } from "./components/Sidebar";
 export type {
   SidebarProps,

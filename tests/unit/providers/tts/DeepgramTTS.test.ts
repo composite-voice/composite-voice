@@ -169,6 +169,8 @@ describe('DeepgramTTS', () => {
     /** Helper: connect the provider by triggering `onopen`. */
     async function connectProvider(): Promise<void> {
       const connectPromise = provider.connect!();
+      // Let the async resolveWsProtocols() settle before the WS is created
+      await new Promise((r) => setTimeout(r, 0));
       mockWs._triggerOpen();
       await connectPromise;
     }
@@ -203,6 +205,7 @@ describe('DeepgramTTS', () => {
       await proxyProvider.initialize();
 
       const proxyConnectPromise = proxyProvider.connect!();
+      await new Promise((r) => setTimeout(r, 0));
       mockWs._triggerOpen();
       await proxyConnectPromise;
 
@@ -228,6 +231,7 @@ describe('DeepgramTTS', () => {
 
     it('should handle connection error', async () => {
       const connectPromise = provider.connect!();
+      await new Promise((r) => setTimeout(r, 0));
       mockWs._triggerError('Connection refused');
       await expect(connectPromise).rejects.toThrow(ProviderConnectionError);
     });

@@ -11,6 +11,227 @@
 }
 
 /* ═══════════════════════════════════════════════════
+   Pagefind UI — theme overrides
+   Maps pagefind CSS variables to our design tokens
+   so the search modal follows light/dark mode.
+   ═══════════════════════════════════════════════════ */
+
+.pagefind-search-modal {
+  --pagefind-ui-scale: 0.85;
+  --pagefind-ui-primary: var(--color-primary-600);
+  --pagefind-ui-text: var(--color-foreground);
+  --pagefind-ui-background: var(--color-surface);
+  --pagefind-ui-border: var(--color-neutral-200);
+  --pagefind-ui-tag: var(--color-primary-100);
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 8px;
+  --pagefind-ui-font: inherit;
+}
+
+/* ── Search form (input area) ── */
+/* The form uses position:relative with ::before pseudo-element for the
+   search icon (absolute positioned). Padding on the form itself shifts
+   the icon — use margin instead to preserve the icon/clear positioning. */
+
+.pagefind-search-modal .pagefind-ui__form {
+  margin: 0.75rem 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.pagefind-search-modal .pagefind-ui__search-input {
+  font-size: 1rem;
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.5rem;
+  color: var(--color-foreground);
+}
+
+.pagefind-search-modal .pagefind-ui__search-input::placeholder {
+  color: var(--color-foreground-muted);
+}
+
+.pagefind-search-modal .pagefind-ui__search-input:focus {
+  border-color: var(--color-primary-600);
+  box-shadow: 0 0 0 1px var(--color-primary-600);
+  outline: none;
+}
+
+.pagefind-search-modal .pagefind-ui__search-clear:hover {
+  color: var(--color-foreground);
+}
+
+/* ── Results count message ── */
+
+.pagefind-search-modal .pagefind-ui__message {
+  color: var(--color-foreground-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.75rem 1.25rem 0;
+  letter-spacing: 0.01em;
+}
+
+/* ── Results area ── */
+
+.pagefind-search-modal .pagefind-ui__results-area {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.pagefind-search-modal .pagefind-ui__results {
+  padding: 0.25rem 0 0;
+}
+
+/* ── Individual results ── */
+
+.pagefind-search-modal .pagefind-ui__result {
+  border-top: 1px solid var(--color-neutral-200);
+  padding: 0.875rem 1.25rem;
+  margin: 0;
+}
+
+.pagefind-search-modal .pagefind-ui__result:first-child {
+  border-top: none;
+}
+
+.pagefind-search-modal .pagefind-ui__result-inner {
+  padding: 0;
+}
+
+.pagefind-search-modal .pagefind-ui__result-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.pagefind-search-modal .pagefind-ui__result-link,
+.pagefind-search-modal .pagefind-ui__result-title a {
+  color: var(--color-primary-600) !important;
+  text-decoration: none;
+}
+
+.pagefind-search-modal .pagefind-ui__result-link:hover,
+.pagefind-search-modal .pagefind-ui__result-title a:hover {
+  text-decoration: underline;
+}
+
+.pagefind-search-modal .pagefind-ui__result-excerpt {
+  color: var(--color-foreground-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin-top: 0.125rem;
+}
+
+/* ── Sub-results (nested matches) ── */
+
+.pagefind-search-modal .pagefind-ui__result-nested {
+  padding-left: 0.625rem;
+  border-left: 2px solid var(--color-neutral-200);
+  margin-top: 0.375rem;
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link {
+  color: var(--color-foreground) !important;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link::before {
+  content: none !important;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-link:hover {
+  color: var(--color-primary-600) !important;
+}
+
+.pagefind-search-modal .pagefind-ui__result-nested .pagefind-ui__result-excerpt {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin-top: 0.0625rem;
+}
+
+/* ── Filter panel ── */
+
+.pagefind-search-modal .pagefind-ui__filter-panel {
+  padding: 0 1rem 0.5rem;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.pagefind-search-modal .pagefind-ui__filter-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-foreground-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-value {
+  font-size: 0.8125rem;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-label {
+  color: var(--color-foreground);
+}
+
+.pagefind-search-modal .pagefind-ui__filter-checkbox {
+  border-color: var(--color-neutral-300);
+  border-radius: 3px;
+}
+
+.pagefind-search-modal .pagefind-ui__filter-checkbox:checked {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
+/* ── Search highlight marks ── */
+/* Override browser default yellow and any pagefind specificity */
+
+.pagefind-search-modal .pagefind-ui mark,
+.pagefind-search-modal .pagefind-ui__result mark,
+.pagefind-search-modal mark {
+  background-color: color-mix(in srgb, var(--color-primary-500) 20%, transparent) !important;
+  color: inherit !important;
+  border-radius: 2px;
+  padding: 0.05em 0.15em;
+}
+
+/* ── Load more button ── */
+
+.pagefind-search-modal .pagefind-ui__button {
+  display: block;
+  width: calc(100% - 2.5rem);
+  background: var(--color-surface-sunken);
+  color: var(--color-foreground-muted);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  margin: 0.5rem 1.25rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: center;
+}
+
+.pagefind-search-modal .pagefind-ui__button:hover {
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-300);
+  color: var(--color-foreground);
+}
+
+/* ── Empty state (no results) ── */
+
+.pagefind-search-modal .pagefind-ui__drawer:empty {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════
    Prism code blocks — mirrors packages/ui/src/code-theme.ts
    so markdown-rendered code blocks match the CodeBlock
    React component exactly.

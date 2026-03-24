@@ -658,15 +658,16 @@ export class CompositeVoice {
     stt.onTranscription((result) => {
       // ── Error results from STT providers ──────────────────────────────
       if (result.metadata?.error && !result.text?.trim()) {
+        const sttName = stt.constructor.name;
         const errorMsg =
-          (result.metadata.message as string) || `STT error: ${result.metadata.error}`;
-        this.logger.error('STT provider error', errorMsg);
+          (result.metadata.message as string) || `STT (${sttName}) error: ${result.metadata.error}`;
+        this.logger.error(`STT (${sttName}) provider error`, errorMsg);
         this.emitEvent({
           type: 'transcription.error',
           error: new Error(errorMsg),
           timestamp: Date.now(),
         } as CompositeVoiceEvent);
-        this.emitAgentError(new Error(errorMsg), 'stt', true);
+        this.emitAgentError(new Error(errorMsg), `STT (${sttName})`, true);
         return;
       }
 
@@ -1196,7 +1197,8 @@ export class CompositeVoice {
         return;
       }
 
-      this.logger.error('LLM processing error', error);
+      const llmName = this.pipeline.llm.constructor.name;
+      this.logger.error(`LLM (${llmName}) processing error`, error);
       this.emitEvent({
         type: 'llm.error',
         error: error as Error,
@@ -1204,7 +1206,7 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
       this.processingStateMachine.setError();
-      this.emitAgentError(error as Error, 'processLLM');
+      this.emitAgentError(error as Error, `LLM (${llmName})`);
     }
   }
 
@@ -1383,7 +1385,8 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
 
-      this.emitAgentError(error as Error, 'processTTS');
+      const ttsName = this.pipeline.tts.constructor.name;
+      this.emitAgentError(error as Error, `TTS (${ttsName})`);
     }
   }
 
@@ -1555,7 +1558,8 @@ export class CompositeVoice {
         timestamp: Date.now(),
       });
 
-      this.emitAgentError(error as Error, 'finalizeLiveTTS');
+      const ttsName2 = this.pipeline.tts.constructor.name;
+      this.emitAgentError(error as Error, `TTS (${ttsName2})`);
       throw error;
     }
   }
@@ -2024,7 +2028,8 @@ export class CompositeVoice {
         return;
       }
       this.processingStateMachine.setError();
-      this.emitAgentError(error as Error, 'processLLMFromText');
+      const llmName2 = this.pipeline.llm.constructor.name;
+      this.emitAgentError(error as Error, `LLM (${llmName2})`);
     }
   }
 
