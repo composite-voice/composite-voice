@@ -130,6 +130,8 @@ export class AudioPlayer {
   private audioQueue: AudioChunk[] = [];
   private isProcessingQueue = false;
   private metadata: AudioMetadata | null = null;
+  /** Monotonic counter incremented on stop() so stale processQueue loops bail out. */
+  private playbackGeneration = 0;
   private onPlaybackStart: PlaybackStartCallback | null = null;
   private onPlaybackEnd: PlaybackEndCallback | null = null;
   private onPlaybackError: PlaybackErrorCallback | null = null;
@@ -340,14 +342,19 @@ export class AudioPlayer {
     }
 
     this.isProcessingQueue = true;
+    const gen = this.playbackGeneration;
 
     try {
       while (this.audioQueue.length > 0) {
+        // Bail out if stop() was called (generation changed)
+        if (gen !== this.playbackGeneration) return;
+
         // Wait for minimum buffer before starting
         if (this.state === 'idle' && !this.hasMinimumBuffer()) {
           this.state = 'buffering';
           this.logger?.debug('Buffering audio...');
           await this.waitForMinimumBuffer();
+          if (gen !== this.playbackGeneration) return;
         }
 
         // Drain all available chunks and concatenate into a single buffer
@@ -381,13 +388,23 @@ export class AudioPlayer {
           }
           await this.playChunk(mergedChunk);
         }
+
+        // Check again after each chunk plays
+        if (gen !== this.playbackGeneration) return;
       }
 
-      this.state = 'idle';
+      // Only transition to idle if this generation is still current
+      if (gen === this.playbackGeneration) {
+        this.state = 'idle';
+      }
     } catch (error) {
-      this.handleError(error as Error);
+      if (gen === this.playbackGeneration) {
+        this.handleError(error as Error);
+      }
     } finally {
-      this.isProcessingQueue = false;
+      if (gen === this.playbackGeneration) {
+        this.isProcessingQueue = false;
+      }
     }
   }
 
@@ -654,12 +671,16 @@ export class AudioPlayer {
   async stop(): Promise<void> {
     this.logger?.info('Stopping playback');
 
+    // Bump generation so any in-flight processQueue loop exits
+    this.playbackGeneration++;
+
     if (this.currentSource) {
       try {
         this.currentSource.stop();
       } catch {
         // Ignore errors if already stopped
       }
+      this.currentSource.disconnect();
       this.currentSource = null;
     }
 
