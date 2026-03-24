@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.1.0...composite-voice-v0.1.1) (2026-03-24)
+
+
+### Features
+
+* **docs:** voice agent panel, API routes, and Pagefind search ([#75](https://github.com/lukeocodes/composite-voice/issues/75)) ([5f60d5a](https://github.com/lukeocodes/composite-voice/commit/5f60d5a172fecff72412147637c9926e8311e44c))
+
 ## [0.1.0](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.0.5...composite-voice-v0.1.0) (2026-03-22)
 
 
