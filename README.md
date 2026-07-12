@@ -939,7 +939,7 @@ const agent = new CompositeVoice({
 
 Keep API keys completely out of the browser. The proxy middleware forwards browser requests to provider APIs and injects credentials server-side. Your deployed client bundle contains zero secrets.
 
-The proxy supports all providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, Soniox, ElevenLabs, Cartesia, and Speechify.
+The proxy supports all API-based providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, Soniox, ElevenLabs, Cartesia, and Speechify. (Browser built-ins and WebLLM run locally and need no proxy.)
 
 ### Express
 

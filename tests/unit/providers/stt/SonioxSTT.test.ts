@@ -194,6 +194,19 @@ describe('SonioxSTT', () => {
       expect(provider.isWebSocketConnected()).toBe(false);
     });
 
+    it('should close the socket when sending the start message fails', async () => {
+      mockWsManager.send.mockImplementationOnce(() => {
+        throw new Error('send failed');
+      });
+
+      const provider = new SonioxSTT({ apiKey: 'test-key' }, logger);
+      await provider.initialize();
+
+      await expect(provider.connect()).rejects.toThrow(ProviderConnectionError);
+      expect(mockWsManager.disconnect).toHaveBeenCalled();
+      expect(provider.isWebSocketConnected()).toBe(false);
+    });
+
     it('should throw when connecting before initialization', async () => {
       const provider = new SonioxSTT({ apiKey: 'test-key' }, logger);
 
@@ -324,6 +337,30 @@ describe('SonioxSTT', () => {
       getMessageHandler()({ data: new ArrayBuffer(4) } as MessageEvent);
       expect(results).toHaveLength(0);
     });
+
+    it('should expose confirmed tokens with speaker and language in final metadata', () => {
+      receive({
+        tokens: [
+          { text: 'Hola', is_final: true, start_ms: 0, end_ms: 400, speaker: '1', language: 'es' },
+          { text: '<end>', is_final: true },
+        ],
+      });
+
+      const final = results[results.length - 1];
+      expect(final?.metadata?.tokens).toEqual([
+        { text: 'Hola', is_final: true, start_ms: 0, end_ms: 400, speaker: '1', language: 'es' },
+      ]);
+
+      // Tokens must not leak into the next utterance
+      receive({
+        tokens: [
+          { text: 'Bye', is_final: true },
+          { text: '<end>', is_final: true },
+        ],
+      });
+      const next = results[results.length - 1];
+      expect(next?.metadata?.tokens).toEqual([{ text: 'Bye', is_final: true }]);
+    });
   });
 
   describe('Audio streaming', () => {
@@ -376,6 +413,39 @@ describe('SonioxSTT', () => {
       expect((endFrame as ArrayBuffer).byteLength).toBe(0);
       expect(mockWsManager.disconnect).toHaveBeenCalled();
       expect(provider.isWebSocketConnected()).toBe(false);
+    });
+
+    it('should complete disconnect as soon as the finished message arrives', async () => {
+      jest.useFakeTimers();
+      try {
+        const provider = new SonioxSTT({ apiKey: 'test-key' }, logger);
+        await provider.initialize();
+        await provider.connect();
+
+        const disconnectPromise = provider.disconnect();
+        receive({ tokens: [], finished: true });
+
+        // Resolves via the finished signal — no timer advance needed. If the
+        // resolver were broken, this await would hang on the 1s fallback.
+        await disconnectPromise;
+
+        expect(mockWsManager.disconnect).toHaveBeenCalled();
+        expect(provider.isWebSocketConnected()).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should dispose cleanly even when disconnect fails', async () => {
+      mockWsManager.isConnected.mockReturnValue(false);
+      mockWsManager.disconnect.mockRejectedValueOnce(new Error('close failed'));
+
+      const provider = new SonioxSTT({ apiKey: 'test-key' }, logger);
+      await provider.initialize();
+      await provider.connect();
+
+      await expect(provider.dispose()).resolves.toBeUndefined();
+      expect(provider.isReady()).toBe(false);
     });
   });
 });

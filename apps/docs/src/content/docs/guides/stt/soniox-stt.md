@@ -111,6 +111,7 @@ Keep `enableEndpointDetection` at its default (`true`) for voice-agent pipelines
 - **Multilingual by default.** Soniox auto-detects among 60+ languages. Use `languageHints` to bias recognition and `languageHintsStrict` to restrict it.
 - **Audio is sent as raw binary frames.** No base64 encoding overhead -- the provider forwards `ArrayBuffer` chunks directly.
 - **Context improves accuracy.** Pass product names, technical terms, or domain descriptions via `context` so Soniox prioritizes them during recognition.
+- **Token detail in metadata.** Final results include `metadata.tokens` — the confirmed tokens with per-token timing (`start_ms`/`end_ms`), plus `speaker` and `language` labels when diarization or language identification is enabled.
 - **Automatic reconnection.** The `WebSocketManager` reconnects with exponential backoff (up to 5 attempts, 1s initial delay, 30s max delay) if the connection drops.
 - **No preflight signals.** SonioxSTT does not emit preflight/eager end-of-turn events. If you need the eager LLM pipeline, use [DeepgramFlux](/guides/stt/deepgram-flux) instead.
 - **Graceful disconnect.** When you call `disconnect()`, the provider sends an empty end-of-stream frame so Soniox finalizes pending tokens before the socket closes.

@@ -251,6 +251,12 @@ export class SonioxSTT extends LiveSTTProvider {
   /** Count of confirmed tokens in the current utterance. */
   private confidenceCount = 0;
 
+  /** Confirmed tokens (with timing/speaker/language) for the current utterance. */
+  private utteranceTokens: SonioxToken[] = [];
+
+  /** Resolves the pending disconnect wait when the `finished` message arrives. */
+  private finishedResolver: (() => void) | null = null;
+
   /**
    * Create a new SonioxSTT provider.
    *
@@ -305,7 +311,11 @@ export class SonioxSTT extends LiveSTTProvider {
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
     if (this.isConnected) {
-      await this.disconnect();
+      try {
+        await this.disconnect();
+      } catch (error) {
+        this.logger.warn('Error disconnecting during dispose', error as Error);
+      }
     }
     this.wsManager = null;
     this.logger.info('Soniox STT disposed');
@@ -459,6 +469,15 @@ export class SonioxSTT extends LiveSTTProvider {
         sampleRate: this.config.sampleRate,
       });
     } catch (error) {
+      // Close any half-open socket (e.g. connected but the start message
+      // failed to build or send) before dropping the manager reference.
+      if (this.wsManager) {
+        try {
+          await this.wsManager.disconnect();
+        } catch {
+          // Best-effort cleanup
+        }
+      }
       this.wsManager = null;
       this.isConnected = false;
       throw new ProviderConnectionError('SonioxSTT', error as Error);
@@ -470,6 +489,7 @@ export class SonioxSTT extends LiveSTTProvider {
     this.finalText = '';
     this.confidenceSum = 0;
     this.confidenceCount = 0;
+    this.utteranceTokens = [];
   }
 
   /**
@@ -524,6 +544,7 @@ export class SonioxSTT extends LiveSTTProvider {
 
         if (token.is_final) {
           this.finalText += token.text;
+          this.utteranceTokens.push(token);
           if (token.confidence != null) {
             this.confidenceSum += token.confidence;
             this.confidenceCount += 1;
@@ -545,6 +566,9 @@ export class SonioxSTT extends LiveSTTProvider {
               ? { confidence: this.confidenceSum / this.confidenceCount }
               : {}),
             metadata: {
+              // Confirmed tokens with per-token timing, and speaker/language
+              // labels when diarization/language identification are enabled.
+              tokens: this.utteranceTokens,
               finalAudioProcMs: message.final_audio_proc_ms,
               totalAudioProcMs: message.total_audio_proc_ms,
             },
@@ -554,6 +578,7 @@ export class SonioxSTT extends LiveSTTProvider {
 
         if (message.finished) {
           this.logger.info('Soniox session finished');
+          this.finishedResolver?.();
         }
         return;
       }
@@ -623,8 +648,9 @@ export class SonioxSTT extends LiveSTTProvider {
    *
    * @remarks
    * Sends an empty frame to signal end-of-stream (Soniox finalizes all
-   * pending tokens and responds with a `finished` message), waits
-   * briefly, then disconnects the underlying {@link WebSocketManager}.
+   * pending tokens and responds with a `finished` message), waits for
+   * that `finished` message (up to 1 s), then disconnects the underlying
+   * {@link WebSocketManager}.
    *
    * @throws Re-throws any unexpected error during disconnection.
    */
@@ -644,13 +670,18 @@ export class SonioxSTT extends LiveSTTProvider {
         // Ignore send errors during disconnect
       }
 
-      // Wait briefly for the finished response, then disconnect
+      // Wait for the finished response (with a 1s fallback), then disconnect
       await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 1000);
+        const settle = (): void => {
+          clearTimeout(timeout);
+          this.finishedResolver = null;
+          resolve();
+        };
+        const timeout = setTimeout(settle, 1000);
+        this.finishedResolver = settle;
 
         if (!this.wsManager?.isConnected()) {
-          clearTimeout(timeout);
-          resolve();
+          settle();
         }
       });
 
