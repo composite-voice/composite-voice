@@ -343,6 +343,7 @@ const llm = new OpenAICompatibleLLM({
 | [OpenAITTS](/guides/tts/openai-tts) | REST | 6 voices | No | mp3, opus, aac, flac, wav |
 | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
 | [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
+| [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
 
 ### NativeTTS
 
@@ -459,6 +460,28 @@ const tts = new CartesiaTTS({
 - sonic-2 model delivers the lowest latency
 
 [API reference](/api/classes/cartesiatts)
+
+### SpeechifyTTS
+
+Speechify Simba text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { SpeechifyTTS } from '@lukeocodes/composite-voice';
+
+const tts = new SpeechifyTTS({
+  proxyUrl: '/api/proxy/speechify',
+  voiceId: 'geffen_32',        // from GET /v1/voices or a cloned voice
+  model: 'simba-3.2',          // simba-english, simba-multilingual, simba-3.0, simba-3.2
+  audioFormat: 'mp3',          // mp3, wav, ogg, aac
+  language: 'en-US',           // optional; auto-detected when omitted
+});
+```
+
+- Catalog voices and instant voice cloning
+- English and multilingual Simba models
+- Emotion, pitch, and speed via SSML `<prosody>` tags in the input
+
+[API reference](/api/classes/speechifytts)
 
 ---
 

@@ -163,6 +163,17 @@ export interface CompositeVoiceProxyConfig {
   cartesiaApiKey?: string;
 
   /**
+   * Speechify API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/speechify`
+   * that forwards requests to `https://api.speechify.ai`.
+   *
+   * @defaultValue `undefined` (Speechify proxying disabled)
+   */
+  speechifyApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

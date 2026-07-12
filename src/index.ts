@@ -208,6 +208,12 @@ export type {
   CartesiaOutputEncoding,
   CartesiaOutputFormat,
 } from './providers/tts/cartesia/index';
+export { SpeechifyTTS } from './providers/tts/speechify/index';
+export type {
+  SpeechifyTTSConfig,
+  SpeechifyTTSModel,
+  SpeechifyTTSFormat,
+} from './providers/tts/speechify/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';
