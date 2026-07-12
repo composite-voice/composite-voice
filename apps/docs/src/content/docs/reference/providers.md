@@ -62,6 +62,7 @@ input.push(audioBuffer);
 | [DeepgramFlux](/guides/stt/deepgram-flux) | WebSocket | V2: flux-general-en | Yes | Yes |
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | WebSocket | Default model | Yes | No |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
+| [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
 
 ### NativeSTT
 
@@ -195,6 +196,33 @@ const stt = new ElevenLabsSTT({
 - Shares proxy config with ElevenLabsTTS
 
 [API reference](/api/classes/elevenlabsstt)
+
+### SonioxSTT
+
+Real-time multilingual speech recognition via WebSocket with built-in endpoint detection for turn-taking.
+
+```typescript
+import { SonioxSTT } from '@lukeocodes/composite-voice';
+
+const stt = new SonioxSTT({
+  proxyUrl: '/api/proxy/soniox',
+  // OR: apiKey: '...',              // direct or async temporary-key factory
+  model: 'stt-rt-v5',
+  audioFormat: 'pcm_s16le',
+  sampleRate: 16000,
+  languageHints: ['en', 'es'],       // bias recognition
+  enableEndpointDetection: true,      // default — drives turn-taking
+  enableSpeakerDiarization: false,
+});
+```
+
+- 60+ languages with automatic detection
+- Endpoint detection finalizes utterances when the speaker stops
+- Speaker diarization and per-token language identification
+- Domain context for specialized vocabulary
+- Temporary API key support via async `apiKey` factories
+
+[API reference](/api/classes/sonioxstt)
 
 ---
 

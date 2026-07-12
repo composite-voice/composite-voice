@@ -30,7 +30,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | Feature                         | What it means for you                                                                                                                                                                             |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.                        |
-| **Provider-agnostic**           | Deepgram, AssemblyAI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, Speechify, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
+| **Provider-agnostic**           | Deepgram, AssemblyAI, Soniox, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, Speechify, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
 | **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                              |
 | **Zero-config text agent**      | Pass an empty providers array (or just an LLM) and the SDK defaults to a text-only agent — AnthropicLLM + NullInput + NullOutput. Add voice providers to progressively enhance. |
 | **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.                    |
@@ -87,7 +87,7 @@ pnpm add @mlc-ai/web-llm      # WebLLMLLM — in-browser inference (>=0.2.74)
 pnpm add ws                   # server-side proxy WebSocket support, Node.js only (>=8.0.0)
 ```
 
-Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, ElevenLabs, Cartesia, and Speechify providers all work with zero peer dependencies.
+Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, Soniox, ElevenLabs, Cartesia, and Speechify providers all work with zero peer dependencies.
 
 ---
 
@@ -295,6 +295,7 @@ const agent = new CompositeVoice({
 | `DeepgramFlux`  | WebSocket      | All modern browsers | None            |
 | `AssemblyAISTT` | WebSocket      | All modern browsers | None            |
 | `ElevenLabsSTT` | WebSocket      | All modern browsers | None            |
+| `SonioxSTT`     | WebSocket      | All modern browsers | None            |
 
 All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
@@ -361,6 +362,19 @@ new ElevenLabsSTT({
   language: 'en', // BCP 47, ISO 639-1, or ISO 639-3
   commitStrategy: 'vad', // 'vad' (default) or 'manual'
   includeTimestamps: true, // word-level timestamps
+});
+```
+
+**`SonioxSTT` options:**
+
+```typescript
+new SonioxSTT({
+  apiKey: 'your-key', // omit and use proxyUrl for server-side key injection
+  model: 'stt-rt-v5', // default real-time model
+  audioFormat: 'pcm_s16le', // raw format, or 'auto' for container formats
+  sampleRate: 16000, // audio sample rate in Hz
+  languageHints: ['en', 'es'], // bias recognition (auto-detects 60+ languages)
+  enableEndpointDetection: true, // default — finalizes utterances on silence
 });
 ```
 
@@ -925,7 +939,7 @@ const agent = new CompositeVoice({
 
 Keep API keys completely out of the browser. The proxy middleware forwards browser requests to provider APIs and injects credentials server-side. Your deployed client bundle contains zero secrets.
 
-The proxy supports all providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, ElevenLabs, Cartesia, and Speechify.
+The proxy supports all providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, Soniox, ElevenLabs, Cartesia, and Speechify.
 
 ### Express
 
@@ -948,6 +962,7 @@ const proxy = createExpressProxy({
   elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
   cartesiaApiKey: process.env.CARTESIA_API_KEY,
   speechifyApiKey: process.env.SPEECHIFY_API_KEY,
+  sonioxApiKey: process.env.SONIOX_API_KEY,
   pathPrefix: '/proxy',
 });
 
@@ -1508,15 +1523,15 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS | SpeechifyTTS |
-| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- | ------------ |
-| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        | Full         |
-| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        | Full         |
-| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full        | Full      | Full          | Full        | Full         |
+| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | SonioxSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS | SpeechifyTTS |
+| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | --------- | ----------- | --------- | ------------- | ----------- | ------------ |
+| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full      | Full        | Full      | Full          | Full        | Full         |
+| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full      | Full        | Full      | Full          | Full        | Full         |
+| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full      | Full        | Full      | Full          | Full        | Full         |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify) work across all modern browsers.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify) work across all modern browsers.
 
-For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
+For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `SonioxSTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 
 ---
 

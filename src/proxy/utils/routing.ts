@@ -196,6 +196,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
     });
   }
 
+  if (config.sonioxApiKey) {
+    routes.push({
+      provider: 'soniox',
+      type: 'websocket',
+      targetBase: 'wss://stt-rt.soniox.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.sonioxApiKey}`,
+      },
+    });
+  }
+
   if (config.speechifyApiKey) {
     routes.push({
       provider: 'speechify',

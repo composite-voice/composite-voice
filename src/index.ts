@@ -166,6 +166,8 @@ export type {
   ElevenLabsSTTModel,
   ElevenLabsSTTAudioFormat,
 } from './providers/stt/elevenlabs/index';
+export { SonioxSTT } from './providers/stt/soniox/index';
+export type { SonioxSTTConfig } from './providers/stt/soniox/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';

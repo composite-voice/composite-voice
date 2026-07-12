@@ -46,6 +46,7 @@ const proxy = createExpressProxy({
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY,
   cartesiaApiKey: process.env.CARTESIA_API_KEY,
   speechifyApiKey: process.env.SPEECHIFY_API_KEY,
+  sonioxApiKey: process.env.SONIOX_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
 
   // Route prefix (default: '/api/proxy')
@@ -133,6 +134,7 @@ The proxy automatically creates routes based on which API keys you provide:
 | `elevenLabsApiKey` | — | `/api/proxy/elevenlabs` | ElevenLabs TTS |
 | `cartesiaApiKey` | — | `/api/proxy/cartesia` | Cartesia TTS |
 | `speechifyApiKey` | `/api/proxy/speechify` | — | Speechify TTS |
+| `sonioxApiKey` | — | `/api/proxy/soniox` | Soniox STT |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |
 
 HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally.
