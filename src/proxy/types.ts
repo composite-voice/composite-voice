@@ -321,6 +321,34 @@ export interface CompositeVoiceProxyConfig {
   googleCloudApiKey?: string;
 
   /**
+   * Microsoft Azure Speech resource key -- used for HTTP TTS and WebSocket
+   * STT proxying.
+   *
+   * @remarks
+   * When set together with {@link CompositeVoiceProxyConfig.azureSpeechRegion | azureSpeechRegion},
+   * the proxy registers an HTTP route at `{pathPrefix}/azure-tts` (forwarding
+   * to `https://<region>.tts.speech.microsoft.com`) and a WebSocket route at
+   * `{pathPrefix}/azure-stt` (forwarding to
+   * `wss://<region>.stt.speech.microsoft.com`). The
+   * `Ocp-Apim-Subscription-Key` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Azure Speech proxying disabled)
+   */
+  azureSpeechApiKey?: string;
+
+  /**
+   * Microsoft Azure Speech resource region (e.g. `'eastus'`) -- used to
+   * build the upstream hosts for the `azure-tts` and `azure-stt` routes.
+   *
+   * @remarks
+   * Required alongside {@link CompositeVoiceProxyConfig.azureSpeechApiKey | azureSpeechApiKey};
+   * the Azure routes are only registered when both are set.
+   *
+   * @defaultValue `undefined` (Azure Speech proxying disabled)
+   */
+  azureSpeechRegion?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

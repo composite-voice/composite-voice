@@ -68,6 +68,7 @@ input.push(audioBuffer);
 | [RevAISTT](/guides/stt/revai-stt) | WebSocket | Default model | Yes | No |
 | [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) | WebSocket | gpt-4o-mini-transcribe, gpt-4o-transcribe, whisper-1, gpt-realtime-whisper | Yes | No |
 | [GoogleSTT](/guides/stt/google-stt) | HTTP (REST, batch) | latest_short, latest_long, telephony, ... | No | No |
+| [AzureSTT](/guides/stt/azure-stt) | WebSocket | Azure Speech service | Yes | No |
 
 ### NativeSTT
 
@@ -362,6 +363,30 @@ const stt = new GoogleSTT({
 
 [API reference](/api/classes/googlestt)
 
+### AzureSTT
+
+Microsoft Azure Speech real-time recognition via WebSocket, speaking the same wire protocol as the official Speech SDK.
+
+```typescript
+import { AzureSTT } from '@lukeocodes/composite-voice';
+
+const stt = new AzureSTT({
+  proxyUrl: '/api/proxy/azure-stt',
+  // OR: apiKey: '...', region: 'eastus',  // string key or async token factory
+  language: 'en-US',
+  recognitionMode: 'conversation',   // conversation, interactive, dictation
+  outputFormat: 'simple',            // 'detailed' adds NBest + confidence
+});
+```
+
+- 100+ recognition locales
+- Interim hypotheses plus final phrases with `utteranceComplete` turn-taking
+- Continuous recognition across turns on one connection
+- Query-parameter auth for browsers (subscription key or 10-minute bearer token)
+- Zero dependencies — no `microsoft-cognitiveservices-speech-sdk` required
+
+[API reference](/api/classes/azurestt)
+
 ---
 
 ## Large Language Models (LLM)
@@ -517,6 +542,7 @@ const llm = new OpenAICompatibleLLM({
 | [MiniMaxTTS](/guides/tts/minimax-tts) | REST | 300+ system + cloned voice IDs | No | mp3, wav, flac, pcm |
 | [FishAudioTTS](/guides/tts/fishaudio-tts) | REST (msgpack) | Catalog voice IDs + inline cloning | No | mp3, wav, pcm, opus |
 | [GoogleTTS](/guides/tts/google-tts) | REST | Chirp 3: HD, Neural2, Studio, WaveNet, ... | No | MP3, OGG_OPUS, LINEAR16, MULAW, ALAW |
+| [AzureTTS](/guides/tts/azure-tts) | REST | Neural voices (140+ locales) | No | mp3, wav, ogg, webm, raw pcm |
 
 ### NativeTTS
 
@@ -820,6 +846,30 @@ const tts = new GoogleTTS({
 - API-key auth via the `X-goog-api-key` header (service accounts out of scope)
 
 [API reference](/api/classes/googletts)
+
+### AzureTTS
+
+Microsoft Azure Speech text-to-speech via REST (SSML). Returns complete audio in one request.
+
+```typescript
+import { AzureTTS } from '@lukeocodes/composite-voice';
+
+const tts = new AzureTTS({
+  proxyUrl: '/api/proxy/azure-tts',
+  // OR: apiKey: '...', region: 'eastus',  // string key or async token factory
+  voiceName: 'en-US-AriaNeural',           // required
+  outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+  style: 'cheerful',                       // optional speaking style
+  rate: 1.1,                               // optional prosody rate multiplier
+});
+```
+
+- Hundreds of neural voices across 140+ locales
+- Speaking styles via `<mstts:express-as>`, rate/pitch via `<prosody>`
+- User text is XML-escaped automatically before SSML embedding
+- mp3, wav (riff), ogg/webm opus, and raw pcm output formats
+
+[API reference](/api/classes/azuretts)
 
 ---
 

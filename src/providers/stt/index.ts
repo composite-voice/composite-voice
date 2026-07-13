@@ -26,6 +26,9 @@
  * - **GoogleSTT** -- Connects to Google Cloud Speech-to-Text via REST (batch,
  *   per-utterance transcription of complete recordings up to 60 seconds).
  *   Google's streaming API is gRPC-only, so there is no live variant.
+ * - **AzureSTT** -- Connects to the Microsoft Azure Speech real-time STT
+ *   WebSocket API. Supports 100+ locales, interim hypotheses, and service-side
+ *   end-of-utterance detection.
  *
  * @example
  * ```typescript
@@ -47,6 +50,7 @@
  * @see {@link RevAISTT} for Rev AI streaming STT
  * @see {@link OpenAIRealtimeSTT} for OpenAI Realtime streaming STT
  * @see {@link GoogleSTT} for Google Cloud batch (REST) STT
+ * @see {@link AzureSTT} for Microsoft Azure streaming STT
  */
 
 export * from './native/index';
@@ -58,6 +62,7 @@ export * from './gladia/index';
 export * from './speechmatics/index';
 export * from './revai/index';
 export * from './google/index';
+export * from './azure/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:

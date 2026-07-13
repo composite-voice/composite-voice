@@ -862,6 +862,85 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('google-tts');
       expect(providers).toContain('google-stt');
     });
+
+    it('includes Azure Speech HTTP and WebSocket routes when key and region are provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        azureSpeechApiKey: 'test-azure-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes[0]).toEqual({
+        provider: 'azure-tts',
+        type: 'http',
+        targetBase: 'https://eastus.tts.speech.microsoft.com',
+        authHeaders: {
+          'Ocp-Apim-Subscription-Key': 'test-azure-key',
+        },
+      });
+      expect(routes[1]).toEqual({
+        provider: 'azure-stt',
+        type: 'websocket',
+        targetBase: 'wss://eastus.stt.speech.microsoft.com',
+        authHeaders: {
+          'Ocp-Apim-Subscription-Key': 'test-azure-key',
+        },
+      });
+    });
+
+    it('builds Azure Speech target hosts from the configured region', () => {
+      const routes = buildRoutes({
+        azureSpeechApiKey: 'azure-key',
+        azureSpeechRegion: 'westeurope',
+      });
+
+      const tts = routes.find((r) => r.provider === 'azure-tts');
+      const stt = routes.find((r) => r.provider === 'azure-stt');
+      expect(tts!.targetBase).toBe('https://westeurope.tts.speech.microsoft.com');
+      expect(stt!.targetBase).toBe('wss://westeurope.stt.speech.microsoft.com');
+    });
+
+    it('does not include Azure Speech routes when azureSpeechApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'azure-tts' && r.provider !== 'azure-stt')).toBe(
+        true
+      );
+    });
+
+    it('does not include Azure Speech routes when azureSpeechRegion is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        azureSpeechApiKey: 'azure-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(0);
+    });
+
+    it('includes Azure Speech alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        azureSpeechApiKey: 'azure-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('azure-tts');
+      expect(providers).toContain('azure-stt');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

@@ -191,6 +191,8 @@ export type {
   GoogleSTTEncoding,
   GoogleSTTWordInfo,
 } from './providers/stt/google/index';
+export { AzureSTT } from './providers/stt/azure/index';
+export type { AzureSTTConfig, AzureSTTRecognitionMode } from './providers/stt/azure/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -284,6 +286,8 @@ export type {
   GoogleTTSAudioEncoding,
   GoogleTTSSsmlGender,
 } from './providers/tts/google/index';
+export { AzureTTS } from './providers/tts/azure/index';
+export type { AzureTTSConfig, AzureTTSOutputFormat } from './providers/tts/azure/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

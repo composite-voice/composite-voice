@@ -58,6 +58,8 @@ const proxy = createExpressProxy({
   speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
   fishAudioApiKey: process.env.FISH_AUDIO_API_KEY,
   googleCloudApiKey: process.env.GOOGLE_CLOUD_API_KEY,
+  azureSpeechApiKey: process.env.AZURE_SPEECH_KEY,
+  azureSpeechRegion: process.env.AZURE_SPEECH_REGION, // e.g. 'eastus' — required for the Azure routes
 
   // Route prefix (default: '/api/proxy')
   pathPrefix: '/api/proxy',
@@ -156,6 +158,7 @@ The proxy automatically creates routes based on which API keys you provide:
 | `speechmaticsApiKey` | — | `/api/proxy/speechmatics` | Speechmatics STT |
 | `fishAudioApiKey` | `/api/proxy/fishaudio` | — | Fish Audio TTS |
 | `googleCloudApiKey` | `/api/proxy/google-tts` + `/api/proxy/google-stt` | — | Google Cloud TTS + STT |
+| `azureSpeechApiKey` + `azureSpeechRegion` | `/api/proxy/azure-tts` | `/api/proxy/azure-stt` | Azure Speech TTS + STT |
 
 HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally. Fish Audio's msgpack-encoded request bodies are opaque binary to the proxy and are forwarded untouched.
 

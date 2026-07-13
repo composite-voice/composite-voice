@@ -37,6 +37,9 @@
  * - **GoogleTTS** -- Connects to the Google Cloud Text-to-Speech API (REST). Supports
  *   Chirp 3: HD, Neural2, Studio, and WaveNet voices and multiple encodings
  *   (MP3, OGG_OPUS, LINEAR16, MULAW, ALAW).
+ * - **AzureTTS** -- Connects to the Microsoft Azure Speech TTS API (REST, SSML).
+ *   Supports hundreds of neural voices, speaking styles, and multiple output
+ *   formats (mp3, wav, ogg, webm, raw pcm).
  *
  * @example
  * ```typescript
@@ -62,6 +65,7 @@
  * @see {@link MiniMaxTTS} for MiniMax REST-based TTS
  * @see {@link FishAudioTTS} for Fish Audio REST-based TTS (msgpack wire format)
  * @see {@link GoogleTTS} for Google Cloud REST-based TTS
+ * @see {@link AzureTTS} for Microsoft Azure REST-based TTS
  */
 
 export * from './native/index';
@@ -77,3 +81,4 @@ export * from './rime/index';
 export * from './minimax/index';
 export * from './fishaudio/index';
 export * from './google/index';
+export * from './azure/index';

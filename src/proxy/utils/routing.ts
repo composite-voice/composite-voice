@@ -22,8 +22,8 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT).
- * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT, Azure TTS).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime, Azure STT).
  */
 export type RouteType = 'http' | 'websocket';
 
@@ -370,6 +370,27 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://speech.googleapis.com',
       authHeaders: {
         'X-goog-api-key': config.googleCloudApiKey,
+      },
+    });
+  }
+
+  // Azure Speech uses regional hosts, so the region is part of the config.
+  // TTS (HTTP) and STT (WebSocket) live on different hosts -> two routes.
+  if (config.azureSpeechApiKey && config.azureSpeechRegion) {
+    routes.push({
+      provider: 'azure-tts',
+      type: 'http',
+      targetBase: `https://${config.azureSpeechRegion}.tts.speech.microsoft.com`,
+      authHeaders: {
+        'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
+      },
+    });
+    routes.push({
+      provider: 'azure-stt',
+      type: 'websocket',
+      targetBase: `wss://${config.azureSpeechRegion}.stt.speech.microsoft.com`,
+      authHeaders: {
+        'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
       },
     });
   }
