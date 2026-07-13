@@ -40,6 +40,9 @@
  * - **AzureTTS** -- Connects to the Microsoft Azure Speech TTS API (REST, SSML).
  *   Supports hundreds of neural voices, speaking styles, and multiple output
  *   formats (mp3, wav, ogg, webm, raw pcm).
+ * - **PollyTTS** -- Connects to the Amazon Polly `SynthesizeSpeech` API (REST,
+ *   SigV4-signed). Supports the neural, generative, long-form, and standard
+ *   engines and multiple output formats (mp3, ogg_vorbis, ogg_opus, pcm).
  *
  * @example
  * ```typescript
@@ -66,6 +69,7 @@
  * @see {@link FishAudioTTS} for Fish Audio REST-based TTS (msgpack wire format)
  * @see {@link GoogleTTS} for Google Cloud REST-based TTS
  * @see {@link AzureTTS} for Microsoft Azure REST-based TTS
+ * @see {@link PollyTTS} for Amazon Polly REST-based TTS
  */
 
 export * from './native/index';
@@ -82,3 +86,4 @@ export * from './minimax/index';
 export * from './fishaudio/index';
 export * from './google/index';
 export * from './azure/index';
+export * from './polly/index';

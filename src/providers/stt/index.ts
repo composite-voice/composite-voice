@@ -29,6 +29,9 @@
  * - **AzureSTT** -- Connects to the Microsoft Azure Speech real-time STT
  *   WebSocket API. Supports 100+ locales, interim hypotheses, and service-side
  *   end-of-utterance detection.
+ * - **TranscribeSTT** -- Connects to Amazon Transcribe's streaming STT via a
+ *   SigV4-presigned WebSocket. Supports partial-results stabilization, custom
+ *   vocabularies, and speaker partitioning.
  *
  * @example
  * ```typescript
@@ -51,6 +54,7 @@
  * @see {@link OpenAIRealtimeSTT} for OpenAI Realtime streaming STT
  * @see {@link GoogleSTT} for Google Cloud batch (REST) STT
  * @see {@link AzureSTT} for Microsoft Azure streaming STT
+ * @see {@link TranscribeSTT} for Amazon Transcribe streaming STT
  */
 
 export * from './native/index';
@@ -63,6 +67,7 @@ export * from './speechmatics/index';
 export * from './revai/index';
 export * from './google/index';
 export * from './azure/index';
+export * from './transcribe/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:

@@ -30,7 +30,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | Feature                         | What it means for you                                                                                                                                                                             |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **5-role pipeline**             | Audio flows through 5 roles: `input → stt → llm → tts → output`. Each role is a pluggable provider. Multi-role providers (e.g., NativeSTT = input+stt) reduce boilerplate.                        |
-| **Provider-agnostic**           | Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, Azure Speech, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
+| **Provider-agnostic**           | Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, Anthropic, OpenAI, Groq, Gemini, Mistral, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, Azure Speech, AWS, or browser built-ins — mix and match freely. Swapping a provider is one constructor change.                 |
 | **Type-safe throughout**        | Every event payload, config option, and provider interface is fully typed. TypeScript autocomplete works end-to-end.                                                                              |
 | **Zero-config text agent**      | Pass an empty providers array (or just an LLM) and the SDK defaults to a text-only agent — AnthropicLLM + NullInput + NullOutput. Add voice providers to progressively enhance. |
 | **Smart text routing**          | LLM output is split into visual and spoken streams. Code fences are buffered and never sent to TTS. Markdown is stripped for natural speech while the UI gets full formatting.                    |
@@ -88,7 +88,7 @@ pnpm add ws                   # server-side proxy WebSocket support, Node.js onl
 pnpm add @msgpack/msgpack     # FishAudioTTS — binary request encoding (>=3.0.0)
 ```
 
-Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Google Cloud, and Azure Speech providers all work with zero peer dependencies.
+Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Google Cloud, Azure Speech, and AWS (Amazon Polly, Amazon Transcribe) providers all work with zero peer dependencies.
 
 ---
 
@@ -303,6 +303,7 @@ const agent = new CompositeVoice({
 | `OpenAIRealtimeSTT` | WebSocket  | All modern browsers | None            |
 | `GoogleSTT`     | HTTP (REST, batch) | All modern browsers | None            |
 | `AzureSTT`      | WebSocket      | All modern browsers | None            |
+| `TranscribeSTT` | WebSocket      | All modern browsers | None            |
 
 All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
@@ -465,6 +466,20 @@ new AzureSTT({
   outputFormat: 'simple', // 'detailed' adds NBest alternatives + confidence
 });
 ```
+
+**`TranscribeSTT` options** (Amazon Transcribe streaming):
+
+```typescript
+new TranscribeSTT({
+  credentials: async () => fetchTempCredentials(), // AWS credentials or async factory; omit with proxyUrl
+  region: 'us-east-1', // AWS region (required in direct mode)
+  languageCode: 'en-US', // language of the input audio
+  mediaEncoding: 'pcm', // 'pcm' | 'ogg-opus' | 'flac'
+  sampleRate: 16000, // audio sample rate in Hz
+  enablePartialResultsStabilization: true, // lower-latency interim results
+  partialResultsStability: 'high', // 'high' | 'medium' | 'low'
+});
+```
 ### Language Models (LLM)
 
 | Provider              | Transport         | Peer dependency    | Notes                                                   |
@@ -563,6 +578,7 @@ new WebLLMLLM({
 | `FishAudioTTS`  | HTTP (REST, msgpack) | All modern browsers | `@msgpack/msgpack` (optional, >=3.0.0) |
 | `GoogleTTS`     | HTTP (REST)         | All modern browsers | None            |
 | `AzureTTS`      | HTTP (REST)         | All modern browsers | None            |
+| `PollyTTS`      | HTTP (REST)         | All modern browsers | None            |
 
 **`NativeTTS` options:**
 
@@ -747,6 +763,19 @@ new AzureTTS({
   outputFormat: 'audio-24khz-48kbitrate-mono-mp3', // mp3, riff (wav), ogg/webm opus, raw pcm
   style: 'cheerful', // optional speaking style (voice-dependent)
   rate: 1.1, // optional prosody rate multiplier
+});
+```
+
+**`PollyTTS` options** (Amazon Polly):
+
+```typescript
+new PollyTTS({
+  credentials: async () => fetchTempCredentials(), // AWS credentials or async factory; omit with proxyUrl
+  region: 'us-east-1', // AWS region (required in direct mode)
+  voiceId: 'Joanna', // required — Polly voice ID
+  engine: 'neural', // 'neural' | 'generative' | 'long-form' | 'standard'
+  outputFormat: 'mp3', // 'mp3' | 'ogg_vorbis' | 'ogg_opus' | 'pcm'
+  textType: 'text', // 'text' | 'ssml'
 });
 ```
 
@@ -1145,7 +1174,7 @@ const agent = new CompositeVoice({
 
 Keep API keys completely out of the browser. The proxy middleware forwards browser requests to provider APIs and injects credentials server-side. Your deployed client bundle contains zero secrets.
 
-The proxy supports all API-based providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, and Azure Speech. (Browser built-ins and WebLLM run locally and need no proxy.)
+The proxy supports all API-based providers: Deepgram, Anthropic, OpenAI, Groq, Gemini, Mistral, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, ElevenLabs, Cartesia, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, Azure Speech, and AWS (SigV4-signed server-side). (Browser built-ins and WebLLM run locally and need no proxy.)
 
 ### Express
 
@@ -1741,13 +1770,13 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 
 ## Browser support
 
-| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | SonioxSTT | GladiaSTT | SpeechmaticsSTT | RevAISTT | GoogleSTT | AzureSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS | SpeechifyTTS | MurfTTS | LMNTTTS | SmallestTTS | RimeTTS | MiniMaxTTS | FishAudioTTS | GoogleTTS | AzureTTS |
-| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | --------- | --------------- | -------- | --------- | -------- | --------- | ----------- | --------- | ------------- | ----------- | ------------ | ------- | ------- | ----------- | ------- | ---------- | ------------ | --------- | -------- |
-| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     |
-| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     |
-| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     |
+| Browser       | NativeSTT     | DeepgramSTT | DeepgramFlux | AssemblyAISTT | ElevenLabsSTT | SonioxSTT | GladiaSTT | SpeechmaticsSTT | RevAISTT | GoogleSTT | AzureSTT | TranscribeSTT | NativeTTS | DeepgramTTS | OpenAITTS | ElevenLabsTTS | CartesiaTTS | SpeechifyTTS | MurfTTS | LMNTTTS | SmallestTTS | RimeTTS | MiniMaxTTS | FishAudioTTS | GoogleTTS | AzureTTS | PollyTTS |
+| ------------- | ------------- | ----------- | ------------ | ------------- | ------------- | --------- | --------- | --------------- | -------- | --------- | -------- | ------------- | --------- | ----------- | --------- | ------------- | ----------- | ------------ | ------- | ------- | ----------- | ------- | ---------- | ------------ | --------- | -------- | -------- |
+| Chrome / Edge | Full          | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full          | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     | Full     |
+| Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full          | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     | Full     |
+| Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full          | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     | Full     |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, OpenAI Realtime, Azure, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud) work across all modern browsers.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, OpenAI Realtime, Azure, Amazon Transcribe, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud) work across all modern browsers.
 
 For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `SonioxSTT`, `GladiaSTT`, `SpeechmaticsSTT`, `RevAISTT`, `OpenAIRealtimeSTT`, `AzureSTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 

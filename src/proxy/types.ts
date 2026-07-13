@@ -349,6 +349,37 @@ export interface CompositeVoiceProxyConfig {
   azureSpeechRegion?: string;
 
   /**
+   * AWS credentials and region -- used for Amazon Polly (HTTP) and Amazon
+   * Transcribe streaming (WebSocket) proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/polly`
+   * (forwarding to `https://polly.{region}.amazonaws.com`) and a WebSocket
+   * route at `{pathPrefix}/transcribe` (forwarding to
+   * `wss://transcribestreaming.{region}.amazonaws.com:8443`).
+   *
+   * Unlike API-key providers, AWS requests cannot be authenticated by
+   * injecting a static header: SigV4 signatures cover the host, path,
+   * query string, and body. The proxy therefore signs each upstream Polly
+   * request (SigV4 headers) and presigns each upstream Transcribe
+   * WebSocket URL (SigV4 query parameters) at connect time, using these
+   * credentials. Browsers send unsigned requests to the proxy and never
+   * see the AWS keys.
+   *
+   * @defaultValue `undefined` (AWS proxying disabled)
+   */
+  aws?: {
+    /** AWS access key ID. */
+    accessKeyId: string;
+    /** AWS secret access key. */
+    secretAccessKey: string;
+    /** Session token, when using temporary credentials (STS/Cognito). */
+    sessionToken?: string;
+    /** AWS region for both the Polly and Transcribe endpoints (e.g. `'us-east-1'`). */
+    region: string;
+  };
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

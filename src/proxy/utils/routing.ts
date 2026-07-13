@@ -17,6 +17,7 @@
 
 import type { ServerResponse } from 'http';
 import type { CompositeVoiceProxyConfig } from '../types';
+import type { AwsCredentials } from '../../utils/aws/sigv4';
 
 /**
  * The transport type for a proxy route.
@@ -75,6 +76,36 @@ export interface ProxyRoute {
    * client-supplied value. Currently applied to `'websocket'` routes only.
    */
   authQuery?: Record<string, string>;
+
+  /**
+   * SigV4 signing descriptor for AWS routes.
+   *
+   * @remarks
+   * When present, static header injection is not sufficient — the proxy
+   * cores sign the outgoing upstream request instead: HTTP requests get
+   * SigV4 `Authorization` headers, and WebSocket upstream URLs are
+   * presigned with `X-Amz-*` query parameters at connect time. Routes
+   * without this field behave exactly as before.
+   *
+   * @see {@link AwsSigV4RouteConfig}
+   */
+  awsSigV4?: AwsSigV4RouteConfig;
+}
+
+/**
+ * SigV4 signing configuration attached to AWS proxy routes.
+ *
+ * @remarks
+ * Carried on {@link ProxyRoute.awsSigV4} for routes built from the proxy
+ * config's `aws` credentials (Amazon Polly and Amazon Transcribe).
+ */
+export interface AwsSigV4RouteConfig {
+  /** AWS service identifier for the credential scope (`'polly'` or `'transcribe'`). */
+  service: string;
+  /** AWS region for the credential scope (e.g. `'us-east-1'`). */
+  region: string;
+  /** AWS credentials used to sign upstream requests. */
+  credentials: AwsCredentials;
 }
 
 /**
@@ -392,6 +423,33 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       authHeaders: {
         'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
       },
+    });
+  }
+
+  // AWS routes authenticate via SigV4 (signed headers / presigned URLs)
+  // rather than static header injection — see ProxyRoute.awsSigV4.
+  if (config.aws) {
+    const { accessKeyId, secretAccessKey, sessionToken, region } = config.aws;
+    const credentials: AwsCredentials = {
+      accessKeyId,
+      secretAccessKey,
+      ...(sessionToken ? { sessionToken } : {}),
+    };
+
+    routes.push({
+      provider: 'polly',
+      type: 'http',
+      targetBase: `https://polly.${region}.amazonaws.com`,
+      authHeaders: {},
+      awsSigV4: { service: 'polly', region, credentials },
+    });
+
+    routes.push({
+      provider: 'transcribe',
+      type: 'websocket',
+      targetBase: `wss://transcribestreaming.${region}.amazonaws.com:8443`,
+      authHeaders: {},
+      awsSigV4: { service: 'transcribe', region, credentials },
     });
   }
 

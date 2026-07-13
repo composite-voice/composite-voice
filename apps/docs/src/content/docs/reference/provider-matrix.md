@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 24 provider companies across 34 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 25 provider companies across 36 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -26,6 +26,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **OpenAIRealtimeSTT** | | **yes** | | | |
 | **GoogleSTT** | | **yes** | | | |
 | **AzureSTT** | | **yes** | | | |
+| **TranscribeSTT** | | **yes** | | | |
 | **AnthropicLLM** | | | **yes** | | |
 | **OpenAILLM** | | | **yes** | | |
 | **GroqLLM** | | | **yes** | | |
@@ -47,6 +48,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **FishAudioTTS** | | | | **yes** | |
 | **GoogleTTS** | | | | **yes** | |
 | **AzureTTS** | | | | **yes** | |
+| **PollyTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -547,6 +549,28 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### Amazon Web Services
+
+| | STT | TTS |
+|---|---|---|
+| **Class** | [`TranscribeSTT`](/guides/stt/transcribe-stt) | [`PollyTTS`](/guides/tts/polly-tts) |
+| **Transport** | WebSocket (SigV4-presigned) | REST (SigV4-signed) |
+| **Streaming** | Yes | No |
+| **Peer dependency** | None | None |
+| **Proxy support** | Yes | Yes |
+| **Browser support** | All modern browsers (WebCrypto) | All modern browsers (WebCrypto) |
+| **Default model** | Amazon Transcribe streaming | *(voice/engine required)* |
+
+**Auth:** AWS requests are authenticated with Signature Version 4 rather than an API key — the SDK signs Polly requests (`Authorization` header) and presigns Transcribe WebSocket URLs (`X-Amz-*` query parameters) using a built-in WebCrypto signer; no AWS SDK dependency. In browsers, use temporary STS/Cognito credentials via an async `credentials` factory, or route through the proxy (`aws` proxy config) so credentials stay server-side.
+
+**TranscribeSTT features:** Interim (`IsPartial`) and final results with word-level timing and confidence, partial-results stabilization (`high`/`medium`/`low`), custom vocabularies and vocabulary filters (remove/mask/tag), speaker partitioning, automatic language identification with candidate `languageOptions`, session IDs, binary `application/vnd.amazon.eventstream` audio framing with CRC32 validation.
+
+**PollyTTS features:** Neural, generative, long-form, and standard engines, 100+ voices across 40+ language variants, SSML input (`textType: 'ssml'`), pronunciation lexicons, 4 output formats (mp3, ogg_vorbis, ogg_opus, pcm), configurable sample rate.
+
+**Guides:** [TranscribeSTT](/guides/stt/transcribe-stt) · [PollyTTS](/guides/tts/polly-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -593,20 +617,20 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 | Capability | Providers that support it |
 |---|---|
-| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), DeepgramAgent, [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt), [AzureSTT](/guides/stt/azure-stt) |
+| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), DeepgramAgent, [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt), [AzureSTT](/guides/stt/azure-stt), [TranscribeSTT](/guides/stt/transcribe-stt) |
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt), [GoogleSTT](/guides/stt/google-stt), [GoogleTTS](/guides/tts/google-tts), [AzureSTT](/guides/stt/azure-stt), [AzureTTS](/guides/tts/azure-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt), [GoogleSTT](/guides/stt/google-stt), [GoogleTTS](/guides/tts/google-tts), [AzureSTT](/guides/stt/azure-stt), [AzureTTS](/guides/tts/azure-tts), [TranscribeSTT](/guides/stt/transcribe-stt), [PollyTTS](/guides/tts/polly-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [FishAudioTTS](/guides/tts/fishaudio-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [AzureTTS](/guides/tts/azure-tts) |
 | **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Offline capable** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt), [SonioxSTT](/guides/stt/soniox-stt), [SpeechmaticsSTT](/guides/stt/speechmatics-stt) |
-| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [GoogleSTT](/guides/stt/google-stt) |
-| **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt) |
+| **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt), [SonioxSTT](/guides/stt/soniox-stt), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [TranscribeSTT](/guides/stt/transcribe-stt) |
+| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [GoogleSTT](/guides/stt/google-stt), [TranscribeSTT](/guides/stt/transcribe-stt) |
+| **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [TranscribeSTT](/guides/stt/transcribe-stt) |
 | **VAD commit strategy** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) |
 | **Batch (per-utterance) STT** | [GoogleSTT](/guides/stt/google-stt) |

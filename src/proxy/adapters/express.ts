@@ -190,6 +190,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
 
         return forwardHttpRequest(req, res, targetUrl, route.authHeaders, {
           ...(security?.maxBodySize !== undefined && { maxBodySize: security.maxBodySize }),
+          ...(route.awsSigV4 && { awsSigV4: route.awsSigV4 }),
         });
       })
       .catch((err: unknown) => next(err));
@@ -241,6 +242,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
               maxWsMessageSize: security.maxWsMessageSize,
             }),
             ...(route.authQuery !== undefined && { authQuery: route.authQuery }),
+            ...(route.awsSigV4 && { awsSigV4: route.awsSigV4 }),
           });
         })
         .catch((err: Error) => {

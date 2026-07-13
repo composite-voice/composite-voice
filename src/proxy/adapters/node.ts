@@ -169,6 +169,7 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
 
     await forwardHttpRequest(req, res, targetUrl, route.authHeaders, {
       ...(security?.maxBodySize !== undefined && { maxBodySize: security.maxBodySize }),
+      ...(route.awsSigV4 && { awsSigV4: route.awsSigV4 }),
     });
   }
 
@@ -218,6 +219,7 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
               maxWsMessageSize: security.maxWsMessageSize,
             }),
             ...(route.authQuery !== undefined && { authQuery: route.authQuery }),
+            ...(route.awsSigV4 && { awsSigV4: route.awsSigV4 }),
           });
         })
         .catch((err: Error) => {

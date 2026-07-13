@@ -69,6 +69,7 @@ input.push(audioBuffer);
 | [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) | WebSocket | gpt-4o-mini-transcribe, gpt-4o-transcribe, whisper-1, gpt-realtime-whisper | Yes | No |
 | [GoogleSTT](/guides/stt/google-stt) | HTTP (REST, batch) | latest_short, latest_long, telephony, ... | No | No |
 | [AzureSTT](/guides/stt/azure-stt) | WebSocket | Azure Speech service | Yes | No |
+| [TranscribeSTT](/guides/stt/transcribe-stt) | WebSocket | Amazon Transcribe streaming | Yes | No |
 
 ### NativeSTT
 
@@ -387,6 +388,33 @@ const stt = new AzureSTT({
 
 [API reference](/api/classes/azurestt)
 
+### TranscribeSTT
+
+Amazon Transcribe streaming speech recognition over WebSocket, authenticated with SigV4-presigned URLs. No AWS SDK required.
+
+```typescript
+import { TranscribeSTT } from '@lukeocodes/composite-voice';
+
+const stt = new TranscribeSTT({
+  proxyUrl: '/api/proxy/transcribe',
+  // OR: credentials: async () => fetchTempCredentials(), region: 'us-east-1',
+  languageCode: 'en-US',
+  mediaEncoding: 'pcm',               // pcm, ogg-opus, flac
+  sampleRate: 16000,
+  enablePartialResultsStabilization: true,
+  partialResultsStability: 'high',    // high, medium, low
+});
+```
+
+- Partial (interim) and final results with word-level timing
+- Partial-results stabilization for lower interim latency
+- Custom vocabularies, vocabulary filters, and speaker partitioning
+- Automatic language identification (`identifyLanguage` + `languageOptions`)
+- Temporary-credentials support via async `credentials` factories (STS/Cognito)
+- Built-in WebCrypto SigV4 presigning and event-stream framing
+
+[API reference](/api/classes/transcribestt)
+
 ---
 
 ## Large Language Models (LLM)
@@ -543,6 +571,7 @@ const llm = new OpenAICompatibleLLM({
 | [FishAudioTTS](/guides/tts/fishaudio-tts) | REST (msgpack) | Catalog voice IDs + inline cloning | No | mp3, wav, pcm, opus |
 | [GoogleTTS](/guides/tts/google-tts) | REST | Chirp 3: HD, Neural2, Studio, WaveNet, ... | No | MP3, OGG_OPUS, LINEAR16, MULAW, ALAW |
 | [AzureTTS](/guides/tts/azure-tts) | REST | Neural voices (140+ locales) | No | mp3, wav, ogg, webm, raw pcm |
+| [PollyTTS](/guides/tts/polly-tts) | REST | Polly voices (Joanna, Matthew, ...) | No | mp3, ogg_vorbis, ogg_opus, pcm |
 
 ### NativeTTS
 
@@ -870,6 +899,29 @@ const tts = new AzureTTS({
 - mp3, wav (riff), ogg/webm opus, and raw pcm output formats
 
 [API reference](/api/classes/azuretts)
+
+### PollyTTS
+
+Amazon Polly text-to-speech via SigV4-signed REST calls. Returns complete audio in one request. No AWS SDK required.
+
+```typescript
+import { PollyTTS } from '@lukeocodes/composite-voice';
+
+const tts = new PollyTTS({
+  proxyUrl: '/api/proxy/polly',
+  // OR: credentials: async () => fetchTempCredentials(), region: 'us-east-1',
+  voiceId: 'Joanna',           // see Polly's DescribeVoices
+  engine: 'neural',            // neural, generative, long-form, standard
+  outputFormat: 'mp3',         // mp3, ogg_vorbis, ogg_opus, pcm
+});
+```
+
+- Neural, generative, long-form, and standard engines
+- SSML input via `textType: 'ssml'` for prosody and pronunciation control
+- Pronunciation lexicons via `lexiconNames`
+- Temporary-credentials support via async `credentials` factories (STS/Cognito)
+
+[API reference](/api/classes/pollytts)
 
 ---
 
