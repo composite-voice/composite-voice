@@ -248,6 +248,19 @@ export interface CompositeVoiceProxyConfig {
   rimeApiKey?: string;
 
   /**
+   * MiniMax API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/minimax`
+   * that forwards requests to `https://api.minimax.io`. The
+   * `Authorization: Bearer` auth header is injected server-side. Query
+   * parameters (e.g. `GroupId`) are forwarded to the upstream unchanged.
+   *
+   * @defaultValue `undefined` (MiniMax proxying disabled)
+   */
+  minimaxApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

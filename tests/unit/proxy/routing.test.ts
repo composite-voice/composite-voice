@@ -561,6 +561,49 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('rime');
     });
+
+    it('includes MiniMax HTTP route when minimaxApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        minimaxApiKey: 'test-minimax-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'minimax',
+        type: 'http',
+        targetBase: 'https://api.minimax.io',
+        authHeaders: {
+          Authorization: 'Bearer test-minimax-key',
+        },
+      });
+    });
+
+    it('does not include MiniMax route when minimaxApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'minimax')).toBe(true);
+    });
+
+    it('includes MiniMax alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        minimaxApiKey: 'minimax-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('minimax');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

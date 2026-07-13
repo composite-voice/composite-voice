@@ -27,6 +27,9 @@
  *   the Lightning models and multiple output formats (wav, mp3, pcm, ulaw, alaw).
  * - **RimeTTS** -- Connects to the Rime TTS API (REST). Supports the Coda, Arcana,
  *   and Mist model families and multiple output formats (mp3, wav, ogg, webm, pcm, mulaw).
+ * - **MiniMaxTTS** -- Connects to the MiniMax TTS API (REST). Supports the Speech
+ *   models, 300+ system voices, emotion control, and multiple output formats
+ *   (mp3, wav, flac, pcm).
  *
  * @example
  * ```typescript
@@ -49,6 +52,7 @@
  * @see {@link LMNTTTS} for LMNT REST-based TTS
  * @see {@link SmallestTTS} for Smallest.ai Waves REST-based TTS
  * @see {@link RimeTTS} for Rime REST-based TTS
+ * @see {@link MiniMaxTTS} for MiniMax REST-based TTS
  */
 
 export * from './native/index';
@@ -61,3 +65,4 @@ export * from './murf/index';
 export * from './lmnt/index';
 export * from './smallest/index';
 export * from './rime/index';
+export * from './minimax/index';

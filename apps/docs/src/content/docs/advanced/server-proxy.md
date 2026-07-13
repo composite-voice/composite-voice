@@ -50,6 +50,7 @@ const proxy = createExpressProxy({
   lmntApiKey: process.env.LMNT_API_KEY,
   smallestApiKey: process.env.SMALLEST_API_KEY,
   rimeApiKey: process.env.RIME_API_KEY,
+  minimaxApiKey: process.env.MINIMAX_API_KEY,
   sonioxApiKey: process.env.SONIOX_API_KEY,
   gladiaApiKey: process.env.GLADIA_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
@@ -143,6 +144,7 @@ The proxy automatically creates routes based on which API keys you provide:
 | `lmntApiKey` | `/api/proxy/lmnt` | — | LMNT TTS |
 | `smallestApiKey` | `/api/proxy/smallest` | — | Smallest.ai TTS |
 | `rimeApiKey` | `/api/proxy/rime` | — | Rime TTS |
+| `minimaxApiKey` | `/api/proxy/minimax` | — | MiniMax TTS |
 | `sonioxApiKey` | — | `/api/proxy/soniox` | Soniox STT |
 | `gladiaApiKey` | `/api/proxy/gladia` | — | Gladia STT (session init) |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |

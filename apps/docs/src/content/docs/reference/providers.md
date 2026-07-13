@@ -404,6 +404,7 @@ const llm = new OpenAICompatibleLLM({
 | [LMNTTTS](/guides/tts/lmnt-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, aac, ulaw, webm, pcm |
 | [SmallestTTS](/guides/tts/smallest-tts) | REST | Catalog + cloned voice IDs | No | wav, mp3, pcm, ulaw, alaw |
 | [RimeTTS](/guides/tts/rime-tts) | REST | Per-model voice catalogs | No | mp3, wav, ogg, webm, pcm, mulaw |
+| [MiniMaxTTS](/guides/tts/minimax-tts) | REST | 300+ system + cloned voice IDs | No | mp3, wav, flac, pcm |
 
 ### NativeTTS
 
@@ -636,6 +637,28 @@ const tts = new RimeTTS({
 - Speed and normalization controls (`speedAlpha`, `noTextNormalization`) on `mistv2`
 
 [API reference](/api/classes/rimetts)
+
+### MiniMaxTTS
+
+MiniMax Speech text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { MiniMaxTTS } from '@lukeocodes/composite-voice';
+
+const tts = new MiniMaxTTS({
+  proxyUrl: '/api/proxy/minimax',
+  voiceId: 'English_expressive_narrator', // system voice or a cloned voice
+  model: 'speech-02-hd',       // speech-2.8/2.6/02/01, each in -hd and -turbo
+  audioFormat: 'mp3',          // mp3, wav, flac, pcm
+  emotion: 'calm',             // optional emotion control
+});
+```
+
+- 300+ system voices across 30+ languages, plus voice cloning
+- Emotion, speed, volume, and pitch controls via config options
+- Optional `groupId` for older group-scoped API keys (sent as `?GroupId=`)
+
+[API reference](/api/classes/minimaxtts)
 
 ---
 

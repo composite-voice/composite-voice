@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance â
 order: 0
 ---
 
-CompositeVoice supports 18 provider companies across 25 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 19 provider companies across 26 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -38,6 +38,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **LMNTTTS** | | | | **yes** | |
 | **SmallestTTS** | | | | **yes** | |
 | **RimeTTS** | | | | **yes** | |
+| **MiniMaxTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -412,6 +413,26 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### MiniMax
+
+| | TTS |
+|---|---|
+| **Class** | [`MiniMaxTTS`](/guides/tts/minimax-tts) |
+| **Transport** | REST |
+| **Streaming** | No |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | speech-02-hd |
+
+**TTS features:** 300+ system voices across 30+ languages plus cloned voices via `voiceId`, emotion/speed/volume/pitch controls, 4 output formats (mp3, wav, flac, pcm), `languageBoost` pronunciation hints, custom pronunciation dictionary, optional `groupId` for older group-scoped keys.
+
+**Models:** speech-2.8-hd / speech-2.8-turbo (latest), speech-2.6-hd / speech-2.6-turbo, speech-02-hd (default) / speech-02-turbo, speech-01-hd / speech-01-turbo.
+
+**Guides:** [MiniMaxTTS](/guides/tts/minimax-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -463,10 +484,10 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
-| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts) |
-| **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
+| **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
 | **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Offline capable** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |

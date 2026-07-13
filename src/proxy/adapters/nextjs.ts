@@ -194,7 +194,10 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
       }
     }
 
-    const targetUrl = `${route.targetBase}${apiPath}`;
+    // Carry the query string (e.g. MiniMax's `GroupId`) to the upstream URL —
+    // catch-all path segments do not include it.
+    const search = new URL(req.url).search;
+    const targetUrl = `${route.targetBase}${apiPath}${search}`;
 
     // Build headers
     const forwardHeaders: Record<string, string> = { ...route.authHeaders };
