@@ -230,6 +230,7 @@ export class WebLLMLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
     // Dynamically import WebLLM SDK (peer dependency)
     const webllm = await importPeerDep<typeof import('@mlc-ai/web-llm')>(
+      () => import('@mlc-ai/web-llm'),
       '@mlc-ai/web-llm',
       'WebLLMLLM'
     );

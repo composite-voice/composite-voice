@@ -290,6 +290,19 @@ export interface CompositeVoiceProxyConfig {
   revaiApiKey?: string;
 
   /**
+   * Fish Audio API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/fishaudio`
+   * that forwards requests to `https://api.fish.audio`. The
+   * `Authorization: Bearer` auth header is injected server-side. Request
+   * bodies are msgpack-encoded binary and pass through the proxy untouched.
+   *
+   * @defaultValue `undefined` (Fish Audio proxying disabled)
+   */
+  fishAudioApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

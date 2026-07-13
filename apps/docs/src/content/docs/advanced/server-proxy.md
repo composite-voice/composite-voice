@@ -56,6 +56,7 @@ const proxy = createExpressProxy({
   revaiApiKey: process.env.REVAI_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
   speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
+  fishAudioApiKey: process.env.FISH_AUDIO_API_KEY,
 
   // Route prefix (default: '/api/proxy')
   pathPrefix: '/api/proxy',
@@ -152,8 +153,9 @@ The proxy automatically creates routes based on which API keys you provide:
 | `revaiApiKey` | — | `/api/proxy/revai` | Rev AI STT |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |
 | `speechmaticsApiKey` | — | `/api/proxy/speechmatics` | Speechmatics STT |
+| `fishAudioApiKey` | `/api/proxy/fishaudio` | — | Fish Audio TTS |
 
-HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally.
+HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally. Fish Audio's msgpack-encoded request bodies are opaque binary to the proxy and are forwarded untouched.
 
 Most providers authenticate with injected headers. Rev AI is the exception: its streaming WebSocket only accepts an `access_token` query parameter, so the proxy appends the token to the upstream URL server-side instead — overriding any client-supplied value. Either way, the credential never reaches the browser.
 

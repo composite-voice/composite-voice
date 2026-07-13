@@ -22,7 +22,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio).
  * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime).
  */
 export type RouteType = 'http' | 'websocket';
@@ -339,6 +339,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'wss://eu.rt.speechmatics.com',
       authHeaders: {
         Authorization: `Bearer ${config.speechmaticsApiKey}`,
+      },
+    });
+  }
+
+  if (config.fishAudioApiKey) {
+    routes.push({
+      provider: 'fishaudio',
+      type: 'http',
+      targetBase: 'https://api.fish.audio',
+      authHeaders: {
+        Authorization: `Bearer ${config.fishAudioApiKey}`,
       },
     });
   }

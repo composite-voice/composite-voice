@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 21 provider companies across 29 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 22 provider companies across 30 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -42,6 +42,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **SmallestTTS** | | | | **yes** | |
 | **RimeTTS** | | | | **yes** | |
 | **MiniMaxTTS** | | | | **yes** | |
+| **FishAudioTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -476,6 +477,28 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### Fish Audio
+
+| | TTS |
+|---|---|
+| **Class** | [`FishAudioTTS`](/guides/tts/fishaudio-tts) |
+| **Transport** | REST (msgpack request bodies) |
+| **Streaming** | No |
+| **Peer dependency** | `@msgpack/msgpack` >=3.0.0 (optional) |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | s2.1-pro-free |
+
+**TTS features:** Catalog voices via `referenceId`, instant voice cloning via inline binary reference audio, model generation selected with the `model` HTTP header, 4 output formats (mp3, wav, pcm, opus), prosody controls (speed 0.5–2.0, volume), latency modes (`normal` / `balanced` ~300ms time-to-first-audio), text normalization, configurable mp3 bitrate and chunk length.
+
+**Models:** s2.1-pro (recommended for production), s2.1-pro-free (free tier, default), s2-pro, s1.
+
+**Peer dependency:** Requests are MessagePack-encoded (`Content-Type: application/msgpack`), so `FishAudioTTS` requires the optional peer dependency [`@msgpack/msgpack`](https://www.npmjs.com/package/@msgpack/msgpack) — install it with `pnpm add @msgpack/msgpack`. It is loaded lazily during `initialize()`.
+
+**Guides:** [FishAudioTTS](/guides/tts/fishaudio-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -529,7 +552,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
-| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
+| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [FishAudioTTS](/guides/tts/fishaudio-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
 | **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |

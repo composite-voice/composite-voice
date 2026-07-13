@@ -486,6 +486,7 @@ const llm = new OpenAICompatibleLLM({
 | [SmallestTTS](/guides/tts/smallest-tts) | REST | Catalog + cloned voice IDs | No | wav, mp3, pcm, ulaw, alaw |
 | [RimeTTS](/guides/tts/rime-tts) | REST | Per-model voice catalogs | No | mp3, wav, ogg, webm, pcm, mulaw |
 | [MiniMaxTTS](/guides/tts/minimax-tts) | REST | 300+ system + cloned voice IDs | No | mp3, wav, flac, pcm |
+| [FishAudioTTS](/guides/tts/fishaudio-tts) | REST (msgpack) | Catalog voice IDs + inline cloning | No | mp3, wav, pcm, opus |
 
 ### NativeTTS
 
@@ -740,6 +741,31 @@ const tts = new MiniMaxTTS({
 - Optional `groupId` for older group-scoped API keys (sent as `?GroupId=`)
 
 [API reference](/api/classes/minimaxtts)
+
+### FishAudioTTS
+
+Fish Audio speech models (S1, S2 Pro, S2.1 Pro) via REST with msgpack-encoded requests. Returns complete audio in one request.
+
+**Requires the optional peer dependency [`@msgpack/msgpack`](https://www.npmjs.com/package/@msgpack/msgpack)** (`>=3.0.0`) -- Fish Audio's API takes MessagePack request bodies, which also carry binary reference audio for instant voice cloning. Install it with `pnpm add @msgpack/msgpack`. This is the only TTS provider with a peer dependency.
+
+```typescript
+import { FishAudioTTS } from '@lukeocodes/composite-voice';
+
+const tts = new FishAudioTTS({
+  proxyUrl: '/api/proxy/fishaudio',
+  referenceId: 'your-voice-id', // voice model from the Fish Audio catalog
+  model: 's2.1-pro',            // s1, s2-pro, s2.1-pro, s2.1-pro-free (HTTP header)
+  format: 'mp3',                // mp3, wav, pcm, opus
+  latency: 'balanced',          // 'normal' (stable) or 'balanced' (~300ms TTFA)
+});
+```
+
+- Catalog voices via `referenceId`, instant voice cloning via inline `references`
+- Model generation selected with the `model` HTTP header
+- Prosody controls (`speed`, `volume`) and text normalization
+- Msgpack wire format (`Content-Type: application/msgpack`); requires `@msgpack/msgpack`
+
+[API reference](/api/classes/fishaudiotts)
 
 ---
 

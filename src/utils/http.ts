@@ -112,7 +112,14 @@ export interface HttpRequestOptions {
   /** HTTP method. @defaultValue `'POST'` */
   method?: string;
 
-  /** Request body — will be JSON-serialized if it's an object. */
+  /**
+   * Request body — will be JSON-serialized if it's an object.
+   *
+   * @remarks
+   * Binary payloads (`Uint8Array`, `ArrayBuffer`, `Blob`) and pre-serialized
+   * strings are sent as-is. Pair binary bodies with an appropriate
+   * `content-type` header (e.g., `application/msgpack` for {@link FishAudioTTS}).
+   */
   body?: unknown;
 
   /** Per-request headers merged on top of the client defaults. */
@@ -212,7 +219,7 @@ export class HttpClient {
         const response = await fetch(url, {
           method,
           headers,
-          ...(body != null ? { body: JSON.stringify(body) } : {}),
+          ...(body != null ? { body: HttpClient.serializeBody(body) } : {}),
           signal: combinedSignal,
         });
 
@@ -281,6 +288,26 @@ export class HttpClient {
     throw (
       lastError ?? new ProviderResponseError(this.providerName, undefined, 'Max retries exceeded')
     );
+  }
+
+  /**
+   * Serialize a request body for `fetch`.
+   *
+   * @remarks
+   * Strings and binary payloads (`Uint8Array`, `ArrayBuffer`, `Blob`) are
+   * passed through untouched so providers can send non-JSON wire formats
+   * (e.g., msgpack-encoded bodies). Everything else is JSON-serialized.
+   */
+  private static serializeBody(body: unknown): BodyInit {
+    if (
+      typeof body === 'string' ||
+      body instanceof Uint8Array ||
+      body instanceof ArrayBuffer ||
+      (typeof Blob !== 'undefined' && body instanceof Blob)
+    ) {
+      return body as BodyInit;
+    }
+    return JSON.stringify(body);
   }
 
   /**

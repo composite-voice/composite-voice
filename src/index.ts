@@ -264,6 +264,14 @@ export type {
   MiniMaxTTSFormat,
   MiniMaxTTSEmotion,
 } from './providers/tts/minimax/index';
+export { FishAudioTTS } from './providers/tts/fishaudio/index';
+export type {
+  FishAudioTTSConfig,
+  FishAudioTTSModel,
+  FishAudioTTSFormat,
+  FishAudioTTSLatency,
+  FishAudioReference,
+} from './providers/tts/fishaudio/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

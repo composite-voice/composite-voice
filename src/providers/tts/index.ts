@@ -30,6 +30,10 @@
  * - **MiniMaxTTS** -- Connects to the MiniMax TTS API (REST). Supports the Speech
  *   models, 300+ system voices, emotion control, and multiple output formats
  *   (mp3, wav, flac, pcm).
+ * - **FishAudioTTS** -- Connects to the Fish Audio TTS API (REST) with
+ *   msgpack-encoded requests. Supports catalog voices, instant voice cloning via
+ *   inline reference audio, and multiple output formats (mp3, wav, pcm, opus).
+ *   Requires the optional peer dependency `@msgpack/msgpack`.
  *
  * @example
  * ```typescript
@@ -53,6 +57,7 @@
  * @see {@link SmallestTTS} for Smallest.ai Waves REST-based TTS
  * @see {@link RimeTTS} for Rime REST-based TTS
  * @see {@link MiniMaxTTS} for MiniMax REST-based TTS
+ * @see {@link FishAudioTTS} for Fish Audio REST-based TTS (msgpack wire format)
  */
 
 export * from './native/index';
@@ -66,3 +71,4 @@ export * from './lmnt/index';
 export * from './smallest/index';
 export * from './rime/index';
 export * from './minimax/index';
+export * from './fishaudio/index';

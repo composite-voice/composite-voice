@@ -749,6 +749,49 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('openai');
       expect(providers).toContain('openai-realtime');
     });
+
+    it('includes Fish Audio HTTP route when fishAudioApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        fishAudioApiKey: 'test-fishaudio-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'fishaudio',
+        type: 'http',
+        targetBase: 'https://api.fish.audio',
+        authHeaders: {
+          Authorization: 'Bearer test-fishaudio-key',
+        },
+      });
+    });
+
+    it('does not include Fish Audio route when fishAudioApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'fishaudio')).toBe(true);
+    });
+
+    it('includes Fish Audio alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        fishAudioApiKey: 'fishaudio-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('fishaudio');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
