@@ -174,6 +174,8 @@ export type {
   GladiaSTTEncoding,
   GladiaSTTRegion,
 } from './providers/stt/gladia/index';
+export { SpeechmaticsSTT } from './providers/stt/speechmatics/index';
+export type { SpeechmaticsSTTConfig } from './providers/stt/speechmatics/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';

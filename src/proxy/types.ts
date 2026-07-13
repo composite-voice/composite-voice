@@ -261,6 +261,18 @@ export interface CompositeVoiceProxyConfig {
   minimaxApiKey?: string;
 
   /**
+   * Speechmatics API key -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/speechmatics`
+   * that forwards connections to `wss://eu.rt.speechmatics.com`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Speechmatics proxying disabled)
+   */
+  speechmaticsApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

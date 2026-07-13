@@ -295,6 +295,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
     });
   }
 
+  if (config.speechmaticsApiKey) {
+    routes.push({
+      provider: 'speechmatics',
+      type: 'websocket',
+      targetBase: 'wss://eu.rt.speechmatics.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.speechmaticsApiKey}`,
+      },
+    });
+  }
+
   return routes;
 }
 

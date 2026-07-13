@@ -64,6 +64,7 @@ input.push(audioBuffer);
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
 | [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
 | [GladiaSTT](/guides/stt/gladia-stt) | HTTP init + WebSocket | solaria-1 | Yes | No |
+| [SpeechmaticsSTT](/guides/stt/speechmatics-stt) | WebSocket | Server default | Yes | No |
 
 ### NativeSTT
 
@@ -251,6 +252,33 @@ const stt = new GladiaSTT({
 - Session token embedded in the WebSocket URL — reconnects resume the session
 
 [API reference](/api/classes/gladiastt)
+
+### SpeechmaticsSTT
+
+Real-time speech recognition via WebSocket with built-in end-of-utterance detection for turn-taking.
+
+```typescript
+import { SpeechmaticsSTT } from '@lukeocodes/composite-voice';
+
+const stt = new SpeechmaticsSTT({
+  proxyUrl: '/api/proxy/speechmatics',
+  // OR: apiKey: async () => '...',  // temporary-key (JWT) factory for direct mode
+  language: 'en',
+  audioFormat: 'pcm_s16le',
+  sampleRate: 16000,
+  operatingPoint: 'enhanced',         // accuracy/latency trade-off
+  endOfUtteranceSilenceTrigger: 0.75, // default — drives turn-taking
+  enableSpeakerDiarization: false,
+});
+```
+
+- 50+ languages with configurable output locale and domain packs
+- End-of-utterance detection finalizes utterances when the speaker stops
+- Speaker diarization and custom vocabulary (`additionalVocab`)
+- Manual `forceEndOfUtterance()` for custom turn-taking
+- Temporary key (JWT) support via async `apiKey` factories
+
+[API reference](/api/classes/speechmaticsstt)
 
 ---
 

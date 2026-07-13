@@ -604,6 +604,49 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('minimax');
     });
+
+    it('includes Speechmatics WebSocket route when speechmaticsApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        speechmaticsApiKey: 'test-speechmatics-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'speechmatics',
+        type: 'websocket',
+        targetBase: 'wss://eu.rt.speechmatics.com',
+        authHeaders: {
+          Authorization: 'Bearer test-speechmatics-key',
+        },
+      });
+    });
+
+    it('does not include Speechmatics route when speechmaticsApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'speechmatics')).toBe(true);
+    });
+
+    it('includes Speechmatics alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        speechmaticsApiKey: 'speechmatics-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('speechmatics');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

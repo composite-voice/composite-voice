@@ -16,6 +16,8 @@
  * - **GladiaSTT** -- Connects to Gladia's v2 live STT (Solaria models) via an
  *   HTTP session init followed by WebSocket streaming. Supports server-side
  *   endpointing, language pinning, and code switching.
+ * - **SpeechmaticsSTT** -- Connects to Speechmatics' real-time streaming STT via WebSocket.
+ *   Supports 50+ languages, end-of-utterance detection, and speaker diarization.
  *
  * @example
  * ```typescript
@@ -33,6 +35,7 @@
  * @see {@link AssemblyAISTT} for AssemblyAI streaming STT
  * @see {@link SonioxSTT} for Soniox streaming STT
  * @see {@link GladiaSTT} for Gladia streaming STT
+ * @see {@link SpeechmaticsSTT} for Speechmatics streaming STT
  */
 
 export * from './native/index';
@@ -41,6 +44,7 @@ export * from './assemblyai/index';
 export * from './elevenlabs/index';
 export * from './soniox/index';
 export * from './gladia/index';
+export * from './speechmatics/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
