@@ -17,13 +17,14 @@
 
 import type { ServerResponse } from 'http';
 import type { CompositeVoiceProxyConfig } from '../types';
+import type { AwsCredentials } from '../../utils/aws/sigv4';
 
 /**
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify).
- * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT, Azure TTS).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime, Azure STT).
  */
 export type RouteType = 'http' | 'websocket';
 
@@ -63,6 +64,48 @@ export interface ProxyRoute {
    * `{ 'x-api-key': '...' }` for Anthropic or `{ Authorization: 'Bearer ...' }` for OpenAI.
    */
   authHeaders: Record<string, string>;
+
+  /**
+   * Authentication query parameters to append to the upstream URL.
+   *
+   * @remarks
+   * Some providers (e.g., Rev AI) authenticate WebSocket connections via a
+   * query parameter instead of headers. These parameters are set on the
+   * upstream URL by the WebSocket proxying core **after** the client's own
+   * query parameters are carried over, so they always override any
+   * client-supplied value. Currently applied to `'websocket'` routes only.
+   */
+  authQuery?: Record<string, string>;
+
+  /**
+   * SigV4 signing descriptor for AWS routes.
+   *
+   * @remarks
+   * When present, static header injection is not sufficient — the proxy
+   * cores sign the outgoing upstream request instead: HTTP requests get
+   * SigV4 `Authorization` headers, and WebSocket upstream URLs are
+   * presigned with `X-Amz-*` query parameters at connect time. Routes
+   * without this field behave exactly as before.
+   *
+   * @see {@link AwsSigV4RouteConfig}
+   */
+  awsSigV4?: AwsSigV4RouteConfig;
+}
+
+/**
+ * SigV4 signing configuration attached to AWS proxy routes.
+ *
+ * @remarks
+ * Carried on {@link ProxyRoute.awsSigV4} for routes built from the proxy
+ * config's `aws` credentials (Amazon Polly and Amazon Transcribe).
+ */
+export interface AwsSigV4RouteConfig {
+  /** AWS service identifier for the credential scope (`'polly'` or `'transcribe'`). */
+  service: string;
+  /** AWS region for the credential scope (e.g. `'us-east-1'`). */
+  region: string;
+  /** AWS credentials used to sign upstream requests. */
+  credentials: AwsCredentials;
 }
 
 /**
@@ -111,6 +154,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       provider: 'openai',
       type: 'http',
       targetBase: 'https://api.openai.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.openaiApiKey}`,
+      },
+    });
+
+    // The OpenAI Realtime API (used by OpenAIRealtimeSTT) upgrades to a
+    // WebSocket on the same host, reusing the same API key.
+    routes.push({
+      provider: 'openai-realtime',
+      type: 'websocket',
+      targetBase: 'wss://api.openai.com',
       authHeaders: {
         Authorization: `Bearer ${config.openaiApiKey}`,
       },
@@ -207,6 +261,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
     });
   }
 
+  if (config.gladiaApiKey) {
+    routes.push({
+      provider: 'gladia',
+      type: 'http',
+      targetBase: 'https://api.gladia.io',
+      authHeaders: {
+        'x-gladia-key': config.gladiaApiKey,
+      },
+    });
+  }
+
   if (config.speechifyApiKey) {
     routes.push({
       provider: 'speechify',
@@ -214,6 +279,75 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://api.speechify.ai',
       authHeaders: {
         Authorization: `Bearer ${config.speechifyApiKey}`,
+      },
+    });
+  }
+
+  if (config.murfApiKey) {
+    routes.push({
+      provider: 'murf',
+      type: 'http',
+      targetBase: 'https://api.murf.ai',
+      authHeaders: {
+        'api-key': config.murfApiKey,
+      },
+    });
+  }
+
+  if (config.lmntApiKey) {
+    routes.push({
+      provider: 'lmnt',
+      type: 'http',
+      targetBase: 'https://api.lmnt.com',
+      authHeaders: {
+        'X-API-Key': config.lmntApiKey,
+      },
+    });
+  }
+
+  if (config.smallestApiKey) {
+    routes.push({
+      provider: 'smallest',
+      type: 'http',
+      targetBase: 'https://api.smallest.ai',
+      authHeaders: {
+        Authorization: `Bearer ${config.smallestApiKey}`,
+      },
+    });
+  }
+
+  if (config.rimeApiKey) {
+    routes.push({
+      provider: 'rime',
+      type: 'http',
+      targetBase: 'https://users.rime.ai',
+      authHeaders: {
+        Authorization: `Bearer ${config.rimeApiKey}`,
+      },
+    });
+  }
+
+  if (config.minimaxApiKey) {
+    routes.push({
+      provider: 'minimax',
+      type: 'http',
+      targetBase: 'https://api.minimax.io',
+      authHeaders: {
+        Authorization: `Bearer ${config.minimaxApiKey}`,
+      },
+    });
+  }
+
+  // Rev AI authenticates streaming WebSockets via the access_token query
+  // parameter -- the upgrade request does not support auth headers.
+  if (config.revaiApiKey) {
+    routes.push({
+      provider: 'revai',
+      type: 'websocket',
+      targetBase: 'wss://api.rev.ai',
+      authHeaders: {},
+      authQuery: {
+        access_token: config.revaiApiKey,
       },
     });
   }
@@ -226,6 +360,96 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       authHeaders: {
         'X-API-Key': config.cartesiaApiKey,
       },
+    });
+  }
+
+  if (config.speechmaticsApiKey) {
+    routes.push({
+      provider: 'speechmatics',
+      type: 'websocket',
+      targetBase: 'wss://eu.rt.speechmatics.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.speechmaticsApiKey}`,
+      },
+    });
+  }
+
+  if (config.fishAudioApiKey) {
+    routes.push({
+      provider: 'fishaudio',
+      type: 'http',
+      targetBase: 'https://api.fish.audio',
+      authHeaders: {
+        Authorization: `Bearer ${config.fishAudioApiKey}`,
+      },
+    });
+  }
+
+  // Google Cloud TTS and STT use separate hosts but share one API key
+  if (config.googleCloudApiKey) {
+    routes.push({
+      provider: 'google-tts',
+      type: 'http',
+      targetBase: 'https://texttospeech.googleapis.com',
+      authHeaders: {
+        'X-goog-api-key': config.googleCloudApiKey,
+      },
+    });
+    routes.push({
+      provider: 'google-stt',
+      type: 'http',
+      targetBase: 'https://speech.googleapis.com',
+      authHeaders: {
+        'X-goog-api-key': config.googleCloudApiKey,
+      },
+    });
+  }
+
+  // Azure Speech uses regional hosts, so the region is part of the config.
+  // TTS (HTTP) and STT (WebSocket) live on different hosts -> two routes.
+  if (config.azureSpeechApiKey && config.azureSpeechRegion) {
+    routes.push({
+      provider: 'azure-tts',
+      type: 'http',
+      targetBase: `https://${config.azureSpeechRegion}.tts.speech.microsoft.com`,
+      authHeaders: {
+        'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
+      },
+    });
+    routes.push({
+      provider: 'azure-stt',
+      type: 'websocket',
+      targetBase: `wss://${config.azureSpeechRegion}.stt.speech.microsoft.com`,
+      authHeaders: {
+        'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
+      },
+    });
+  }
+
+  // AWS routes authenticate via SigV4 (signed headers / presigned URLs)
+  // rather than static header injection — see ProxyRoute.awsSigV4.
+  if (config.aws) {
+    const { accessKeyId, secretAccessKey, sessionToken, region } = config.aws;
+    const credentials: AwsCredentials = {
+      accessKeyId,
+      secretAccessKey,
+      ...(sessionToken ? { sessionToken } : {}),
+    };
+
+    routes.push({
+      provider: 'polly',
+      type: 'http',
+      targetBase: `https://polly.${region}.amazonaws.com`,
+      authHeaders: {},
+      awsSigV4: { service: 'polly', region, credentials },
+    });
+
+    routes.push({
+      provider: 'transcribe',
+      type: 'websocket',
+      targetBase: `wss://transcribestreaming.${region}.amazonaws.com:8443`,
+      authHeaders: {},
+      awsSigV4: { service: 'transcribe', region, credentials },
     });
   }
 

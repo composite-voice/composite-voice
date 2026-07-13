@@ -168,6 +168,36 @@ export type {
 } from './providers/stt/elevenlabs/index';
 export { SonioxSTT } from './providers/stt/soniox/index';
 export type { SonioxSTTConfig } from './providers/stt/soniox/index';
+export { GladiaSTT } from './providers/stt/gladia/index';
+export type {
+  GladiaSTTConfig,
+  GladiaSTTEncoding,
+  GladiaSTTRegion,
+} from './providers/stt/gladia/index';
+export { SpeechmaticsSTT } from './providers/stt/speechmatics/index';
+export type { SpeechmaticsSTTConfig } from './providers/stt/speechmatics/index';
+export { RevAISTT } from './providers/stt/revai/index';
+export type { RevAISTTConfig } from './providers/stt/revai/index';
+export { OpenAIRealtimeSTT } from './providers/stt/openai/index';
+export type {
+  OpenAIRealtimeSTTConfig,
+  OpenAIRealtimeTurnDetection,
+  OpenAIRealtimeServerVad,
+  OpenAIRealtimeSemanticVad,
+} from './providers/stt/openai/index';
+export { GoogleSTT } from './providers/stt/google/index';
+export type {
+  GoogleSTTConfig,
+  GoogleSTTEncoding,
+  GoogleSTTWordInfo,
+} from './providers/stt/google/index';
+export { AzureSTT } from './providers/stt/azure/index';
+export type { AzureSTTConfig, AzureSTTRecognitionMode } from './providers/stt/azure/index';
+export { TranscribeSTT } from './providers/stt/transcribe/index';
+export type {
+  TranscribeSTTConfig,
+  TranscribePartialResultsStability,
+} from './providers/stt/transcribe/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -216,6 +246,55 @@ export type {
   SpeechifyTTSModel,
   SpeechifyTTSFormat,
 } from './providers/tts/speechify/index';
+export { MurfTTS } from './providers/tts/murf/index';
+export type {
+  MurfTTSConfig,
+  MurfTTSModelVersion,
+  MurfTTSFormat,
+  MurfTTSSampleRate,
+  MurfTTSChannelType,
+} from './providers/tts/murf/index';
+export { LMNTTTS } from './providers/tts/lmnt/index';
+export type {
+  LMNTTTSConfig,
+  LMNTTTSModel,
+  LMNTTTSFormat,
+  LMNTTTSSampleRate,
+} from './providers/tts/lmnt/index';
+export { SmallestTTS } from './providers/tts/smallest/index';
+export type {
+  SmallestTTSConfig,
+  SmallestTTSModel,
+  SmallestTTSFormat,
+  SmallestTTSSampleRate,
+} from './providers/tts/smallest/index';
+export { RimeTTS } from './providers/tts/rime/index';
+export type { RimeTTSConfig, RimeTTSModel, RimeTTSFormat } from './providers/tts/rime/index';
+export { MiniMaxTTS } from './providers/tts/minimax/index';
+export type {
+  MiniMaxTTSConfig,
+  MiniMaxTTSModel,
+  MiniMaxTTSFormat,
+  MiniMaxTTSEmotion,
+} from './providers/tts/minimax/index';
+export { FishAudioTTS } from './providers/tts/fishaudio/index';
+export type {
+  FishAudioTTSConfig,
+  FishAudioTTSModel,
+  FishAudioTTSFormat,
+  FishAudioTTSLatency,
+  FishAudioReference,
+} from './providers/tts/fishaudio/index';
+export { GoogleTTS } from './providers/tts/google/index';
+export type {
+  GoogleTTSConfig,
+  GoogleTTSAudioEncoding,
+  GoogleTTSSsmlGender,
+} from './providers/tts/google/index';
+export { AzureTTS } from './providers/tts/azure/index';
+export type { AzureTTSConfig, AzureTTSOutputFormat } from './providers/tts/azure/index';
+export { PollyTTS } from './providers/tts/polly/index';
+export type { PollyTTSConfig, PollyEngine, PollyOutputFormat } from './providers/tts/polly/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';
@@ -288,6 +367,24 @@ export {
 
 // Audio format detection types
 export type { DetectedAudioFormat } from './utils/index';
+
+// AWS utilities (SigV4 signing + event-stream codec, WebCrypto-based)
+export {
+  signAwsRequestHeaders,
+  presignAwsUrl,
+  resolveAwsCredentials,
+  encodeEventStreamMessage,
+  decodeEventStreamMessage,
+  crc32,
+} from './utils/index';
+export type {
+  AwsCredentials,
+  AwsCredentialsProvider,
+  SignAwsRequestOptions,
+  PresignAwsUrlOptions,
+  EventStreamMessage,
+  EventStreamHeaderValue,
+} from './utils/index';
 
 // Pipeline utilities
 export {

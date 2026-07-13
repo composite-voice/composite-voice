@@ -69,11 +69,14 @@ export interface CompositeVoiceProxyConfig {
   anthropicApiKey?: string;
 
   /**
-   * OpenAI API key -- used for HTTP LLM and TTS proxying.
+   * OpenAI API key -- used for HTTP LLM and TTS proxying, and for
+   * WebSocket Realtime STT proxying.
    *
    * @remarks
    * When set, the proxy registers an HTTP route at `{pathPrefix}/openai`
-   * that forwards requests to `https://api.openai.com`.
+   * that forwards requests to `https://api.openai.com`, and a WebSocket
+   * route at `{pathPrefix}/openai-realtime` that forwards Realtime API
+   * connections (used by `OpenAIRealtimeSTT`) to `wss://api.openai.com`.
    *
    * @defaultValue `undefined` (OpenAI proxying disabled)
    */
@@ -175,6 +178,20 @@ export interface CompositeVoiceProxyConfig {
   sonioxApiKey?: string;
 
   /**
+   * Gladia API key -- used for HTTP STT session-init proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/gladia`
+   * that forwards requests to `https://api.gladia.io`. The `x-gladia-key`
+   * auth header is injected server-side. Only the session-init POST goes
+   * through the proxy -- the audio WebSocket connects directly to the
+   * tokenized URL that Gladia returns.
+   *
+   * @defaultValue `undefined` (Gladia proxying disabled)
+   */
+  gladiaApiKey?: string;
+
+  /**
    * Speechify API key -- used for HTTP TTS proxying.
    *
    * @remarks
@@ -184,6 +201,183 @@ export interface CompositeVoiceProxyConfig {
    * @defaultValue `undefined` (Speechify proxying disabled)
    */
   speechifyApiKey?: string;
+
+  /**
+   * Murf API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/murf`
+   * that forwards requests to `https://api.murf.ai`. The `api-key` auth
+   * header is injected server-side.
+   *
+   * @defaultValue `undefined` (Murf proxying disabled)
+   */
+  murfApiKey?: string;
+
+  /**
+   * LMNT API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/lmnt`
+   * that forwards requests to `https://api.lmnt.com`. The `X-API-Key`
+   * auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (LMNT proxying disabled)
+   */
+  lmntApiKey?: string;
+
+  /**
+   * Smallest.ai API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/smallest`
+   * that forwards requests to `https://api.smallest.ai`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Smallest.ai proxying disabled)
+   */
+  smallestApiKey?: string;
+
+  /**
+   * Rime API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/rime`
+   * that forwards requests to `https://users.rime.ai`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Rime proxying disabled)
+   */
+  rimeApiKey?: string;
+
+  /**
+   * MiniMax API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/minimax`
+   * that forwards requests to `https://api.minimax.io`. The
+   * `Authorization: Bearer` auth header is injected server-side. Query
+   * parameters (e.g. `GroupId`) are forwarded to the upstream unchanged.
+   *
+   * @defaultValue `undefined` (MiniMax proxying disabled)
+   */
+  minimaxApiKey?: string;
+
+  /**
+   * Speechmatics API key -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/speechmatics`
+   * that forwards connections to `wss://eu.rt.speechmatics.com`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Speechmatics proxying disabled)
+   */
+  speechmaticsApiKey?: string;
+
+  /**
+   * Rev AI access token -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/revai`
+   * that forwards connections to `wss://api.rev.ai`. Rev AI authenticates
+   * streaming connections via an `access_token` query parameter (upgrade
+   * headers are not supported), so the token is appended to the upstream
+   * URL server-side, overriding any client-supplied value.
+   *
+   * @defaultValue `undefined` (Rev AI proxying disabled)
+   */
+  revaiApiKey?: string;
+
+  /**
+   * Fish Audio API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/fishaudio`
+   * that forwards requests to `https://api.fish.audio`. The
+   * `Authorization: Bearer` auth header is injected server-side. Request
+   * bodies are msgpack-encoded binary and pass through the proxy untouched.
+   *
+   * @defaultValue `undefined` (Fish Audio proxying disabled)
+   */
+  fishAudioApiKey?: string;
+
+  /**
+   * Google Cloud API key -- used for HTTP TTS and STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers two HTTP routes: `{pathPrefix}/google-tts`
+   * forwarding to `https://texttospeech.googleapis.com` (Text-to-Speech) and
+   * `{pathPrefix}/google-stt` forwarding to `https://speech.googleapis.com`
+   * (Speech-to-Text). The `X-goog-api-key` auth header is injected
+   * server-side on both routes. The key should be enabled for the Cloud
+   * Text-to-Speech and/or Speech-to-Text APIs.
+   *
+   * This is separate from {@link CompositeVoiceProxyConfig.geminiApiKey | geminiApiKey},
+   * which proxies the Gemini LLM API on a different host.
+   *
+   * @defaultValue `undefined` (Google Cloud speech proxying disabled)
+   */
+  googleCloudApiKey?: string;
+
+  /**
+   * Microsoft Azure Speech resource key -- used for HTTP TTS and WebSocket
+   * STT proxying.
+   *
+   * @remarks
+   * When set together with {@link CompositeVoiceProxyConfig.azureSpeechRegion | azureSpeechRegion},
+   * the proxy registers an HTTP route at `{pathPrefix}/azure-tts` (forwarding
+   * to `https://<region>.tts.speech.microsoft.com`) and a WebSocket route at
+   * `{pathPrefix}/azure-stt` (forwarding to
+   * `wss://<region>.stt.speech.microsoft.com`). The
+   * `Ocp-Apim-Subscription-Key` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Azure Speech proxying disabled)
+   */
+  azureSpeechApiKey?: string;
+
+  /**
+   * Microsoft Azure Speech resource region (e.g. `'eastus'`) -- used to
+   * build the upstream hosts for the `azure-tts` and `azure-stt` routes.
+   *
+   * @remarks
+   * Required alongside {@link CompositeVoiceProxyConfig.azureSpeechApiKey | azureSpeechApiKey};
+   * the Azure routes are only registered when both are set.
+   *
+   * @defaultValue `undefined` (Azure Speech proxying disabled)
+   */
+  azureSpeechRegion?: string;
+
+  /**
+   * AWS credentials and region -- used for Amazon Polly (HTTP) and Amazon
+   * Transcribe streaming (WebSocket) proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/polly`
+   * (forwarding to `https://polly.{region}.amazonaws.com`) and a WebSocket
+   * route at `{pathPrefix}/transcribe` (forwarding to
+   * `wss://transcribestreaming.{region}.amazonaws.com:8443`).
+   *
+   * Unlike API-key providers, AWS requests cannot be authenticated by
+   * injecting a static header: SigV4 signatures cover the host, path,
+   * query string, and body. The proxy therefore signs each upstream Polly
+   * request (SigV4 headers) and presigns each upstream Transcribe
+   * WebSocket URL (SigV4 query parameters) at connect time, using these
+   * credentials. Browsers send unsigned requests to the proxy and never
+   * see the AWS keys.
+   *
+   * @defaultValue `undefined` (AWS proxying disabled)
+   */
+  aws?: {
+    /** AWS access key ID. */
+    accessKeyId: string;
+    /** AWS secret access key. */
+    secretAccessKey: string;
+    /** Session token, when using temporary credentials (STS/Cognito). */
+    sessionToken?: string;
+    /** AWS region for both the Polly and Transcribe endpoints (e.g. `'us-east-1'`). */
+    region: string;
+  };
 
   /**
    * URL path prefix for all proxy routes.

@@ -78,6 +78,7 @@
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@fontsource/inter": "^5.2.8",
+    "@msgpack/msgpack": "^3.1.3",
     "@resvg/resvg-js": "^2.6.2",
     "@types/dom-speech-recognition": "^0.0.7",
     "@types/jest": "^29.5.12",
@@ -100,6 +101,7 @@
   },
   "peerDependencies": {
     "@mlc-ai/web-llm": ">=0.2.74",
+    "@msgpack/msgpack": ">=3.0.0",
     "ws": ">=8.0.0"
   },
   "peerDependenciesMeta": {
@@ -107,6 +109,9 @@
       "optional": true
     },
     "@mlc-ai/web-llm": {
+      "optional": true
+    },
+    "@msgpack/msgpack": {
       "optional": true
     }
   },

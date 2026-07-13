@@ -63,6 +63,13 @@ input.push(audioBuffer);
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | WebSocket | Default model | Yes | No |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
 | [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
+| [GladiaSTT](/guides/stt/gladia-stt) | HTTP init + WebSocket | solaria-1 | Yes | No |
+| [SpeechmaticsSTT](/guides/stt/speechmatics-stt) | WebSocket | Server default | Yes | No |
+| [RevAISTT](/guides/stt/revai-stt) | WebSocket | Default model | Yes | No |
+| [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) | WebSocket | gpt-4o-mini-transcribe, gpt-4o-transcribe, whisper-1, gpt-realtime-whisper | Yes | No |
+| [GoogleSTT](/guides/stt/google-stt) | HTTP (REST, batch) | latest_short, latest_long, telephony, ... | No | No |
+| [AzureSTT](/guides/stt/azure-stt) | WebSocket | Azure Speech service | Yes | No |
+| [TranscribeSTT](/guides/stt/transcribe-stt) | WebSocket | Amazon Transcribe streaming | Yes | No |
 
 ### NativeSTT
 
@@ -224,6 +231,190 @@ const stt = new SonioxSTT({
 
 [API reference](/api/classes/sonioxstt)
 
+### GladiaSTT
+
+Real-time speech recognition via Gladia's v2 live API (Solaria models) with configurable server-side endpointing for turn-taking.
+
+```typescript
+import { GladiaSTT } from '@lukeocodes/composite-voice';
+
+const stt = new GladiaSTT({
+  proxyUrl: '/api/proxy/gladia',
+  // OR: apiKey: '...',              // direct API key (dev only)
+  model: 'solaria-1',
+  encoding: 'wav/pcm',
+  sampleRate: 16000,
+  languages: ['en'],                 // pin or restrict language detection
+  endpointing: 0.3,                  // seconds of silence before finalizing
+  codeSwitching: false,              // re-detect language per utterance
+});
+```
+
+- HTTP session init (`POST /v2/live`) + direct WebSocket streaming
+- Server-side endpointing finalizes utterances when the speaker stops
+- Language pinning and per-utterance code switching
+- Word-level timestamps and confidence on final results
+- Session token embedded in the WebSocket URL — reconnects resume the session
+
+[API reference](/api/classes/gladiastt)
+
+### SpeechmaticsSTT
+
+Real-time speech recognition via WebSocket with built-in end-of-utterance detection for turn-taking.
+
+```typescript
+import { SpeechmaticsSTT } from '@lukeocodes/composite-voice';
+
+const stt = new SpeechmaticsSTT({
+  proxyUrl: '/api/proxy/speechmatics',
+  // OR: apiKey: async () => '...',  // temporary-key (JWT) factory for direct mode
+  language: 'en',
+  audioFormat: 'pcm_s16le',
+  sampleRate: 16000,
+  operatingPoint: 'enhanced',         // accuracy/latency trade-off
+  endOfUtteranceSilenceTrigger: 0.75, // default — drives turn-taking
+  enableSpeakerDiarization: false,
+});
+```
+
+- 50+ languages with configurable output locale and domain packs
+- End-of-utterance detection finalizes utterances when the speaker stops
+- Speaker diarization and custom vocabulary (`additionalVocab`)
+- Manual `forceEndOfUtterance()` for custom turn-taking
+- Temporary key (JWT) support via async `apiKey` factories
+
+[API reference](/api/classes/speechmaticsstt)
+
+### RevAISTT
+
+Real-time speech recognition via WebSocket with punctuated, confidence-scored final transcripts.
+
+```typescript
+import { RevAISTT } from '@lukeocodes/composite-voice';
+
+const stt = new RevAISTT({
+  proxyUrl: '/api/proxy/revai',
+  // OR: apiKey: '...',              // direct or async token factory
+  sampleRate: 16000,                 // raw audio: 8000-48000 Hz
+  language: 'en',                    // en, fr, de, it, ja, ko, cmn, pt, es
+  filterProfanity: false,            // English only
+  removeDisfluencies: false,         // English only
+  maxSegmentDurationSeconds: 10,     // force finals every 5-30 s
+});
+```
+
+- Punctuated, capitalized finals with per-word timestamps and confidence
+- 9 languages (en, fr, de, it, ja, ko, cmn, pt, es)
+- Profanity filtering, disfluency removal, and custom vocabularies
+- Speaker-switch labels with the `machine_v2` transcriber
+- Auth via `access_token` query parameter (injected server-side in proxy mode)
+
+[API reference](/api/classes/revaistt)
+
+### OpenAIRealtimeSTT
+
+Real-time speech recognition via OpenAI's Realtime API transcription intent, with server or semantic VAD turn detection.
+
+```typescript
+import { OpenAIRealtimeSTT } from '@lukeocodes/composite-voice';
+
+const stt = new OpenAIRealtimeSTT({
+  proxyUrl: '/api/proxy/openai-realtime',
+  // OR: apiKey: '...',              // direct key or async ephemeral-secret factory
+  model: 'gpt-4o-mini-transcribe',   // gpt-4o-transcribe, whisper-1, gpt-realtime-whisper
+  language: 'en',                    // ISO 639-1 hint
+  turnDetection: { type: 'server_vad' },  // default — drives turn-taking
+  noiseReduction: 'near_field',      // optional input noise reduction
+});
+```
+
+- Server VAD (volume-based) or semantic VAD (model-based) turn detection
+- Optional input noise reduction (near-field / far-field)
+- Prompt-based vocabulary steering for domain terms
+- Ephemeral client-secret support via async `apiKey` factories (browser-safe auth over WebSocket subprotocols)
+- 24 kHz mono PCM input (pair with `MicrophoneInput({ sampleRate: 24000 })`)
+
+[API reference](/api/classes/openairealtimestt)
+
+### GoogleSTT
+
+Batch (per-utterance) speech recognition via Google Cloud Speech-to-Text's synchronous REST endpoint. Each `transcribe(blob)` call uploads a complete recording (up to 60 seconds) and emits one final result with `utteranceComplete: true`.
+
+```typescript
+import { GoogleSTT } from '@lukeocodes/composite-voice';
+
+const stt = new GoogleSTT({
+  proxyUrl: '/api/proxy/google-stt',
+  // OR: apiKey: 'AIza...',            // Google Cloud API key (X-goog-api-key)
+  language: 'en-US',
+  encoding: 'WEBM_OPUS',               // matches MediaRecorder output
+  sampleRate: 48000,
+  model: 'latest_short',               // latest_short, latest_long, telephony, ...
+  enableWordTimeOffsets: true,         // word timings in metadata.words
+  keywords: ['CompositeVoice'],        // phrase hints via speechContexts
+});
+```
+
+- Batch REST transcription — one final result per complete recording, no interim results
+- 60 seconds / 10 MB of audio per request (synchronous `speech:recognize` limit)
+- Automatic punctuation, profanity filtering, phrase hints, alternative languages
+- Word-level time offsets in result metadata
+
+> Google's streaming recognition (`StreamingRecognize`) is gRPC-only in both v1 and v2 — there is no public WebSocket endpoint, so no live variant exists. For real-time streaming STT use [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt), or [SonioxSTT](/guides/stt/soniox-stt).
+
+[API reference](/api/classes/googlestt)
+
+### AzureSTT
+
+Microsoft Azure Speech real-time recognition via WebSocket, speaking the same wire protocol as the official Speech SDK.
+
+```typescript
+import { AzureSTT } from '@lukeocodes/composite-voice';
+
+const stt = new AzureSTT({
+  proxyUrl: '/api/proxy/azure-stt',
+  // OR: apiKey: '...', region: 'eastus',  // string key or async token factory
+  language: 'en-US',
+  recognitionMode: 'conversation',   // conversation, interactive, dictation
+  outputFormat: 'simple',            // 'detailed' adds NBest + confidence
+});
+```
+
+- 100+ recognition locales
+- Interim hypotheses plus final phrases with `utteranceComplete` turn-taking
+- Continuous recognition across turns on one connection
+- Query-parameter auth for browsers (subscription key or 10-minute bearer token)
+- Zero dependencies — no `microsoft-cognitiveservices-speech-sdk` required
+
+[API reference](/api/classes/azurestt)
+
+### TranscribeSTT
+
+Amazon Transcribe streaming speech recognition over WebSocket, authenticated with SigV4-presigned URLs. No AWS SDK required.
+
+```typescript
+import { TranscribeSTT } from '@lukeocodes/composite-voice';
+
+const stt = new TranscribeSTT({
+  proxyUrl: '/api/proxy/transcribe',
+  // OR: credentials: async () => fetchTempCredentials(), region: 'us-east-1',
+  languageCode: 'en-US',
+  mediaEncoding: 'pcm',               // pcm, ogg-opus, flac
+  sampleRate: 16000,
+  enablePartialResultsStabilization: true,
+  partialResultsStability: 'high',    // high, medium, low
+});
+```
+
+- Partial (interim) and final results with word-level timing
+- Partial-results stabilization for lower interim latency
+- Custom vocabularies, vocabulary filters, and speaker partitioning
+- Automatic language identification (`identifyLanguage` + `languageOptions`)
+- Temporary-credentials support via async `credentials` factories (STS/Cognito)
+- Built-in WebCrypto SigV4 presigning and event-stream framing
+
+[API reference](/api/classes/transcribestt)
+
 ---
 
 ## Large Language Models (LLM)
@@ -372,6 +563,15 @@ const llm = new OpenAICompatibleLLM({
 | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
 | [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
 | [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
+| [MurfTTS](/guides/tts/murf-tts) | REST | Murf voice library (`en-US-natalie`, ...) | No | mp3, wav, flac, alaw, ulaw |
+| [LMNTTTS](/guides/tts/lmnt-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, aac, ulaw, webm, pcm |
+| [SmallestTTS](/guides/tts/smallest-tts) | REST | Catalog + cloned voice IDs | No | wav, mp3, pcm, ulaw, alaw |
+| [RimeTTS](/guides/tts/rime-tts) | REST | Per-model voice catalogs | No | mp3, wav, ogg, webm, pcm, mulaw |
+| [MiniMaxTTS](/guides/tts/minimax-tts) | REST | 300+ system + cloned voice IDs | No | mp3, wav, flac, pcm |
+| [FishAudioTTS](/guides/tts/fishaudio-tts) | REST (msgpack) | Catalog voice IDs + inline cloning | No | mp3, wav, pcm, opus |
+| [GoogleTTS](/guides/tts/google-tts) | REST | Chirp 3: HD, Neural2, Studio, WaveNet, ... | No | MP3, OGG_OPUS, LINEAR16, MULAW, ALAW |
+| [AzureTTS](/guides/tts/azure-tts) | REST | Neural voices (140+ locales) | No | mp3, wav, ogg, webm, raw pcm |
+| [PollyTTS](/guides/tts/polly-tts) | REST | Polly voices (Joanna, Matthew, ...) | No | mp3, ogg_vorbis, ogg_opus, pcm |
 
 ### NativeTTS
 
@@ -510,6 +710,218 @@ const tts = new SpeechifyTTS({
 - Emotion, pitch, and speed via SSML `<prosody>` tags in the input
 
 [API reference](/api/classes/speechifytts)
+
+### MurfTTS
+
+Murf AI Gen2 text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { MurfTTS } from '@lukeocodes/composite-voice';
+
+const tts = new MurfTTS({
+  proxyUrl: '/api/proxy/murf',
+  voiceId: 'en-US-natalie',    // from GET /v1/speech/voices
+  format: 'mp3',               // mp3, wav, flac, alaw, ulaw
+  style: 'Conversational',     // per-voice speaking styles
+  rate: 0,                     // -50 to 50
+  pitch: 0,                    // -50 to 50
+  variation: 1,                // 0 to 5 — prosody variation
+});
+```
+
+- Gen2 model with natural, studio-quality voices
+- Per-voice speaking styles (Conversational, Promo, ...)
+- Rate, pitch, and prosody variation controls
+- Multilingual voices via the `locale` option
+
+[API reference](/api/classes/murftts)
+
+### LMNTTTS
+
+LMNT Blizzard text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { LMNTTTS } from '@lukeocodes/composite-voice';
+
+const tts = new LMNTTTS({
+  proxyUrl: '/api/proxy/lmnt',
+  voice: 'leah',           // from GET /v1/ai/voice/list or a cloned voice
+  model: 'blizzard',       // LMNT's current speech model
+  format: 'mp3',           // mp3, wav, aac, ulaw, webm, pcm_s16le, pcm_f32le
+  language: 'en',          // optional; auto-detected when omitted
+  temperature: 0.7,        // expressiveness (lower = more neutral)
+  topP: 0.9,               // stability (lower = more consistent)
+});
+```
+
+- Catalog voices and instant voice cloning
+- 31 languages via the Blizzard model
+- Expressiveness (`temperature`) and stability (`topP`) controls
+
+[API reference](/api/classes/lmnttts)
+
+### SmallestTTS
+
+Smallest.ai Lightning text-to-speech via the Waves REST API. Returns complete audio in one request.
+
+```typescript
+import { SmallestTTS } from '@lukeocodes/composite-voice';
+
+const tts = new SmallestTTS({
+  proxyUrl: '/api/proxy/smallest',
+  voiceId: 'meher',            // Waves catalog voice or a cloned voice
+  model: 'lightning_v3.1',     // lightning_v3.1, lightning_v3.1_pro
+  outputFormat: 'wav',         // wav, mp3, pcm, ulaw, alaw
+  sampleRate: 24000,           // 8000, 16000, 24000, 44100
+  speed: 1.0,                  // 0.5 to 2.0
+});
+```
+
+- Ultra-low-latency Lightning v3.1 and v3.1 Pro models
+- 12 languages (English, Hindi, Spanish, and 9 Indian languages) plus voice cloning
+- Telephony-friendly ulaw/alaw output at 8 kHz
+
+[API reference](/api/classes/smallesttts)
+
+### RimeTTS
+
+Rime text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { RimeTTS } from '@lukeocodes/composite-voice';
+
+const tts = new RimeTTS({
+  proxyUrl: '/api/proxy/rime',
+  speaker: 'astra',            // from Rime's per-model voice catalogs
+  model: 'arcana',             // coda, arcana, arcanav3, arcanav2, mistv3, mistv2
+  audioFormat: 'mp3',          // mp3, wav, ogg, webm, pcm, mulaw
+  language: 'en',              // ISO 639-1 or 639-2/3 code
+});
+```
+
+- Flagship `coda`, expressive `arcana`, and low-latency `mist` model families
+- Output format selected via the `Accept` header (raw audio bytes)
+- Speed and normalization controls (`speedAlpha`, `noTextNormalization`) on `mistv2`
+
+[API reference](/api/classes/rimetts)
+
+### MiniMaxTTS
+
+MiniMax Speech text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { MiniMaxTTS } from '@lukeocodes/composite-voice';
+
+const tts = new MiniMaxTTS({
+  proxyUrl: '/api/proxy/minimax',
+  voiceId: 'English_expressive_narrator', // system voice or a cloned voice
+  model: 'speech-02-hd',       // speech-2.8/2.6/02/01, each in -hd and -turbo
+  audioFormat: 'mp3',          // mp3, wav, flac, pcm
+  emotion: 'calm',             // optional emotion control
+});
+```
+
+- 300+ system voices across 30+ languages, plus voice cloning
+- Emotion, speed, volume, and pitch controls via config options
+- Optional `groupId` for older group-scoped API keys (sent as `?GroupId=`)
+
+[API reference](/api/classes/minimaxtts)
+
+### FishAudioTTS
+
+Fish Audio speech models (S1, S2 Pro, S2.1 Pro) via REST with msgpack-encoded requests. Returns complete audio in one request.
+
+**Requires the optional peer dependency [`@msgpack/msgpack`](https://www.npmjs.com/package/@msgpack/msgpack)** (`>=3.0.0`) -- Fish Audio's API takes MessagePack request bodies, which also carry binary reference audio for instant voice cloning. Install it with `pnpm add @msgpack/msgpack`. This is the only TTS provider with a peer dependency.
+
+```typescript
+import { FishAudioTTS } from '@lukeocodes/composite-voice';
+
+const tts = new FishAudioTTS({
+  proxyUrl: '/api/proxy/fishaudio',
+  referenceId: 'your-voice-id', // voice model from the Fish Audio catalog
+  model: 's2.1-pro',            // s1, s2-pro, s2.1-pro, s2.1-pro-free (HTTP header)
+  format: 'mp3',                // mp3, wav, pcm, opus
+  latency: 'balanced',          // 'normal' (stable) or 'balanced' (~300ms TTFA)
+});
+```
+
+- Catalog voices via `referenceId`, instant voice cloning via inline `references`
+- Model generation selected with the `model` HTTP header
+- Prosody controls (`speed`, `volume`) and text normalization
+- Msgpack wire format (`Content-Type: application/msgpack`); requires `@msgpack/msgpack`
+
+[API reference](/api/classes/fishaudiotts)
+
+### GoogleTTS
+
+Google Cloud Text-to-Speech via REST. Returns complete audio in one request.
+
+```typescript
+import { GoogleTTS } from '@lukeocodes/composite-voice';
+
+const tts = new GoogleTTS({
+  proxyUrl: '/api/proxy/google-tts',
+  languageCode: 'en-US',                  // BCP-47 language/region
+  voiceName: 'en-US-Chirp3-HD-Kore',      // Chirp 3: HD, Neural2, Studio, WaveNet, ...
+  audioEncoding: 'MP3',                   // MP3, OGG_OPUS, LINEAR16, MULAW, ALAW
+  speakingRate: 1.0,                      // 0.25 – 4.0
+  pitch: 0,                               // semitones, -20 to +20
+});
+```
+
+- Full Google voice catalog: Chirp 3: HD (latest), Neural2, Studio, WaveNet, Polyglot, News, Casual, Standard
+- SSML input supported (text starting with `<speak` is sent as SSML)
+- Rate, pitch, volume gain, sample rate, and device effects profiles
+- API-key auth via the `X-goog-api-key` header (service accounts out of scope)
+
+[API reference](/api/classes/googletts)
+
+### AzureTTS
+
+Microsoft Azure Speech text-to-speech via REST (SSML). Returns complete audio in one request.
+
+```typescript
+import { AzureTTS } from '@lukeocodes/composite-voice';
+
+const tts = new AzureTTS({
+  proxyUrl: '/api/proxy/azure-tts',
+  // OR: apiKey: '...', region: 'eastus',  // string key or async token factory
+  voiceName: 'en-US-AriaNeural',           // required
+  outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+  style: 'cheerful',                       // optional speaking style
+  rate: 1.1,                               // optional prosody rate multiplier
+});
+```
+
+- Hundreds of neural voices across 140+ locales
+- Speaking styles via `<mstts:express-as>`, rate/pitch via `<prosody>`
+- User text is XML-escaped automatically before SSML embedding
+- mp3, wav (riff), ogg/webm opus, and raw pcm output formats
+
+[API reference](/api/classes/azuretts)
+
+### PollyTTS
+
+Amazon Polly text-to-speech via SigV4-signed REST calls. Returns complete audio in one request. No AWS SDK required.
+
+```typescript
+import { PollyTTS } from '@lukeocodes/composite-voice';
+
+const tts = new PollyTTS({
+  proxyUrl: '/api/proxy/polly',
+  // OR: credentials: async () => fetchTempCredentials(), region: 'us-east-1',
+  voiceId: 'Joanna',           // see Polly's DescribeVoices
+  engine: 'neural',            // neural, generative, long-form, standard
+  outputFormat: 'mp3',         // mp3, ogg_vorbis, ogg_opus, pcm
+});
+```
+
+- Neural, generative, long-form, and standard engines
+- SSML input via `textType: 'ssml'` for prosody and pronunciation control
+- Pronunciation lexicons via `lexiconNames`
+- Temporary-credentials support via async `credentials` factories (STS/Cognito)
+
+[API reference](/api/classes/pollytts)
 
 ---
 

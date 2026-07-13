@@ -16,6 +16,8 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
+import { signAwsRequestHeaders } from '../../utils/aws/sigv4';
+import type { AwsSigV4RouteConfig } from '../utils/routing';
 
 /**
  * Headers that must not be forwarded upstream (hop-by-hop / connection-specific).
@@ -138,9 +140,13 @@ export class BodyTooLargeError extends Error {
  *   (e.g., `https://api.anthropic.com/v1/messages`).
  * @param authHeaders - Authentication headers to inject into the upstream request
  *   (e.g., `{ 'x-api-key': '...' }`).
- * @param options - Optional settings for body size limiting.
+ * @param options - Optional settings for body size limiting and AWS signing.
  * @param options.maxBodySize - Maximum request body size in bytes.
  *   Requests exceeding this are rejected with 413 Payload Too Large.
+ * @param options.awsSigV4 - When set (AWS routes such as Amazon Polly), the
+ *   outgoing upstream request is SigV4-signed with these credentials —
+ *   the signature covers the upstream host, path, query, and body, so it
+ *   must be computed here rather than injected as a static header.
  * @returns A promise that resolves when the response has been fully streamed.
  *
  * @throws Writes a 502 JSON error response to `res` if the upstream `fetch` fails.
@@ -160,7 +166,7 @@ export async function forwardHttpRequest(
   res: ServerResponse,
   targetUrl: string,
   authHeaders: Record<string, string>,
-  options?: { maxBodySize?: number }
+  options?: { maxBodySize?: number; awsSigV4?: AwsSigV4RouteConfig }
 ): Promise<void> {
   // Early rejection via Content-Length header before reading the body
   if (options?.maxBodySize !== undefined) {
@@ -206,6 +212,30 @@ export async function forwardHttpRequest(
   // Ensure content-type is present for bodies
   if (body.length > 0 && !headers['content-type']) {
     headers['content-type'] = 'application/json';
+  }
+
+  // AWS routes: SigV4-sign the outgoing upstream request. The signature
+  // covers the upstream host, path, query, and exact body bytes.
+  if (options?.awsSigV4) {
+    const { service, region, credentials } = options.awsSigV4;
+    try {
+      const signed = await signAwsRequestHeaders({
+        method: req.method ?? 'GET',
+        url: targetUrl,
+        service,
+        region,
+        credentials,
+        body: new Uint8Array(body.buffer, body.byteOffset, body.byteLength),
+      });
+      Object.assign(headers, signed);
+    } catch (err) {
+      if (!res.headersSent) {
+        res.statusCode = 502;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'proxy_signing_error', message: String(err) }));
+      }
+      return;
+    }
   }
 
   let upstream: Response;

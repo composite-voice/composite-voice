@@ -37,6 +37,7 @@
 
 import { buildRoutes, matchHttpRouteByProvider } from '../utils/routing';
 import type { CompositeVoiceProxyConfig } from '../types';
+import { signAwsRequestHeaders } from '../../utils/aws/sigv4';
 import { createRateLimiter } from '../utils/rateLimit';
 import type { RateLimiter } from '../utils/rateLimit';
 
@@ -65,6 +66,39 @@ type RouteContext = { params: Promise<{ path?: string[] }> | { path?: string[] }
  * A Next.js App Router route handler function signature.
  */
 type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<Response>;
+
+/**
+ * Buffer a request body stream into a single byte array.
+ *
+ * @remarks
+ * Used for AWS SigV4 routes, where the signature must cover the exact body
+ * bytes and the body therefore cannot be streamed through.
+ *
+ * @internal
+ */
+async function readStreamToBytes(
+  stream: ReadableStream<Uint8Array> | null
+): Promise<Uint8Array<ArrayBuffer>> {
+  if (!stream) return new Uint8Array(0);
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = stream.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      total += value.length;
+    }
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
+}
 
 /**
  * Create Next.js App Router route handlers that proxy requests to upstream
@@ -194,7 +228,10 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
       }
     }
 
-    const targetUrl = `${route.targetBase}${apiPath}`;
+    // Carry the query string (e.g. MiniMax's `GroupId`) to the upstream URL —
+    // catch-all path segments do not include it.
+    const search = new URL(req.url).search;
+    const targetUrl = `${route.targetBase}${apiPath}${search}`;
 
     // Build headers
     const forwardHeaders: Record<string, string> = { ...route.authHeaders };
@@ -212,10 +249,28 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
       forwardHeaders[key] = value;
     });
 
+    // AWS routes (SigV4): the signature covers the exact body bytes, so the
+    // body must be buffered before signing instead of streamed through.
+    let body: BodyInit | null = req.body;
+    if (route.awsSigV4) {
+      const buffered = await readStreamToBytes(req.body);
+      body = buffered.length > 0 ? buffered : null;
+      const { service, region, credentials } = route.awsSigV4;
+      const signed = await signAwsRequestHeaders({
+        method: req.method,
+        url: targetUrl,
+        service,
+        region,
+        credentials,
+        ...(buffered.length > 0 ? { body: buffered } : {}),
+      });
+      Object.assign(forwardHeaders, signed);
+    }
+
     const upstream = await fetch(targetUrl, {
       method: req.method,
       headers: forwardHeaders,
-      body: req.body,
+      body,
       // @ts-expect-error — required for streaming bodies in Node.js 18+
       duplex: 'half',
     });

@@ -304,6 +304,56 @@ describe('proxy routing', () => {
       expect(providers).toContain('soniox');
     });
 
+    it('includes Rev AI WebSocket route with query auth when revaiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        revaiApiKey: 'test-revai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'revai',
+        type: 'websocket',
+        targetBase: 'wss://api.rev.ai',
+        authHeaders: {},
+        authQuery: {
+          access_token: 'test-revai-key',
+        },
+      });
+    });
+
+    it('does not include Rev AI route when revaiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'revai')).toBe(true);
+    });
+
+    it('includes Rev AI alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        revaiApiKey: 'revai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('revai');
+    });
+
+    it('does not set authQuery on header-authenticated routes', () => {
+      const routes = buildRoutes({ deepgramApiKey: 'dg-key', sonioxApiKey: 'soniox-key' });
+
+      expect(routes.every((r) => r.authQuery === undefined)).toBe(true);
+    });
+
     it('includes Speechify HTTP route when speechifyApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         speechifyApiKey: 'test-speechify-key',
@@ -345,6 +395,551 @@ describe('proxy routing', () => {
       expect(providers).toContain('anthropic');
       expect(providers).toContain('deepgram');
       expect(providers).toContain('speechify');
+    });
+
+it('includes Murf HTTP route when murfApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        murfApiKey: 'test-murf-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'murf',
+        type: 'http',
+        targetBase: 'https://api.murf.ai',
+        authHeaders: {
+          'api-key': 'test-murf-key',
+        },
+      });
+    });
+
+    it('does not include Murf route when murfApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'murf')).toBe(true);
+    });
+
+    it('includes Murf alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        murfApiKey: 'murf-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('murf');
+    });
+
+    it('includes Gladia HTTP route when gladiaApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        gladiaApiKey: 'test-gladia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'gladia',
+        type: 'http',
+        targetBase: 'https://api.gladia.io',
+        authHeaders: {
+          'x-gladia-key': 'test-gladia-key',
+        },
+      });
+    });
+
+    it('does not include Gladia route when gladiaApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'gladia')).toBe(true);
+    });
+
+    it('includes Gladia alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        gladiaApiKey: 'gladia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('gladia');
+    });
+
+    it('includes LMNT HTTP route when lmntApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        lmntApiKey: 'test-lmnt-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'lmnt',
+        type: 'http',
+        targetBase: 'https://api.lmnt.com',
+        authHeaders: {
+          'X-API-Key': 'test-lmnt-key',
+        },
+      });
+    });
+
+    it('does not include LMNT route when lmntApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'lmnt')).toBe(true);
+    });
+
+    it('includes LMNT alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        lmntApiKey: 'lmnt-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('lmnt');
+    });
+
+    it('includes Smallest HTTP route when smallestApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        smallestApiKey: 'test-smallest-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'smallest',
+        type: 'http',
+        targetBase: 'https://api.smallest.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-smallest-key',
+        },
+      });
+    });
+
+    it('does not include Smallest route when smallestApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'smallest')).toBe(true);
+    });
+
+    it('includes Smallest alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        smallestApiKey: 'smallest-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('smallest');
+    });
+
+    it('includes Rime HTTP route when rimeApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        rimeApiKey: 'test-rime-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'rime',
+        type: 'http',
+        targetBase: 'https://users.rime.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-rime-key',
+        },
+      });
+    });
+
+    it('does not include Rime route when rimeApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'rime')).toBe(true);
+    });
+
+    it('includes Rime alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        rimeApiKey: 'rime-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('rime');
+    });
+
+    it('includes MiniMax HTTP route when minimaxApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        minimaxApiKey: 'test-minimax-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'minimax',
+        type: 'http',
+        targetBase: 'https://api.minimax.io',
+        authHeaders: {
+          Authorization: 'Bearer test-minimax-key',
+        },
+      });
+    });
+
+    it('does not include MiniMax route when minimaxApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'minimax')).toBe(true);
+    });
+
+    it('includes MiniMax alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        minimaxApiKey: 'minimax-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('minimax');
+    });
+
+    it('includes Speechmatics WebSocket route when speechmaticsApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        speechmaticsApiKey: 'test-speechmatics-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'speechmatics',
+        type: 'websocket',
+        targetBase: 'wss://eu.rt.speechmatics.com',
+        authHeaders: {
+          Authorization: 'Bearer test-speechmatics-key',
+        },
+      });
+    });
+
+    it('does not include Speechmatics route when speechmaticsApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'speechmatics')).toBe(true);
+    });
+
+    it('includes Speechmatics alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        speechmaticsApiKey: 'speechmatics-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('speechmatics');
+    });
+
+    it('includes OpenAI Realtime WebSocket route alongside the HTTP route when openaiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        openaiApiKey: 'test-openai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes).toContainEqual({
+        provider: 'openai',
+        type: 'http',
+        targetBase: 'https://api.openai.com',
+        authHeaders: {
+          Authorization: 'Bearer test-openai-key',
+        },
+      });
+      expect(routes).toContainEqual({
+        provider: 'openai-realtime',
+        type: 'websocket',
+        targetBase: 'wss://api.openai.com',
+        authHeaders: {
+          Authorization: 'Bearer test-openai-key',
+        },
+      });
+    });
+
+    it('does not include OpenAI Realtime route when openaiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'openai-realtime')).toBe(true);
+    });
+
+    it('includes OpenAI Realtime alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        openaiApiKey: 'openai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('openai');
+      expect(providers).toContain('openai-realtime');
+    });
+
+    it('includes Fish Audio HTTP route when fishAudioApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        fishAudioApiKey: 'test-fishaudio-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'fishaudio',
+        type: 'http',
+        targetBase: 'https://api.fish.audio',
+        authHeaders: {
+          Authorization: 'Bearer test-fishaudio-key',
+        },
+      });
+    });
+
+    it('does not include Fish Audio route when fishAudioApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'fishaudio')).toBe(true);
+    });
+
+    it('includes Fish Audio alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        fishAudioApiKey: 'fishaudio-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('fishaudio');
+    });
+
+    it('includes both Google Cloud HTTP routes when googleCloudApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        googleCloudApiKey: 'test-google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes).toContainEqual({
+        provider: 'google-tts',
+        type: 'http',
+        targetBase: 'https://texttospeech.googleapis.com',
+        authHeaders: {
+          'X-goog-api-key': 'test-google-key',
+        },
+      });
+      expect(routes).toContainEqual({
+        provider: 'google-stt',
+        type: 'http',
+        targetBase: 'https://speech.googleapis.com',
+        authHeaders: {
+          'X-goog-api-key': 'test-google-key',
+        },
+      });
+    });
+
+    it('does not include Google Cloud routes when googleCloudApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        geminiApiKey: 'gemini-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'google-tts')).toBe(true);
+      expect(routes.every((r) => r.provider !== 'google-stt')).toBe(true);
+    });
+
+    it('keeps the Google Cloud routes separate from the Gemini route', () => {
+      const config: CompositeVoiceProxyConfig = {
+        geminiApiKey: 'gemini-key',
+        googleCloudApiKey: 'google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const gemini = routes.find((r) => r.provider === 'gemini');
+      const googleTts = routes.find((r) => r.provider === 'google-tts');
+      const googleStt = routes.find((r) => r.provider === 'google-stt');
+      expect(gemini?.authHeaders).toEqual({ Authorization: 'Bearer gemini-key' });
+      expect(googleTts?.authHeaders).toEqual({ 'X-goog-api-key': 'google-key' });
+      expect(googleStt?.authHeaders).toEqual({ 'X-goog-api-key': 'google-key' });
+    });
+
+    it('includes Google Cloud routes alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        googleCloudApiKey: 'google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('google-tts');
+      expect(providers).toContain('google-stt');
+    });
+
+    it('includes Azure Speech HTTP and WebSocket routes when key and region are provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        azureSpeechApiKey: 'test-azure-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes[0]).toEqual({
+        provider: 'azure-tts',
+        type: 'http',
+        targetBase: 'https://eastus.tts.speech.microsoft.com',
+        authHeaders: {
+          'Ocp-Apim-Subscription-Key': 'test-azure-key',
+        },
+      });
+      expect(routes[1]).toEqual({
+        provider: 'azure-stt',
+        type: 'websocket',
+        targetBase: 'wss://eastus.stt.speech.microsoft.com',
+        authHeaders: {
+          'Ocp-Apim-Subscription-Key': 'test-azure-key',
+        },
+      });
+    });
+
+    it('builds Azure Speech target hosts from the configured region', () => {
+      const routes = buildRoutes({
+        azureSpeechApiKey: 'azure-key',
+        azureSpeechRegion: 'westeurope',
+      });
+
+      const tts = routes.find((r) => r.provider === 'azure-tts');
+      const stt = routes.find((r) => r.provider === 'azure-stt');
+      expect(tts!.targetBase).toBe('https://westeurope.tts.speech.microsoft.com');
+      expect(stt!.targetBase).toBe('wss://westeurope.stt.speech.microsoft.com');
+    });
+
+    it('does not include Azure Speech routes when azureSpeechApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'azure-tts' && r.provider !== 'azure-stt')).toBe(
+        true
+      );
+    });
+
+    it('does not include Azure Speech routes when azureSpeechRegion is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        azureSpeechApiKey: 'azure-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(0);
+    });
+
+    it('includes Azure Speech alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        azureSpeechApiKey: 'azure-key',
+        azureSpeechRegion: 'eastus',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('azure-tts');
+      expect(providers).toContain('azure-stt');
     });
   });
 
@@ -533,6 +1128,48 @@ describe('proxy routing', () => {
     });
   });
 
+  describe('matchWsRoute — Rev AI', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      revaiApiKey: 'revai-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/revai/ path', () => {
+      const route = matchWsRoute(routes, '/proxy/revai/speechtotext/v1/stream', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('revai');
+      expect(route!.type).toBe('websocket');
+      expect(route!.authQuery).toEqual({ access_token: 'revai-key' });
+    });
+
+    it('matches /proxy/revai with query parameters', () => {
+      const route = matchWsRoute(
+        routes,
+        '/proxy/revai/speechtotext/v1/stream?content_type=audio%2Fx-raw',
+        prefix
+      );
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('revai');
+    });
+
+    it('does not match HTTP routes for Rev AI', () => {
+      const route = matchHttpRoute(routes, '/proxy/revai/speechtotext/v1/stream', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchWsRoute(routes, '/api/revai/speechtotext/v1/stream', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Deepgram WebSocket route', () => {
+      const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('deepgram');
+    });
+  });
+
   describe('matchHttpRoute — Gemini', () => {
     const routes = buildRoutes({
       anthropicApiKey: 'ant-key',
@@ -567,6 +1204,43 @@ describe('proxy routing', () => {
       const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
       expect(route).not.toBeNull();
       expect(route!.provider).toBe('anthropic');
+    });
+  });
+
+  describe('matchWsRoute — OpenAI Realtime', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      openaiApiKey: 'openai-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/openai-realtime/ path with the transcription intent query', () => {
+      const route = matchWsRoute(
+        routes,
+        '/proxy/openai-realtime/v1/realtime?intent=transcription',
+        prefix
+      );
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('openai-realtime');
+      expect(route!.type).toBe('websocket');
+      expect(route!.targetBase).toBe('wss://api.openai.com');
+    });
+
+    it('does not match a WebSocket route for the plain openai provider', () => {
+      const route = matchWsRoute(routes, '/proxy/openai/v1/realtime', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match HTTP routes for openai-realtime', () => {
+      const route = matchHttpRoute(routes, '/proxy/openai-realtime/v1/realtime', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches the OpenAI HTTP route', () => {
+      const route = matchHttpRoute(routes, '/proxy/openai/v1/chat/completions', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('openai');
+      expect(route!.type).toBe('http');
     });
   });
 });
