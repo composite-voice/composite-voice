@@ -47,6 +47,7 @@ const proxy = createExpressProxy({
   cartesiaApiKey: process.env.CARTESIA_API_KEY,
   speechifyApiKey: process.env.SPEECHIFY_API_KEY,
   murfApiKey: process.env.MURF_API_KEY,
+  lmntApiKey: process.env.LMNT_API_KEY,
   sonioxApiKey: process.env.SONIOX_API_KEY,
   gladiaApiKey: process.env.GLADIA_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
@@ -137,6 +138,7 @@ The proxy automatically creates routes based on which API keys you provide:
 | `cartesiaApiKey` | — | `/api/proxy/cartesia` | Cartesia TTS |
 | `speechifyApiKey` | `/api/proxy/speechify` | — | Speechify TTS |
 | `murfApiKey` | `/api/proxy/murf` | — | Murf TTS |
+| `lmntApiKey` | `/api/proxy/lmnt` | — | LMNT TTS |
 | `sonioxApiKey` | — | `/api/proxy/soniox` | Soniox STT |
 | `gladiaApiKey` | `/api/proxy/gladia` | — | Gladia STT (session init) |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |

@@ -212,6 +212,18 @@ export interface CompositeVoiceProxyConfig {
   murfApiKey?: string;
 
   /**
+   * LMNT API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/lmnt`
+   * that forwards requests to `https://api.lmnt.com`. The `X-API-Key`
+   * auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (LMNT proxying disabled)
+   */
+  lmntApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

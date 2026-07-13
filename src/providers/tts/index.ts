@@ -20,6 +20,9 @@
  * - **MurfTTS** -- Connects to the Murf AI TTS API (REST). Supports the Gen2
  *   model, per-voice speaking styles, and multiple output formats (mp3, wav,
  *   flac, alaw, ulaw).
+ * - **LMNTTTS** -- Connects to the LMNT TTS API (REST). Supports the Blizzard
+ *   model, voice cloning voices, and multiple output formats (mp3, wav, aac,
+ *   ulaw, webm, pcm_s16le, pcm_f32le).
  *
  * @example
  * ```typescript
@@ -39,6 +42,7 @@
  * @see {@link CartesiaTTS} for Cartesia streaming TTS
  * @see {@link SpeechifyTTS} for Speechify REST-based TTS
  * @see {@link MurfTTS} for Murf AI REST-based TTS
+ * @see {@link LMNTTTS} for LMNT REST-based TTS
  */
 
 export * from './native/index';
@@ -48,3 +52,4 @@ export * from './elevenlabs/index';
 export * from './cartesia/index';
 export * from './speechify/index';
 export * from './murf/index';
+export * from './lmnt/index';

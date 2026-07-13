@@ -401,6 +401,7 @@ const llm = new OpenAICompatibleLLM({
 | [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
 | [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
 | [MurfTTS](/guides/tts/murf-tts) | REST | Murf voice library (`en-US-natalie`, ...) | No | mp3, wav, flac, alaw, ulaw |
+| [LMNTTTS](/guides/tts/lmnt-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, aac, ulaw, webm, pcm |
 
 ### NativeTTS
 
@@ -564,6 +565,30 @@ const tts = new MurfTTS({
 - Multilingual voices via the `locale` option
 
 [API reference](/api/classes/murftts)
+
+### LMNTTTS
+
+LMNT Blizzard text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { LMNTTTS } from '@lukeocodes/composite-voice';
+
+const tts = new LMNTTTS({
+  proxyUrl: '/api/proxy/lmnt',
+  voice: 'leah',           // from GET /v1/ai/voice/list or a cloned voice
+  model: 'blizzard',       // LMNT's current speech model
+  format: 'mp3',           // mp3, wav, aac, ulaw, webm, pcm_s16le, pcm_f32le
+  language: 'en',          // optional; auto-detected when omitted
+  temperature: 0.7,        // expressiveness (lower = more neutral)
+  topP: 0.9,               // stability (lower = more consistent)
+});
+```
+
+- Catalog voices and instant voice cloning
+- 31 languages via the Blizzard model
+- Expressiveness (`temperature`) and stability (`topP`) controls
+
+[API reference](/api/classes/lmnttts)
 
 ---
 

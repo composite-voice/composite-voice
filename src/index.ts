@@ -230,6 +230,13 @@ export type {
   MurfTTSSampleRate,
   MurfTTSChannelType,
 } from './providers/tts/murf/index';
+export { LMNTTTS } from './providers/tts/lmnt/index';
+export type {
+  LMNTTTSConfig,
+  LMNTTTSModel,
+  LMNTTTSFormat,
+  LMNTTTSSampleRate,
+} from './providers/tts/lmnt/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

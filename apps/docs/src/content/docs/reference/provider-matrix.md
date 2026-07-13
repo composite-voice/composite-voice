@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance â
 order: 0
 ---
 
-CompositeVoice supports 15 provider companies across 22 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 16 provider companies across 23 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -35,6 +35,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **CartesiaTTS** | | | | **yes** | |
 | **SpeechifyTTS** | | | | **yes** | |
 | **MurfTTS** | | | | **yes** | |
+| **LMNTTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -349,6 +350,26 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### LMNT
+
+| | TTS |
+|---|---|
+| **Class** | [`LMNTTTS`](/guides/tts/lmnt-tts) |
+| **Transport** | REST |
+| **Streaming** | No |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | blizzard |
+
+**TTS features:** Catalog and instant-cloned voices via `voice`, 31 languages with auto-detection, 7 output formats (mp3, wav, aac, ulaw, webm, pcm_s16le, pcm_f32le), configurable sample rate (8/16/24 kHz), expressiveness (`temperature`) and stability (`topP`) controls.
+
+**Models:** blizzard (Blizzard 2.0, default).
+
+**Guides:** [LMNTTTS](/guides/tts/lmnt-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -400,9 +421,9 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
-| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts) |
+| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |
 | **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
