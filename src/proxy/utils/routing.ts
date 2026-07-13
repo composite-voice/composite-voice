@@ -22,7 +22,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify).
  * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
  */
 export type RouteType = 'http' | 'websocket';
@@ -192,6 +192,28 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'wss://agent.deepgram.com',
       authHeaders: {
         Authorization: `Token ${agentKey}`,
+      },
+    });
+  }
+
+  if (config.sonioxApiKey) {
+    routes.push({
+      provider: 'soniox',
+      type: 'websocket',
+      targetBase: 'wss://stt-rt.soniox.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.sonioxApiKey}`,
+      },
+    });
+  }
+
+  if (config.speechifyApiKey) {
+    routes.push({
+      provider: 'speechify',
+      type: 'http',
+      targetBase: 'https://api.speechify.ai',
+      authHeaders: {
+        Authorization: `Bearer ${config.speechifyApiKey}`,
       },
     });
   }

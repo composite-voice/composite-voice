@@ -260,6 +260,92 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('gemini');
     });
+
+    it('includes Soniox WebSocket route when sonioxApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        sonioxApiKey: 'test-soniox-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'soniox',
+        type: 'websocket',
+        targetBase: 'wss://stt-rt.soniox.com',
+        authHeaders: {
+          Authorization: 'Bearer test-soniox-key',
+        },
+      });
+    });
+
+    it('does not include Soniox route when sonioxApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'soniox')).toBe(true);
+    });
+
+    it('includes Soniox alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        sonioxApiKey: 'soniox-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('soniox');
+    });
+
+    it('includes Speechify HTTP route when speechifyApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        speechifyApiKey: 'test-speechify-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'speechify',
+        type: 'http',
+        targetBase: 'https://api.speechify.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-speechify-key',
+        },
+      });
+    });
+
+    it('does not include Speechify route when speechifyApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'speechify')).toBe(true);
+    });
+
+    it('includes Speechify alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        speechifyApiKey: 'speechify-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('speechify');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

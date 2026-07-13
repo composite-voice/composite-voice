@@ -15,6 +15,8 @@
  *   Supports voice cloning, multilingual models, and fine-tuned voice settings.
  * - **CartesiaTTS** -- Connects to Cartesia's streaming TTS via WebSocket.
  *   Supports multiple output encodings and low-latency streaming.
+ * - **SpeechifyTTS** -- Connects to the Speechify TTS API (REST). Supports the
+ *   Simba models, voice cloning voices, and multiple output formats (mp3, wav, ogg, aac).
  *
  * @example
  * ```typescript
@@ -32,6 +34,7 @@
  * @see {@link OpenAITTS} for OpenAI REST-based TTS
  * @see {@link ElevenLabsTTS} for ElevenLabs streaming TTS
  * @see {@link CartesiaTTS} for Cartesia streaming TTS
+ * @see {@link SpeechifyTTS} for Speechify REST-based TTS
  */
 
 export * from './native/index';
@@ -39,3 +42,4 @@ export * from './deepgram/index';
 export * from './openai/index';
 export * from './elevenlabs/index';
 export * from './cartesia/index';
+export * from './speechify/index';

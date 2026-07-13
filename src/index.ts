@@ -166,6 +166,8 @@ export type {
   ElevenLabsSTTModel,
   ElevenLabsSTTAudioFormat,
 } from './providers/stt/elevenlabs/index';
+export { SonioxSTT } from './providers/stt/soniox/index';
+export type { SonioxSTTConfig } from './providers/stt/soniox/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -208,6 +210,12 @@ export type {
   CartesiaOutputEncoding,
   CartesiaOutputFormat,
 } from './providers/tts/cartesia/index';
+export { SpeechifyTTS } from './providers/tts/speechify/index';
+export type {
+  SpeechifyTTSConfig,
+  SpeechifyTTSModel,
+  SpeechifyTTSFormat,
+} from './providers/tts/speechify/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

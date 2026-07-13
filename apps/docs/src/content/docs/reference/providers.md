@@ -62,6 +62,7 @@ input.push(audioBuffer);
 | [DeepgramFlux](/guides/stt/deepgram-flux) | WebSocket | V2: flux-general-en | Yes | Yes |
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | WebSocket | Default model | Yes | No |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
+| [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
 
 ### NativeSTT
 
@@ -195,6 +196,33 @@ const stt = new ElevenLabsSTT({
 - Shares proxy config with ElevenLabsTTS
 
 [API reference](/api/classes/elevenlabsstt)
+
+### SonioxSTT
+
+Real-time multilingual speech recognition via WebSocket with built-in endpoint detection for turn-taking.
+
+```typescript
+import { SonioxSTT } from '@lukeocodes/composite-voice';
+
+const stt = new SonioxSTT({
+  proxyUrl: '/api/proxy/soniox',
+  // OR: apiKey: '...',              // direct or async temporary-key factory
+  model: 'stt-rt-v5',
+  audioFormat: 'pcm_s16le',
+  sampleRate: 16000,
+  languageHints: ['en', 'es'],       // bias recognition
+  enableEndpointDetection: true,      // default — drives turn-taking
+  enableSpeakerDiarization: false,
+});
+```
+
+- 60+ languages with automatic detection
+- Endpoint detection finalizes utterances when the speaker stops
+- Speaker diarization and per-token language identification
+- Domain context for specialized vocabulary
+- Temporary API key support via async `apiKey` factories
+
+[API reference](/api/classes/sonioxstt)
 
 ---
 
@@ -343,6 +371,7 @@ const llm = new OpenAICompatibleLLM({
 | [OpenAITTS](/guides/tts/openai-tts) | REST | 6 voices | No | mp3, opus, aac, flac, wav |
 | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
 | [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
+| [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
 
 ### NativeTTS
 
@@ -459,6 +488,28 @@ const tts = new CartesiaTTS({
 - sonic-2 model delivers the lowest latency
 
 [API reference](/api/classes/cartesiatts)
+
+### SpeechifyTTS
+
+Speechify Simba text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { SpeechifyTTS } from '@lukeocodes/composite-voice';
+
+const tts = new SpeechifyTTS({
+  proxyUrl: '/api/proxy/speechify',
+  voiceId: 'geffen_32',        // from GET /v1/voices or a cloned voice
+  model: 'simba-3.2',          // simba-english, simba-multilingual, simba-3.0, simba-3.2
+  audioFormat: 'mp3',          // mp3, wav, ogg, aac
+  language: 'en-US',           // optional; auto-detected when omitted
+});
+```
+
+- Catalog voices and instant voice cloning
+- English and multilingual Simba models
+- Emotion, pitch, and speed via SSML `<prosody>` tags in the input
+
+[API reference](/api/classes/speechifytts)
 
 ---
 

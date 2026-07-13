@@ -11,6 +11,8 @@
  *   Supports features like smart formatting, interim results, and endpointing.
  * - **AssemblyAISTT** -- Connects to AssemblyAI's real-time streaming STT via WebSocket.
  *   Supports features like word-level timestamps and automatic punctuation.
+ * - **SonioxSTT** -- Connects to Soniox's real-time streaming STT via WebSocket.
+ *   Supports 60+ languages, endpoint detection, and speaker diarization.
  *
  * @example
  * ```typescript
@@ -26,12 +28,14 @@
  * @see {@link NativeSTT} for browser-native speech recognition
  * @see {@link DeepgramSTT} for Deepgram streaming STT
  * @see {@link AssemblyAISTT} for AssemblyAI streaming STT
+ * @see {@link SonioxSTT} for Soniox streaming STT
  */
 
 export * from './native/index';
 export * from './deepgram/index';
 export * from './assemblyai/index';
 export * from './elevenlabs/index';
+export * from './soniox/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:

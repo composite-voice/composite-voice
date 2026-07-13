@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance â
 order: 0
 ---
 
-CompositeVoice supports 11 provider companies across 18 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 13 provider companies across 20 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -19,6 +19,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **DeepgramFlux** | | **yes** | | | |
 | **AssemblyAISTT** | | **yes** | | | |
 | **ElevenLabsSTT** | | **yes** | | | |
+| **SonioxSTT** | | **yes** | | | |
 | **AnthropicLLM** | | | **yes** | | |
 | **OpenAILLM** | | | **yes** | | |
 | **GroqLLM** | | | **yes** | | |
@@ -31,6 +32,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **OpenAITTS** | | | | **yes** | |
 | **ElevenLabsTTS** | | | | **yes** | |
 | **CartesiaTTS** | | | | **yes** | |
+| **SpeechifyTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -227,6 +229,24 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### Soniox
+
+| | STT |
+|---|---|
+| **Class** | [`SonioxSTT`](/guides/stt/soniox-stt) |
+| **Transport** | WebSocket |
+| **Streaming** | Yes |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | stt-rt-v5 |
+
+**STT features:** Interim results via provisional/confirmed token streaming, 60+ languages with automatic detection and hints, endpoint detection with a `<end>` token for turn-taking, speaker diarization, per-token language identification, domain context for specialized vocabulary, manual `finalize()`, binary audio frames (no base64 overhead), temporary API key support via async `apiKey` factories, automatic reconnection with exponential backoff.
+
+**Guides:** [SonioxSTT](/guides/stt/soniox-stt)
+
+---
+
 ### ElevenLabs
 
 | | STT | TTS |
@@ -266,6 +286,26 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 **Models:** sonic-2 (latest, lowest latency), sonic, sonic-multilingual.
 
 **Guides:** [CartesiaTTS](/guides/tts/cartesia-tts) Â· **Examples:** [90](https://github.com/lukeocodes/composite-voice/tree/main/examples/90-cartesia-pipeline)
+
+---
+
+### Speechify
+
+| | TTS |
+|---|---|
+| **Class** | [`SpeechifyTTS`](/guides/tts/speechify-tts) |
+| **Transport** | REST |
+| **Streaming** | No |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | simba-english |
+
+**TTS features:** Catalog and instant-cloned voices via `voiceId`, English and multilingual Simba models, 4 output formats (mp3, wav, ogg, aac), optional loudness and text normalization, emotion/pitch/speed via SSML `<prosody>` tags in the input.
+
+**Models:** simba-3.2 (latest), simba-3.0, simba-multilingual, simba-english (default).
+
+**Guides:** [SpeechifyTTS](/guides/tts/speechify-tts)
 
 ---
 
@@ -315,19 +355,19 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 | Capability | Providers that support it |
 |---|---|
-| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), DeepgramAgent, [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **WebSocket streaming** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), DeepgramAgent, [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SonioxSTT](/guides/stt/soniox-stt) |
 | **Preflight / eager LLM** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
-| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) |
+| **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |
 | **Word boosting** | [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt) |
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Offline capable** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt) |
-| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
-| **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) |
+| **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt), [SonioxSTT](/guides/stt/soniox-stt) |
+| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts) |
+| **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt) |
 | **VAD commit strategy** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) |

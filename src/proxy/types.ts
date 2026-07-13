@@ -163,6 +163,29 @@ export interface CompositeVoiceProxyConfig {
   cartesiaApiKey?: string;
 
   /**
+   * Soniox API key -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/soniox`
+   * that forwards connections to `wss://stt-rt.soniox.com`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Soniox proxying disabled)
+   */
+  sonioxApiKey?: string;
+
+  /**
+   * Speechify API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/speechify`
+   * that forwards requests to `https://api.speechify.ai`.
+   *
+   * @defaultValue `undefined` (Speechify proxying disabled)
+   */
+  speechifyApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks
