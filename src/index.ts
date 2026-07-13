@@ -216,6 +216,14 @@ export type {
   SpeechifyTTSModel,
   SpeechifyTTSFormat,
 } from './providers/tts/speechify/index';
+export { MurfTTS } from './providers/tts/murf/index';
+export type {
+  MurfTTSConfig,
+  MurfTTSModelVersion,
+  MurfTTSFormat,
+  MurfTTSSampleRate,
+  MurfTTSChannelType,
+} from './providers/tts/murf/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

@@ -346,6 +346,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('speechify');
     });
+
+    it('includes Murf HTTP route when murfApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        murfApiKey: 'test-murf-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'murf',
+        type: 'http',
+        targetBase: 'https://api.murf.ai',
+        authHeaders: {
+          'api-key': 'test-murf-key',
+        },
+      });
+    });
+
+    it('does not include Murf route when murfApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'murf')).toBe(true);
+    });
+
+    it('includes Murf alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        murfApiKey: 'murf-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('murf');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

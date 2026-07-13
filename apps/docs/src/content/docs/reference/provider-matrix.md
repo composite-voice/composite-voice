@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 13 provider companies across 20 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 14 provider companies across 21 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -33,6 +33,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **ElevenLabsTTS** | | | | **yes** | |
 | **CartesiaTTS** | | | | **yes** | |
 | **SpeechifyTTS** | | | | **yes** | |
+| **MurfTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -309,6 +310,26 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### Murf AI
+
+| | TTS |
+|---|---|
+| **Class** | [`MurfTTS`](/guides/tts/murf-tts) |
+| **Transport** | REST |
+| **Streaming** | No |
+| **Peer dependency** | None |
+| **Proxy support** | Yes |
+| **Browser support** | All modern browsers |
+| **Default model** | GEN2 |
+
+**TTS features:** Gen2 model with natural, studio-quality voices, per-voice speaking styles (`style`), rate and pitch controls (-50 to 50), prosody variation (0–5), multilingual voices via `locale`, 5 output formats (mp3, wav, flac, alaw, ulaw), configurable sample rate (8–48 kHz) and channel type, base64 inline audio (no second download request).
+
+**Models:** GEN2 (default).
+
+**Guides:** [MurfTTS](/guides/tts/murf-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -360,7 +381,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [MurfTTS](/guides/tts/murf-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts) |

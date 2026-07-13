@@ -372,6 +372,7 @@ const llm = new OpenAICompatibleLLM({
 | [ElevenLabsTTS](/guides/tts/elevenlabs-tts) | WebSocket | Custom voice IDs | Yes | pcm, mp3, ulaw |
 | [CartesiaTTS](/guides/tts/cartesia-tts) | WebSocket | Custom voice IDs | Yes | pcm (s16le, f32le, mulaw, alaw) |
 | [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
+| [MurfTTS](/guides/tts/murf-tts) | REST | Murf voice library (`en-US-natalie`, ...) | No | mp3, wav, flac, alaw, ulaw |
 
 ### NativeTTS
 
@@ -510,6 +511,31 @@ const tts = new SpeechifyTTS({
 - Emotion, pitch, and speed via SSML `<prosody>` tags in the input
 
 [API reference](/api/classes/speechifytts)
+
+### MurfTTS
+
+Murf AI Gen2 text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { MurfTTS } from '@lukeocodes/composite-voice';
+
+const tts = new MurfTTS({
+  proxyUrl: '/api/proxy/murf',
+  voiceId: 'en-US-natalie',    // from GET /v1/speech/voices
+  format: 'mp3',               // mp3, wav, flac, alaw, ulaw
+  style: 'Conversational',     // per-voice speaking styles
+  rate: 0,                     // -50 to 50
+  pitch: 0,                    // -50 to 50
+  variation: 1,                // 0 to 5 — prosody variation
+});
+```
+
+- Gen2 model with natural, studio-quality voices
+- Per-voice speaking styles (Conversational, Promo, ...)
+- Rate, pitch, and prosody variation controls
+- Multilingual voices via the `locale` option
+
+[API reference](/api/classes/murftts)
 
 ---
 

@@ -17,6 +17,9 @@
  *   Supports multiple output encodings and low-latency streaming.
  * - **SpeechifyTTS** -- Connects to the Speechify TTS API (REST). Supports the
  *   Simba models, voice cloning voices, and multiple output formats (mp3, wav, ogg, aac).
+ * - **MurfTTS** -- Connects to the Murf AI TTS API (REST). Supports the Gen2
+ *   model, per-voice speaking styles, and multiple output formats (mp3, wav,
+ *   flac, alaw, ulaw).
  *
  * @example
  * ```typescript
@@ -35,6 +38,7 @@
  * @see {@link ElevenLabsTTS} for ElevenLabs streaming TTS
  * @see {@link CartesiaTTS} for Cartesia streaming TTS
  * @see {@link SpeechifyTTS} for Speechify REST-based TTS
+ * @see {@link MurfTTS} for Murf AI REST-based TTS
  */
 
 export * from './native/index';
@@ -43,3 +47,4 @@ export * from './openai/index';
 export * from './elevenlabs/index';
 export * from './cartesia/index';
 export * from './speechify/index';
+export * from './murf/index';

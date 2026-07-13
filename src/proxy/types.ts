@@ -186,6 +186,18 @@ export interface CompositeVoiceProxyConfig {
   speechifyApiKey?: string;
 
   /**
+   * Murf API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/murf`
+   * that forwards requests to `https://api.murf.ai`. The `api-key` auth
+   * header is injected server-side.
+   *
+   * @defaultValue `undefined` (Murf proxying disabled)
+   */
+  murfApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks
