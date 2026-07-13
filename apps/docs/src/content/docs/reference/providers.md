@@ -63,6 +63,7 @@ input.push(audioBuffer);
 | [AssemblyAISTT](/guides/stt/assemblyai-stt) | WebSocket | Default model | Yes | No |
 | [ElevenLabsSTT](/guides/stt/elevenlabs-stt) | WebSocket | scribe_v2_realtime | Yes | No |
 | [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
+| [GladiaSTT](/guides/stt/gladia-stt) | HTTP init + WebSocket | solaria-1 | Yes | No |
 
 ### NativeSTT
 
@@ -223,6 +224,33 @@ const stt = new SonioxSTT({
 - Temporary API key support via async `apiKey` factories
 
 [API reference](/api/classes/sonioxstt)
+
+### GladiaSTT
+
+Real-time speech recognition via Gladia's v2 live API (Solaria models) with configurable server-side endpointing for turn-taking.
+
+```typescript
+import { GladiaSTT } from '@lukeocodes/composite-voice';
+
+const stt = new GladiaSTT({
+  proxyUrl: '/api/proxy/gladia',
+  // OR: apiKey: '...',              // direct API key (dev only)
+  model: 'solaria-1',
+  encoding: 'wav/pcm',
+  sampleRate: 16000,
+  languages: ['en'],                 // pin or restrict language detection
+  endpointing: 0.3,                  // seconds of silence before finalizing
+  codeSwitching: false,              // re-detect language per utterance
+});
+```
+
+- HTTP session init (`POST /v2/live`) + direct WebSocket streaming
+- Server-side endpointing finalizes utterances when the speaker stops
+- Language pinning and per-utterance code switching
+- Word-level timestamps and confidence on final results
+- Session token embedded in the WebSocket URL — reconnects resume the session
+
+[API reference](/api/classes/gladiastt)
 
 ---
 

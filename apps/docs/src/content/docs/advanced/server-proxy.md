@@ -48,6 +48,7 @@ const proxy = createExpressProxy({
   speechifyApiKey: process.env.SPEECHIFY_API_KEY,
   murfApiKey: process.env.MURF_API_KEY,
   sonioxApiKey: process.env.SONIOX_API_KEY,
+  gladiaApiKey: process.env.GLADIA_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
 
   // Route prefix (default: '/api/proxy')
@@ -137,6 +138,7 @@ The proxy automatically creates routes based on which API keys you provide:
 | `speechifyApiKey` | `/api/proxy/speechify` | — | Speechify TTS |
 | `murfApiKey` | `/api/proxy/murf` | — | Murf TTS |
 | `sonioxApiKey` | — | `/api/proxy/soniox` | Soniox STT |
+| `gladiaApiKey` | `/api/proxy/gladia` | — | Gladia STT (session init) |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |
 
 HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally.

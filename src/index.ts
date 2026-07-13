@@ -168,6 +168,12 @@ export type {
 } from './providers/stt/elevenlabs/index';
 export { SonioxSTT } from './providers/stt/soniox/index';
 export type { SonioxSTTConfig } from './providers/stt/soniox/index';
+export { GladiaSTT } from './providers/stt/gladia/index';
+export type {
+  GladiaSTTConfig,
+  GladiaSTTEncoding,
+  GladiaSTTRegion,
+} from './providers/stt/gladia/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';

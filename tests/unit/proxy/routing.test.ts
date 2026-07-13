@@ -347,7 +347,7 @@ describe('proxy routing', () => {
       expect(providers).toContain('speechify');
     });
 
-    it('includes Murf HTTP route when murfApiKey is provided', () => {
+it('includes Murf HTTP route when murfApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         murfApiKey: 'test-murf-key',
       };
@@ -388,6 +388,49 @@ describe('proxy routing', () => {
       expect(providers).toContain('anthropic');
       expect(providers).toContain('deepgram');
       expect(providers).toContain('murf');
+    });
+
+    it('includes Gladia HTTP route when gladiaApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        gladiaApiKey: 'test-gladia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'gladia',
+        type: 'http',
+        targetBase: 'https://api.gladia.io',
+        authHeaders: {
+          'x-gladia-key': 'test-gladia-key',
+        },
+      });
+    });
+
+    it('does not include Gladia route when gladiaApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'gladia')).toBe(true);
+    });
+
+    it('includes Gladia alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        gladiaApiKey: 'gladia-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('gladia');
     });
   });
 

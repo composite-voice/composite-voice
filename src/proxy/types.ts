@@ -175,6 +175,20 @@ export interface CompositeVoiceProxyConfig {
   sonioxApiKey?: string;
 
   /**
+   * Gladia API key -- used for HTTP STT session-init proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/gladia`
+   * that forwards requests to `https://api.gladia.io`. The `x-gladia-key`
+   * auth header is injected server-side. Only the session-init POST goes
+   * through the proxy -- the audio WebSocket connects directly to the
+   * tokenized URL that Gladia returns.
+   *
+   * @defaultValue `undefined` (Gladia proxying disabled)
+   */
+  gladiaApiKey?: string;
+
+  /**
    * Speechify API key -- used for HTTP TTS proxying.
    *
    * @remarks

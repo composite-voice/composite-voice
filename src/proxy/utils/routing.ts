@@ -22,7 +22,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia).
  * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
  */
 export type RouteType = 'http' | 'websocket';
@@ -203,6 +203,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'wss://stt-rt.soniox.com',
       authHeaders: {
         Authorization: `Bearer ${config.sonioxApiKey}`,
+      },
+    });
+  }
+
+  if (config.gladiaApiKey) {
+    routes.push({
+      provider: 'gladia',
+      type: 'http',
+      targetBase: 'https://api.gladia.io',
+      authHeaders: {
+        'x-gladia-key': config.gladiaApiKey,
       },
     });
   }

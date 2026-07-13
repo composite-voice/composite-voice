@@ -13,6 +13,9 @@
  *   Supports features like word-level timestamps and automatic punctuation.
  * - **SonioxSTT** -- Connects to Soniox's real-time streaming STT via WebSocket.
  *   Supports 60+ languages, endpoint detection, and speaker diarization.
+ * - **GladiaSTT** -- Connects to Gladia's v2 live STT (Solaria models) via an
+ *   HTTP session init followed by WebSocket streaming. Supports server-side
+ *   endpointing, language pinning, and code switching.
  *
  * @example
  * ```typescript
@@ -29,6 +32,7 @@
  * @see {@link DeepgramSTT} for Deepgram streaming STT
  * @see {@link AssemblyAISTT} for AssemblyAI streaming STT
  * @see {@link SonioxSTT} for Soniox streaming STT
+ * @see {@link GladiaSTT} for Gladia streaming STT
  */
 
 export * from './native/index';
@@ -36,6 +40,7 @@ export * from './deepgram/index';
 export * from './assemblyai/index';
 export * from './elevenlabs/index';
 export * from './soniox/index';
+export * from './gladia/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
