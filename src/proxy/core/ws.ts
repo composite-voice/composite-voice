@@ -100,9 +100,12 @@ async function loadWs(): Promise<{
  *   (e.g., `wss://api.deepgram.com/v1/listen`).
  * @param authHeaders - Authentication headers to inject into the upstream connection
  *   (e.g., `{ Authorization: 'Token ...' }`).
- * @param options - Optional settings for message size limiting.
+ * @param options - Optional settings for message size limiting and query-based auth.
  * @param options.maxWsMessageSize - Maximum WebSocket message size in bytes.
  *   Messages exceeding this close the client connection with code 1009 (Message Too Big).
+ * @param options.authQuery - Authentication query parameters to set on the upstream URL
+ *   (e.g., `{ access_token: '...' }` for Rev AI). Applied after the client's query
+ *   parameters are carried over, so they always override client-supplied values.
  * @returns A promise that resolves once the WebSocket relay is fully established.
  *
  * @throws Destroys the client socket with a 502 response if the upstream
@@ -125,7 +128,7 @@ export async function proxyWebSocket(
   head: Buffer,
   targetUrl: string,
   authHeaders: Record<string, string>,
-  options?: { maxWsMessageSize?: number }
+  options?: { maxWsMessageSize?: number; authQuery?: Record<string, string> }
 ): Promise<void> {
   const { WebSocket, WebSocketServer } = await loadWs();
 
@@ -134,6 +137,14 @@ export async function proxyWebSocket(
   const parsed = new URL(req.url ?? '/', 'http://localhost');
   const upstream = new URL(targetUrl);
   parsed.searchParams.forEach((value, key) => upstream.searchParams.set(key, value));
+
+  // Inject query-based auth AFTER carrying over client parameters so the
+  // server-side credential always overrides any client-supplied value.
+  if (options?.authQuery) {
+    for (const [key, value] of Object.entries(options.authQuery)) {
+      upstream.searchParams.set(key, value);
+    }
+  }
 
   const upstreamWs: WsWebSocket = new WebSocket(upstream.toString(), {
     headers: authHeaders,

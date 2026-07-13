@@ -304,6 +304,56 @@ describe('proxy routing', () => {
       expect(providers).toContain('soniox');
     });
 
+    it('includes Rev AI WebSocket route with query auth when revaiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        revaiApiKey: 'test-revai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'revai',
+        type: 'websocket',
+        targetBase: 'wss://api.rev.ai',
+        authHeaders: {},
+        authQuery: {
+          access_token: 'test-revai-key',
+        },
+      });
+    });
+
+    it('does not include Rev AI route when revaiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'revai')).toBe(true);
+    });
+
+    it('includes Rev AI alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        revaiApiKey: 'revai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('revai');
+    });
+
+    it('does not set authQuery on header-authenticated routes', () => {
+      const routes = buildRoutes({ deepgramApiKey: 'dg-key', sonioxApiKey: 'soniox-key' });
+
+      expect(routes.every((r) => r.authQuery === undefined)).toBe(true);
+    });
+
     it('includes Speechify HTTP route when speechifyApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         speechifyApiKey: 'test-speechify-key',
@@ -824,6 +874,48 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
 
     it('does not match when prefix does not match', () => {
       const route = matchWsRoute(routes, '/api/cartesia/tts/websocket', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches Deepgram WebSocket route', () => {
+      const route = matchWsRoute(routes, '/proxy/deepgram/v1/listen', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('deepgram');
+    });
+  });
+
+  describe('matchWsRoute — Rev AI', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      revaiApiKey: 'revai-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/revai/ path', () => {
+      const route = matchWsRoute(routes, '/proxy/revai/speechtotext/v1/stream', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('revai');
+      expect(route!.type).toBe('websocket');
+      expect(route!.authQuery).toEqual({ access_token: 'revai-key' });
+    });
+
+    it('matches /proxy/revai with query parameters', () => {
+      const route = matchWsRoute(
+        routes,
+        '/proxy/revai/speechtotext/v1/stream?content_type=audio%2Fx-raw',
+        prefix
+      );
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('revai');
+    });
+
+    it('does not match HTTP routes for Rev AI', () => {
+      const route = matchHttpRoute(routes, '/proxy/revai/speechtotext/v1/stream', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match when prefix does not match', () => {
+      const route = matchWsRoute(routes, '/api/revai/speechtotext/v1/stream', prefix);
       expect(route).toBeNull();
     });
 

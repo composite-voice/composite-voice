@@ -65,6 +65,7 @@ input.push(audioBuffer);
 | [SonioxSTT](/guides/stt/soniox-stt) | WebSocket | stt-rt-v5 | Yes | No |
 | [GladiaSTT](/guides/stt/gladia-stt) | HTTP init + WebSocket | solaria-1 | Yes | No |
 | [SpeechmaticsSTT](/guides/stt/speechmatics-stt) | WebSocket | Server default | Yes | No |
+| [RevAISTT](/guides/stt/revai-stt) | WebSocket | Default model | Yes | No |
 
 ### NativeSTT
 
@@ -279,6 +280,32 @@ const stt = new SpeechmaticsSTT({
 - Temporary key (JWT) support via async `apiKey` factories
 
 [API reference](/api/classes/speechmaticsstt)
+
+### RevAISTT
+
+Real-time speech recognition via WebSocket with punctuated, confidence-scored final transcripts.
+
+```typescript
+import { RevAISTT } from '@lukeocodes/composite-voice';
+
+const stt = new RevAISTT({
+  proxyUrl: '/api/proxy/revai',
+  // OR: apiKey: '...',              // direct or async token factory
+  sampleRate: 16000,                 // raw audio: 8000-48000 Hz
+  language: 'en',                    // en, fr, de, it, ja, ko, cmn, pt, es
+  filterProfanity: false,            // English only
+  removeDisfluencies: false,         // English only
+  maxSegmentDurationSeconds: 10,     // force finals every 5-30 s
+});
+```
+
+- Punctuated, capitalized finals with per-word timestamps and confidence
+- 9 languages (en, fr, de, it, ja, ko, cmn, pt, es)
+- Profanity filtering, disfluency removal, and custom vocabularies
+- Speaker-switch labels with the `machine_v2` transcriber
+- Auth via `access_token` query parameter (injected server-side in proxy mode)
+
+[API reference](/api/classes/revaistt)
 
 ---
 

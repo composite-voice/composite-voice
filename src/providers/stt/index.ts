@@ -18,6 +18,8 @@
  *   endpointing, language pinning, and code switching.
  * - **SpeechmaticsSTT** -- Connects to Speechmatics' real-time streaming STT via WebSocket.
  *   Supports 50+ languages, end-of-utterance detection, and speaker diarization.
+ * - **RevAISTT** -- Connects to Rev AI's streaming STT via WebSocket.
+ *   Supports 9 languages, profanity filtering, and custom vocabularies.
  *
  * @example
  * ```typescript
@@ -36,6 +38,7 @@
  * @see {@link SonioxSTT} for Soniox streaming STT
  * @see {@link GladiaSTT} for Gladia streaming STT
  * @see {@link SpeechmaticsSTT} for Speechmatics streaming STT
+ * @see {@link RevAISTT} for Rev AI streaming STT
  */
 
 export * from './native/index';
@@ -45,6 +48,7 @@ export * from './elevenlabs/index';
 export * from './soniox/index';
 export * from './gladia/index';
 export * from './speechmatics/index';
+export * from './revai/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:

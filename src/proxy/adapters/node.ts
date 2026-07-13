@@ -217,6 +217,7 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
             ...(security?.maxWsMessageSize !== undefined && {
               maxWsMessageSize: security.maxWsMessageSize,
             }),
+            ...(route.authQuery !== undefined && { authQuery: route.authQuery }),
           });
         })
         .catch((err: Error) => {

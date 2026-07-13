@@ -63,6 +63,18 @@ export interface ProxyRoute {
    * `{ 'x-api-key': '...' }` for Anthropic or `{ Authorization: 'Bearer ...' }` for OpenAI.
    */
   authHeaders: Record<string, string>;
+
+  /**
+   * Authentication query parameters to append to the upstream URL.
+   *
+   * @remarks
+   * Some providers (e.g., Rev AI) authenticate WebSocket connections via a
+   * query parameter instead of headers. These parameters are set on the
+   * upstream URL by the WebSocket proxying core **after** the client's own
+   * query parameters are carried over, so they always override any
+   * client-supplied value. Currently applied to `'websocket'` routes only.
+   */
+  authQuery?: Record<string, string>;
 }
 
 /**
@@ -280,6 +292,20 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://api.minimax.io',
       authHeaders: {
         Authorization: `Bearer ${config.minimaxApiKey}`,
+      },
+    });
+  }
+
+  // Rev AI authenticates streaming WebSockets via the access_token query
+  // parameter -- the upgrade request does not support auth headers.
+  if (config.revaiApiKey) {
+    routes.push({
+      provider: 'revai',
+      type: 'websocket',
+      targetBase: 'wss://api.rev.ai',
+      authHeaders: {},
+      authQuery: {
+        access_token: config.revaiApiKey,
       },
     });
   }

@@ -273,6 +273,20 @@ export interface CompositeVoiceProxyConfig {
   speechmaticsApiKey?: string;
 
   /**
+   * Rev AI access token -- used for WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers a WebSocket route at `{pathPrefix}/revai`
+   * that forwards connections to `wss://api.rev.ai`. Rev AI authenticates
+   * streaming connections via an `access_token` query parameter (upgrade
+   * headers are not supported), so the token is appended to the upstream
+   * URL server-side, overriding any client-supplied value.
+   *
+   * @defaultValue `undefined` (Rev AI proxying disabled)
+   */
+  revaiApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

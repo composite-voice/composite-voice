@@ -240,6 +240,7 @@ export function createExpressProxy(config: CompositeVoiceProxyConfig): ExpressPr
             ...(security?.maxWsMessageSize !== undefined && {
               maxWsMessageSize: security.maxWsMessageSize,
             }),
+            ...(route.authQuery !== undefined && { authQuery: route.authQuery }),
           });
         })
         .catch((err: Error) => {

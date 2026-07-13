@@ -53,6 +53,7 @@ const proxy = createExpressProxy({
   minimaxApiKey: process.env.MINIMAX_API_KEY,
   sonioxApiKey: process.env.SONIOX_API_KEY,
   gladiaApiKey: process.env.GLADIA_API_KEY,
+  revaiApiKey: process.env.REVAI_API_KEY,
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
   speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
 
@@ -148,10 +149,13 @@ The proxy automatically creates routes based on which API keys you provide:
 | `minimaxApiKey` | `/api/proxy/minimax` | — | MiniMax TTS |
 | `sonioxApiKey` | — | `/api/proxy/soniox` | Soniox STT |
 | `gladiaApiKey` | `/api/proxy/gladia` | — | Gladia STT (session init) |
+| `revaiApiKey` | — | `/api/proxy/revai` | Rev AI STT |
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |
 | `speechmaticsApiKey` | — | `/api/proxy/speechmatics` | Speechmatics STT |
 
 HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally.
+
+Most providers authenticate with injected headers. Rev AI is the exception: its streaming WebSocket only accepts an `access_token` query parameter, so the proxy appends the token to the upstream URL server-side instead — overriding any client-supplied value. Either way, the credential never reaches the browser.
 
 ### Client configuration
 On the client, point providers at the proxy URL instead of using API keys:
