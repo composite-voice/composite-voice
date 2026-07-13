@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/composite-voice/composite-voice/compare/composite-voice-v0.1.1...composite-voice-v0.1.2) (2026-07-13)
+
+
+### Features
+
+* add 16 STT/TTS providers from the Artificial Analysis leaderboards ([#78](https://github.com/composite-voice/composite-voice/issues/78)) ([4c5b5bd](https://github.com/composite-voice/composite-voice/commit/4c5b5bda9d851335cdddfa61e63eb97e7dabc87f))
+* add Speechify TTS and Soniox STT providers ([#77](https://github.com/composite-voice/composite-voice/issues/77)) ([224184f](https://github.com/composite-voice/composite-voice/commit/224184fd045e472f8650c2a030ba927767ed217d))
+
 ## [0.1.1](https://github.com/lukeocodes/composite-voice/compare/composite-voice-v0.1.0...composite-voice-v0.1.1) (2026-03-24)
 
 
