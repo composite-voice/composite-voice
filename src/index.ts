@@ -244,6 +244,8 @@ export type {
   SmallestTTSFormat,
   SmallestTTSSampleRate,
 } from './providers/tts/smallest/index';
+export { RimeTTS } from './providers/tts/rime/index';
+export type { RimeTTSConfig, RimeTTSModel, RimeTTSFormat } from './providers/tts/rime/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

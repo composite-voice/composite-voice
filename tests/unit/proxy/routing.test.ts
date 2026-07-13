@@ -518,6 +518,49 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('smallest');
     });
+
+    it('includes Rime HTTP route when rimeApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        rimeApiKey: 'test-rime-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'rime',
+        type: 'http',
+        targetBase: 'https://users.rime.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-rime-key',
+        },
+      });
+    });
+
+    it('does not include Rime route when rimeApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'rime')).toBe(true);
+    });
+
+    it('includes Rime alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        rimeApiKey: 'rime-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('rime');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

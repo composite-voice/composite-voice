@@ -403,6 +403,7 @@ const llm = new OpenAICompatibleLLM({
 | [MurfTTS](/guides/tts/murf-tts) | REST | Murf voice library (`en-US-natalie`, ...) | No | mp3, wav, flac, alaw, ulaw |
 | [LMNTTTS](/guides/tts/lmnt-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, aac, ulaw, webm, pcm |
 | [SmallestTTS](/guides/tts/smallest-tts) | REST | Catalog + cloned voice IDs | No | wav, mp3, pcm, ulaw, alaw |
+| [RimeTTS](/guides/tts/rime-tts) | REST | Per-model voice catalogs | No | mp3, wav, ogg, webm, pcm, mulaw |
 
 ### NativeTTS
 
@@ -613,6 +614,28 @@ const tts = new SmallestTTS({
 - Telephony-friendly ulaw/alaw output at 8 kHz
 
 [API reference](/api/classes/smallesttts)
+
+### RimeTTS
+
+Rime text-to-speech via REST. Returns complete audio in one request.
+
+```typescript
+import { RimeTTS } from '@lukeocodes/composite-voice';
+
+const tts = new RimeTTS({
+  proxyUrl: '/api/proxy/rime',
+  speaker: 'astra',            // from Rime's per-model voice catalogs
+  model: 'arcana',             // coda, arcana, arcanav3, arcanav2, mistv3, mistv2
+  audioFormat: 'mp3',          // mp3, wav, ogg, webm, pcm, mulaw
+  language: 'en',              // ISO 639-1 or 639-2/3 code
+});
+```
+
+- Flagship `coda`, expressive `arcana`, and low-latency `mist` model families
+- Output format selected via the `Accept` header (raw audio bytes)
+- Speed and normalization controls (`speedAlpha`, `noTextNormalization`) on `mistv2`
+
+[API reference](/api/classes/rimetts)
 
 ---
 

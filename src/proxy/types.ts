@@ -236,6 +236,18 @@ export interface CompositeVoiceProxyConfig {
   smallestApiKey?: string;
 
   /**
+   * Rime API key -- used for HTTP TTS proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route at `{pathPrefix}/rime`
+   * that forwards requests to `https://users.rime.ai`. The
+   * `Authorization: Bearer` auth header is injected server-side.
+   *
+   * @defaultValue `undefined` (Rime proxying disabled)
+   */
+  rimeApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks
