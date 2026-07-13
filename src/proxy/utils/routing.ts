@@ -23,7 +23,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  *
  * @remarks
  * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax).
- * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime).
  */
 export type RouteType = 'http' | 'websocket';
 
@@ -123,6 +123,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       provider: 'openai',
       type: 'http',
       targetBase: 'https://api.openai.com',
+      authHeaders: {
+        Authorization: `Bearer ${config.openaiApiKey}`,
+      },
+    });
+
+    // The OpenAI Realtime API (used by OpenAIRealtimeSTT) upgrades to a
+    // WebSocket on the same host, reusing the same API key.
+    routes.push({
+      provider: 'openai-realtime',
+      type: 'websocket',
+      targetBase: 'wss://api.openai.com',
       authHeaders: {
         Authorization: `Bearer ${config.openaiApiKey}`,
       },

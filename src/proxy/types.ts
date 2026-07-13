@@ -69,11 +69,14 @@ export interface CompositeVoiceProxyConfig {
   anthropicApiKey?: string;
 
   /**
-   * OpenAI API key -- used for HTTP LLM and TTS proxying.
+   * OpenAI API key -- used for HTTP LLM and TTS proxying, and for
+   * WebSocket Realtime STT proxying.
    *
    * @remarks
    * When set, the proxy registers an HTTP route at `{pathPrefix}/openai`
-   * that forwards requests to `https://api.openai.com`.
+   * that forwards requests to `https://api.openai.com`, and a WebSocket
+   * route at `{pathPrefix}/openai-realtime` that forwards Realtime API
+   * connections (used by `OpenAIRealtimeSTT`) to `wss://api.openai.com`.
    *
    * @defaultValue `undefined` (OpenAI proxying disabled)
    */

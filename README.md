@@ -299,6 +299,7 @@ const agent = new CompositeVoice({
 | `GladiaSTT`     | HTTP init + WebSocket | All modern browsers | None     |
 | `SpeechmaticsSTT` | WebSocket    | All modern browsers | None            |
 | `RevAISTT`      | WebSocket      | All modern browsers | None            |
+| `OpenAIRealtimeSTT` | WebSocket  | All modern browsers | None            |
 
 All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
@@ -420,6 +421,20 @@ new RevAISTT({
   maxSegmentDurationSeconds: 10, // force final hypotheses every 5-30 s
 });
 ```
+
+**`OpenAIRealtimeSTT` options:**
+
+```typescript
+new OpenAIRealtimeSTT({
+  apiKey: 'your-key', // omit and use proxyUrl, or pass an async ephemeral-secret factory
+  model: 'gpt-4o-mini-transcribe', // or gpt-4o-transcribe, whisper-1, gpt-realtime-whisper
+  language: 'en', // optional ISO 639-1 hint
+  turnDetection: { type: 'server_vad' }, // default — commits audio at turn boundaries
+  noiseReduction: 'near_field', // optional — 'near_field' or 'far_field'
+});
+```
+
+Audio input must be 24 kHz mono PCM — pair with `MicrophoneInput({ sampleRate: 24000 })`.
 
 ### Language Models (LLM)
 
@@ -1655,9 +1670,9 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 | Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       |
 | Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax) work across all modern browsers.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, OpenAI Realtime, ElevenLabs, Cartesia) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax) work across all modern browsers.
 
-For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `SonioxSTT`, `GladiaSTT`, `SpeechmaticsSTT`, `RevAISTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
+For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `SonioxSTT`, `GladiaSTT`, `SpeechmaticsSTT`, `RevAISTT`, `OpenAIRealtimeSTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 
 ---
 

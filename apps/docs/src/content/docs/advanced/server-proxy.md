@@ -135,7 +135,7 @@ The proxy automatically creates routes based on which API keys you provide:
 |-------------|------------|-----------------|----------|
 | `deepgramApiKey` | — | `/api/proxy/deepgram` | Deepgram STT + TTS |
 | `anthropicApiKey` | `/api/proxy/anthropic` | — | Anthropic LLM |
-| `openaiApiKey` | `/api/proxy/openai` | — | OpenAI LLM + TTS |
+| `openaiApiKey` | `/api/proxy/openai` | `/api/proxy/openai-realtime` | OpenAI LLM + TTS + Realtime STT |
 | `groqApiKey` | `/api/proxy/groq` | — | Groq LLM |
 | `mistralApiKey` | `/api/proxy/mistral` | — | Mistral LLM |
 | `geminiApiKey` | `/api/proxy/gemini` | — | Gemini LLM |

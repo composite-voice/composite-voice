@@ -20,6 +20,9 @@
  *   Supports 50+ languages, end-of-utterance detection, and speaker diarization.
  * - **RevAISTT** -- Connects to Rev AI's streaming STT via WebSocket.
  *   Supports 9 languages, profanity filtering, and custom vocabularies.
+ * - **OpenAIRealtimeSTT** -- Connects to OpenAI's Realtime API transcription
+ *   intent via WebSocket. Supports server/semantic VAD turn detection and
+ *   noise reduction.
  *
  * @example
  * ```typescript
@@ -39,6 +42,7 @@
  * @see {@link GladiaSTT} for Gladia streaming STT
  * @see {@link SpeechmaticsSTT} for Speechmatics streaming STT
  * @see {@link RevAISTT} for Rev AI streaming STT
+ * @see {@link OpenAIRealtimeSTT} for OpenAI Realtime streaming STT
  */
 
 export * from './native/index';
@@ -53,3 +57,4 @@ export * from './revai/index';
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
 // import { OpenAISTT } from '@lukeocodes/composite-voice/providers/stt/openai';
+export * from './openai/index';

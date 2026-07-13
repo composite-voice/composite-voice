@@ -697,6 +697,58 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('speechmatics');
     });
+
+    it('includes OpenAI Realtime WebSocket route alongside the HTTP route when openaiApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        openaiApiKey: 'test-openai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes).toContainEqual({
+        provider: 'openai',
+        type: 'http',
+        targetBase: 'https://api.openai.com',
+        authHeaders: {
+          Authorization: 'Bearer test-openai-key',
+        },
+      });
+      expect(routes).toContainEqual({
+        provider: 'openai-realtime',
+        type: 'websocket',
+        targetBase: 'wss://api.openai.com',
+        authHeaders: {
+          Authorization: 'Bearer test-openai-key',
+        },
+      });
+    });
+
+    it('does not include OpenAI Realtime route when openaiApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'openai-realtime')).toBe(true);
+    });
+
+    it('includes OpenAI Realtime alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        openaiApiKey: 'openai-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('openai');
+      expect(providers).toContain('openai-realtime');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {
@@ -960,6 +1012,43 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       const route = matchHttpRoute(routes, '/proxy/anthropic/v1/messages', prefix);
       expect(route).not.toBeNull();
       expect(route!.provider).toBe('anthropic');
+    });
+  });
+
+  describe('matchWsRoute — OpenAI Realtime', () => {
+    const routes = buildRoutes({
+      deepgramApiKey: 'dg-key',
+      openaiApiKey: 'openai-key',
+    });
+    const prefix = '/proxy';
+
+    it('matches /proxy/openai-realtime/ path with the transcription intent query', () => {
+      const route = matchWsRoute(
+        routes,
+        '/proxy/openai-realtime/v1/realtime?intent=transcription',
+        prefix
+      );
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('openai-realtime');
+      expect(route!.type).toBe('websocket');
+      expect(route!.targetBase).toBe('wss://api.openai.com');
+    });
+
+    it('does not match a WebSocket route for the plain openai provider', () => {
+      const route = matchWsRoute(routes, '/proxy/openai/v1/realtime', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('does not match HTTP routes for openai-realtime', () => {
+      const route = matchHttpRoute(routes, '/proxy/openai-realtime/v1/realtime', prefix);
+      expect(route).toBeNull();
+    });
+
+    it('still matches the OpenAI HTTP route', () => {
+      const route = matchHttpRoute(routes, '/proxy/openai/v1/chat/completions', prefix);
+      expect(route).not.toBeNull();
+      expect(route!.provider).toBe('openai');
+      expect(route!.type).toBe('http');
     });
   });
 });

@@ -66,6 +66,7 @@ input.push(audioBuffer);
 | [GladiaSTT](/guides/stt/gladia-stt) | HTTP init + WebSocket | solaria-1 | Yes | No |
 | [SpeechmaticsSTT](/guides/stt/speechmatics-stt) | WebSocket | Server default | Yes | No |
 | [RevAISTT](/guides/stt/revai-stt) | WebSocket | Default model | Yes | No |
+| [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) | WebSocket | gpt-4o-mini-transcribe, gpt-4o-transcribe, whisper-1, gpt-realtime-whisper | Yes | No |
 
 ### NativeSTT
 
@@ -306,6 +307,31 @@ const stt = new RevAISTT({
 - Auth via `access_token` query parameter (injected server-side in proxy mode)
 
 [API reference](/api/classes/revaistt)
+
+### OpenAIRealtimeSTT
+
+Real-time speech recognition via OpenAI's Realtime API transcription intent, with server or semantic VAD turn detection.
+
+```typescript
+import { OpenAIRealtimeSTT } from '@lukeocodes/composite-voice';
+
+const stt = new OpenAIRealtimeSTT({
+  proxyUrl: '/api/proxy/openai-realtime',
+  // OR: apiKey: '...',              // direct key or async ephemeral-secret factory
+  model: 'gpt-4o-mini-transcribe',   // gpt-4o-transcribe, whisper-1, gpt-realtime-whisper
+  language: 'en',                    // ISO 639-1 hint
+  turnDetection: { type: 'server_vad' },  // default — drives turn-taking
+  noiseReduction: 'near_field',      // optional input noise reduction
+});
+```
+
+- Server VAD (volume-based) or semantic VAD (model-based) turn detection
+- Optional input noise reduction (near-field / far-field)
+- Prompt-based vocabulary steering for domain terms
+- Ephemeral client-secret support via async `apiKey` factories (browser-safe auth over WebSocket subprotocols)
+- 24 kHz mono PCM input (pair with `MicrophoneInput({ sampleRate: 24000 })`)
+
+[API reference](/api/classes/openairealtimestt)
 
 ---
 
