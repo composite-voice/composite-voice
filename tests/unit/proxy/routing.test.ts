@@ -475,6 +475,49 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('lmnt');
     });
+
+    it('includes Smallest HTTP route when smallestApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        smallestApiKey: 'test-smallest-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]).toEqual({
+        provider: 'smallest',
+        type: 'http',
+        targetBase: 'https://api.smallest.ai',
+        authHeaders: {
+          Authorization: 'Bearer test-smallest-key',
+        },
+      });
+    });
+
+    it('does not include Smallest route when smallestApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'smallest')).toBe(true);
+    });
+
+    it('includes Smallest alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        smallestApiKey: 'smallest-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('smallest');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

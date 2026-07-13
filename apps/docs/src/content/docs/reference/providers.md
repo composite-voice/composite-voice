@@ -402,6 +402,7 @@ const llm = new OpenAICompatibleLLM({
 | [SpeechifyTTS](/guides/tts/speechify-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, ogg, aac |
 | [MurfTTS](/guides/tts/murf-tts) | REST | Murf voice library (`en-US-natalie`, ...) | No | mp3, wav, flac, alaw, ulaw |
 | [LMNTTTS](/guides/tts/lmnt-tts) | REST | Catalog + cloned voice IDs | No | mp3, wav, aac, ulaw, webm, pcm |
+| [SmallestTTS](/guides/tts/smallest-tts) | REST | Catalog + cloned voice IDs | No | wav, mp3, pcm, ulaw, alaw |
 
 ### NativeTTS
 
@@ -589,6 +590,29 @@ const tts = new LMNTTTS({
 - Expressiveness (`temperature`) and stability (`topP`) controls
 
 [API reference](/api/classes/lmnttts)
+
+### SmallestTTS
+
+Smallest.ai Lightning text-to-speech via the Waves REST API. Returns complete audio in one request.
+
+```typescript
+import { SmallestTTS } from '@lukeocodes/composite-voice';
+
+const tts = new SmallestTTS({
+  proxyUrl: '/api/proxy/smallest',
+  voiceId: 'meher',            // Waves catalog voice or a cloned voice
+  model: 'lightning_v3.1',     // lightning_v3.1, lightning_v3.1_pro
+  outputFormat: 'wav',         // wav, mp3, pcm, ulaw, alaw
+  sampleRate: 24000,           // 8000, 16000, 24000, 44100
+  speed: 1.0,                  // 0.5 to 2.0
+});
+```
+
+- Ultra-low-latency Lightning v3.1 and v3.1 Pro models
+- 12 languages (English, Hindi, Spanish, and 9 Indian languages) plus voice cloning
+- Telephony-friendly ulaw/alaw output at 8 kHz
+
+[API reference](/api/classes/smallesttts)
 
 ---
 

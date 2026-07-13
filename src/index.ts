@@ -237,6 +237,13 @@ export type {
   LMNTTTSFormat,
   LMNTTTSSampleRate,
 } from './providers/tts/lmnt/index';
+export { SmallestTTS } from './providers/tts/smallest/index';
+export type {
+  SmallestTTSConfig,
+  SmallestTTSModel,
+  SmallestTTSFormat,
+  SmallestTTSSampleRate,
+} from './providers/tts/smallest/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

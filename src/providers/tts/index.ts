@@ -23,6 +23,8 @@
  * - **LMNTTTS** -- Connects to the LMNT TTS API (REST). Supports the Blizzard
  *   model, voice cloning voices, and multiple output formats (mp3, wav, aac,
  *   ulaw, webm, pcm_s16le, pcm_f32le).
+ * - **SmallestTTS** -- Connects to the Smallest.ai Waves TTS API (REST). Supports
+ *   the Lightning models and multiple output formats (wav, mp3, pcm, ulaw, alaw).
  *
  * @example
  * ```typescript
@@ -43,6 +45,7 @@
  * @see {@link SpeechifyTTS} for Speechify REST-based TTS
  * @see {@link MurfTTS} for Murf AI REST-based TTS
  * @see {@link LMNTTTS} for LMNT REST-based TTS
+ * @see {@link SmallestTTS} for Smallest.ai Waves REST-based TTS
  */
 
 export * from './native/index';
@@ -53,3 +56,4 @@ export * from './cartesia/index';
 export * from './speechify/index';
 export * from './murf/index';
 export * from './lmnt/index';
+export * from './smallest/index';

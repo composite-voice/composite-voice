@@ -22,7 +22,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai).
  * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia).
  */
 export type RouteType = 'http' | 'websocket';
@@ -247,6 +247,17 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://api.lmnt.com',
       authHeaders: {
         'X-API-Key': config.lmntApiKey,
+      },
+    });
+  }
+
+  if (config.smallestApiKey) {
+    routes.push({
+      provider: 'smallest',
+      type: 'http',
+      targetBase: 'https://api.smallest.ai',
+      authHeaders: {
+        Authorization: `Bearer ${config.smallestApiKey}`,
       },
     });
   }
