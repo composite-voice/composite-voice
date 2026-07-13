@@ -57,6 +57,7 @@ const proxy = createExpressProxy({
   assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
   speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
   fishAudioApiKey: process.env.FISH_AUDIO_API_KEY,
+  googleCloudApiKey: process.env.GOOGLE_CLOUD_API_KEY,
 
   // Route prefix (default: '/api/proxy')
   pathPrefix: '/api/proxy',
@@ -154,10 +155,13 @@ The proxy automatically creates routes based on which API keys you provide:
 | `assemblyaiApiKey` | — | `/api/proxy/assemblyai` | AssemblyAI STT |
 | `speechmaticsApiKey` | — | `/api/proxy/speechmatics` | Speechmatics STT |
 | `fishAudioApiKey` | `/api/proxy/fishaudio` | — | Fish Audio TTS |
+| `googleCloudApiKey` | `/api/proxy/google-tts` + `/api/proxy/google-stt` | — | Google Cloud TTS + STT |
 
 HTTP routes forward REST requests. WebSocket routes relay frames bidirectionally. Fish Audio's msgpack-encoded request bodies are opaque binary to the proxy and are forwarded untouched.
 
 Most providers authenticate with injected headers. Rev AI is the exception: its streaming WebSocket only accepts an `access_token` query parameter, so the proxy appends the token to the upstream URL server-side instead — overriding any client-supplied value. Either way, the credential never reaches the browser.
+
+**Note:** `googleCloudApiKey` registers two HTTP routes from one key because Google Cloud Text-to-Speech (`texttospeech.googleapis.com`) and Speech-to-Text (`speech.googleapis.com`) live on different hosts; the proxy injects the `X-goog-api-key` header on both. This key is separate from `geminiApiKey`, which proxies the Gemini LLM API.
 
 ### Client configuration
 On the client, point providers at the proxy URL instead of using API keys:

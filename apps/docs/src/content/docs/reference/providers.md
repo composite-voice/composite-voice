@@ -67,6 +67,7 @@ input.push(audioBuffer);
 | [SpeechmaticsSTT](/guides/stt/speechmatics-stt) | WebSocket | Server default | Yes | No |
 | [RevAISTT](/guides/stt/revai-stt) | WebSocket | Default model | Yes | No |
 | [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) | WebSocket | gpt-4o-mini-transcribe, gpt-4o-transcribe, whisper-1, gpt-realtime-whisper | Yes | No |
+| [GoogleSTT](/guides/stt/google-stt) | HTTP (REST, batch) | latest_short, latest_long, telephony, ... | No | No |
 
 ### NativeSTT
 
@@ -333,6 +334,34 @@ const stt = new OpenAIRealtimeSTT({
 
 [API reference](/api/classes/openairealtimestt)
 
+### GoogleSTT
+
+Batch (per-utterance) speech recognition via Google Cloud Speech-to-Text's synchronous REST endpoint. Each `transcribe(blob)` call uploads a complete recording (up to 60 seconds) and emits one final result with `utteranceComplete: true`.
+
+```typescript
+import { GoogleSTT } from '@lukeocodes/composite-voice';
+
+const stt = new GoogleSTT({
+  proxyUrl: '/api/proxy/google-stt',
+  // OR: apiKey: 'AIza...',            // Google Cloud API key (X-goog-api-key)
+  language: 'en-US',
+  encoding: 'WEBM_OPUS',               // matches MediaRecorder output
+  sampleRate: 48000,
+  model: 'latest_short',               // latest_short, latest_long, telephony, ...
+  enableWordTimeOffsets: true,         // word timings in metadata.words
+  keywords: ['CompositeVoice'],        // phrase hints via speechContexts
+});
+```
+
+- Batch REST transcription — one final result per complete recording, no interim results
+- 60 seconds / 10 MB of audio per request (synchronous `speech:recognize` limit)
+- Automatic punctuation, profanity filtering, phrase hints, alternative languages
+- Word-level time offsets in result metadata
+
+> Google's streaming recognition (`StreamingRecognize`) is gRPC-only in both v1 and v2 — there is no public WebSocket endpoint, so no live variant exists. For real-time streaming STT use [DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/stt/assemblyai-stt), or [SonioxSTT](/guides/stt/soniox-stt).
+
+[API reference](/api/classes/googlestt)
+
 ---
 
 ## Large Language Models (LLM)
@@ -487,6 +516,7 @@ const llm = new OpenAICompatibleLLM({
 | [RimeTTS](/guides/tts/rime-tts) | REST | Per-model voice catalogs | No | mp3, wav, ogg, webm, pcm, mulaw |
 | [MiniMaxTTS](/guides/tts/minimax-tts) | REST | 300+ system + cloned voice IDs | No | mp3, wav, flac, pcm |
 | [FishAudioTTS](/guides/tts/fishaudio-tts) | REST (msgpack) | Catalog voice IDs + inline cloning | No | mp3, wav, pcm, opus |
+| [GoogleTTS](/guides/tts/google-tts) | REST | Chirp 3: HD, Neural2, Studio, WaveNet, ... | No | MP3, OGG_OPUS, LINEAR16, MULAW, ALAW |
 
 ### NativeTTS
 
@@ -766,6 +796,30 @@ const tts = new FishAudioTTS({
 - Msgpack wire format (`Content-Type: application/msgpack`); requires `@msgpack/msgpack`
 
 [API reference](/api/classes/fishaudiotts)
+
+### GoogleTTS
+
+Google Cloud Text-to-Speech via REST. Returns complete audio in one request.
+
+```typescript
+import { GoogleTTS } from '@lukeocodes/composite-voice';
+
+const tts = new GoogleTTS({
+  proxyUrl: '/api/proxy/google-tts',
+  languageCode: 'en-US',                  // BCP-47 language/region
+  voiceName: 'en-US-Chirp3-HD-Kore',      // Chirp 3: HD, Neural2, Studio, WaveNet, ...
+  audioEncoding: 'MP3',                   // MP3, OGG_OPUS, LINEAR16, MULAW, ALAW
+  speakingRate: 1.0,                      // 0.25 – 4.0
+  pitch: 0,                               // semitones, -20 to +20
+});
+```
+
+- Full Google voice catalog: Chirp 3: HD (latest), Neural2, Studio, WaveNet, Polyglot, News, Casual, Standard
+- SSML input supported (text starting with `<speak` is sent as SSML)
+- Rate, pitch, volume gain, sample rate, and device effects profiles
+- API-key auth via the `X-goog-api-key` header (service accounts out of scope)
+
+[API reference](/api/classes/googletts)
 
 ---
 

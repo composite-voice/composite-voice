@@ -34,6 +34,9 @@
  *   msgpack-encoded requests. Supports catalog voices, instant voice cloning via
  *   inline reference audio, and multiple output formats (mp3, wav, pcm, opus).
  *   Requires the optional peer dependency `@msgpack/msgpack`.
+ * - **GoogleTTS** -- Connects to the Google Cloud Text-to-Speech API (REST). Supports
+ *   Chirp 3: HD, Neural2, Studio, and WaveNet voices and multiple encodings
+ *   (MP3, OGG_OPUS, LINEAR16, MULAW, ALAW).
  *
  * @example
  * ```typescript
@@ -58,6 +61,7 @@
  * @see {@link RimeTTS} for Rime REST-based TTS
  * @see {@link MiniMaxTTS} for MiniMax REST-based TTS
  * @see {@link FishAudioTTS} for Fish Audio REST-based TTS (msgpack wire format)
+ * @see {@link GoogleTTS} for Google Cloud REST-based TTS
  */
 
 export * from './native/index';
@@ -72,3 +76,4 @@ export * from './smallest/index';
 export * from './rime/index';
 export * from './minimax/index';
 export * from './fishaudio/index';
+export * from './google/index';

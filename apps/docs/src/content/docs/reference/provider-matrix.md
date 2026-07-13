@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance �
 order: 0
 ---
 
-CompositeVoice supports 22 provider companies across 30 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 23 provider companies across 32 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -24,6 +24,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **SpeechmaticsSTT** | | **yes** | | | |
 | **RevAISTT** | | **yes** | | | |
 | **OpenAIRealtimeSTT** | | **yes** | | | |
+| **GoogleSTT** | | **yes** | | | |
 | **AnthropicLLM** | | | **yes** | | |
 | **OpenAILLM** | | | **yes** | | |
 | **GroqLLM** | | | **yes** | | |
@@ -43,6 +44,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **RimeTTS** | | | | **yes** | |
 | **MiniMaxTTS** | | | | **yes** | |
 | **FishAudioTTS** | | | | **yes** | |
+| **GoogleTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
@@ -499,6 +501,28 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 ---
 
+### Google Cloud
+
+| | STT | TTS |
+|---|---|---|
+| **Class** | [`GoogleSTT`](/guides/stt/google-stt) | [`GoogleTTS`](/guides/tts/google-tts) |
+| **Transport** | HTTP (REST, batch) | HTTP (REST) |
+| **Streaming** | No (batch, per-utterance) | No (batch synthesis) |
+| **Peer dependency** | None | None |
+| **Proxy support** | Yes | Yes |
+| **Browser support** | All modern browsers | All modern browsers |
+| **Default model** | *(Google default for the language)* | *(Google default voice for the language)* |
+
+**GoogleSTT (batch) features:** Synchronous `speech:recognize` REST transcription of complete recordings (up to 60 seconds / 10 MB per request), one final `utteranceComplete` result per utterance, automatic punctuation, profanity filtering, phrase hints (`keywords` → `speechContexts`), up to 3 alternative language candidates, word-level time offsets in metadata, WAV/FLAC header auto-detection. Models: latest_short (best for voice-agent turns), latest_long, telephony, telephony_short, medical_dictation, medical_conversation, and legacy models. **No streaming variant:** Google's `StreamingRecognize` is gRPC-only (v1 and v2) with no public WebSocket endpoint, so a zero-dependency live provider is not possible.
+
+**TTS features:** Full Google voice catalog — Chirp 3: HD (latest generation), Neural2, Studio, WaveNet, Polyglot, News, Casual, Standard (Journey voices were retired into Chirp 3: HD) — SSML input (auto-detected via a leading `<speak` tag), speaking rate / pitch / volume gain controls, configurable sample rate, device effects profiles, 5 encodings (MP3, OGG_OPUS, LINEAR16, MULAW, ALAW).
+
+**Auth:** Google Cloud API key injected as the `X-goog-api-key` header (direct mode) or server-side by the proxy (`googleCloudApiKey` config registers both the `google-tts` and `google-stt` routes). OAuth2 service accounts are out of scope. This is separate from the Gemini LLM key/route above.
+
+**Guides:** [GoogleSTT](/guides/stt/google-stt) · [GoogleTTS](/guides/tts/google-tts)
+
+---
+
 ### Browser Built-ins
 
 | | STT | TTS |
@@ -550,7 +574,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Agent provider (stt+llm+tts)** | DeepgramAgent |
 | **Server proxy** | All except [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **No API key needed** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
-| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) |
+| **No peer dependency** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [DeepgramTTS](/guides/tts/deepgram-tts), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [AnthropicLLM](/guides/llm/anthropic), [OpenAILLM](/guides/llm/openai), [OpenAITTS](/guides/tts/openai-tts), [GroqLLM](/guides/llm/groq), [GeminiLLM](/guides/llm/gemini), [MistralLLM](/guides/llm/mistral), [SpeechifyTTS](/guides/tts/speechify-tts), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [MurfTTS](/guides/tts/murf-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [RimeTTS](/guides/tts/rime-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt), [GoogleSTT](/guides/stt/google-stt), [GoogleTTS](/guides/tts/google-tts) |
 | **Managed audio** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts) |
 | **Voice cloning controls** | [ElevenLabsTTS](/guides/tts/elevenlabs-tts), [SpeechifyTTS](/guides/tts/speechify-tts), [LMNTTTS](/guides/tts/lmnt-tts), [SmallestTTS](/guides/tts/smallest-tts), [MiniMaxTTS](/guides/tts/minimax-tts), [FishAudioTTS](/guides/tts/fishaudio-tts) |
 | **Emotion controls** | [CartesiaTTS](/guides/tts/cartesia-tts), [MiniMaxTTS](/guides/tts/minimax-tts) |
@@ -558,6 +582,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Keyterm boosting** | [DeepgramFlux](/guides/stt/deepgram-flux) |
 | **Offline capable** | [NativeSTT](/guides/stt/native-stt), [NativeTTS](/guides/tts/native-tts), [WebLLMLLM](/guides/llm/webllm) |
 | **Speaker diarization** | [DeepgramSTT](/guides/stt/deepgram-stt), [SonioxSTT](/guides/stt/soniox-stt), [SpeechmaticsSTT](/guides/stt/speechmatics-stt) |
-| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt) |
+| **Word-level timestamps** | [DeepgramSTT](/guides/stt/deepgram-stt), [DeepgramFlux](/guides/stt/deepgram-flux), [AssemblyAISTT](/guides/stt/assemblyai-stt), [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt), [DeepgramTTS](/guides/tts/deepgram-tts), [CartesiaTTS](/guides/tts/cartesia-tts), [SpeechmaticsSTT](/guides/stt/speechmatics-stt), [RevAISTT](/guides/stt/revai-stt), [GoogleSTT](/guides/stt/google-stt) |
 | **Language auto-detection** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [SonioxSTT](/guides/stt/soniox-stt), [GladiaSTT](/guides/stt/gladia-stt) |
 | **VAD commit strategy** | [ElevenLabsSTT](/guides/stt/elevenlabs-stt), [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) |
+| **Batch (per-utterance) STT** | [GoogleSTT](/guides/stt/google-stt) |

@@ -22,7 +22,7 @@ import type { CompositeVoiceProxyConfig } from '../types';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT).
  * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime).
  */
 export type RouteType = 'http' | 'websocket';
@@ -350,6 +350,26 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       targetBase: 'https://api.fish.audio',
       authHeaders: {
         Authorization: `Bearer ${config.fishAudioApiKey}`,
+      },
+    });
+  }
+
+  // Google Cloud TTS and STT use separate hosts but share one API key
+  if (config.googleCloudApiKey) {
+    routes.push({
+      provider: 'google-tts',
+      type: 'http',
+      targetBase: 'https://texttospeech.googleapis.com',
+      authHeaders: {
+        'X-goog-api-key': config.googleCloudApiKey,
+      },
+    });
+    routes.push({
+      provider: 'google-stt',
+      type: 'http',
+      targetBase: 'https://speech.googleapis.com',
+      authHeaders: {
+        'X-goog-api-key': config.googleCloudApiKey,
       },
     });
   }

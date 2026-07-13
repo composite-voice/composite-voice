@@ -303,6 +303,24 @@ export interface CompositeVoiceProxyConfig {
   fishAudioApiKey?: string;
 
   /**
+   * Google Cloud API key -- used for HTTP TTS and STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers two HTTP routes: `{pathPrefix}/google-tts`
+   * forwarding to `https://texttospeech.googleapis.com` (Text-to-Speech) and
+   * `{pathPrefix}/google-stt` forwarding to `https://speech.googleapis.com`
+   * (Speech-to-Text). The `X-goog-api-key` auth header is injected
+   * server-side on both routes. The key should be enabled for the Cloud
+   * Text-to-Speech and/or Speech-to-Text APIs.
+   *
+   * This is separate from {@link CompositeVoiceProxyConfig.geminiApiKey | geminiApiKey},
+   * which proxies the Gemini LLM API on a different host.
+   *
+   * @defaultValue `undefined` (Google Cloud speech proxying disabled)
+   */
+  googleCloudApiKey?: string;
+
+  /**
    * URL path prefix for all proxy routes.
    *
    * @remarks

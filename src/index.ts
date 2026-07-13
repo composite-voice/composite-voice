@@ -185,6 +185,12 @@ export type {
   OpenAIRealtimeServerVad,
   OpenAIRealtimeSemanticVad,
 } from './providers/stt/openai/index';
+export { GoogleSTT } from './providers/stt/google/index';
+export type {
+  GoogleSTTConfig,
+  GoogleSTTEncoding,
+  GoogleSTTWordInfo,
+} from './providers/stt/google/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -272,6 +278,12 @@ export type {
   FishAudioTTSLatency,
   FishAudioReference,
 } from './providers/tts/fishaudio/index';
+export { GoogleTTS } from './providers/tts/google/index';
+export type {
+  GoogleTTSConfig,
+  GoogleTTSAudioEncoding,
+  GoogleTTSSsmlGender,
+} from './providers/tts/google/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

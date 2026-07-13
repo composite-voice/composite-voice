@@ -792,6 +792,76 @@ it('includes Murf HTTP route when murfApiKey is provided', () => {
       expect(providers).toContain('deepgram');
       expect(providers).toContain('fishaudio');
     });
+
+    it('includes both Google Cloud HTTP routes when googleCloudApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        googleCloudApiKey: 'test-google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes).toContainEqual({
+        provider: 'google-tts',
+        type: 'http',
+        targetBase: 'https://texttospeech.googleapis.com',
+        authHeaders: {
+          'X-goog-api-key': 'test-google-key',
+        },
+      });
+      expect(routes).toContainEqual({
+        provider: 'google-stt',
+        type: 'http',
+        targetBase: 'https://speech.googleapis.com',
+        authHeaders: {
+          'X-goog-api-key': 'test-google-key',
+        },
+      });
+    });
+
+    it('does not include Google Cloud routes when googleCloudApiKey is not provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        geminiApiKey: 'gemini-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes.every((r) => r.provider !== 'google-tts')).toBe(true);
+      expect(routes.every((r) => r.provider !== 'google-stt')).toBe(true);
+    });
+
+    it('keeps the Google Cloud routes separate from the Gemini route', () => {
+      const config: CompositeVoiceProxyConfig = {
+        geminiApiKey: 'gemini-key',
+        googleCloudApiKey: 'google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const gemini = routes.find((r) => r.provider === 'gemini');
+      const googleTts = routes.find((r) => r.provider === 'google-tts');
+      const googleStt = routes.find((r) => r.provider === 'google-stt');
+      expect(gemini?.authHeaders).toEqual({ Authorization: 'Bearer gemini-key' });
+      expect(googleTts?.authHeaders).toEqual({ 'X-goog-api-key': 'google-key' });
+      expect(googleStt?.authHeaders).toEqual({ 'X-goog-api-key': 'google-key' });
+    });
+
+    it('includes Google Cloud routes alongside other providers', () => {
+      const config: CompositeVoiceProxyConfig = {
+        deepgramApiKey: 'dg-key',
+        anthropicApiKey: 'ant-key',
+        googleCloudApiKey: 'google-key',
+      };
+
+      const routes = buildRoutes(config);
+
+      const providers = routes.map((r) => r.provider);
+      expect(providers).toContain('anthropic');
+      expect(providers).toContain('deepgram');
+      expect(providers).toContain('google-tts');
+      expect(providers).toContain('google-stt');
+    });
   });
 
   describe('matchWsRoute — ElevenLabs', () => {

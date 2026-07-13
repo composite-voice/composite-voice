@@ -23,6 +23,9 @@
  * - **OpenAIRealtimeSTT** -- Connects to OpenAI's Realtime API transcription
  *   intent via WebSocket. Supports server/semantic VAD turn detection and
  *   noise reduction.
+ * - **GoogleSTT** -- Connects to Google Cloud Speech-to-Text via REST (batch,
+ *   per-utterance transcription of complete recordings up to 60 seconds).
+ *   Google's streaming API is gRPC-only, so there is no live variant.
  *
  * @example
  * ```typescript
@@ -43,6 +46,7 @@
  * @see {@link SpeechmaticsSTT} for Speechmatics streaming STT
  * @see {@link RevAISTT} for Rev AI streaming STT
  * @see {@link OpenAIRealtimeSTT} for OpenAI Realtime streaming STT
+ * @see {@link GoogleSTT} for Google Cloud batch (REST) STT
  */
 
 export * from './native/index';
@@ -53,6 +57,7 @@ export * from './soniox/index';
 export * from './gladia/index';
 export * from './speechmatics/index';
 export * from './revai/index';
+export * from './google/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
