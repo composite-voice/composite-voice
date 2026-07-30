@@ -477,7 +477,7 @@ export interface ConversationHistoryConfig {
  * @see {@link ConversationHistoryConfig} for multi-turn history
  * @see {@link AudioBufferQueueConfig} for queue configuration
  */
-export interface CompositeVoiceConfig {
+export interface CompositeVoiceConfig<TProviders extends readonly BaseProvider[] = BaseProvider[]> {
   /**
    * Array of provider instances for the voice pipeline.
    *
@@ -496,7 +496,7 @@ export interface CompositeVoiceConfig {
    *
    * @see {@link BaseProvider} for the interface all providers implement
    */
-  providers: BaseProvider[];
+  providers: TProviders;
 
   /**
    * Queue configuration for input and output audio buffer queues.

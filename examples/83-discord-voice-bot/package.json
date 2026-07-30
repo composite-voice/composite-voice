@@ -1,0 +1,21 @@
+{
+  "name": "@lukeocodes/composite-voice-example-83-discord-voice-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Discord voice-channel bot — DiscordVoice duplex provider with Deepgram STT/TTS and Claude",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --import tsx/esm server.ts",
+    "start": "node --env-file=.env --import tsx/esm server.ts"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "@discordjs/voice": "^0.19.0",
+    "@lukeocodes/composite-voice": "workspace:*",
+    "discord.js": "^14.16.0",
+    "prism-media": "^1.3.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}

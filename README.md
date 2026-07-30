@@ -40,6 +40,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                                |
 | **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                              |
 | **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                                    |
+| **Platform inputs & outputs**   | Put the agent in a Discord voice channel — plus generic WebRTC in/out for LiveKit, Daily, and custom SFUs. |
 | **Agent providers**             | Collapse STT + LLM + TTS into a single connection. `DeepgramAgent` uses one WebSocket to the Deepgram Voice Agent API — the SDK auto-fills mic input and speaker output.                          |
 | **Extensible**                  | Abstract base classes for all 5 roles plus `BaseAgentProvider` for multi-role agents. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                   |
 
@@ -283,9 +284,10 @@ const agent = new CompositeVoice({
 | ----------------- | ------------- | --------------- | --------------- |
 | `MicrophoneInput` | Browser       | `input`         | None            |
 | `BufferInput`     | Node/Bun/Deno | `input`         | None            |
+| `WebRTCInput`     | Browser       | `input`         | None            |
 | `NativeSTT`       | Browser       | `input` + `stt` | None            |
 
-`MicrophoneInput` wraps the browser's `getUserMedia` + `AudioContext` into a provider. `BufferInput` accepts pushed `ArrayBuffer` data for server-side pipelines. `NativeSTT` manages its own microphone internally.
+`MicrophoneInput` wraps the browser's `getUserMedia` + `AudioContext` into a provider. `BufferInput` accepts pushed `ArrayBuffer` data for server-side pipelines. `WebRTCInput` extracts PCM from a remote WebRTC `MediaStreamTrack` — the building block for joining LiveKit, Daily, or any custom SFU. `NativeSTT` manages its own microphone internally.
 
 ### Speech-to-Text (STT)
 
@@ -793,9 +795,20 @@ Agent providers collapse the three middle pipeline roles (`stt` + `llm` + `tts`)
 | -------------------- | ------------- | ---------------- | --------------- |
 | `BrowserAudioOutput` | Browser       | `output`         | None            |
 | `NullOutput`         | Node/Bun/Deno | `output`         | None            |
+| `WebRTCOutput`       | Browser       | `output`         | None            |
 | `NativeTTS`          | Browser       | `tts` + `output` | None            |
 
-`BrowserAudioOutput` wraps the browser's `AudioContext` for speaker playback. `NullOutput` silently discards audio for server-side pipelines. `NativeTTS` manages its own speaker output internally via the SpeechSynthesis API.
+`BrowserAudioOutput` wraps the browser's `AudioContext` for speaker playback. `NullOutput` silently discards audio for server-side pipelines. `WebRTCOutput` renders TTS audio into a publishable WebRTC `MediaStreamTrack` so the agent's voice can join any WebRTC room. `NativeTTS` manages its own speaker output internally via the SpeechSynthesis API.
+
+### Platform Inputs & Outputs
+
+Platform providers connect the pipeline to call and chat platforms. Duplex providers cover `input` + `output` with a single instance; receive-only platforms cover `input` and pair with `NullOutput`. Providers that bind to a per-call handle (a Twilio/Vonage socket, Discord voice connection, Zoom RTMS session, WebRTC track) expose `attach()` — and `startListening()` accepts that handle directly as a typed optional parameter, so `agent.startListening(socket)` attaches and starts capture in one call.
+
+| Provider            | Environment   | Roles              | Peer dependency |
+| ------------------- | ------------- | ------------------ | --------------- |
+| `DiscordVoice`      | Node          | `input` + `output` | `@discordjs/voice`, `prism-media` |
+
+`DiscordVoice` puts the agent in a Discord voice channel: your bot joins with `joinVoiceChannel` and hands the connection to the provider, which decodes speakers' Opus to PCM for STT and plays TTS back through an `AudioPlayer`.
 
 ---
 

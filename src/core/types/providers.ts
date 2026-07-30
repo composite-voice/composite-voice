@@ -1559,6 +1559,92 @@ export interface AudioOutputProvider extends BaseProvider {
 }
 
 /**
+ * An audio input provider that connects to its platform through a per-call
+ * handle passed to `attach()`.
+ *
+ * @remarks
+ * Platform input providers often cannot capture audio until the application
+ * hands them a live, platform-specific object — a Discord `VoiceConnection`,
+ * or a remote WebRTC track. Providers declare that handle's type by
+ * implementing `attach()`.
+ *
+ * When a provider in the {@link CompositeVoiceConfig.providers | providers}
+ * array implements this interface, `CompositeVoice.startListening()` accepts
+ * the attach target as an optional, fully typed parameter and forwards it to
+ * `attach()` before capture starts:
+ *
+ * ```typescript
+ * const voice = new CompositeVoice({
+ *   providers: [discord, new DeepgramSTT({ ... }), new AnthropicLLM({ ... })],
+ * });
+ * await voice.initialize();
+ *
+ * const connection = joinVoiceChannel({ ...opts, selfDeaf: false });
+ * await voice.startListening(connection); // typed as DiscordVoiceConnection
+ * ```
+ *
+ * Calling `attach()` directly and then `startListening()` with no argument
+ * remains equally valid — the parameter is a convenience, not a requirement.
+ *
+ * @typeParam TTarget - The platform-specific handle type (e.g.
+ *   `DiscordVoiceConnection`, `MediaStreamTrack`).
+ *
+ * @see {@link InputAttachTarget} for how the target type is inferred
+ * @see {@link StartListeningArgs} for the resulting `startListening()` signature
+ */
+export interface AttachableInputProvider<TTarget = unknown> extends AudioInputProvider {
+  /**
+   * Attach the per-call platform handle this provider captures audio from.
+   *
+   * @param target - The platform-specific object (socket, connection,
+   *   session, track, ...) to bind to.
+   */
+  attach(target: TTarget): void | Promise<void>;
+}
+
+/**
+ * Extracts the `attach()` target type declared by an
+ * {@link AttachableInputProvider} in a providers array.
+ *
+ * @remarks
+ * Distributes over the providers union: providers without an `attach()`
+ * method contribute `never`, so a pipeline with no attachable provider
+ * resolves to `never` overall (and `startListening()` takes no parameter).
+ *
+ * @typeParam TProviders - The providers array type inferred by the
+ *   `CompositeVoice` constructor.
+ */
+export type InputAttachTarget<TProviders extends readonly BaseProvider[]> =
+  TProviders[number] extends infer TProvider
+    ? TProvider extends { attach(target: infer TTarget): void | Promise<void> }
+      ? TTarget
+      : never
+    : never;
+
+/**
+ * Parameter tuple for `CompositeVoice.startListening()`, derived from the
+ * configured providers.
+ *
+ * @remarks
+ * - No attachable input provider → `[]` — `startListening()` takes no
+ *   parameter (passing one is a type error).
+ * - An {@link AttachableInputProvider} present → `[target?: TTarget]` — the
+ *   attach target may be passed and is forwarded to `attach()` before
+ *   capture starts. It stays optional because `attach()` can also be called
+ *   directly on the provider.
+ *
+ * @typeParam TProviders - The providers array type inferred by the
+ *   `CompositeVoice` constructor.
+ *
+ * @see {@link AttachableInputProvider} for the provider-side contract
+ */
+export type StartListeningArgs<TProviders extends readonly BaseProvider[]> = [
+  InputAttachTarget<TProviders>,
+] extends [never]
+  ? []
+  : [target?: InputAttachTarget<TProviders>];
+
+/**
  * A fully resolved 5-role pipeline with a provider assigned to each slot.
  *
  * @remarks

@@ -97,6 +97,9 @@ export type {
   TTSProvider,
   TTSProviderConfig,
   ResolvedPipeline,
+  AttachableInputProvider,
+  InputAttachTarget,
+  StartListeningArgs,
 
   // Config types
   CompositeVoiceConfig,
@@ -314,11 +317,19 @@ export type {
 export { MicrophoneInput } from './providers/input/index';
 export type { MicrophoneInputConfig } from './providers/input/index';
 export { BufferInput } from './providers/input/index';
+export { WebRTCInput } from './providers/input/index';
+export type { WebRTCInputConfig } from './providers/input/index';
 
 // Built-in providers - Output
 export { BrowserAudioOutput } from './providers/output/index';
 export type { BrowserAudioOutputConfig } from './providers/output/index';
 export { NullOutput } from './providers/output/index';
+export { WebRTCOutput } from './providers/output/index';
+export type { WebRTCOutputConfig } from './providers/output/index';
+
+// Built-in providers - Platform IO
+export { DiscordVoice } from './providers/io/index';
+export type { DiscordVoiceConfig, DiscordVoiceConnection } from './providers/io/index';
 
 // Utilities
 export {

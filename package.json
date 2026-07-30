@@ -102,7 +102,11 @@
   "peerDependencies": {
     "@mlc-ai/web-llm": ">=0.2.74",
     "@msgpack/msgpack": ">=3.0.0",
-    "ws": ">=8.0.0"
+    "ws": ">=8.0.0",
+    "@discordjs/voice": ">=0.16.0",
+    "prism-media": ">=1.3.0",
+    "@azure/communication-calling": ">=1.13.1",
+    "@azure/communication-common": ">=2.0.0"
   },
   "peerDependenciesMeta": {
     "ws": {
@@ -112,6 +116,18 @@
       "optional": true
     },
     "@msgpack/msgpack": {
+      "optional": true
+    },
+    "@discordjs/voice": {
+      "optional": true
+    },
+    "prism-media": {
+      "optional": true
+    },
+    "@azure/communication-calling": {
+      "optional": true
+    },
+    "@azure/communication-common": {
       "optional": true
     }
   },
@@ -125,5 +141,10 @@
   "bugs": {
     "url": "https://github.com/lukeocodes/composite-voice/issues"
   },
-  "homepage": "https://github.com/lukeocodes/composite-voice#readme"
+  "homepage": "https://github.com/lukeocodes/composite-voice#readme",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@discordjs/opus"
+    ]
+  }
 }

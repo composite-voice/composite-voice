@@ -4,7 +4,7 @@ description: Every provider's products, features, and capabilities at a glance â
 order: 0
 ---
 
-CompositeVoice supports 25 provider companies across 36 provider classes (including 1 agent provider), plus 5 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
+CompositeVoice supports 25 provider companies across 36 provider classes (including 1 agent provider), plus 14 input/output providers for the 5-role pipeline. This page organizes them by company so you can see everything a single vendor offers.
 
 ### Pipeline Role Matrix
 
@@ -14,6 +14,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 |---|:---:|:---:|:---:|:---:|:---:|
 | **MicrophoneInput** | **yes** | | | | |
 | **BufferInput** | **yes** | | | | |
+| **WebRTCInput** | **yes** | | | | |
 | **NativeSTT** | **yes** | **yes** | | | |
 | **DeepgramSTT** | | **yes** | | | |
 | **DeepgramFlux** | | **yes** | | | |
@@ -50,7 +51,9 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **AzureTTS** | | | | **yes** | |
 | **PollyTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
+| **DiscordVoice** | **yes** | | | | **yes** |
 | **BrowserAudioOutput** | | | | | **yes** |
+| **WebRTCOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |
 | **NullOutput** | | | | **yes** | **yes** |
 

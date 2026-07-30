@@ -9,6 +9,7 @@
  *
  * - {@link MicrophoneInput} — Captures microphone audio (browser)
  * - {@link BufferInput} — Accepts pushed audio buffers (Node.js / Bun / Deno)
+ * - {@link WebRTCInput} — Extracts PCM from a WebRTC MediaStreamTrack (browser)
  *
  * @see {@link AudioInputProvider} for the interface contract
  */
@@ -17,3 +18,5 @@ export { MicrophoneInput } from './MicrophoneInput';
 export type { MicrophoneInputConfig } from './MicrophoneInput';
 export { BufferInput } from './BufferInput';
 export { NullInput } from './NullInput';
+export { WebRTCInput } from './WebRTCInput';
+export type { WebRTCInputConfig } from './WebRTCInput';
