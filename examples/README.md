@@ -36,97 +36,97 @@ pnpm dev
 
 ---
 
-## Planned Examples
+## Example index
 
-### Core SDK (00-09)
+Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 80-84 platform agents) run with `pnpm start`/`pnpm dev` in the directory; everything else is a React + Vite app started with `pnpm dev`.
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 00 | Minimal Voice Agent | NativeSTT + AnthropicLLM + NativeTTS | Minimum viable setup, state machine basics |
-| 01 | Conversation History | + conversationHistory | Multi-turn memory, getHistory(), clearHistory() |
-| 02 | System Persona | + systemPrompt config | Custom personality, persona configuration |
-| 03 | Event Inspector | Event system | Full event stream visualization and debugging |
-| 04 | Error Recovery | Error handling | Graceful degradation, reconnection strategies |
-| 05 | Turn Taking | Turn-taking strategies | Auto, conservative, aggressive, detect modes |
+### Getting started (01-09)
 
-### Infrastructure (10-19)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 01 | [`01-first-voice-pipeline`](./01-first-voice-pipeline/) | The simplest possible voice pipeline using browser-native speech recognition and synthesis with Claude as the LLM |
+| 02 | [`02-secure-api-keys`](./02-secure-api-keys/) | Secure API keys with Express proxy — DeepgramSTT + AnthropicLLM + DeepgramTTS via server-side key injection |
+| 03 | [`03-cloud-providers`](./03-cloud-providers/) | Production-quality pipeline: Deepgram STT/TTS + Anthropic Claude via Vite proxy |
+| 04 | [`04-base-provider-options`](./04-base-provider-options/) | Demonstrates `endpoint`, `authType`, and `proxyUrl` configuration on provider instances. Toggle between `authType: 'token'` and `authType: 'bearer'` at runtime and see the resolved connection info for each provider |
+| 06 | [`06-conversation-history`](./06-conversation-history/) | Demonstrates `maxTurns`, `maxTokens`, and `preserveSystemMessages` configuration. Adjust settings with sliders and inputs, then view the live conversation history array as you speak with the agent |
+| 07 | [`07-eager-pipeline`](./07-eager-pipeline/) | Demonstrates the eager LLM pipeline with `eagerLLM: { enabled: true }`. The LLM starts generating speculatively on Deepgram preflight signals before `speechFinal` is confirmed, reducing perceived latency by 100-300ms. The UI shows when preflight fires vs speechFinal and displays timing comparisons |
+| 08 | [`08-tool-use`](./08-tool-use/) | Demonstrates LLM function calling with the `tools` config. Defines three simple tools (`get_weather`, `get_time`, `calculate`) and displays tool calls and results in the UI. After a tool executes, the LLM generates a natural-language follow-up |
+| 09 | [`09-custom-logging`](./09-custom-logging/) | Demonstrates the SDK logging configuration with controls for log level and a custom logger function. SDK logs are displayed in a scrollable panel in the UI, color-coded by level |
 
-| # | Name | Stack | What it demonstrates |
-|---|------|-------|---------------------|
-| 10 | Express Proxy Server | Express + createExpressProxy | Server-side API key injection |
-| 11 | Next.js Proxy | Next.js adapter | Next.js API route integration |
-| 12 | Custom Provider | Base classes | Building your own STT/LLM/TTS provider |
-| 13 | Multi-Language | i18n config | Language and locale configuration |
+### Speech-to-Text (10-19)
 
-### Deepgram (20-29)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 10 | [`10-native-stt`](./10-native-stt/) | NativeSTT configuration explorer — Web Speech API + Anthropic Claude + NativeTTS |
+| 11 | [`11-deepgram-stt`](./11-deepgram-stt/) | DeepgramSTT configuration explorer — Deepgram Nova + Anthropic Claude + NativeTTS |
+| 12 | [`12-assemblyai-stt`](./12-assemblyai-stt/) | AssemblyAISTT configuration explorer — AssemblyAI + Anthropic Claude + NativeTTS |
+| 13 | [`13-elevenlabs-stt`](./13-elevenlabs-stt/) | ElevenLabsSTT configuration explorer — ElevenLabs Scribe + Anthropic Claude + NativeTTS |
+| 14 | [`14-deepgram-flux`](./14-deepgram-flux/) | DeepgramFlux (V2 STT) demo — currently disabled, shows eager pipeline concept |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 20 | Deepgram Pipeline | DeepgramSTT + AnthropicLLM + DeepgramTTS | Full Deepgram WebSocket pipeline |
-| 21 | Eager Pipeline | DeepgramFlux + eagerLLM | Speculative generation, reduced latency |
-| 22 | Deepgram Options | DeepgramSTT config | Model selection, language, encoding options |
-| 23 | Deepgram Voices | DeepgramTTS config | Voice selection, speech rate, pitch |
-| 24 | Deepgram Conversation History | Deepgram + history | Multi-turn with Deepgram pipeline |
+### Language Models (20-29)
 
-### Anthropic (30-39)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 20 | [`20-anthropic-llm`](./20-anthropic-llm/) | Anthropic LLM provider — NativeSTT + AnthropicLLM + NativeTTS with model/temperature/token controls |
+| 21 | [`21-openai-llm`](./21-openai-llm/) | OpenAI LLM provider — NativeSTT + OpenAILLM + NativeTTS with model/temperature/token controls |
+| 22 | [`22-groq-llm`](./22-groq-llm/) | Groq LLM provider — NativeSTT + GroqLLM + NativeTTS, ultra-fast inference |
+| 23 | [`23-gemini-llm`](./23-gemini-llm/) | Gemini LLM provider — NativeSTT + GeminiLLM + NativeTTS with model/temperature controls |
+| 24 | [`24-mistral-llm`](./24-mistral-llm/) | Mistral LLM provider — NativeSTT + MistralLLM + NativeTTS with model/temperature controls |
+| 25 | [`25-webllm`](./25-webllm/) | WebLLM in-browser LLM — NativeSTT + WebLLMLLM + NativeTTS, no server needed |
+| 26 | [`26-openai-compatible`](./26-openai-compatible/) | OpenAI-compatible LLM — NativeSTT + OpenAICompatibleLLM + NativeTTS, custom endpoint |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 30 | Anthropic Models | AnthropicLLM config | Model selection (Claude variants) |
-| 31 | Anthropic Streaming Config | AnthropicLLM streaming | Streaming configuration and chunk handling |
+### Text-to-Speech (30-39)
 
-### OpenAI (40-49)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 30 | [`30-native-tts`](./30-native-tts/) | Native TTS provider — NativeSTT + Anthropic Claude + NativeTTS with voice, rate, and pitch controls |
+| 31 | [`31-deepgram-tts`](./31-deepgram-tts/) | Deepgram TTS provider — NativeSTT + Anthropic Claude + DeepgramTTS with voice, sampleRate, and format options |
+| 32 | [`32-openai-tts`](./32-openai-tts/) | OpenAI TTS provider — NativeSTT + Anthropic Claude + OpenAI TTS with model, voice, format, and speed options |
+| 33 | [`33-elevenlabs-tts`](./33-elevenlabs-tts/) | ElevenLabs TTS provider — NativeSTT + Anthropic Claude + ElevenLabs TTS with voiceId, modelId, stability, and similarityBoost |
+| 34 | [`34-cartesia-tts`](./34-cartesia-tts/) | Cartesia TTS provider — NativeSTT + Anthropic Claude + Cartesia TTS with voiceId, modelId, emotions, speed, and language |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 40 | OpenAI Pipeline | NativeSTT + OpenAILLM + NativeTTS | OpenAI as the LLM provider |
-| 41 | OpenAI + Deepgram | DeepgramSTT + OpenAILLM + DeepgramTTS | Mixed provider pipeline |
-| 42 | OpenAI TTS Pipeline | NativeSTT + OpenAILLM + OpenAITTS | OpenAI for both LLM and TTS |
+### Server proxies (40-49)
 
-### WebLLM (50-59)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 40 | [`40-express-proxy`](./40-express-proxy/) | Express proxy with full security config — rateLimit, maxBodySize, authenticate, CORS |
+| 41 | [`41-nextjs-proxy`](./41-nextjs-proxy/) | Next.js App Router proxy — createNextJsProxy with catch-all route and security config |
+| 42 | [`42-node-proxy`](./42-node-proxy/) | Plain Node.js HTTP server proxy — createNodeProxy with handleRequest + attachWebSocket |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 50 | WebLLM Pipeline | NativeSTT + WebLLMLLM + NativeTTS | Fully in-browser LLM, no API keys |
+### Audio inputs & outputs (50-59)
 
-### Groq (60-69)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 50 | [`50-microphone-input`](./50-microphone-input/) | Deep-dive into MicrophoneInput config — all AudioInputConfig options with real-time audio level meter |
+| 51 | [`51-buffer-input`](./51-buffer-input/) | BufferInput for file/programmatic audio — upload a WAV file and feed it through the pipeline |
+| 52 | [`52-browser-audio-output`](./52-browser-audio-output/) | Deep-dive into BrowserAudioOutput config — bufferSize, minBufferDuration, sampleRate, enableSmoothing |
+| 53 | [`53-null-output`](./53-null-output/) | NullOutput for headless/testing scenarios — TTS events fire but no audio plays |
+| 54 | [`54-event-inspector`](./54-event-inspector/) | Advanced event inspector — real-time timeline, payload display, filtering, wildcard subscriptions, queue events |
+| 55 | [`55-conversation-strategies`](./55-conversation-strategies/) | Side-by-side comparison of conversation history strategies — maxTurns=3 vs maxTurns=10 |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 60 | Groq Pipeline | NativeSTT + GroqLLM + NativeTTS | Groq as the LLM provider |
+### Advanced (60-69)
 
-### AssemblyAI (70-79)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 60 | [`60-error-recovery`](./60-error-recovery/) | RecoveryOrchestrator demo — configure recovery strategy, simulate errors, track recovery attempts |
+| 61 | [`61-barge-in`](./61-barge-in/) | Automatic barge-in demo — interrupt the agent mid-speech with stopSpeaking() |
+| 62 | [`62-backpressure`](./62-backpressure/) | Pipeline backpressure demo — adjust maxPendingChunks and observe LLM-to-TTS throttling |
+| 63 | [`63-audio-config`](./63-audio-config/) | AudioCapture internals — AudioWorklet vs ScriptProcessor detection, audio chunk stats |
+| 64 | [`64-custom-provider`](./64-custom-provider/) | Build a custom LLM provider — MockLLM with canned responses, no API keys needed |
+| 65 | [`65-multi-language`](./65-multi-language/) | Language switching demo — change DeepgramSTT language at runtime with a selector |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 70 | AssemblyAI Pipeline | AssemblyAISTT + AnthropicLLM + NativeTTS | AssemblyAI real-time STT |
+### Agent providers (70-79)
 
-### ElevenLabs (80-89)
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 70 | [`70-deepgram-agent`](./70-deepgram-agent/) | Deepgram Voice Agent API — single WebSocket handles STT, LLM, and TTS server-side |
 
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 80 | ElevenLabs Pipeline | NativeSTT + AnthropicLLM + ElevenLabsTTS | ElevenLabs WebSocket TTS |
-| 81 | ElevenLabs STT | ElevenLabsSTT + AnthropicLLM + ElevenLabsTTS | Full ElevenLabs pipeline |
+### Platform inputs & outputs (80-89)
 
-### Cartesia (90-99)
-
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 90 | Cartesia Pipeline | NativeSTT + AnthropicLLM + CartesiaTTS | Cartesia WebSocket TTS |
-
-### Gemini (100-109)
-
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 100 | Gemini Pipeline | NativeSTT + GeminiLLM + NativeTTS | Google Gemini as the LLM provider |
-
-### Mistral (110-119)
-
-| # | Name | Providers | What it demonstrates |
-|---|------|-----------|---------------------|
-| 110 | Mistral Pipeline | NativeSTT + MistralLLM + NativeTTS | Mistral as the LLM provider |
-
----
+| # | Example | What it demonstrates |
+|---|---------|----------------------|
+| 83 | [`83-discord-voice-bot`](./83-discord-voice-bot/) | Discord voice-channel bot — DiscordVoice duplex provider with Deepgram STT/TTS and Claude |
+| 85 | [`85-webrtc-loopback`](./85-webrtc-loopback/) | WebRTCInput + WebRTCOutput over a local RTCPeerConnection loopback — join anything WebRTC with zero platform accounts |
 
 ## Shared Infrastructure
 

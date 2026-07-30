@@ -12,6 +12,7 @@ CompositeVoice uses five pipeline roles — **input** (audio capture), **STT** (
 |---|---|---|---|
 | [MicrophoneInput](#microphoneinput) | Browser | `input` | Wraps `getUserMedia` + `AudioContext` for microphone capture |
 | [BufferInput](#bufferinput) | Node/Bun/Deno | `input` | Accepts pushed `ArrayBuffer` data for server-side pipelines |
+| [WebRTCInput](#webrtcinput) | Browser | `input` | Extracts PCM from a WebRTC `MediaStreamTrack` (LiveKit, Daily, custom SFUs) |
 | [NativeSTT](#nativestt) | Browser | `input` + `stt` | Browser's Web Speech API manages its own microphone internally |
 
 ### MicrophoneInput
@@ -52,6 +53,24 @@ input.push(audioBuffer);
 - Works in Node.js, Bun, and Deno
 
 ---
+
+### WebRTCInput
+
+Extracts mono linear16 PCM from a WebRTC `MediaStreamTrack` the application obtained from any peer connection — LiveKit, Daily, or a raw `RTCPeerConnection`. The app owns the connection and the track; the provider only runs the local processing graph.
+
+```typescript
+import { WebRTCInput } from '@lukeocodes/composite-voice';
+
+const input = new WebRTCInput({ targetSampleRate: 16000 });
+
+pc.ontrack = (event) => {
+  if (event.track.kind === 'audio') input.setTrack(event.track);
+};
+```
+
+- Swap sources live with `setTrack()` / `setStream()` (e.g. on active-speaker change)
+- Never calls `track.stop()` — the app keeps ownership
+- See the [WebRTC guide](/guides/io/webrtc) for LiveKit and Daily examples
 
 ## Speech-to-Text (STT)
 
@@ -975,6 +994,7 @@ const voice = new CompositeVoice({
 |---|---|---|---|
 | [BrowserAudioOutput](#browseraudiooutput) | Browser | `output` | Wraps `AudioContext` for speaker playback |
 | [NullOutput](#nulloutput) | Node/Bun/Deno | `output` | Silently discards audio for server-side pipelines |
+| [WebRTCOutput](#webrtcoutput) | Browser | `output` | Renders TTS audio into a publishable WebRTC `MediaStreamTrack` |
 | [NativeTTS](#nativetts) | Browser | `tts` + `output` | Browser's SpeechSynthesis API manages its own speaker output |
 
 ### BrowserAudioOutput
@@ -1004,6 +1024,54 @@ const output = new NullOutput();
 - Works in Node.js, Bun, and Deno
 
 ---
+
+
+### WebRTCOutput
+
+Renders TTS audio into a publishable `MediaStreamTrack` so the agent's voice can be added to any WebRTC room.
+
+```typescript
+import { WebRTCOutput } from '@lukeocodes/composite-voice';
+
+const output = new WebRTCOutput();
+await output.initialize();
+pc.addTrack(output.getTrack(), output.getStream());
+```
+
+- Accepts linear16 directly, mulaw/alaw via built-in G.711 decoding, mp3/opus via `decodeAudioData`
+- `stop()` implements barge-in (clears scheduled audio immediately)
+- See the [WebRTC guide](/guides/io/webrtc) for full pipeline examples
+
+## Platform Inputs & Outputs
+
+Platform providers connect the pipeline to call and chat platforms.
+
+| Provider | Environment | Roles | Description |
+|---|---|---|---|
+| [DiscordVoice](#discordvoice) | Node | `input` + `output` | Live voice-channel conversations via `@discordjs/voice` |
+
+
+
+### DiscordVoice
+
+Puts the agent in a Discord voice channel. Your bot joins the channel with `@discordjs/voice`'s `joinVoiceChannel` and hands the connection to the provider.
+
+```typescript
+import { DiscordVoice } from '@lukeocodes/composite-voice';
+import { joinVoiceChannel } from '@discordjs/voice';
+
+const discord = new DiscordVoice();
+discord.attach(joinVoiceChannel({ channelId, guildId, adapterCreator, selfDeaf: false }));
+```
+
+- Peer dependencies: `@discordjs/voice`, `prism-media`, plus an Opus codec (`@discordjs/opus` or `opusscript`)
+- Speakers' Opus packets are decoded to 48 kHz PCM and downmixed to mono for STT
+- TTS audio (linear16, any rate) is resampled to 48 kHz stereo and played via an `AudioPlayer`
+- Requires the `GuildVoiceStates` gateway intent and `selfDeaf: false`
+- See the [Discord guide](/guides/io/discord-voice) for full bot setup
+
+
+
 
 ## Choosing providers
 

@@ -199,6 +199,59 @@ export function downsampleAudio(
 }
 
 /**
+ * Resamples audio to a different sample rate using linear interpolation.
+ *
+ * @remarks
+ * Unlike {@link downsampleAudio}, which only reduces the sample rate by
+ * averaging, this function supports both **upsampling and downsampling**
+ * via linear interpolation between neighbouring samples. Platform output
+ * providers use it to convert TTS audio (commonly 24 kHz) to the rate a
+ * platform requires (e.g. 48 kHz for Discord, 8 kHz for telephony).
+ *
+ * Linear interpolation is a good latency/quality trade-off for speech.
+ * When downsampling from much higher rates, prefer {@link downsampleAudio}
+ * which averages (a crude low-pass) rather than skipping samples.
+ *
+ * @param buffer - The input audio samples as a `Float32Array`.
+ * @param fromSampleRate - The current sample rate of the input audio in Hz.
+ * @param toSampleRate - The desired output sample rate in Hz.
+ * @returns A new `Float32Array` at the target rate, or the original buffer
+ *   if the rates are equal.
+ *
+ * @example
+ * ```typescript
+ * // Upsample 24 kHz TTS audio to 48 kHz for Discord playback
+ * const input = new Float32Array(24000); // 1 second at 24 kHz
+ * const output = resamplePcm(input, 24000, 48000);
+ * // output.length === 48000
+ * ```
+ */
+export function resamplePcm(
+  buffer: Float32Array,
+  fromSampleRate: number,
+  toSampleRate: number
+): Float32Array {
+  if (fromSampleRate === toSampleRate) {
+    return buffer;
+  }
+
+  const ratio = fromSampleRate / toSampleRate;
+  const newLength = Math.max(1, Math.round(buffer.length / ratio));
+  const result = new Float32Array(newLength);
+
+  for (let i = 0; i < newLength; i++) {
+    const position = i * ratio;
+    const index = Math.floor(position);
+    const fraction = position - index;
+    const current = buffer[Math.min(index, buffer.length - 1)] ?? 0;
+    const next = buffer[Math.min(index + 1, buffer.length - 1)] ?? current;
+    result[i] = current + (next - current) * fraction;
+  }
+
+  return result;
+}
+
+/**
  * Returns the MIME type string corresponding to an {@link AudioFormat}.
  *
  * @param format - The audio format to look up.

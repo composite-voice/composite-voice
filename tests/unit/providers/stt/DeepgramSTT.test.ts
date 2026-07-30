@@ -279,9 +279,10 @@ describe('DeepgramSTT', () => {
 
       mockWs._triggerMessage(JSON.stringify(mockResult));
 
-      // With speech_final=true the provider emits two calls:
-      // 1. The segment itself (isFinal:true, speechFinal:false)
-      // 2. The accumulated utterance (isFinal:true, speechFinal:true)
+      // A single-segment utterance emits exactly once. The closing segment and
+      // the accumulated utterance are the same string here, so emitting both
+      // would deliver the identical final transcript to listeners twice.
+      expect(transcriptionCallback).toHaveBeenCalledTimes(1);
       expect(transcriptionCallback).toHaveBeenCalledWith(
         expect.objectContaining({
           text: 'Complete sentence.',
@@ -290,6 +291,29 @@ describe('DeepgramSTT', () => {
           confidence: 0.98,
           metadata: expect.objectContaining({ speechFinal: true, duration: 2.0 }),
         })
+      );
+    });
+
+    it('should not emit a duplicate final for a single-segment utterance', async () => {
+      await connectProvider();
+
+      mockWs._triggerMessage(
+        JSON.stringify({
+          type: 'Results',
+          channel: { alternatives: [{ transcript: 'Hello?', confidence: 0.99 }] },
+          is_final: true,
+          speech_final: true,
+          duration: 1.0,
+        })
+      );
+
+      const finals = transcriptionCallback.mock.calls
+        .map(([result]: [{ isFinal?: boolean; text: string }]) => result)
+        .filter((result) => result.isFinal);
+
+      expect(finals).toHaveLength(1);
+      expect(finals[0]).toEqual(
+        expect.objectContaining({ text: 'Hello?', utteranceComplete: true })
       );
     });
 
@@ -325,6 +349,12 @@ describe('DeepgramSTT', () => {
           isFinal: true,
           speechFinal: true,
         })
+      );
+
+      // A multi-segment utterance still emits its closing segment separately,
+      // since 'world' is not the same string as the accumulated 'Hello world'.
+      expect(transcriptionCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'world', isFinal: true, speechFinal: false })
       );
     });
 

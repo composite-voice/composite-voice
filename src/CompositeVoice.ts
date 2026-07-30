@@ -40,6 +40,9 @@ import type {
   ToolAwareLLMProvider,
   ResolvedPipeline,
   BaseProvider,
+  AudioInputProvider,
+  AttachableInputProvider,
+  StartListeningArgs,
 } from './core/types/providers';
 import type { AudioChunk } from './core/types/audio';
 import { AgentStateMachine } from './core/state/AgentStateMachine';
@@ -47,7 +50,7 @@ import { SimpleAudioCaptureStateMachine as AudioCaptureStateMachine } from './co
 import { SimpleAudioPlaybackStateMachine as AudioPlaybackStateMachine } from './core/state/SimpleAudioPlaybackStateMachine';
 import { SimpleProcessingStateMachine as ProcessingStateMachine } from './core/state/SimpleProcessingStateMachine';
 import { Logger, createLogger } from './utils/logger';
-import { InvalidStateError } from './utils/errors';
+import { InvalidStateError, ConfigurationError } from './utils/errors';
 import { DEFAULT_LOGGING_CONFIG, DEFAULT_TURN_TAKING_CONFIG } from './core/types/config';
 import { shouldPauseCaptureOnPlayback } from './utils/turnTaking';
 import { textSimilarity } from './utils/textSimilarity';
@@ -228,8 +231,8 @@ function isToolAware(provider: LLMProvider): provider is ToolAwareLLMProvider {
  * @see {@link AudioBufferQueue} for the queue that fixes the race condition.
  * @see {@link AudioHeaderCache} for header caching on reconnection.
  */
-export class CompositeVoice {
-  private config: CompositeVoiceConfig;
+export class CompositeVoice<TProviders extends readonly BaseProvider[] = BaseProvider[]> {
+  private config: CompositeVoiceConfig<TProviders>;
   private events: EventEmitter;
   private logger: Logger;
 
@@ -410,6 +413,20 @@ export class CompositeVoice {
   private initialized = false;
 
   /**
+   * Set the moment {@link CompositeVoice.dispose | dispose()} starts, before it
+   * awaits anything.
+   *
+   * @remarks
+   * Teardown is asynchronous: stopping capture, draining providers, and closing
+   * sockets all take a turn of the event loop each. Providers can deliver one
+   * last callback during that window — an STT flush of buffered audio, a socket
+   * close handler — and without this flag those would reach user listeners after
+   * the application already considers the agent gone. `initialized` cannot serve
+   * this purpose because it only clears once teardown has finished.
+   */
+  private disposing = false;
+
+  /**
    * Whether the input and STT providers are the same multi-role instance.
    *
    * @remarks
@@ -468,9 +485,9 @@ export class CompositeVoice {
    * });
    * ```
    */
-  constructor(config: CompositeVoiceConfig) {
+  constructor(config: CompositeVoiceConfig<TProviders>) {
     // Resolve providers into a fully typed 5-role pipeline
-    this.pipeline = resolveProviders(config.providers ?? []);
+    this.pipeline = resolveProviders([...(config.providers ?? [])]);
     this.stt = this.pipeline.stt;
     this.llm = this.pipeline.llm;
     this.tts = this.pipeline.tts;
@@ -521,7 +538,7 @@ export class CompositeVoice {
 
     // Wire queue overflow events to the event emitter
     this.inputQueue.onOverflow((droppedChunks, currentSize) => {
-      this.events.emitSync({
+      this.emitEvent({
         type: 'queue.overflow',
         queueName: 'input',
         droppedChunks,
@@ -530,7 +547,7 @@ export class CompositeVoice {
       });
     });
     this.outputQueue.onOverflow((droppedChunks, currentSize) => {
-      this.events.emitSync({
+      this.emitEvent({
         type: 'queue.overflow',
         queueName: 'output',
         droppedChunks,
@@ -1591,14 +1608,32 @@ export class CompositeVoice {
    * @throws Throws the underlying error if STT connection or audio capture
    *   fails, after emitting an `'agent.error'` event.
    *
+   * @param args - When the configured input provider is an
+   *   {@link AttachableInputProvider} (DiscordVoice, WebRTCInput, ...), an
+   *   optional attach target may be passed — the platform-specific per-call
+   *   handle (voice connection, media track). It is forwarded to the
+   *   provider's `attach()` before capture starts, so the whole call setup is
+   *   one line. Pipelines without an attachable input accept no parameter —
+   *   passing one is a compile-time error (and throws at runtime).
+   *
    * @example
    * ```typescript
    * await agent.initialize();
    * await agent.startListening();
    * // The agent is now transcribing speech in real-time
    * ```
+   *
+   * @example Attach a platform handle in the same call
+   * ```typescript
+   * const discord = new DiscordVoice();
+   * const agent = new CompositeVoice({ providers: [discord, stt, llm, tts] });
+   * await agent.initialize();
+   *
+   * const connection = joinVoiceChannel({ ...opts, selfDeaf: false });
+   * await agent.startListening(connection); // typed as DiscordVoiceConnection
+   * ```
    */
-  async startListening(): Promise<void> {
+  async startListening(...args: StartListeningArgs<TProviders>): Promise<void> {
     this.assertInitialized();
 
     if (!this.agentStateMachine.is('ready') && !this.agentStateMachine.is('idle')) {
@@ -1610,6 +1645,21 @@ export class CompositeVoice {
 
     try {
       const { stt, pipeline } = this;
+
+      // Forward the platform attach target (Twilio socket, Discord voice
+      // connection, Zoom RTMS session, ...) to the input provider before
+      // capture starts.
+      const [attachTarget] = args as [unknown?];
+      if (attachTarget !== undefined) {
+        const input = pipeline.input as Partial<AttachableInputProvider> & AudioInputProvider;
+        if (typeof input.attach !== 'function') {
+          throw new ConfigurationError(
+            `startListening() received an attach target, but input provider ` +
+              `"${pipeline.input.constructor.name}" has no attach() method`
+          );
+        }
+        await input.attach(attachTarget);
+      }
 
       if (this.isMultiRoleInput) {
         // Multi-role input===stt (e.g., NativeSTT via SpeechRecognition):
@@ -2405,8 +2455,15 @@ export class CompositeVoice {
    * listeners, including wildcard (`'*'`) subscribers.
    *
    * @param event - The fully-formed event object to emit.
+   *
+   * @remarks
+   * Every event the SDK surfaces goes through here, so this is the one place
+   * that has to know about teardown. Once {@link CompositeVoice.dispose |
+   * dispose()} has begun, events are dropped rather than delivered: listeners
+   * must never fire for an agent the caller has already torn down.
    */
   private emitEvent(event: CompositeVoiceEvent): void {
+    if (this.disposing) return;
     this.events.emitSync(event);
   }
 
@@ -2484,7 +2541,7 @@ export class CompositeVoice {
 
     // Emit queue.stats events for both queues
     const timestamp = Date.now();
-    this.events.emitSync({
+    this.emitEvent({
       type: 'queue.stats',
       queueName: inputStats.name,
       size: inputStats.size,
@@ -2493,7 +2550,7 @@ export class CompositeVoice {
       oldestChunkAge: inputStats.oldestChunkAge,
       timestamp,
     });
-    this.events.emitSync({
+    this.emitEvent({
       type: 'queue.stats',
       queueName: outputStats.name,
       size: outputStats.size,
@@ -2624,12 +2681,19 @@ export class CompositeVoice {
    * ```
    */
   async dispose(): Promise<void> {
-    if (!this.initialized) {
+    if (!this.initialized || this.disposing) {
       this.logger.warn('Already disposed');
       return;
     }
 
     this.logger.info('Disposing CompositeVoice SDK');
+
+    // Before the first await: everything below yields to the event loop, and a
+    // provider mid-flush can still call back into the pipeline while it does.
+    // Gating here is what stops those late events reaching listeners, and it
+    // also makes a second concurrent dispose() a no-op instead of a double
+    // teardown of every provider.
+    this.disposing = true;
 
     try {
       // Stop any active operations
@@ -2678,6 +2742,10 @@ export class CompositeVoice {
 
       this.logger.info('CompositeVoice SDK disposed');
     } catch (error) {
+      // Teardown failed, so the agent is still initialized and still live.
+      // Reopen the event gate rather than leaving a half-disposed agent
+      // permanently silent, and allow dispose() to be retried.
+      this.disposing = false;
       this.logger.error('Error disposing SDK', error);
       throw error;
     }

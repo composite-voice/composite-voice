@@ -35,6 +35,7 @@ export * from './errors';
 export * from './logger';
 export * from './websocket';
 export * from './audio';
+export * from './g711';
 export * from './turnTaking';
 export * from './browserCapabilities';
 export * from './textSimilarity';

@@ -77,11 +77,26 @@ const PROXY_TARGETS: Record<string, ProxyTarget> = {
   },
 };
 
+// Node-only optional peer deps. The SDK reaches these through importPeerDep, which uses
+// literal import specifiers, so Vite's dep scanner follows them even though no browser
+// example ever constructs the providers that need them. Left alone, prebundling
+// @discordjs/voice pulls in @snazzah/davey's browser entry and fails to resolve its
+// wasm32-wasi binding. Excluded here and externalised for builds.
+const NODE_ONLY_PEER_DEPS = ['@discordjs/voice', '@discordjs/opus', 'prism-media', 'ws'];
+
 export function createExampleConfig(config: ExampleConfig): UserConfig {
   const rootDir = path.resolve(__dirname, '../../');
 
   return defineConfig({
     plugins: [tailwindcss(), react()],
+    optimizeDeps: {
+      exclude: NODE_ONLY_PEER_DEPS,
+    },
+    build: {
+      rollupOptions: {
+        external: NODE_ONLY_PEER_DEPS,
+      },
+    },
     server: {
       port: config.port,
       strictPort: true,

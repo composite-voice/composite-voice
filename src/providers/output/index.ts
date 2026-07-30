@@ -9,6 +9,7 @@
  *
  * - {@link BrowserAudioOutput} — Plays audio via the Web Audio API (browser)
  * - {@link NullOutput} — Discards audio silently (Node.js / Bun / Deno)
+ * - {@link WebRTCOutput} — Renders TTS audio into a publishable WebRTC track (browser)
  *
  * @see {@link AudioOutputProvider} for the interface contract
  */
@@ -16,3 +17,5 @@
 export { BrowserAudioOutput } from './BrowserAudioOutput';
 export type { BrowserAudioOutputConfig } from './BrowserAudioOutput';
 export { NullOutput } from './NullOutput';
+export { WebRTCOutput } from './WebRTCOutput';
+export type { WebRTCOutputConfig } from './WebRTCOutput';

@@ -472,7 +472,11 @@ export class DeepgramSTT extends LiveSTTProvider {
 
       // Close any stale socket before opening a new one
       if (this.ws) {
-        try { this.ws.close(); } catch { /* ignore */ }
+        try {
+          this.ws.close();
+        } catch {
+          /* ignore */
+        }
         this.ws = null;
         this.isConnected = false;
       }
@@ -654,8 +658,12 @@ export class DeepgramSTT extends LiveSTTProvider {
 
       this.logger.debug('Deepgram speech_final — full utterance', { fullText });
 
-      // Emit the segment first so interim displays update
-      if (transcript) {
+      // Emit the closing segment so displays tracking segment-by-segment keep
+      // up — but only when the utterance actually spans several segments. For
+      // a single-segment utterance the segment and the full text are the same
+      // string, and emitting both delivers the identical final transcript
+      // twice to every listener.
+      if (transcript && fullText !== transcript) {
         this.emitTranscription({
           text: transcript,
           isFinal: true,
