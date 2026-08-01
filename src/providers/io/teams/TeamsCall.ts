@@ -819,11 +819,37 @@ export class TeamsCall implements AudioInputProvider, AudioOutputProvider {
       this.playbackState === 'playing';
 
     if (bargeIn) {
-      this.logger.debug('Stopping playback (barge-in)');
-      this.stopPlaybackInternal(true);
+      this.stopPlayback();
       return;
     }
 
+    this.stopCapture();
+  }
+
+  /**
+   * Stop playback, leaving meeting-audio capture running.
+   *
+   * @remarks
+   * The pipeline calls this for barge-in, so the provider never has to infer
+   * which side was meant. Capture stays open deliberately: barge-in fires
+   * because someone started talking, and that speech has to reach STT.
+   *
+   * Safe when nothing is playing — barge-in is also raised while the agent is
+   * still `thinking`, and there is simply no audio to drop yet.
+   */
+  stopPlayback(): void {
+    this.logger.debug('Stopping playback (barge-in)');
+    this.stopPlaybackInternal(true);
+  }
+
+  /**
+   * Stop emitting meeting audio, leaving playback alone.
+   *
+   * @remarks
+   * The pipeline calls this when it means "stop listening". Restart with
+   * {@link TeamsCall.start | start()}.
+   */
+  stopCapture(): void {
     this.active = false;
     this.paused = false;
     this.logger.debug('Input emission halted');

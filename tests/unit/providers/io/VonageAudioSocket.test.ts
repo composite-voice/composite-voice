@@ -723,6 +723,37 @@ describe('VonageAudioSocket', () => {
       expect(received).toHaveLength(1);
     });
 
+    it('stopPlayback() keeps capture alive even with nothing playing', async () => {
+      // Barge-in also fires while the agent is only `thinking`, when no audio
+      // is queued. Inferring the role from playback state gets that wrong and
+      // leaves the call deaf for the rest of the session.
+      const { provider, socket } = await createAttached();
+      const received: AudioChunk[] = [];
+      provider.onAudio((c) => received.push(c));
+      provider.start();
+
+      provider.stopPlayback(); // nothing queued, nothing delivering
+
+      expect(provider.isActive()).toBe(true);
+      socket.emit('message', new Uint8Array(pcmBuffer(160)), true);
+      expect(received).toHaveLength(1);
+    });
+
+    it('stopCapture() halts capture even while audio is queued', async () => {
+      const { provider, socket } = await createAttached();
+      const received: AudioChunk[] = [];
+      provider.onAudio((c) => received.push(c));
+      provider.start();
+      provider.configure({ encoding: 'linear16', sampleRate: 16000, channels: 1, bitDepth: 16 });
+      provider.enqueue(chunk(pcmBuffer(1600)));
+
+      provider.stopCapture(); // audio queued, but stop-listening was meant
+
+      expect(provider.isActive()).toBe(false);
+      socket.emit('message', new Uint8Array(pcmBuffer(160)), true);
+      expect(received).toHaveLength(0);
+    });
+
     it('halts inbound emission when stop() is called with nothing playing', async () => {
       const { provider, socket } = await createAttached();
       const received: AudioChunk[] = [];

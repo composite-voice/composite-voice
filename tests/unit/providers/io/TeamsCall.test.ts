@@ -728,6 +728,23 @@ describe('TeamsCall', () => {
       expect(Date.now() - start).toBeLessThan(1000);
     });
 
+    it('stopPlayback() keeps capture alive even with nothing playing', async () => {
+      // Barge-in also fires while the agent is only `thinking`, when no audio
+      // is queued — inferring the role from playback state goes deaf.
+      const teams = await initProvider();
+      await attachRemoteAudio();
+
+      const chunks: AudioChunk[] = [];
+      teams.onAudio((chunk) => chunks.push(chunk));
+      teams.start();
+
+      teams.stopPlayback(); // nothing queued, nothing playing
+
+      expect(teams.isActive()).toBe(true);
+      pushCapturedAudio(new Float32Array(480).fill(0.5));
+      expect(chunks.length).toBeGreaterThan(0);
+    });
+
     it('stop() halts meeting-audio emission when nothing is playing', async () => {
       const teams = await initProvider();
       await attachRemoteAudio();

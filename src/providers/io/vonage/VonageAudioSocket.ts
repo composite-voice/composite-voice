@@ -673,17 +673,45 @@ export class VonageAudioSocket implements AudioInputProvider, AudioOutputProvide
   stop(): void {
     const bargeIn = this.delivering || this.outboundBytes > 0 || this.pumpTimer !== null;
 
-    this.clearOutbound();
-    this.settlePlaybackStopped();
-
     if (bargeIn) {
-      this.logger.debug('stop(): barge-in — outbound cleared, capture stays live');
+      this.stopPlayback();
       return;
     }
 
+    this.stopPlayback();
+    this.stopCapture();
+  }
+
+  /**
+   * Stop outbound delivery, leaving caller audio flowing.
+   *
+   * @remarks
+   * The pipeline calls this for barge-in, so the provider never has to infer
+   * which side was meant. Clears the paced queue and settles any pending
+   * `flush()` as cancelled, so the pipeline cannot hang waiting on audio that
+   * will never be sent.
+   *
+   * Capture is deliberately untouched: barge-in fires because the caller is
+   * speaking, and that speech has to reach STT. Safe when nothing is playing —
+   * barge-in is also raised while the agent is still `thinking`.
+   */
+  stopPlayback(): void {
+    this.clearOutbound();
+    this.settlePlaybackStopped();
+    this.logger.debug('Playback stopped (barge-in)');
+  }
+
+  /**
+   * Stop emitting caller audio, leaving outbound delivery alone.
+   *
+   * @remarks
+   * The pipeline calls this when it means "stop listening". Restart with
+   * {@link VonageAudioSocket.start | start()}.
+   */
+  stopCapture(): void {
     this.inputActive = false;
     this.inputPaused = false;
-    this.logger.debug('stop(): input emission halted');
+    this.logger.debug('Input emission halted');
   }
 
   /**
