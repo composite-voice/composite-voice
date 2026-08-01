@@ -380,6 +380,36 @@ describe('WebRTCOutput', () => {
       expect(createdSources).toHaveLength(1);
     });
 
+    it('leaves a newer session alone when a stale resume() rejects', async () => {
+      // stop() during the resume await starts a new session. The stale
+      // handler must not clear the new queue or fire its error callback.
+      mockAudioContext.state = 'suspended';
+      let rejectResume: (error: Error) => void = () => undefined;
+      mockAudioContext.resume = jest.fn(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectResume = reject;
+          })
+      );
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      output.enqueue(pcmChunk([1, 2, 3, 4]));
+      await flushAsync();
+
+      output.stop(); // barge-in: a new session begins
+      mockAudioContext.state = 'running';
+      output.enqueue(pcmChunk([5, 6, 7, 8]));
+
+      rejectResume(new Error('not allowed')); // the stale attempt fails late
+      await flushAsync();
+
+      // The newer chunk still played, and no error leaked from the old session.
+      expect(errors).toHaveLength(0);
+      expect(createdSources).toHaveLength(1);
+    });
+
     it('drops queued audio and reports when resume() rejects', async () => {
       // Scheduling into a context that will never run is the hang this guards
       // against, so a failed resume must surface rather than proceed.

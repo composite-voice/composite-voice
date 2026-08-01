@@ -663,6 +663,9 @@ export class WebRTCOutput implements AudioOutputProvider {
         try {
           await this.audioContext.resume();
         } catch (error) {
+          // A stop() during the await started a new session: its queue and its
+          // listeners are not ours to clear.
+          if (gen !== this.generation) return;
           // Scheduling into a context that will not run means onended never
           // fires and flush() never resolves — the very hang this guards
           // against. Drop the queue and report instead; maybeFinish() in the
