@@ -834,6 +834,12 @@ export class ZoomRtmsInput implements AudioInputProvider {
       // ── 1. Signaling handshake ──────────────────────────────────
       this.signalingWs = this.createSocket(serverUrl, 'signaling');
       const signalingResponse = this.waitForHandshake('signaling');
+      // The waiter exists before connect() so no ack can be missed, but if
+      // connect() throws, nothing ever awaits it — teardownSockets() rejects it
+      // in the catch below and Node terminates on the unhandled rejection.
+      // A no-op catch keeps it observed; the real error still propagates from
+      // the await on connect().
+      signalingResponse.catch(() => undefined);
       await this.signalingWs.connect();
       this.signalingWs.send(
         JSON.stringify({
@@ -862,6 +868,7 @@ export class ZoomRtmsInput implements AudioInputProvider {
       // ── 2. Media handshake ──────────────────────────────────────
       this.mediaWs = this.createSocket(mediaUrl, 'media');
       const mediaResponse = this.waitForHandshake('media');
+      mediaResponse.catch(() => undefined); // see the signaling waiter above
       await this.mediaWs.connect();
       this.mediaWs.send(
         JSON.stringify({

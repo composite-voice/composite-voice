@@ -620,6 +620,20 @@ describe('VonageAudioSocket', () => {
   });
 
   describe('flush()', () => {
+    it('does not wedge when TTS arrives after the caller hangs up', async () => {
+      // detach() clears the queue, but in-flight TTS keeps arriving. Without a
+      // guard those bytes re-fill a queue no pump will ever drain, so flush()
+      // parks a resolver forever — and the pipeline awaits it with capture
+      // paused, wedging the whole agent.
+      const { provider } = await createAttached();
+      provider.configure({ encoding: 'linear16', sampleRate: 16000, channels: 1, bitDepth: 16 });
+
+      provider.detach(); // caller hung up
+      provider.enqueue(chunk(pcmBuffer(640))); // TTS still streaming
+
+      await expect(provider.flush()).resolves.toBeUndefined();
+    });
+
     it('resolves immediately when nothing is queued or playing', async () => {
       const { provider } = await createAttached();
       await expect(provider.flush()).resolves.toBeUndefined();

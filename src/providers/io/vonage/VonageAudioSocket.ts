@@ -337,6 +337,15 @@ export class VonageAudioSocket implements AudioInputProvider, AudioOutputProvide
   /** The currently attached WebSocket, or `null` when detached. */
   private socket: VonageSocket | null = null;
 
+  /**
+   * Whether a socket was attached and has since gone away.
+   *
+   * @remarks
+   * Distinguishes "the call ended" from "audio arrived before attach()",
+   * which is legitimate — attach() starts the pump and drains the backlog.
+   */
+  private socketDetached = false;
+
   /** Removes the listeners registered on {@link socket}; `null` when detached. */
   private removeSocketListeners: (() => void) | null = null;
 
@@ -513,6 +522,7 @@ export class VonageAudioSocket implements AudioInputProvider, AudioOutputProvide
     this.detach();
 
     // Fresh call leg: negotiation state resets until websocket:connected.
+    this.socketDetached = false;
     this.contentType = null;
     this.sampleRate = DEFAULT_SAMPLE_RATE;
 
@@ -581,6 +591,7 @@ export class VonageAudioSocket implements AudioInputProvider, AudioOutputProvide
     }
     if (this.socket) {
       this.socket = null;
+      this.socketDetached = true;
       this.logger.info('Socket detached');
     }
     this.clearOutbound();
@@ -807,6 +818,17 @@ export class VonageAudioSocket implements AudioInputProvider, AudioOutputProvide
    * @param chunk - Audio data from the TTS stage.
    */
   enqueue(chunk: AudioChunk): void {
+    // Once the socket has gone the pacing pump can never start again, so
+    // these bytes would never drain — and a later flush() would see a
+    // non-empty queue, park a resolver, and never settle. The pipeline awaits
+    // that flush with capture paused, so the whole agent wedges. Audio queued
+    // *before* the first attach is fine: attach() starts the pump and drains
+    // it.
+    if (!this.socket && this.socketDetached) {
+      this.logger.warn('Dropping output chunk: the Vonage call has ended');
+      return;
+    }
+
     const metadata = chunk.metadata ?? this.ttsMetadata;
     let bytes: Uint8Array;
     try {

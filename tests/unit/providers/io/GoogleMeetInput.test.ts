@@ -12,10 +12,7 @@
 import { GoogleMeetInput } from '../../../../src/providers/io/meet/GoogleMeetInput';
 import type { GoogleMeetSessionStatus } from '../../../../src/providers/io/meet/GoogleMeetInput';
 import type { AudioChunk } from '../../../../src/core/types/audio';
-import {
-  ProviderConnectionError,
-  ProviderInitializationError,
-} from '../../../../src/utils/errors';
+import { ProviderConnectionError, ProviderInitializationError } from '../../../../src/utils/errors';
 
 // --- RTCPeerConnection mock ---
 
@@ -49,11 +46,18 @@ class MockRTCPeerConnection {
   ontrack: ((event: { track: { kind: string } }) => void) | null = null;
   localDescription: unknown = null;
   remoteDescription: unknown = null;
+  /** Starts 'new'; tests drive it to 'complete' via completeIceGathering(). */
+  /** Set by a test before construction to simulate gathering still running. */
+  static nextGatheringState: RTCIceGatheringState = 'complete';
+  iceGatheringState: RTCIceGatheringState = 'complete';
+  private iceListeners: Array<() => void> = [];
   statsReport: MockStatsReport = new Map();
   close = jest.fn();
 
   constructor(configuration?: RTCConfiguration) {
     this.configuration = configuration;
+    this.iceGatheringState = MockRTCPeerConnection.nextGatheringState;
+    MockRTCPeerConnection.nextGatheringState = 'complete';
     MockRTCPeerConnection.instances.push(this);
   }
 
@@ -76,7 +80,24 @@ class MockRTCPeerConnection {
   }
 
   async setLocalDescription(description: unknown): Promise<void> {
-    this.localDescription = description;
+    // A real implementation resolves before candidates are gathered; the SDP
+    // stored here gains them later, which is why the provider must read
+    // localDescription rather than the original offer.
+    this.localDescription = { ...(description as object), sdp: 'mock-offer-sdp-with-candidates' };
+  }
+
+  addEventListener(event: string, listener: () => void): void {
+    if (event === 'icegatheringstatechange') this.iceListeners.push(listener);
+  }
+
+  removeEventListener(_event: string, listener: () => void): void {
+    this.iceListeners = this.iceListeners.filter((l) => l !== listener);
+  }
+
+  /** Simulate candidates finishing gathering. */
+  completeIceGathering(): void {
+    this.iceGatheringState = 'complete';
+    for (const listener of [...this.iceListeners]) listener();
   }
 
   async setRemoteDescription(description: unknown): Promise<void> {
@@ -332,10 +353,30 @@ describe('GoogleMeetInput', () => {
       expect(url).toBe(CONNECT_URL);
       expect(init.method).toBe('POST');
       expect(init.headers).toEqual({
-        'Authorization': 'Bearer test-oauth-token',
+        Authorization: 'Bearer test-oauth-token',
         'Content-Type': 'application/json',
       });
-      expect(JSON.parse(init.body as string)).toEqual({ offer: 'mock-offer-sdp' });
+      // The gathered local description, not the bare createOffer() result:
+      // Meet accepts one offer and offers no trickle-ICE channel, so an offer
+      // without candidates can never connect.
+      expect(JSON.parse(init.body as string)).toEqual({
+        offer: 'mock-offer-sdp-with-candidates',
+      });
+    });
+
+    it('waits for ICE gathering before sending the offer', async () => {
+      // setLocalDescription resolves before candidates are gathered.
+      MockRTCPeerConnection.nextGatheringState = 'gathering';
+      const pending = createInitializedProvider();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockFetch).not.toHaveBeenCalled();
+
+      const pc = MockRTCPeerConnection.instances[MockRTCPeerConnection.instances.length - 1];
+      pc?.completeIceGathering();
+      await pending;
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it('should resolve the token from an async factory', async () => {
@@ -707,9 +748,7 @@ describe('GoogleMeetInput', () => {
     it('should increment the requestId on each upload', async () => {
       await createInitializedProvider();
       const pc = lastPeerConnection();
-      pc.statsReport = new Map([
-        ['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }],
-      ]);
+      pc.statsReport = new Map([['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }]]);
       const channel = getChannel('media-stats');
 
       receiveOnChannel('media-stats', STATS_CONFIG_MESSAGE);
@@ -751,9 +790,7 @@ describe('GoogleMeetInput', () => {
     it('should stop uploading when the server sends uploadIntervalSeconds 0', async () => {
       await createInitializedProvider();
       const pc = lastPeerConnection();
-      pc.statsReport = new Map([
-        ['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }],
-      ]);
+      pc.statsReport = new Map([['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }]]);
       const channel = getChannel('media-stats');
 
       receiveOnChannel('media-stats', STATS_CONFIG_MESSAGE);
@@ -784,9 +821,7 @@ describe('GoogleMeetInput', () => {
     it('should stop the interval when the channel is no longer open', async () => {
       await createInitializedProvider();
       const pc = lastPeerConnection();
-      pc.statsReport = new Map([
-        ['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }],
-      ]);
+      pc.statsReport = new Map([['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }]]);
       const channel = getChannel('media-stats');
 
       receiveOnChannel('media-stats', STATS_CONFIG_MESSAGE);
@@ -799,9 +834,7 @@ describe('GoogleMeetInput', () => {
     it('should clear the interval when the media-stats channel closes', async () => {
       await createInitializedProvider();
       const pc = lastPeerConnection();
-      pc.statsReport = new Map([
-        ['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }],
-      ]);
+      pc.statsReport = new Map([['IR1', { id: 'IR1', type: 'inbound-rtp', packetsReceived: 1 }]]);
       const channel = getChannel('media-stats');
 
       receiveOnChannel('media-stats', STATS_CONFIG_MESSAGE);
@@ -821,7 +854,11 @@ describe('GoogleMeetInput', () => {
       await createInitializedProvider();
       expect(() =>
         receiveOnChannel('media-stats', {
-          response: { requestId: 1, status: { code: 200, message: '', details: [] }, uploadMediaStats: {} },
+          response: {
+            requestId: 1,
+            status: { code: 200, message: '', details: [] },
+            uploadMediaStats: {},
+          },
         })
       ).not.toThrow();
     });

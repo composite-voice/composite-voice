@@ -41,6 +41,9 @@ interface MockSocket {
   receive: (message: unknown) => void;
 }
 
+/** When set, the next socket's connect() rejects with it. */
+let mockConnectRejection: Error | null = null;
+
 const mockSockets: MockSocket[] = [];
 const mockDisconnectOrder: MockSocket[] = [];
 
@@ -48,7 +51,9 @@ function mockCreateSocket(options: { url: string }): MockSocket {
   const socket: MockSocket = {
     options,
     handlers: {},
-    connect: jest.fn().mockResolvedValue(undefined),
+    connect: jest.fn().mockImplementation(async () => {
+      if (mockConnectRejection) throw mockConnectRejection;
+    }),
     disconnect: jest.fn().mockImplementation(async () => {
       mockDisconnectOrder.push(socket);
     }),
@@ -210,6 +215,33 @@ describe('ZoomRtmsInput', () => {
   });
 
   describe('Signaling handshake', () => {
+    it('surfaces a failed connect() without an unhandled rejection', async () => {
+      // The handshake waiter is created before connect() so no ack can be
+      // missed. If connect() throws, nothing awaits that waiter — teardown
+      // rejects it and an unobserved rejection terminates Node by default,
+      // killing the whole voice server instead of failing one webhook.
+      const rejections: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        rejections.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+
+      try {
+        const provider = createProvider();
+        await provider.initialize();
+        mockConnectRejection = new Error('signaling host unreachable');
+
+        await expect(provider.connect(SESSION)).rejects.toThrow();
+
+        // Give any unobserved rejection a turn to surface.
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(rejections).toHaveLength(0);
+      } finally {
+        process.off('unhandledRejection', onUnhandled);
+        mockConnectRejection = null;
+      }
+    });
+
     it('should connect the signaling socket to the webhook server URL', async () => {
       const provider = createProvider();
       await provider.initialize();
@@ -318,7 +350,11 @@ describe('ZoomRtmsInput', () => {
       await provider.initialize();
 
       const promise = provider.connect(SESSION);
-      (await waitForSocket(0)).receive({ msg_type: 2, status_code: 0, media_server: { server_urls: {} } });
+      (await waitForSocket(0)).receive({
+        msg_type: 2,
+        status_code: 0,
+        media_server: { server_urls: {} },
+      });
 
       const error = (await promise.catch((e) => e)) as ProviderConnectionError;
       expect(error).toBeInstanceOf(ProviderConnectionError);
@@ -517,7 +553,9 @@ describe('ZoomRtmsInput', () => {
 
     it('should invoke the per-participant callback with attribution', () => {
       const speakers: Array<[number | undefined, string | undefined, AudioChunk]> = [];
-      provider.onSpeakerAudio((userId, userName, chunk) => speakers.push([userId, userName, chunk]));
+      provider.onSpeakerAudio((userId, userName, chunk) =>
+        speakers.push([userId, userName, chunk])
+      );
 
       media.receive({
         msg_type: 14,

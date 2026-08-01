@@ -92,6 +92,18 @@ const DEFAULT_ENDPOINT = 'https://meet.googleapis.com';
  */
 const AUDIO_TRANSCEIVER_COUNT = 3;
 
+/**
+ * How long to wait for ICE candidates before sending the offer anyway.
+ *
+ * @remarks
+ * The Meet Media API accepts one offer and provides no trickle-ICE channel, so
+ * candidates must be in that offer. Gathering can stay open indefinitely on
+ * networks that only yield relay candidates; a partial set beats hanging.
+ *
+ * @internal
+ */
+const ICE_GATHERING_TIMEOUT_MS = 5000;
+
 /** Target sample rate (Hz) for emitted PCM chunks. */
 const TARGET_SAMPLE_RATE = 16000;
 
@@ -572,7 +584,15 @@ export class GoogleMeetInput implements AudioInputProvider {
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
 
-      const answer = await this.connectActiveConference(offer.sdp ?? '');
+      // setLocalDescription resolves before ICE gathering finishes, and the
+      // Meet Media API takes a single one-shot offer — there is no trickle
+      // channel to send candidates on afterwards. Posting offer.sdp here ships
+      // an offer with no candidates, so ICE never completes and ontrack never
+      // fires, while initialize() still reports success.
+      await this.waitForIceGathering(peerConnection);
+      const localSdp = peerConnection.localDescription?.sdp ?? offer.sdp ?? '';
+
+      const answer = await this.connectActiveConference(localSdp);
       await peerConnection.setRemoteDescription({ type: 'answer', sdp: answer });
 
       this.initialized = true;
@@ -759,6 +779,46 @@ export class GoogleMeetInput implements AudioInputProvider {
    *
    * @param peerConnection - The peer connection to create the channels on.
    */
+  /**
+   * Resolve once ICE candidates have been gathered into the local description.
+   *
+   * @remarks
+   * Signaling here is a single POST, so the offer must already carry its
+   * candidates. Falls back after {@link ICE_GATHERING_TIMEOUT_MS} rather than
+   * blocking forever — a partial candidate set still beats none, and a
+   * relay-only network can leave gathering open indefinitely.
+   */
+  private async waitForIceGathering(peerConnection: RTCPeerConnection): Promise<void> {
+    if (peerConnection.iceGatheringState === 'complete') return;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        peerConnection.removeEventListener('icegatheringstatechange', onStateChange);
+        resolve();
+      };
+
+      const onStateChange = (): void => {
+        if (peerConnection.iceGatheringState === 'complete') finish();
+      };
+
+      const timer = setTimeout(() => {
+        this.logger.warn(
+          `ICE gathering did not complete within ${ICE_GATHERING_TIMEOUT_MS} ms; ` +
+            'sending the offer with the candidates gathered so far'
+        );
+        finish();
+      }, ICE_GATHERING_TIMEOUT_MS);
+
+      peerConnection.addEventListener('icegatheringstatechange', onStateChange);
+      // The state may have advanced between the check above and this listener.
+      onStateChange();
+    });
+  }
+
   private createDataChannels(peerConnection: RTCPeerConnection): void {
     const channelOptions: RTCDataChannelInit = { ordered: true };
 
