@@ -51,6 +51,7 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **AzureTTS** | | | | **yes** | |
 | **PollyTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
+| **TwilioMediaStream** | **yes** | | | | **yes** |
 | **DiscordVoice** | **yes** | | | | **yes** |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **WebRTCOutput** | | | | | **yes** |

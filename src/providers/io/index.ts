@@ -9,9 +9,11 @@
  * platforms cover `'input'` alone and pair with {@link NullOutput} or
  * another output provider.
  *
+ * - {@link TwilioMediaStream} — Phone calls via Twilio Media Streams (duplex, server)
  * - {@link DiscordVoice} — Voice-channel conversations via @discordjs/voice (duplex, server)
  *
  * @see {@link AudioInputProvider} and {@link AudioOutputProvider} for the interface contracts
  */
 
+export * from './twilio/index';
 export * from './discord/index';

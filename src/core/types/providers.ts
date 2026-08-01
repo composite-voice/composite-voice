@@ -1564,9 +1564,10 @@ export interface AudioOutputProvider extends BaseProvider {
  *
  * @remarks
  * Platform input providers often cannot capture audio until the application
- * hands them a live, platform-specific object — a Discord `VoiceConnection`,
- * or a remote WebRTC track. Providers declare that handle's type by
- * implementing `attach()`.
+ * hands them a live, platform-specific object — the WebSocket Twilio opened
+ * to your server, a Discord `VoiceConnection`, the session parameters from a
+ * Zoom `meeting.rtms_started` webhook, or a remote WebRTC track. Providers
+ * declare that handle's type by implementing `attach()`.
  *
  * When a provider in the {@link CompositeVoiceConfig.providers | providers}
  * array implements this interface, `CompositeVoice.startListening()` accepts
@@ -1575,19 +1576,20 @@ export interface AudioOutputProvider extends BaseProvider {
  *
  * ```typescript
  * const voice = new CompositeVoice({
- *   providers: [discord, new DeepgramSTT({ ... }), new AnthropicLLM({ ... })],
+ *   providers: [twilio, new DeepgramSTT({ ... }), new AnthropicLLM({ ... })],
  * });
  * await voice.initialize();
  *
- * const connection = joinVoiceChannel({ ...opts, selfDeaf: false });
- * await voice.startListening(connection); // typed as DiscordVoiceConnection
+ * wss.on('connection', (socket) => {
+ *   void voice.startListening(socket); // typed as TwilioStreamSocket
+ * });
  * ```
  *
  * Calling `attach()` directly and then `startListening()` with no argument
  * remains equally valid — the parameter is a convenience, not a requirement.
  *
  * @typeParam TTarget - The platform-specific handle type (e.g.
- *   `DiscordVoiceConnection`, `MediaStreamTrack`).
+ *   `TwilioStreamSocket`, `DiscordVoiceConnection`).
  *
  * @see {@link InputAttachTarget} for how the target type is inferred
  * @see {@link StartListeningArgs} for the resulting `startListening()` signature

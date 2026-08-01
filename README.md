@@ -40,7 +40,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **Eager LLM generation**        | Start generating a response before the user finishes speaking — cuts perceived latency noticeably.                                                                                                |
 | **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                              |
 | **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                                    |
-| **Platform inputs & outputs**   | Put the agent in a Discord voice channel — plus generic WebRTC in/out for LiveKit, Daily, and custom SFUs. |
+| **Platform inputs & outputs**   | Put the agent on a phone call (Twilio, Vonage), in a Discord voice channel or Teams meeting, or listening to Zoom/Google Meet — plus generic WebRTC in/out for LiveKit, Daily, and custom SFUs. |
 | **Agent providers**             | Collapse STT + LLM + TTS into a single connection. `DeepgramAgent` uses one WebSocket to the Deepgram Voice Agent API — the SDK auto-fills mic input and speaker output.                          |
 | **Extensible**                  | Abstract base classes for all 5 roles plus `BaseAgentProvider` for multi-role agents. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                   |
 
@@ -806,9 +806,10 @@ Platform providers connect the pipeline to call and chat platforms. Duplex provi
 
 | Provider            | Environment   | Roles              | Peer dependency |
 | ------------------- | ------------- | ------------------ | --------------- |
+| `TwilioMediaStream` | Node/Bun/Deno | `input` + `output` | None            |
 | `DiscordVoice`      | Node          | `input` + `output` | `@discordjs/voice`, `prism-media` |
 
-`DiscordVoice` puts the agent in a Discord voice channel: your bot joins with `joinVoiceChannel` and hands the connection to the provider, which decodes speakers' Opus to PCM for STT and plays TTS back through an `AudioPlayer`.
+`TwilioMediaStream` puts the pipeline on a phone call via [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams): your server accepts Twilio's `<Connect><Stream>` WebSocket and passes each socket to `attach(socket)` — caller audio arrives as mu-law 8 kHz, and TTS audio is sent back on the same socket (mu-law passthrough, or linear16 auto-converted). `DiscordVoice` puts the agent in a Discord voice channel: your bot joins with `joinVoiceChannel` and hands the connection to the provider, which decodes speakers' Opus to PCM for STT and plays TTS back through an `AudioPlayer`.
 
 ---
 

@@ -328,6 +328,12 @@ export { WebRTCOutput } from './providers/output/index';
 export type { WebRTCOutputConfig } from './providers/output/index';
 
 // Built-in providers - Platform IO
+export { TwilioMediaStream } from './providers/io/index';
+export type {
+  TwilioMediaStreamConfig,
+  TwilioStreamSocket,
+  TwilioSocketListener,
+} from './providers/io/index';
 export { DiscordVoice } from './providers/io/index';
 export type { DiscordVoiceConfig, DiscordVoiceConnection } from './providers/io/index';
 

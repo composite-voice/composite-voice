@@ -1609,9 +1609,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    *   fails, after emitting an `'agent.error'` event.
    *
    * @param args - When the configured input provider is an
-   *   {@link AttachableInputProvider} (DiscordVoice, WebRTCInput, ...), an
-   *   optional attach target may be passed — the platform-specific per-call
-   *   handle (voice connection, media track). It is forwarded to the
+   *   {@link AttachableInputProvider} (TwilioMediaStream, DiscordVoice,
+   *   WebRTCInput, ...), an optional attach
+   *   target may be passed — the platform-specific per-call handle (socket,
+   *   voice connection, RTMS session, media track). It is forwarded to the
    *   provider's `attach()` before capture starts, so the whole call setup is
    *   one line. Pipelines without an attachable input accept no parameter —
    *   passing one is a compile-time error (and throws at runtime).
@@ -1625,12 +1626,13 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    *
    * @example Attach a platform handle in the same call
    * ```typescript
-   * const discord = new DiscordVoice();
-   * const agent = new CompositeVoice({ providers: [discord, stt, llm, tts] });
+   * const twilio = new TwilioMediaStream();
+   * const agent = new CompositeVoice({ providers: [twilio, stt, llm, tts] });
    * await agent.initialize();
    *
-   * const connection = joinVoiceChannel({ ...opts, selfDeaf: false });
-   * await agent.startListening(connection); // typed as DiscordVoiceConnection
+   * wss.on('connection', (socket) => {
+   *   void agent.startListening(socket); // typed as TwilioStreamSocket
+   * });
    * ```
    */
   async startListening(...args: StartListeningArgs<TProviders>): Promise<void> {

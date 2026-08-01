@@ -125,6 +125,7 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 
 | # | Example | What it demonstrates |
 |---|---------|----------------------|
+| 80 | [`80-twilio-phone-agent`](./80-twilio-phone-agent/) | Phone agent on Twilio Media Streams — TwilioMediaStream + DeepgramSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
 | 83 | [`83-discord-voice-bot`](./83-discord-voice-bot/) | Discord voice-channel bot — DiscordVoice duplex provider with Deepgram STT/TTS and Claude |
 | 85 | [`85-webrtc-loopback`](./85-webrtc-loopback/) | WebRTCInput + WebRTCOutput over a local RTCPeerConnection loopback — join anything WebRTC with zero platform accounts |
 
