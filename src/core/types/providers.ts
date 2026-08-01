@@ -1368,8 +1368,30 @@ export interface AudioInputProvider extends BaseProvider {
    * @remarks
    * Stops audio delivery. The provider can be restarted with
    * {@link AudioInputProvider.start | start}.
+   *
+   * Duplex providers cover both `'input'` and `'output'`, so a bare `stop()`
+   * is ambiguous — implement
+   * {@link AudioInputProvider.stopCapture | stopCapture} and
+   * {@link AudioOutputProvider.stopPlayback | stopPlayback} to say which side
+   * is meant.
    */
   stop(): void;
+
+  /**
+   * Stop capturing audio, explicitly, without touching playback.
+   *
+   * @remarks
+   * The pipeline calls this instead of {@link AudioInputProvider.stop | stop}
+   * whenever it means "stop listening" — so a provider that fills both roles
+   * never has to infer intent from its own state. Inferring it is unsafe: a
+   * barge-in raised while the agent is still *thinking* has no audio playing
+   * to distinguish it from a stop-listening, and guessing wrong leaves the
+   * agent deaf for the rest of the session.
+   *
+   * Optional. Providers that only cover `'input'` can omit it — `stop()` is
+   * already unambiguous for them.
+   */
+  stopCapture?(): void;
 
   /**
    * Temporarily pause audio capture without releasing the source.
@@ -1511,8 +1533,32 @@ export interface AudioOutputProvider extends BaseProvider {
 
   /**
    * Stop playback immediately and clear any buffered audio.
+   *
+   * @remarks
+   * Duplex providers cover both `'input'` and `'output'`, so a bare `stop()`
+   * is ambiguous — implement
+   * {@link AudioOutputProvider.stopPlayback | stopPlayback} and
+   * {@link AudioInputProvider.stopCapture | stopCapture} to say which side is
+   * meant.
    */
   stop(): void;
+
+  /**
+   * Stop playback, explicitly, without touching capture.
+   *
+   * @remarks
+   * The pipeline calls this instead of {@link AudioOutputProvider.stop | stop}
+   * for barge-in. Capture must keep running: barge-in fires precisely because
+   * the user started talking, and that speech has to reach STT.
+   *
+   * Barge-in is also raised while the agent is merely *thinking* — the LLM is
+   * still generating and no audio exists yet — so a duplex provider cannot
+   * tell barge-in from stop-listening by looking at its own playback state.
+   *
+   * Optional. Providers that only cover `'output'` can omit it — `stop()` is
+   * already unambiguous for them.
+   */
+  stopPlayback?(): void;
 
   /**
    * Temporarily pause playback.

@@ -641,16 +641,44 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
     const bargeIn = this.playing || this.pendingMarks.size > 0;
 
     if (bargeIn) {
-      // Barge-in: tell Twilio to drop its buffered audio, keep capture alive.
-      if (this.socket && this.streamSid && !this.callEnded) {
-        this.sendJson({ event: 'clear', streamSid: this.streamSid });
-      }
-      this.settlePendingMarks('stop (barge-in)');
-      this.playing = false;
-      this.firePlaybackEnd();
+      this.stopPlayback();
       return;
     }
 
+    this.stopCapture();
+  }
+
+  /**
+   * Stop playback, leaving caller audio flowing.
+   *
+   * @remarks
+   * The pipeline calls this for barge-in, so the provider never has to infer
+   * which side was meant. Sends Twilio a `clear` so it drops audio already
+   * buffered on its side, settles outstanding marks as cancelled (their
+   * `flush()` promises resolve, so the pipeline cannot hang), and ignores the
+   * late mark echoes that follow.
+   *
+   * Capture is deliberately untouched: barge-in fires because the caller is
+   * speaking, and that speech has to reach STT. Safe when nothing is playing —
+   * barge-in is also raised while the agent is still `thinking`.
+   */
+  stopPlayback(): void {
+    if (this.socket && this.streamSid && !this.callEnded) {
+      this.sendJson({ event: 'clear', streamSid: this.streamSid });
+    }
+    this.settlePendingMarks('stop (barge-in)');
+    this.playing = false;
+    this.firePlaybackEnd();
+  }
+
+  /**
+   * Stop emitting caller audio, leaving any playback alone.
+   *
+   * @remarks
+   * The pipeline calls this when it means "stop listening". Restart with
+   * {@link TwilioMediaStream.start | start()}.
+   */
+  stopCapture(): void {
     this.active = false;
     this.paused = false;
   }

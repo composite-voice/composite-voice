@@ -745,13 +745,28 @@ export class DiscordVoice implements AudioInputProvider, AudioOutputProvider {
     const bargeIn = this.playing || this.outputQueue.length > 0;
 
     if (bargeIn) {
-      this.outputQueue = [];
-      this.player?.stop(true);
-      this.logger.debug('Playback stopped (barge-in)');
+      this.stopPlayback();
       return;
     }
 
     this.stopCapture();
+  }
+
+  /**
+   * Stop playback, leaving capture running.
+   *
+   * @remarks
+   * The pipeline calls this for barge-in, so the provider never has to infer
+   * which side was meant. Capture stays open deliberately: barge-in fires
+   * because someone started talking, and that speech has to reach STT.
+   *
+   * Safe when nothing is playing — barge-in is also raised while the agent is
+   * still `thinking`, and there is simply no audio to drop yet.
+   */
+  stopPlayback(): void {
+    this.outputQueue = [];
+    this.player?.stop(true);
+    this.logger.debug('Playback stopped (barge-in)');
   }
 
   /**

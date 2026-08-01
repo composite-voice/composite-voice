@@ -802,6 +802,38 @@ describe('DiscordVoice', () => {
       expect(chunks).toHaveLength(1);
     });
 
+    it('stopPlayback() keeps capture open even with nothing playing', async () => {
+      // Barge-in fires while the agent is still `thinking` too — the LLM is
+      // generating and no audio exists yet. Inferring intent from playback
+      // state gets that case wrong and leaves the agent permanently deaf.
+      const { provider, connection } = await createProvider();
+      const chunks: AudioChunk[] = [];
+      provider.onAudio((chunk) => chunks.push(chunk));
+      provider.start();
+      speak(connection, 'user-1');
+
+      provider.stopPlayback(); // nothing queued, nothing playing
+
+      expect(provider.isActive()).toBe(true);
+      lastDecoder().emit('data', stereoBytes([4, 4]));
+      expect(chunks).toHaveLength(1);
+    });
+
+    it('stopCapture() halts capture without needing an idle output', async () => {
+      const { provider, connection } = await createProvider();
+      const chunks: AudioChunk[] = [];
+      provider.onAudio((chunk) => chunks.push(chunk));
+      provider.start();
+      speak(connection, 'user-1');
+      provider.configure({ encoding: 'linear16', sampleRate: 48000, channels: 1 });
+      provider.enqueue({ data: new Int16Array([1]).buffer, timestamp: Date.now() });
+
+      provider.stopCapture(); // audio queued, but stop-listening was meant
+
+      expect(provider.isActive()).toBe(false);
+      expect(chunks).toHaveLength(0);
+    });
+
     it('stop() halts capture when nothing is queued or playing', async () => {
       const { provider, connection } = await createProvider();
       const chunks: AudioChunk[] = [];

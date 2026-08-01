@@ -453,6 +453,45 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   }
 
   /**
+   * Stop the output provider's playback, without disturbing capture.
+   *
+   * @remarks
+   * Prefers {@link AudioOutputProvider.stopPlayback | stopPlayback} so duplex
+   * providers — one object covering both `'input'` and `'output'` — are told
+   * which side to stop rather than having to infer it. Inference is unsafe:
+   * barge-in also fires while the agent is `thinking`, when no audio is
+   * playing to distinguish it from a stop-listening, and a provider that
+   * guesses wrong stops capturing for the rest of the session.
+   *
+   * Falls back to `stop()` for output-only providers, which are unambiguous.
+   */
+  private stopOutputPlayback(): void {
+    const output = this.pipeline.output;
+    if (typeof output.stopPlayback === 'function') {
+      output.stopPlayback();
+      return;
+    }
+    output.stop();
+  }
+
+  /**
+   * Stop the input provider's capture, without disturbing playback.
+   *
+   * @remarks
+   * The counterpart to {@link CompositeVoice.stopOutputPlayback}: prefers
+   * {@link AudioInputProvider.stopCapture | stopCapture}, falling back to
+   * `stop()` for input-only providers.
+   */
+  private stopInputCapture(): void {
+    const input = this.pipeline.input;
+    if (typeof input.stopCapture === 'function') {
+      input.stopCapture();
+      return;
+    }
+    input.stop();
+  }
+
+  /**
    * Creates a new CompositeVoice instance with the given provider configuration.
    *
    * @remarks
@@ -708,7 +747,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         // Stop output immediately (sync)
         if (!this.isMultiRoleOutput) {
           this.outputQueue.clear();
-          this.pipeline.output.stop();
+          this.stopOutputPlayback();
         }
         // Reset state machines so agent can process new input
         const ps = this.playbackStateMachine.getState();
@@ -1172,7 +1211,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         }
         if (!this.isMultiRoleOutput) {
           this.outputQueue.clear();
-          this.pipeline.output.stop();
+          this.stopOutputPlayback();
         }
         this.processingStateMachine.setIdle();
         return;
@@ -1754,7 +1793,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     this.logger.info('Stopping listening');
 
     try {
-      const { stt, pipeline } = this;
+      const { stt } = this;
 
       // Stop draining and clear the input queue
       this.inputQueue.stopDraining();
@@ -1762,7 +1801,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       // Stop input provider (for separate input)
       if (!this.isMultiRoleInput) {
-        pipeline.input.stop();
+        this.stopInputCapture();
       }
 
       // Disconnect STT provider
@@ -1839,7 +1878,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       // Stop output provider and clear output queue (for separate output)
       if (!this.isMultiRoleOutput) {
         this.outputQueue.clear();
-        this.pipeline.output.stop();
+        this.stopOutputPlayback();
       }
 
       if (isLiveTTS(tts)) {
