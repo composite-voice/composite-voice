@@ -271,6 +271,164 @@ describe('WebRTCOutput', () => {
     });
   });
 
+  describe('odd-length linear16 chunks', () => {
+    /** A raw byte chunk, deliberately not 2-byte aligned. */
+    function byteChunk(bytes: number[]): AudioChunk {
+      return { data: new Uint8Array(bytes).buffer, timestamp: Date.now() };
+    }
+
+    it('carries a half-sample into the next chunk instead of throwing', async () => {
+      // new Int16Array(oddBuffer) throws RangeError; the chunk used to be
+      // dropped entirely and every later one parsed byte-swapped.
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      // 0x0100 = 256, then a stray 0x02 held back for the next chunk.
+      output.enqueue(byteChunk([0x00, 0x01, 0x02]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      const first = createdBuffers[0]?.getChannelData(0);
+      expect(first).toHaveLength(1);
+      expect(first?.[0]).toBeCloseTo(0x0100 / 32768, 5);
+
+      // 0x03 completes the carried 0x02 into 0x0302 — proving the carry is
+      // used as the *low* byte, i.e. the stream stayed aligned.
+      output.enqueue(byteChunk([0x03]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      const second = createdBuffers[1]?.getChannelData(0);
+      expect(second).toHaveLength(1);
+      expect(second?.[0]).toBeCloseTo(0x0302 / 32768, 5);
+    });
+
+    it('keeps stereo channels in order when a frame splits across chunks', async () => {
+      // A stereo frame is 4 bytes. Splitting between the left and right sample
+      // would swap the channels for the rest of the utterance unless the carry
+      // aligns to whole frames rather than whole samples.
+      const output = new WebRTCOutput();
+      await output.initialize();
+      output.configure({ encoding: 'linear16', sampleRate: 24000, channels: 2, bitDepth: 16 });
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      // Left = 0x0100, then only the first byte of the right sample.
+      output.enqueue(byteChunk([0x00, 0x01, 0x02]));
+      await flushAsync();
+
+      // Nothing schedulable yet: a partial frame must not be emitted.
+      expect(createdBuffers).toHaveLength(0);
+
+      // 0x03 completes right = 0x0302.
+      output.enqueue(byteChunk([0x03]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      expect(createdBuffers).toHaveLength(1);
+      expect(createdBuffers[0]?.getChannelData(0)[0]).toBeCloseTo(0x0100 / 32768, 5);
+      expect(createdBuffers[0]?.getChannelData(1)[0]).toBeCloseTo(0x0302 / 32768, 5);
+    });
+
+    it('drops the carried byte on stop() so the next utterance stays aligned', async () => {
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      output.enqueue(byteChunk([0x00, 0x01, 0x02])); // leaves 0x02 carried
+      await flushAsync();
+
+      output.stop(); // barge-in: the cancelled stream must not bleed through
+
+      output.enqueue(byteChunk([0x10, 0x11]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      // 0x1110, not a byte-swapped value built from the stale 0x02 carry.
+      const channel = createdBuffers[createdBuffers.length - 1]?.getChannelData(0);
+      expect(channel).toHaveLength(1);
+      expect(channel?.[0]).toBeCloseTo(0x1110 / 32768, 5);
+    });
+  });
+
+  describe('suspended AudioContext', () => {
+    it('resumes before scheduling anything', async () => {
+      // A context created outside a user gesture starts suspended; its
+      // currentTime never advances, so onended never fires and the flush the
+      // pipeline awaits never resolves. Nothing may be scheduled until the
+      // resume settles.
+      mockAudioContext.state = 'suspended';
+      let releaseResume: () => void = () => undefined;
+      mockAudioContext.resume = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseResume = resolve;
+          })
+      );
+      const output = await initializedOutput();
+
+      output.enqueue(pcmChunk([1, 2, 3, 4]));
+      await flushAsync();
+
+      expect(mockAudioContext.resume).toHaveBeenCalled();
+      expect(createdSources).toHaveLength(0);
+
+      releaseResume();
+      await flushAsync();
+
+      expect(createdSources).toHaveLength(1);
+    });
+
+    it('leaves a newer session alone when a stale resume() rejects', async () => {
+      // stop() during the resume await starts a new session. The stale
+      // handler must not clear the new queue or fire its error callback.
+      mockAudioContext.state = 'suspended';
+      let rejectResume: (error: Error) => void = () => undefined;
+      mockAudioContext.resume = jest.fn(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectResume = reject;
+          })
+      );
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      output.enqueue(pcmChunk([1, 2, 3, 4]));
+      await flushAsync();
+
+      output.stop(); // barge-in: a new session begins
+      mockAudioContext.state = 'running';
+      output.enqueue(pcmChunk([5, 6, 7, 8]));
+
+      rejectResume(new Error('not allowed')); // the stale attempt fails late
+      await flushAsync();
+
+      // The newer chunk still played, and no error leaked from the old session.
+      expect(errors).toHaveLength(0);
+      expect(createdSources).toHaveLength(1);
+    });
+
+    it('drops queued audio and reports when resume() rejects', async () => {
+      // Scheduling into a context that will never run is the hang this guards
+      // against, so a failed resume must surface rather than proceed.
+      mockAudioContext.state = 'suspended';
+      mockAudioContext.resume = jest.fn(() => Promise.reject(new Error('not allowed')));
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      output.enqueue(pcmChunk([1, 2, 3, 4]));
+      await flushAsync();
+
+      expect(createdSources).toHaveLength(0);
+      expect(errors).toHaveLength(1);
+      // And a flush awaited by the pipeline still settles.
+      await expect(output.flush()).resolves.toBeUndefined();
+    });
+  });
+
   describe('G.711 decoding', () => {
     it('decodes mulaw chunks to PCM before scheduling', async () => {
       const output = await initializedOutput();

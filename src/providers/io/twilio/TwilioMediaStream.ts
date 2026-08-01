@@ -175,6 +175,7 @@ interface AttachedListeners {
   style: 'node' | 'dom';
   message: (...args: unknown[]) => void;
   close: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
 }
 
 /** Output conversion mode decided by {@link TwilioMediaStream.configure}. @internal */
@@ -451,15 +452,35 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
     const closeListener = (): void => {
       this.handleCallEnded('socket closed');
     };
+    // A Node `ws` socket with no 'error' listener re-throws as an uncaught
+    // exception, which takes the whole server down on a single ECONNRESET.
+    // Treat it as the call ending — 'close' may never arrive.
+    const errorListener = (...args: unknown[]): void => {
+      const error = args[0] instanceof Error ? args[0] : new Error(String(args[0]));
+      this.logger.warn('Socket error', error);
+      this.handleCallEnded(`socket error: ${error.message}`);
+    };
 
     if (typeof socket.on === 'function') {
       socket.on('message', messageListener);
       socket.on('close', closeListener);
-      this.listeners = { style: 'node', message: messageListener, close: closeListener };
+      socket.on('error', errorListener);
+      this.listeners = {
+        style: 'node',
+        message: messageListener,
+        close: closeListener,
+        error: errorListener,
+      };
     } else if (typeof socket.addEventListener === 'function') {
       socket.addEventListener('message', messageListener);
       socket.addEventListener('close', closeListener);
-      this.listeners = { style: 'dom', message: messageListener, close: closeListener };
+      socket.addEventListener('error', errorListener);
+      this.listeners = {
+        style: 'dom',
+        message: messageListener,
+        close: closeListener,
+        error: errorListener,
+      };
     } else {
       throw new ConfigurationError(
         'TwilioMediaStream.attach() requires a socket with on() or addEventListener() ' +
@@ -496,6 +517,7 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
       if (typeof remove === 'function') {
         remove.call(socket, 'message', listeners.message);
         remove.call(socket, 'close', listeners.close);
+        remove.call(socket, 'error', listeners.error);
       }
     } else if (typeof socket.removeEventListener === 'function') {
       socket.removeEventListener(
@@ -503,6 +525,7 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
         listeners.message as (event: { data: unknown }) => void
       );
       socket.removeEventListener('close', listeners.close as (event: { data: unknown }) => void);
+      socket.removeEventListener('error', listeners.error as (event: { data: unknown }) => void);
     }
 
     this.socket = null;
@@ -641,16 +664,48 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
     const bargeIn = this.playing || this.pendingMarks.size > 0;
 
     if (bargeIn) {
-      // Barge-in: tell Twilio to drop its buffered audio, keep capture alive.
-      if (this.socket && this.streamSid && !this.callEnded) {
-        this.sendJson({ event: 'clear', streamSid: this.streamSid });
-      }
-      this.settlePendingMarks('stop (barge-in)');
-      this.playing = false;
-      this.firePlaybackEnd();
+      this.stopPlayback();
       return;
     }
 
+    this.stopCapture();
+  }
+
+  /**
+   * Stop playback, leaving caller audio flowing.
+   *
+   * @remarks
+   * The pipeline calls this for barge-in, so the provider never has to infer
+   * which side was meant. Sends Twilio a `clear` so it drops audio already
+   * buffered on its side, settles outstanding marks as cancelled (their
+   * `flush()` promises resolve, so the pipeline cannot hang), and ignores the
+   * late mark echoes that follow.
+   *
+   * Capture is deliberately untouched: barge-in fires because the caller is
+   * speaking, and that speech has to reach STT. Safe when nothing is playing —
+   * barge-in is also raised while the agent is still `thinking`.
+   */
+  stopPlayback(): void {
+    // Barge-in also fires while the agent is only *thinking*, when nothing is
+    // playing — announcing a playback end there would be a lie.
+    const wasPlaying = this.playing;
+
+    if (this.socket && this.streamSid && !this.callEnded) {
+      this.sendJson({ event: 'clear', streamSid: this.streamSid });
+    }
+    this.settlePendingMarks('stop (barge-in)');
+    this.playing = false;
+    if (wasPlaying) this.firePlaybackEnd();
+  }
+
+  /**
+   * Stop emitting caller audio, leaving any playback alone.
+   *
+   * @remarks
+   * The pipeline calls this when it means "stop listening". Restart with
+   * {@link TwilioMediaStream.start | start()}.
+   */
+  stopCapture(): void {
     this.active = false;
     this.paused = false;
   }

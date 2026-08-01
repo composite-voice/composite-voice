@@ -199,6 +199,12 @@ export class WebRTCOutput implements AudioOutputProvider {
   /** AudioContext driving decoding and scheduling (created at initialize). */
   private audioContext: AudioContext | null = null;
 
+  /**
+   * Trailing byte of an odd-length linear16 chunk, waiting for its partner.
+   * @see {@link WebRTCOutput.toAlignedInt16}
+   */
+  private pcmCarry: Uint8Array | null = null;
+
   /** Destination node whose stream/track is published by the application. */
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
 
@@ -420,6 +426,9 @@ export class WebRTCOutput implements AudioOutputProvider {
     this.queue = [];
     this.processing = false;
     this.nextStartTime = 0;
+    // Drop any half-sample left over: the next utterance starts a new stream
+    // and must not inherit a byte from the one just cancelled.
+    this.pcmCarry = null;
 
     for (const source of this.activeSources) {
       source.onended = null;
@@ -602,12 +611,74 @@ export class WebRTCOutput implements AudioOutputProvider {
    * exits without scheduling stale audio. Decode failures invoke
    * `onPlaybackError` and skip the offending chunk.
    */
+  /**
+   * View a linear16 chunk as samples, carrying any half-sample across chunks.
+   *
+   * @remarks
+   * `new Int16Array(buffer)` throws a RangeError when the byte length is odd,
+   * and TTS providers make no 2-byte alignment promise — a stream split
+   * mid-sample would otherwise drop the whole chunk and leave every later one
+   * byte-swapped, which is audible as loud noise rather than a small gap.
+   *
+   * Alignment is to a whole interleaved **frame** (`2 * channels` bytes), not
+   * merely a sample: a stereo stream split between a left and right sample
+   * would otherwise swap the channels for the rest of the utterance.
+   *
+   * Returns `null` when the carry leaves no complete frame to emit.
+   */
+  private toAlignedInt16(data: ArrayBuffer, channels: number): Int16Array | null {
+    const incoming = new Uint8Array(data);
+    const bytes =
+      this.pcmCarry === null
+        ? incoming
+        : (() => {
+            const joined = new Uint8Array(this.pcmCarry.length + incoming.length);
+            joined.set(this.pcmCarry, 0);
+            joined.set(incoming, this.pcmCarry.length);
+            return joined;
+          })();
+
+    const frameBytes = 2 * Math.max(1, channels);
+    const usable = bytes.length - (bytes.length % frameBytes);
+    this.pcmCarry = usable === bytes.length ? null : bytes.slice(usable);
+    if (usable === 0) return null;
+
+    // Copy rather than view: the source may sit at an odd byteOffset, which
+    // Int16Array cannot wrap.
+    const aligned = new Uint8Array(usable);
+    aligned.set(bytes.subarray(0, usable));
+    return new Int16Array(aligned.buffer);
+  }
+
   private async processQueue(): Promise<void> {
     if (this.processing) return;
     this.processing = true;
     const gen = this.generation;
 
     try {
+      // Autoplay policy starts a context created outside a user gesture in
+      // 'suspended', where currentTime never advances — scheduled sources
+      // would never fire onended and flush() would never resolve.
+      if (this.audioContext?.state === 'suspended' && !this.paused) {
+        try {
+          await this.audioContext.resume();
+        } catch (error) {
+          // A stop() during the await started a new session: its queue and its
+          // listeners are not ours to clear.
+          if (gen !== this.generation) return;
+          // Scheduling into a context that will not run means onended never
+          // fires and flush() never resolves — the very hang this guards
+          // against. Drop the queue and report instead; maybeFinish() in the
+          // finally block settles anyone already awaiting flush().
+          const failure =
+            error instanceof Error ? error : new Error('AudioContext.resume() failed');
+          this.logger.error('Could not resume the AudioContext; dropping queued audio', failure);
+          this.queue = [];
+          this.playbackErrorCallback?.(failure);
+          return;
+        }
+      }
+
       while (this.queue.length > 0) {
         if (gen !== this.generation) return;
 
@@ -617,7 +688,8 @@ export class WebRTCOutput implements AudioOutputProvider {
         try {
           const buffer = await this.decodeChunk(chunk);
           if (gen !== this.generation) return;
-          this.scheduleBuffer(buffer);
+          // null means the chunk held only a partial frame, now carried.
+          if (buffer !== null) this.scheduleBuffer(buffer);
         } catch (error) {
           this.logger.error('Failed to decode audio chunk', error);
           this.playbackErrorCallback?.(error as Error);
@@ -636,11 +708,12 @@ export class WebRTCOutput implements AudioOutputProvider {
    *
    * @param chunk - The chunk to decode. Per-chunk metadata overrides the
    *   provider-level metadata from `configure()`.
-   * @returns The decoded `AudioBuffer`.
+   * @returns The decoded `AudioBuffer`, or `null` when a partial linear16
+   *   frame was carried forward and there is nothing to schedule yet.
    *
    * @throws Error when no metadata is available or decoding fails.
    */
-  private async decodeChunk(chunk: AudioChunk): Promise<AudioBuffer> {
+  private async decodeChunk(chunk: AudioChunk): Promise<AudioBuffer | null> {
     const context = this.audioContext;
     if (!context) {
       throw new Error('WebRTCOutput is not initialized');
@@ -655,8 +728,12 @@ export class WebRTCOutput implements AudioOutputProvider {
     }
 
     switch (metadata.encoding) {
-      case 'linear16':
-        return this.pcmToAudioBuffer(new Int16Array(chunk.data), metadata, context);
+      case 'linear16': {
+        const samples = this.toAlignedInt16(chunk.data, metadata.channels ?? 1);
+        // Not even one whole frame yet — it is carried into the next chunk.
+        if (samples === null) return null;
+        return this.pcmToAudioBuffer(samples, metadata, context);
+      }
       case 'mulaw':
         return this.pcmToAudioBuffer(decodeMulaw(new Uint8Array(chunk.data)), metadata, context);
       case 'alaw':
