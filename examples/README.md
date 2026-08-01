@@ -126,8 +126,12 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | # | Example | What it demonstrates |
 |---|---------|----------------------|
 | 80 | [`80-twilio-phone-agent`](./80-twilio-phone-agent/) | Phone agent on Twilio Media Streams — TwilioMediaStream + DeepgramSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
+| 81 | [`81-vonage-phone-agent`](./81-vonage-phone-agent/) | Phone agent on the Vonage Voice API WebSocket bridge — VonageAudioSocket + DeepgramSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
 | 83 | [`83-discord-voice-bot`](./83-discord-voice-bot/) | Discord voice-channel bot — DiscordVoice duplex provider with Deepgram STT/TTS and Claude |
+| 84 | [`84-zoom-meeting-listener`](./84-zoom-meeting-listener/) | Zoom RTMS meeting listener — live transcripts over a plain node:http webhook, with an end-of-meeting Claude summary |
 | 85 | [`85-webrtc-loopback`](./85-webrtc-loopback/) | WebRTCInput + WebRTCOutput over a local RTCPeerConnection loopback — join anything WebRTC with zero platform accounts |
+| 86 | [`86-google-meet-listener`](./86-google-meet-listener/) | GoogleMeetInput (Developer Preview) — transcribe a live Google Meet conference and take LLM notes, receive-only |
+| 87 | [`87-teams-meeting-agent`](./87-teams-meeting-agent/) | TeamsCall duplex — a voice agent that joins a Microsoft Teams meeting via Azure Communication Services, listens, and speaks replies |
 
 ## Shared Infrastructure
 

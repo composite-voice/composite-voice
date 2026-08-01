@@ -1049,7 +1049,11 @@ Platform providers connect the pipeline to call and chat platforms.
 | Provider | Environment | Roles | Description |
 |---|---|---|---|
 | [TwilioMediaStream](#twiliomediastream) | Node/Bun/Deno | `input` + `output` | Phone calls via Twilio Media Streams (mu-law 8 kHz, duplex WebSocket) |
+| [VonageAudioSocket](#vonageaudiosocket) | Node/Bun/Deno | `input` + `output` | Phone calls via the Vonage Voice API WebSocket (linear16, paced frames) |
 | [DiscordVoice](#discordvoice) | Node | `input` + `output` | Live voice-channel conversations via `@discordjs/voice` |
+| [ZoomRtmsInput](#zoomrtmsinput) | Node/Bun/Deno | `input` | Live Zoom meeting audio via Realtime Media Streams (receive-only) |
+| [GoogleMeetInput](#googlemeetinput) | Browser | `input` | Live Meet conference audio via the Meet Media API (Developer Preview, receive-only) |
+| [TeamsCall](#teamscall) | Browser | `input` + `output` | Microsoft Teams meetings via Azure Communication Services interop |
 
 ### TwilioMediaStream
 
@@ -1067,6 +1071,23 @@ wss.on('connection', (socket) => twilio.attach(socket));
 - `flush()` resolves on Twilio's `mark` echo; `stop()` sends `clear` (barge-in)
 - Extras: `onDtmf()`, `onCallEnded()`, `getCallSid()`, `getCustomParameters()`
 - See the [Twilio guide](/guides/io/twilio-media-streams) for TwiML + server setup
+
+### VonageAudioSocket
+
+Duplex provider for the [Vonage Voice API WebSocket](https://developer.vonage.com/en/voice/voice-api/concepts/websockets) endpoint. Your NCCO `connect` action points at your server; each accepted socket is handed to the provider.
+
+```typescript
+import { VonageAudioSocket } from '@lukeocodes/composite-voice';
+
+const vonage = new VonageAudioSocket();
+wss.on('connection', (socket) => vonage.attach(socket));
+```
+
+- Caller audio: linear16 at the NCCO-negotiated rate (8/16/24 kHz)
+- TTS audio back: linear16 passthrough/resample or G.711 decode, paced in 20 ms binary frames
+- No mark protocol — `flush()` resolves when the pacing pump drains
+- Extras: `onDtmf()`, `getContentType()`
+- See the [Vonage guide](/guides/io/vonage-audio-socket) for NCCO + server setup
 
 
 ### DiscordVoice
@@ -1087,8 +1108,63 @@ discord.attach(joinVoiceChannel({ channelId, guildId, adapterCreator, selfDeaf: 
 - Requires the `GuildVoiceStates` gateway intent and `selfDeaf: false`
 - See the [Discord guide](/guides/io/discord-voice) for full bot setup
 
+### ZoomRtmsInput
 
+Streams live Zoom meeting audio into the pipeline via [Realtime Media Streams](https://developers.zoom.us/docs/rtms/). Zero dependencies — the RTMS signaling/media WebSocket protocol (HMAC-SHA256 handshakes, keep-alives, base64 L16 audio) is implemented directly.
 
+```typescript
+import { ZoomRtmsInput } from '@lukeocodes/composite-voice';
+
+const zoom = new ZoomRtmsInput({ clientId, clientSecret });
+
+// From your meeting.rtms_started webhook:
+await zoom.connect({ meetingUuid, rtmsStreamId, serverUrl });
+```
+
+- Receive-only by design — pair with `NullOutput` (you cannot inject audio into a Zoom meeting via RTMS)
+- Mixed stream by default, or per-participant audio via `dataOpt: 'per-participant'` + `onSpeakerAudio()`
+- 16 kHz linear16 mono by default (8/16/32/48 kHz configurable)
+- Server-side only (the HMAC signature requires your client secret)
+- See the [Zoom RTMS guide](/guides/io/zoom-rtms) for webhook wiring and marketplace prerequisites
+
+### GoogleMeetInput
+
+Joins a Google Meet conference through the [Meet Media API](https://developers.google.com/workspace/meet/media-api/guides/overview) and mixes the conference audio into the pipeline. Zero dependencies — the WebRTC offer/answer exchange (`spaces.connectActiveConference`), session-control and media-stats data channels are implemented directly, following Google's reference client.
+
+```typescript
+import { GoogleMeetInput } from '@lukeocodes/composite-voice';
+
+const meet = new GoogleMeetInput({
+  apiKey: async () => getOAuthAccessToken(), // meetings.conference.media.audio.readonly
+  spaceName: 'spaces/abc-defg-hij',
+});
+```
+
+- **Developer Preview**: the Cloud project, OAuth principal, and all participants must be enrolled
+- Receive-only by design — pair with `NullOutput`
+- Browser-only (RTCPeerConnection + Web Audio); emits 16 kHz linear16 mono
+- Session status surfaced via `onSessionStatus()` (waiting / joined / disconnected)
+- See the [Google Meet guide](/guides/io/google-meet) for OAuth scopes and space resolution
+
+### TeamsCall
+
+Joins a Microsoft Teams meeting as an external participant via [Azure Communication Services Teams interop](https://learn.microsoft.com/en-us/azure/communication-services/concepts/teams-interop), with raw media access in both directions.
+
+```typescript
+import { TeamsCall } from '@lukeocodes/composite-voice';
+
+const teams = new TeamsCall({
+  token: acsUserAccessToken,
+  meetingLink: 'https://teams.microsoft.com/l/meetup-join/...',
+  displayName: 'Voice Agent',
+});
+```
+
+- Peer dependencies: `@azure/communication-calling` (>= 1.13.1), `@azure/communication-common`
+- Meeting audio (mixed) flows to STT as 16 kHz linear16; TTS is played into the meeting via a custom outgoing audio stream
+- Accepts linear16 (any rate), mulaw/alaw, and mp3 TTS output
+- Lobby-aware: `onCallStateChanged()` surfaces `InLobby`/`Connected`/`Disconnected`
+- See the [Teams guide](/guides/io/teams-call) for ACS resource + token setup
 
 ## Choosing providers
 
