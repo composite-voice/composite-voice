@@ -676,6 +676,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       this.setupProviders();
 
       this.initialized = true;
+      // A previous dispose() closed the event gate. Re-initializing revives the
+      // instance, so reopen it — otherwise every event, agent.ready included,
+      // would be silently dropped for the rest of its life.
+      this.disposing = false;
 
       this.emitEvent({
         type: 'agent.ready',

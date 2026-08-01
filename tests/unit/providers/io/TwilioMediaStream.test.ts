@@ -241,6 +241,29 @@ describe('TwilioMediaStream', () => {
   });
 
   describe('Socket attachment', () => {
+    it('subscribes to socket errors so one ECONNRESET cannot kill the server', async () => {
+      // A Node ws socket with no 'error' listener re-throws as an uncaught
+      // exception, taking the whole process down mid-call.
+      const { socket } = await createStartedProvider();
+
+      expect(socket.listenerCount('error')).toBe(1);
+      expect(() => socket.emit('error', new Error('ECONNRESET'))).not.toThrow();
+    });
+
+    it('treats a socket error as the call ending', async () => {
+      const { provider, socket } = await createStartedProvider();
+      let ended = false;
+      provider.onCallEnded(() => {
+        ended = true;
+      });
+
+      // 'close' may never arrive after an error, so the error path has to end
+      // the call itself or the pipeline is never torn down.
+      socket.emit('error', new Error('ECONNRESET'));
+
+      expect(ended).toBe(true);
+    });
+
     it('wires message/close via on() for Node ws-style sockets', async () => {
       const { socket, chunks } = await createStartedProvider();
       expect(socket.listenerCount('message')).toBe(1);

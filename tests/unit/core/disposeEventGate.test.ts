@@ -124,6 +124,28 @@ describe('event suppression during dispose()', () => {
     expect(tts.disposeCount).toBe(1);
   });
 
+  it('reopens the event gate when a disposed instance is initialized again', async () => {
+    // dispose() closes the gate permanently; initialize() has to reopen it or
+    // the revived instance silently drops every event, agent.ready included.
+    const stt = new FlushOnDisposeSTT();
+    const voice = new CompositeVoice({
+      providers: [stt, new MockLLMProvider(), new MockTTSProvider()],
+    });
+    await voice.initialize();
+    await voice.dispose();
+
+    const seen: string[] = [];
+    voice.on('*', (event: CompositeVoiceEvent) => {
+      seen.push(event.type);
+    });
+
+    await voice.initialize();
+
+    expect(seen).toContain('agent.ready');
+
+    await voice.dispose();
+  });
+
   it('reopens the event gate if dispose() fails, so it can be retried', async () => {
     class FailingOnceTTS extends MockTTSProvider {
       public attempts = 0;

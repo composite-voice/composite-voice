@@ -199,6 +199,12 @@ export class WebRTCOutput implements AudioOutputProvider {
   /** AudioContext driving decoding and scheduling (created at initialize). */
   private audioContext: AudioContext | null = null;
 
+  /**
+   * Trailing byte of an odd-length linear16 chunk, waiting for its partner.
+   * @see {@link WebRTCOutput.toAlignedInt16}
+   */
+  private pcmCarry: Uint8Array | null = null;
+
   /** Destination node whose stream/track is published by the application. */
   private destinationNode: MediaStreamAudioDestinationNode | null = null;
 
@@ -420,6 +426,9 @@ export class WebRTCOutput implements AudioOutputProvider {
     this.queue = [];
     this.processing = false;
     this.nextStartTime = 0;
+    // Drop any half-sample left over: the next utterance starts a new stream
+    // and must not inherit a byte from the one just cancelled.
+    this.pcmCarry = null;
 
     for (const source of this.activeSources) {
       source.onended = null;
@@ -602,12 +611,57 @@ export class WebRTCOutput implements AudioOutputProvider {
    * exits without scheduling stale audio. Decode failures invoke
    * `onPlaybackError` and skip the offending chunk.
    */
+  /**
+   * View a linear16 chunk as samples, carrying any half-sample across chunks.
+   *
+   * @remarks
+   * `new Int16Array(buffer)` throws a RangeError when the byte length is odd,
+   * and TTS providers make no 2-byte alignment promise — a stream split
+   * mid-sample would otherwise drop the whole chunk and leave every later one
+   * byte-swapped, which is audible as loud noise rather than a small gap.
+   *
+   * The leftover byte is prepended to the next chunk, so the stream stays
+   * sample-aligned across arbitrary fragmentation.
+   */
+  private toAlignedInt16(data: ArrayBuffer): Int16Array {
+    const incoming = new Uint8Array(data);
+    const bytes =
+      this.pcmCarry === null
+        ? incoming
+        : (() => {
+            const joined = new Uint8Array(this.pcmCarry.length + incoming.length);
+            joined.set(this.pcmCarry, 0);
+            joined.set(incoming, this.pcmCarry.length);
+            return joined;
+          })();
+
+    const usable = bytes.length - (bytes.length % 2);
+    this.pcmCarry = usable === bytes.length ? null : bytes.slice(usable);
+
+    // Copy rather than view: the source may sit at an odd byteOffset, which
+    // Int16Array cannot wrap.
+    const aligned = new Uint8Array(usable);
+    aligned.set(bytes.subarray(0, usable));
+    return new Int16Array(aligned.buffer);
+  }
+
   private async processQueue(): Promise<void> {
     if (this.processing) return;
     this.processing = true;
     const gen = this.generation;
 
     try {
+      // Autoplay policy starts a context created outside a user gesture in
+      // 'suspended', where currentTime never advances — scheduled sources
+      // would never fire onended and flush() would never resolve.
+      if (this.audioContext?.state === 'suspended' && !this.paused) {
+        try {
+          await this.audioContext.resume();
+        } catch (error) {
+          this.logger.warn('Could not resume the AudioContext', error);
+        }
+      }
+
       while (this.queue.length > 0) {
         if (gen !== this.generation) return;
 
@@ -656,7 +710,7 @@ export class WebRTCOutput implements AudioOutputProvider {
 
     switch (metadata.encoding) {
       case 'linear16':
-        return this.pcmToAudioBuffer(new Int16Array(chunk.data), metadata, context);
+        return this.pcmToAudioBuffer(this.toAlignedInt16(chunk.data), metadata, context);
       case 'mulaw':
         return this.pcmToAudioBuffer(decodeMulaw(new Uint8Array(chunk.data)), metadata, context);
       case 'alaw':

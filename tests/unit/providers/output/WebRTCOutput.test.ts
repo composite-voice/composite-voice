@@ -271,6 +271,69 @@ describe('WebRTCOutput', () => {
     });
   });
 
+  describe('odd-length linear16 chunks', () => {
+    /** A raw byte chunk, deliberately not 2-byte aligned. */
+    function byteChunk(bytes: number[]): AudioChunk {
+      return { data: new Uint8Array(bytes).buffer, timestamp: Date.now() };
+    }
+
+    it('carries a half-sample into the next chunk instead of throwing', async () => {
+      // new Int16Array(oddBuffer) throws RangeError; the chunk used to be
+      // dropped entirely and every later one parsed byte-swapped.
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      // 0x0100 = 256, then a stray 0x02 held back for the next chunk.
+      output.enqueue(byteChunk([0x00, 0x01, 0x02]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      expect(createdBuffers[0]?.getChannelData(0)).toHaveLength(1);
+
+      // 0x03 completes the carried byte into 0x0302.
+      output.enqueue(byteChunk([0x03]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      expect(createdBuffers[1]?.getChannelData(0)).toHaveLength(1);
+    });
+
+    it('drops the carried byte on stop() so the next utterance stays aligned', async () => {
+      const output = await initializedOutput();
+      const errors: Error[] = [];
+      output.onPlaybackError((error) => errors.push(error));
+
+      output.enqueue(byteChunk([0x00, 0x01, 0x02])); // leaves 0x02 carried
+      await flushAsync();
+
+      output.stop(); // barge-in: the cancelled stream must not bleed through
+
+      output.enqueue(byteChunk([0x10, 0x11]));
+      await flushAsync();
+
+      expect(errors).toHaveLength(0);
+      // One whole sample, not a byte-swapped one built from the stale carry.
+      const channel = createdBuffers[createdBuffers.length - 1]?.getChannelData(0);
+      expect(channel).toHaveLength(1);
+    });
+  });
+
+  describe('suspended AudioContext', () => {
+    it('resumes before scheduling so flush() cannot hang', async () => {
+      // A context created outside a user gesture starts suspended; its
+      // currentTime never advances, so onended never fires and the flush the
+      // pipeline awaits never resolves.
+      mockAudioContext.state = 'suspended';
+      const output = await initializedOutput();
+
+      output.enqueue(pcmChunk([1, 2, 3, 4]));
+      await flushAsync();
+
+      expect(mockAudioContext.resume).toHaveBeenCalled();
+    });
+  });
+
   describe('G.711 decoding', () => {
     it('decodes mulaw chunks to PCM before scheduling', async () => {
       const output = await initializedOutput();

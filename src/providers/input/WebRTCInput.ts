@@ -624,6 +624,17 @@ export class WebRTCInput implements AudioInputProvider {
     const ctx = new AudioContext({ sampleRate: this.targetSampleRate });
     this.audioContext = ctx;
 
+    // Autoplay policy starts a context created outside a user gesture in
+    // 'suspended', where the graph never runs — capture would be silent with
+    // no error to explain it.
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (error) {
+        this.logger.warn('Could not resume the AudioContext', error);
+      }
+    }
+
     if (ctx.audioWorklet) {
       try {
         const blob = new Blob([WORKLET_PROCESSOR_SOURCE], { type: 'application/javascript' });
