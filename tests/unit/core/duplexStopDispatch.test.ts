@@ -106,11 +106,24 @@ class CapturingSTT extends MockSTTProvider {
 
 /** LLM whose stream never yields, parking the agent in `thinking`. */
 class HangingLLM extends MockLLMProvider {
+  /** Resolves once generation has actually begun. */
+  readonly started: Promise<void>;
+  private markStarted: () => void = () => undefined;
+
+  constructor() {
+    super();
+    this.started = new Promise<void>((resolve) => {
+      this.markStarted = resolve;
+    });
+  }
+
   override async processText(prompt: string) {
     this.generateCalled = true;
     this.lastPrompt = prompt;
+    const begun = this.markStarted;
     return {
       async *[Symbol.asyncIterator]() {
+        begun();
         await new Promise(() => undefined); // never resolves
         yield '';
       },
@@ -148,8 +161,9 @@ describe('duplex stop dispatch', () => {
     // never hears anything again.
     const stt = new CapturingSTT();
     const duplex = new MockDuplexProvider();
+    const llm = new HangingLLM();
     const voice = new CompositeVoice({
-      providers: [duplex, stt, new HangingLLM(), new MockTTSProvider()],
+      providers: [duplex, stt, llm, new MockTTSProvider()],
     });
     await voice.initialize();
     await voice.startListening();
@@ -157,7 +171,7 @@ describe('duplex stop dispatch', () => {
     // A final transcript sends the agent into `thinking`, where it stays
     // because the LLM never resolves.
     stt.emitFinal('tell me a long story');
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await llm.started; // the agent is now genuinely in `thinking`
 
     await voice.stopSpeaking();
 

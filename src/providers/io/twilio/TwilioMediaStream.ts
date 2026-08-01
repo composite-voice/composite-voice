@@ -686,12 +686,16 @@ export class TwilioMediaStream implements AudioInputProvider, AudioOutputProvide
    * barge-in is also raised while the agent is still `thinking`.
    */
   stopPlayback(): void {
+    // Barge-in also fires while the agent is only *thinking*, when nothing is
+    // playing — announcing a playback end there would be a lie.
+    const wasPlaying = this.playing;
+
     if (this.socket && this.streamSid && !this.callEnded) {
       this.sendJson({ event: 'clear', streamSid: this.streamSid });
     }
     this.settlePendingMarks('stop (barge-in)');
     this.playing = false;
-    this.firePlaybackEnd();
+    if (wasPlaying) this.firePlaybackEnd();
   }
 
   /**

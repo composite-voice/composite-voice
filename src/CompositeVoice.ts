@@ -453,6 +453,41 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   }
 
   /**
+   * Warn when one provider fills both audio roles without saying how to stop
+   * each of them.
+   *
+   * @remarks
+   * Such a provider falls back to the ambiguous `stop()`, which cannot tell
+   * barge-in from stop-listening: barge-in also fires while the agent is
+   * merely `thinking`, when no audio is playing to distinguish the two. A
+   * provider that guesses from playback state stops capturing and goes deaf
+   * for the rest of the session.
+   *
+   * Warn rather than throw — this contract arrived after the interfaces
+   * shipped, and refusing to construct would break existing custom providers
+   * that never hit the bad path.
+   */
+  private warnIfAmbiguousDuplex(): void {
+    const { input, output } = this.pipeline;
+    if (!Object.is(input, output)) return;
+    if (typeof input.stopCapture === 'function' && typeof output.stopPlayback === 'function') {
+      return;
+    }
+
+    const missing = [
+      typeof input.stopCapture === 'function' ? null : 'stopCapture()',
+      typeof output.stopPlayback === 'function' ? null : 'stopPlayback()',
+    ].filter(Boolean);
+
+    this.logger.warn(
+      `${input.constructor.name} covers both 'input' and 'output' but does not implement ` +
+        `${missing.join(' or ')}. The pipeline must fall back to stop(), which cannot tell ` +
+        'barge-in from stop-listening — interrupting the agent mid-thought may stop capture ' +
+        'for the rest of the session.'
+    );
+  }
+
+  /**
    * Stop the output provider's playback, without disturbing capture.
    *
    * @remarks
@@ -544,6 +579,8 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         `output=${p.output.constructor.name}`
       );
     }
+
+    this.warnIfAmbiguousDuplex();
 
     // Create audio buffer queues (configurable via config.queue)
     this.inputQueue = new AudioBufferQueue({
@@ -649,6 +686,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
     this.logger.info('Initializing CompositeVoice SDK');
 
+    // A previous dispose() closed the event gate. Reopen it before anything
+    // can emit — otherwise state changes and provider-setup errors raised
+    // during initialization are silently dropped, along with agent.ready.
+    this.disposing = false;
+
     try {
       // Connect agent state machine to sub-machines
       // This will trigger idle→ready transition
@@ -676,10 +718,6 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       this.setupProviders();
 
       this.initialized = true;
-      // A previous dispose() closed the event gate. Re-initializing revives the
-      // instance, so reopen it — otherwise every event, agent.ready included,
-      // would be silently dropped for the rest of its life.
-      this.disposing = false;
 
       this.emitEvent({
         type: 'agent.ready',

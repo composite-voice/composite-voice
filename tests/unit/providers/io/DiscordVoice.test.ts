@@ -831,7 +831,13 @@ describe('DiscordVoice', () => {
       provider.stopCapture(); // audio queued, but stop-listening was meant
 
       expect(provider.isActive()).toBe(false);
+      // Capture is closed...
+      lastDecoder().emit('data', stereoBytes([4, 4]));
       expect(chunks).toHaveLength(0);
+      // ...while the queued output is untouched and still reaches the player.
+      void provider.flush();
+      await tick();
+      expect(mockPlayer.play).toHaveBeenCalled();
     });
 
     it('stop() halts capture when nothing is queued or playing', async () => {
