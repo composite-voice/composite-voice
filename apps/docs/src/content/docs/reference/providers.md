@@ -1048,8 +1048,25 @@ Platform providers connect the pipeline to call and chat platforms.
 
 | Provider | Environment | Roles | Description |
 |---|---|---|---|
+| [TwilioMediaStream](#twiliomediastream) | Node/Bun/Deno | `input` + `output` | Phone calls via Twilio Media Streams (mu-law 8 kHz, duplex WebSocket) |
 | [DiscordVoice](#discordvoice) | Node | `input` + `output` | Live voice-channel conversations via `@discordjs/voice` |
 
+### TwilioMediaStream
+
+Duplex provider for [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams). Your server accepts Twilio's `<Connect><Stream>` WebSocket and hands each socket to the provider.
+
+```typescript
+import { TwilioMediaStream } from '@lukeocodes/composite-voice';
+
+const twilio = new TwilioMediaStream();
+wss.on('connection', (socket) => twilio.attach(socket));
+```
+
+- Caller audio: mu-law 8 kHz mono, auto-configures STT via `getMetadata()`
+- TTS audio back: mu-law passthrough or linear16 auto-converted (any rate)
+- `flush()` resolves on Twilio's `mark` echo; `stop()` sends `clear` (barge-in)
+- Extras: `onDtmf()`, `onCallEnded()`, `getCallSid()`, `getCustomParameters()`
+- See the [Twilio guide](/guides/io/twilio-media-streams) for TwiML + server setup
 
 
 ### DiscordVoice
