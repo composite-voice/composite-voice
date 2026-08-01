@@ -43,6 +43,8 @@ class MockRTCPeerConnection {
   readonly configuration: RTCConfiguration | undefined;
   readonly transceivers: Array<{ kind: string; init?: RTCRtpTransceiverInit }> = [];
   readonly dataChannels: MockRTCDataChannel[] = [];
+  /** setCodecPreferences mocks, one per transceiver, in creation order. */
+  readonly codecPreferenceCalls: jest.Mock[] = [];
   ontrack: ((event: { track: { kind: string } }) => void) | null = null;
   localDescription: unknown = null;
   remoteDescription: unknown = null;
@@ -61,10 +63,12 @@ class MockRTCPeerConnection {
     MockRTCPeerConnection.instances.push(this);
   }
 
-  addTransceiver(kind: string, init?: RTCRtpTransceiverInit): Record<string, never> {
+  addTransceiver(kind: string, init?: RTCRtpTransceiverInit): { setCodecPreferences: jest.Mock } {
     this.events.push(`addTransceiver:${kind}`);
     this.transceivers.push(init !== undefined ? { kind, init } : { kind });
-    return {};
+    const transceiver = { setCodecPreferences: jest.fn() };
+    this.codecPreferenceCalls.push(transceiver.setCodecPreferences);
+    return transceiver;
   }
 
   createDataChannel(label: string, options?: RTCDataChannelInit): MockRTCDataChannel {
@@ -266,6 +270,16 @@ describe('GoogleMeetInput', () => {
     MockRTCPeerConnection.instances = [];
     MockAudioContext.instances = [];
     mockFetch.mockResolvedValue(createConnectResponse());
+    // Meet requires Opus; the provider pins it from receiver capabilities.
+    (globalThis as Record<string, unknown>).RTCRtpReceiver = {
+      getCapabilities: jest.fn(() => ({
+        codecs: [
+          { mimeType: 'audio/PCMU' },
+          { mimeType: 'audio/opus' },
+          { mimeType: 'audio/G722' },
+        ],
+      })),
+    };
   });
 
   afterEach(() => {
@@ -305,6 +319,28 @@ describe('GoogleMeetInput', () => {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
         bundlePolicy: 'max-bundle',
       });
+    });
+
+    it('pins Opus as the codec preference on every audio transceiver', async () => {
+      // Meet's docs make Opus mandatory. Browsers offer it first by default,
+      // but stating it means a reordered or newly-added default codec cannot
+      // silently produce an offer Meet rejects.
+      await createInitializedProvider();
+      const pc = MockRTCPeerConnection.instances[MockRTCPeerConnection.instances.length - 1];
+
+      expect(pc?.codecPreferenceCalls).toHaveLength(3);
+      for (const call of pc?.codecPreferenceCalls ?? []) {
+        expect(call).toHaveBeenCalledWith([{ mimeType: 'audio/opus' }]);
+      }
+    });
+
+    it('connects normally when codec capabilities are unavailable', async () => {
+      // Older browsers and jsdom have no RTCRtpReceiver.getCapabilities; the
+      // default offer already leads with Opus, so this must not be fatal.
+      delete (globalThis as Record<string, unknown>).RTCRtpReceiver;
+
+      await expect(createInitializedProvider()).resolves.toBeDefined();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it('should add exactly 3 recvonly audio transceivers', async () => {

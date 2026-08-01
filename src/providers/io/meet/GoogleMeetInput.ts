@@ -104,6 +104,19 @@ const AUDIO_TRANSCEIVER_COUNT = 3;
  */
 const ICE_GATHERING_TIMEOUT_MS = 5000;
 
+/**
+ * Minimal shape of an entry from `RTCRtpReceiver.getCapabilities('audio')`.
+ *
+ * @remarks
+ * Declared locally rather than using the DOM's `RTCRtpCodecCapability`, which
+ * is absent from the TypeScript lib this package targets.
+ *
+ * @internal
+ */
+interface MeetCodecCapability {
+  mimeType: string;
+}
+
 /** Target sample rate (Hz) for emitted PCM chunks. */
 const TARGET_SAMPLE_RATE = 16000;
 
@@ -572,9 +585,22 @@ export class GoogleMeetInput implements AudioInputProvider {
       };
 
       // Meet allocates exactly 3 virtual audio SSRCs — negotiate 3 recvonly
-      // audio transceivers (Opus is the WebRTC default codec).
+      // audio transceivers. Meet requires Opus, so state it rather than
+      // relying on it being the browser's default ordering.
+      const opusCodecs = this.opusCodecPreferences();
       for (let i = 0; i < AUDIO_TRANSCEIVER_COUNT; i++) {
-        peerConnection.addTransceiver('audio', { direction: 'recvonly' });
+        const transceiver = peerConnection.addTransceiver('audio', { direction: 'recvonly' });
+        const pinnable = transceiver as unknown as {
+          setCodecPreferences?: (codecs: MeetCodecCapability[]) => void;
+        };
+        if (opusCodecs && typeof pinnable?.setCodecPreferences === 'function') {
+          try {
+            pinnable.setCodecPreferences(opusCodecs);
+          } catch (error) {
+            // Never fatal: the browser's default offer already leads with Opus.
+            this.logger.warn('Could not pin the Opus codec preference', error);
+          }
+        }
       }
 
       // Data channels must be created before the offer so they are included
@@ -779,6 +805,35 @@ export class GoogleMeetInput implements AudioInputProvider {
    *
    * @param peerConnection - The peer connection to create the channels on.
    */
+  /**
+   * Opus entries from the receiver's audio capabilities, most preferred first.
+   *
+   * @remarks
+   * The Meet Media API requires Opus. Browsers already offer it first, so this
+   * is belt and braces — but stating the preference means a browser that
+   * reorders codecs, or adds a new default, cannot silently produce an offer
+   * Meet rejects.
+   *
+   * Returns `null` when capabilities are unavailable (older browsers, jsdom),
+   * in which case the default offer is used unchanged.
+   */
+  private opusCodecPreferences(): MeetCodecCapability[] | null {
+    const receiver = (
+      globalThis as {
+        RTCRtpReceiver?: {
+          getCapabilities?: (kind: string) => { codecs?: MeetCodecCapability[] } | null;
+        };
+      }
+    ).RTCRtpReceiver;
+    if (typeof receiver?.getCapabilities !== 'function') return null;
+
+    const codecs = receiver.getCapabilities('audio')?.codecs;
+    if (!codecs) return null;
+
+    const opus = codecs.filter((codec) => codec.mimeType.toLowerCase() === 'audio/opus');
+    return opus.length > 0 ? opus : null;
+  }
+
   /**
    * Resolve once ICE candidates have been gathered into the local description.
    *
