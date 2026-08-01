@@ -334,8 +334,29 @@ export type {
   TwilioStreamSocket,
   TwilioSocketListener,
 } from './providers/io/index';
+export { VonageAudioSocket } from './providers/io/index';
+export type {
+  VonageAudioSocketConfig,
+  VonageSocket,
+  VonageSocketListener,
+} from './providers/io/index';
 export { DiscordVoice } from './providers/io/index';
 export type { DiscordVoiceConfig, DiscordVoiceConnection } from './providers/io/index';
+export { ZoomRtmsInput, ZOOM_RTMS_STATUS_CODES } from './providers/io/index';
+export type {
+  ZoomRtmsInputConfig,
+  ZoomRtmsSession,
+  ZoomRtmsSampleRate,
+  ZoomRtmsDataOption,
+} from './providers/io/index';
+export { GoogleMeetInput } from './providers/io/index';
+export type {
+  GoogleMeetInputConfig,
+  GoogleMeetSessionStatus,
+  GoogleMeetConnectionState,
+} from './providers/io/index';
+export { TeamsCall } from './providers/io/index';
+export type { TeamsCallConfig, TeamsCallState, TeamsTokenCredential } from './providers/io/index';
 
 // Utilities
 export {

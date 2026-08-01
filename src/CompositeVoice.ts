@@ -1690,8 +1690,8 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    *   fails, after emitting an `'agent.error'` event.
    *
    * @param args - When the configured input provider is an
-   *   {@link AttachableInputProvider} (TwilioMediaStream, DiscordVoice,
-   *   WebRTCInput, ...), an optional attach
+   *   {@link AttachableInputProvider} (TwilioMediaStream, VonageAudioSocket,
+   *   DiscordVoice, ZoomRtmsInput, WebRTCInput, ...), an optional attach
    *   target may be passed — the platform-specific per-call handle (socket,
    *   voice connection, RTMS session, media track). It is forwarded to the
    *   provider's `attach()` before capture starts, so the whole call setup is

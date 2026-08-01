@@ -52,7 +52,11 @@ Every provider and the pipeline role(s) it fills. Multi-role providers cover two
 | **PollyTTS** | | | | **yes** | |
 | **DeepgramAgent** | | **yes** | **yes** | **yes** | |
 | **TwilioMediaStream** | **yes** | | | | **yes** |
+| **VonageAudioSocket** | **yes** | | | | **yes** |
 | **DiscordVoice** | **yes** | | | | **yes** |
+| **ZoomRtmsInput** | **yes** | | | | |
+| **GoogleMeetInput** | **yes** | | | | |
+| **TeamsCall** | **yes** | | | | **yes** |
 | **BrowserAudioOutput** | | | | | **yes** |
 | **WebRTCOutput** | | | | | **yes** |
 | **NullInput** | **yes** | **yes** | | | |

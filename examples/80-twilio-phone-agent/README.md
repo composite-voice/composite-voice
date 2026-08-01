@@ -112,4 +112,5 @@ Interrupting the agent mid-sentence works out of the box. Twilio buffers outboun
 
 | Example | What it adds |
 |---------|-------------|
+| [81 — Vonage Phone Agent](../81-vonage-phone-agent/) | The same agent on Vonage's linear16 WebSocket bridge |
 | [61 — Barge-in](../61-barge-in/) | Barge-in mechanics in the browser |

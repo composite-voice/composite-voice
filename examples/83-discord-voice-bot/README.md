@@ -114,4 +114,5 @@ const discord = new DiscordVoice({ silenceDurationMs: 1000, userId: '<your-user-
 
 | Example | What it adds |
 |---------|-------------|
+| [84 — Zoom Meeting Listener](../84-zoom-meeting-listener/) | Input-only meeting transcription + summary |
 | [61 — Barge-in](../61-barge-in/) | How interruption handling works in the pipeline |
