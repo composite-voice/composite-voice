@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   NativeTTS,
 } from '@lukeocodes/composite-voice';
@@ -19,32 +19,35 @@ import {
   CodeBlock,
 } from '@lukeocodes/composite-voice-ui';
 
+// Speechmatics takes an ISO 639-1 language code plus an optional `outputLocale`
+// that only affects transcript spelling. `id` is the selector value — English
+// appears twice because US and UK spelling are the same language pack.
 const LANGUAGES = [
-  { code: 'en-US', label: 'English (US)', flag: 'EN' },
-  { code: 'en-GB', label: 'English (UK)', flag: 'EN' },
-  { code: 'es', label: 'Spanish', flag: 'ES' },
-  { code: 'fr', label: 'French', flag: 'FR' },
-  { code: 'de', label: 'German', flag: 'DE' },
-  { code: 'it', label: 'Italian', flag: 'IT' },
-  { code: 'pt', label: 'Portuguese', flag: 'PT' },
-  { code: 'pt-BR', label: 'Portuguese (Brazil)', flag: 'BR' },
-  { code: 'nl', label: 'Dutch', flag: 'NL' },
-  { code: 'ja', label: 'Japanese', flag: 'JA' },
-  { code: 'ko', label: 'Korean', flag: 'KO' },
-  { code: 'zh', label: 'Chinese (Mandarin)', flag: 'ZH' },
-  { code: 'hi', label: 'Hindi', flag: 'HI' },
-  { code: 'ru', label: 'Russian', flag: 'RU' },
-  { code: 'tr', label: 'Turkish', flag: 'TR' },
-  { code: 'pl', label: 'Polish', flag: 'PL' },
-  { code: 'sv', label: 'Swedish', flag: 'SV' },
-  { code: 'da', label: 'Danish', flag: 'DA' },
-  { code: 'no', label: 'Norwegian', flag: 'NO' },
-  { code: 'fi', label: 'Finnish', flag: 'FI' },
+  { id: 'en-US', code: 'en', outputLocale: 'en-US', label: 'English (US)', flag: 'EN' },
+  { id: 'en-GB', code: 'en', outputLocale: 'en-GB', label: 'English (UK)', flag: 'EN' },
+  { id: 'es', code: 'es', label: 'Spanish', flag: 'ES' },
+  { id: 'fr', code: 'fr', label: 'French', flag: 'FR' },
+  { id: 'de', code: 'de', label: 'German', flag: 'DE' },
+  { id: 'it', code: 'it', label: 'Italian', flag: 'IT' },
+  { id: 'pt', code: 'pt', label: 'Portuguese', flag: 'PT' },
+  { id: 'nl', code: 'nl', label: 'Dutch', flag: 'NL' },
+  { id: 'ja', code: 'ja', label: 'Japanese', flag: 'JA' },
+  { id: 'ko', code: 'ko', label: 'Korean', flag: 'KO' },
+  { id: 'cmn', code: 'cmn', label: 'Chinese (Mandarin)', flag: 'ZH' },
+  { id: 'hi', code: 'hi', label: 'Hindi', flag: 'HI' },
+  { id: 'ru', code: 'ru', label: 'Russian', flag: 'RU' },
+  { id: 'tr', code: 'tr', label: 'Turkish', flag: 'TR' },
+  { id: 'pl', code: 'pl', label: 'Polish', flag: 'PL' },
+  { id: 'sv', code: 'sv', label: 'Swedish', flag: 'SV' },
+  { id: 'da', code: 'da', label: 'Danish', flag: 'DA' },
+  { id: 'no', code: 'no', label: 'Norwegian', flag: 'NO' },
+  { id: 'fi', code: 'fi', label: 'Finnish', flag: 'FI' },
 ];
 
 export default function App() {
   const agentRef = useRef<CompositeVoice | null>(null);
 
+  // `language` holds the LANGUAGES entry id, not the Speechmatics code.
   const [language, setLanguage] = useState('en-US');
   const [initialized, setInitialized] = useState(false);
   const [running, setRunning] = useState(false);
@@ -65,20 +68,17 @@ export default function App() {
       }
     }
 
-    const selectedLang = LANGUAGES.find((l) => l.code === lang);
+    const selectedLang = LANGUAGES.find((l) => l.id === lang);
     const langLabel = selectedLang?.label ?? lang;
 
     const agent = new CompositeVoice({
       providers: [
         new MicrophoneInput({ sampleRate: 16000, format: 'pcm' }),
-        new DeepgramSTT({
-          proxyUrl: `${window.location.origin}/proxy/deepgram`,
-          options: {
-            language: lang,
-            model: 'nova-3',
-            punctuation: true,
-            smartFormat: true,
-          },
+        new SpeechmaticsSTT({
+          proxyUrl: `${window.location.origin}/proxy/speechmatics`,
+          language: selectedLang?.code ?? 'en',
+          outputLocale: selectedLang?.outputLocale,
+          operatingPoint: 'enhanced',
         }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
@@ -152,12 +152,12 @@ export default function App() {
     }
   }, [initialized, running, createAgent]);
 
-  const selectedLang = LANGUAGES.find((l) => l.code === language);
+  const selectedLang = LANGUAGES.find((l) => l.id === language);
 
   return (
     <ExampleShell
       title="Multi-Language"
-      description="Switch languages at runtime. DeepgramSTT language is reconfigured on the fly and the LLM is instructed to respond in the selected language."
+      description="Switch languages at runtime. SpeechmaticsSTT language is reconfigured on the fly and the LLM is instructed to respond in the selected language."
       number="65"
     >
       <div className="space-y-6">
@@ -175,8 +175,8 @@ export default function App() {
                   value={language}
                   onChange={(e) => handleLanguageChange(e.target.value)}
                   options={LANGUAGES.map((lang) => ({
-                    value: lang.code,
-                    label: `${lang.flag} ${lang.label} (${lang.code})`,
+                    value: lang.id,
+                    label: `${lang.flag} ${lang.label} (${lang.outputLocale ?? lang.code})`,
                   }))}
                 />
               </div>
@@ -190,7 +190,7 @@ export default function App() {
               {initialized && (
                 <Alert variant="info" title="Live Switching">
                   Changing the language will reinitialize the agent with the new
-                  DeepgramSTT language setting. The LLM system prompt is also updated
+                  SpeechmaticsSTT language setting. The LLM system prompt is also updated
                   to respond in the selected language.
                 </Alert>
               )}
@@ -242,7 +242,7 @@ export default function App() {
             <CardTitle>Language Switch History</CardTitle>
             <div className="flex gap-2 flex-wrap mt-3">
               {languageHistory.map((lang, i) => {
-                const l = LANGUAGES.find((x) => x.code === lang);
+                const l = LANGUAGES.find((x) => x.id === lang);
                 return (
                   <Badge key={i} variant={lang === language ? 'primary' : 'neutral'}>
                     {l?.label ?? lang}
@@ -261,15 +261,12 @@ export default function App() {
           <CardBody>
             <CardTitle>How to Configure Language</CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript" code={`// Set language in DeepgramSTT options
-new DeepgramSTT({
-  proxyUrl: '/proxy/deepgram',
-  options: {
-    language: '${language}',  // BCP-47 language code
-    model: 'nova-3',         // Nova-3 supports 30+ languages
-    punctuation: true,
-    smartFormat: true,
-  },
+              <CodeBlock language="typescript" code={`// Set language on the SpeechmaticsSTT config
+new SpeechmaticsSTT({
+  proxyUrl: '/proxy/speechmatics',
+  language: '${selectedLang?.code ?? 'en'}',${selectedLang?.outputLocale ? `
+  outputLocale: '${selectedLang.outputLocale}',  // transcript spelling only` : ''}
+  operatingPoint: 'enhanced',   // more accurate, slightly higher latency
 });
 
 // Instruct the LLM to respond in the same language
@@ -281,7 +278,7 @@ new AnthropicLLM({
 await agent.dispose();
 const newAgent = new CompositeVoice({
   providers: [
-    new DeepgramSTT({ options: { language: 'fr' } }),
+    new SpeechmaticsSTT({ language: 'fr' }),
     // ... other providers
   ],
 });

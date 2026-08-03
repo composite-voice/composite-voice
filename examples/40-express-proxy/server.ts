@@ -33,7 +33,8 @@ app.use(express.json());
 
 const proxy = createExpressProxy({
   // Provider API keys (only providers with keys get routes)
-  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
+  speechifyApiKey: process.env.SPEECHIFY_API_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
 
@@ -92,21 +93,24 @@ app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 const server = createServer(app);
 
-// Attach WebSocket proxying (Deepgram STT/TTS, ElevenLabs, Cartesia)
+// Attach WebSocket proxying (Speechmatics STT, Deepgram, ElevenLabs, Cartesia)
 // Must be called AFTER createServer but BEFORE server.listen().
 proxy.attachWebSocket(server);
 
 server.listen(PORT, () => {
   console.log(`\nCompositeVoice Express proxy running at http://localhost:${PORT}`);
   console.log(`\nRegistered proxy routes:`);
-  if (process.env.DEEPGRAM_API_KEY) {
-    console.log(`  Deepgram:  ws://localhost:${PORT}/proxy/deepgram`);
+  if (process.env.SPEECHMATICS_API_KEY) {
+    console.log(`  Speechmatics: ws://localhost:${PORT}/proxy/speechmatics`);
+  }
+  if (process.env.SPEECHIFY_API_KEY) {
+    console.log(`  Speechify:    http://localhost:${PORT}/proxy/speechify`);
   }
   if (process.env.ANTHROPIC_API_KEY) {
-    console.log(`  Anthropic: http://localhost:${PORT}/proxy/anthropic`);
+    console.log(`  Anthropic:    http://localhost:${PORT}/proxy/anthropic`);
   }
   if (process.env.OPENAI_API_KEY) {
-    console.log(`  OpenAI:    http://localhost:${PORT}/proxy/openai`);
+    console.log(`  OpenAI:       http://localhost:${PORT}/proxy/openai`);
   }
   console.log(`\nSecurity config:`);
   console.log(`  Rate limit:     100 req/min per IP`);

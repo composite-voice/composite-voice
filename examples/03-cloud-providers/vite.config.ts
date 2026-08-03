@@ -4,7 +4,8 @@ export default createExampleConfig({
   port: 3003,
   title: 'Cloud Providers',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
+    speechify: true,
     anthropic: true,
   },
 });

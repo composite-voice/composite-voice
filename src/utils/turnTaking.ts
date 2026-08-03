@@ -57,10 +57,12 @@ const PROVIDER_CAPTURE_METHOD: Record<string, 'mediadevices' | 'speechrecognitio
   NativeSTT: 'speechrecognition', // Uses Web Speech API - NO echo cancellation support
   DeepgramSTT: 'mediadevices', // Uses getUserMedia - CAN use echo cancellation
   DeepgramFlux: 'mediadevices', // Uses getUserMedia - CAN use echo cancellation
+  SpeechmaticsSTT: 'mediadevices', // Uses getUserMedia - CAN use echo cancellation
 
   // TTS Providers (don't capture, but noted for reference)
   NativeTTS: 'none',
   DeepgramTTS: 'none',
+  SpeechifyTTS: 'none',
 };
 
 /**

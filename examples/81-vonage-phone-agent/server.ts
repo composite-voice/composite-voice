@@ -6,9 +6,13 @@
  * connection gets its own CompositeVoice pipeline:
  *
  *   VonageAudioSocket (duplex, linear16 @ 16 kHz) — caller audio in, agent audio out
- *   DeepgramSTT  (linear16 / 16000, nova-3)       — wideband transcription
- *   AnthropicLLM (claude-haiku-4-5)               — fast conversational replies
- *   DeepgramTTS  (linear16 / 16000)               — matches the NCCO rate, passthrough
+ *   SpeechmaticsSTT (pcm_s16le / 16000)           — wideband transcription
+ *   AnthropicLLM    (claude-haiku-4-5)            — fast conversational replies
+ *   DeepgramTTS     (linear16 / 16000)            — matches the NCCO rate, passthrough
+ *
+ * Vonage WebSockets carry raw linear16 only, so the TTS stage stays on a
+ * streaming provider that emits PCM. SpeechifyTTS returns a complete MP3 over
+ * REST, which VonageAudioSocket cannot decode.
  *
  * Run with:
  *   node --env-file=.env --import tsx/esm server.ts
@@ -23,7 +27,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import {
   CompositeVoice,
   VonageAudioSocket,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
 } from '@lukeocodes/composite-voice';
@@ -37,7 +41,7 @@ const SAMPLE_RATE = 16000;
 
 // ── Startup checks ───────────────────────────────────────────────────────────
 
-for (const key of ['DEEPGRAM_API_KEY', 'ANTHROPIC_API_KEY'] as const) {
+for (const key of ['SPEECHMATICS_API_KEY', 'DEEPGRAM_API_KEY', 'ANTHROPIC_API_KEY'] as const) {
   if (!process.env[key]) {
     console.error(`Missing ${key} — copy sample.env to .env and fill in your keys.`);
     process.exit(1);
@@ -114,9 +118,10 @@ async function handleCall(callId: number, socket: WebSocket): Promise<void> {
   const agent = new CompositeVoice({
     providers: [
       vonage, // duplex: fills both the input and output roles
-      new DeepgramSTT({
-        apiKey: process.env.DEEPGRAM_API_KEY,
-        options: { model: 'nova-3', encoding: 'linear16', sampleRate: SAMPLE_RATE },
+      new SpeechmaticsSTT({
+        apiKey: process.env.SPEECHMATICS_API_KEY,
+        audioFormat: 'pcm_s16le',
+        sampleRate: SAMPLE_RATE,
       }),
       new AnthropicLLM({
         apiKey: process.env.ANTHROPIC_API_KEY,

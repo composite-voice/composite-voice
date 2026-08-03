@@ -4,7 +4,8 @@ export default createExampleConfig({
   port: 3085,
   title: 'WebRTC Loopback Agent',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
+    speechify: true,
     anthropic: true,
   },
 });

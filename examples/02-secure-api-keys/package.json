@@ -2,7 +2,7 @@
   "name": "@lukeocodes/cv-example-02-secure-api-keys",
   "version": "0.0.0",
   "private": true,
-  "description": "Secure API keys with Express proxy — DeepgramSTT + AnthropicLLM + DeepgramTTS via server-side key injection",
+  "description": "Secure API keys with Express proxy — SpeechmaticsSTT + AnthropicLLM + SpeechifyTTS via server-side key injection",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsx --env-file=../../.env server.ts\" \"vite\"",

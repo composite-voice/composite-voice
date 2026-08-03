@@ -4,7 +4,7 @@ export default createExampleConfig({
   port: 3065,
   title: 'Multi-Language',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
     anthropic: true,
   },
 });

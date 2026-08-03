@@ -40,7 +40,7 @@ Production-ready Express proxy with the full security configuration: rate limiti
 - **Node.js** 18+ and **pnpm**
 - **Chrome or Edge**
 - An [Anthropic API key](https://console.anthropic.com/)
-- Optionally: [Deepgram](https://console.deepgram.com/) and [OpenAI](https://platform.openai.com/) keys
+- Optionally: [Speechmatics](https://portal.speechmatics.com/), [Speechify](https://console.sws.speechify.com/) and [OpenAI](https://platform.openai.com/) keys
 
 ---
 

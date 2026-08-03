@@ -4,6 +4,7 @@ export default createExampleConfig({
   port: 3054,
   title: 'Advanced Event Inspector',
   proxies: {
+    speechmatics: true,
     deepgram: true,
     anthropic: true,
   },

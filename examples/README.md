@@ -45,11 +45,11 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | # | Example | What it demonstrates |
 |---|---------|----------------------|
 | 01 | [`01-first-voice-pipeline`](./01-first-voice-pipeline/) | The simplest possible voice pipeline using browser-native speech recognition and synthesis with Claude as the LLM |
-| 02 | [`02-secure-api-keys`](./02-secure-api-keys/) | Secure API keys with Express proxy — DeepgramSTT + AnthropicLLM + DeepgramTTS via server-side key injection |
-| 03 | [`03-cloud-providers`](./03-cloud-providers/) | Production-quality pipeline: Deepgram STT/TTS + Anthropic Claude via Vite proxy |
+| 02 | [`02-secure-api-keys`](./02-secure-api-keys/) | Secure API keys with Express proxy — SpeechmaticsSTT + AnthropicLLM + SpeechifyTTS via server-side key injection |
+| 03 | [`03-cloud-providers`](./03-cloud-providers/) | Production-quality pipeline: Speechmatics STT + Speechify TTS + Anthropic Claude via Vite proxy |
 | 04 | [`04-base-provider-options`](./04-base-provider-options/) | Demonstrates `endpoint`, `authType`, and `proxyUrl` configuration on provider instances. Toggle between `authType: 'token'` and `authType: 'bearer'` at runtime and see the resolved connection info for each provider |
 | 06 | [`06-conversation-history`](./06-conversation-history/) | Demonstrates `maxTurns`, `maxTokens`, and `preserveSystemMessages` configuration. Adjust settings with sliders and inputs, then view the live conversation history array as you speak with the agent |
-| 07 | [`07-eager-pipeline`](./07-eager-pipeline/) | Demonstrates the eager LLM pipeline with `eagerLLM: { enabled: true }`. The LLM starts generating speculatively on Deepgram preflight signals before `speechFinal` is confirmed, reducing perceived latency by 100-300ms. The UI shows when preflight fires vs speechFinal and displays timing comparisons |
+| 07 | [`07-eager-pipeline`](./07-eager-pipeline/) | Demonstrates the eager LLM pipeline with `eagerLLM: { enabled: true }`. The LLM starts generating speculatively on DeepgramFlux preflight signals before `speechFinal` is confirmed, reducing perceived latency by 100-300ms. The UI shows when preflight fires vs speechFinal and displays timing comparisons |
 | 08 | [`08-tool-use`](./08-tool-use/) | Demonstrates LLM function calling with the `tools` config. Defines three simple tools (`get_weather`, `get_time`, `calculate`) and displays tool calls and results in the UI. After a tool executes, the LLM generates a natural-language follow-up |
 | 09 | [`09-custom-logging`](./09-custom-logging/) | Demonstrates the SDK logging configuration with controls for log level and a custom logger function. SDK logs are displayed in a scrollable panel in the UI, color-coded by level |
 
@@ -113,7 +113,7 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | 62 | [`62-backpressure`](./62-backpressure/) | Pipeline backpressure demo — adjust maxPendingChunks and observe LLM-to-TTS throttling |
 | 63 | [`63-audio-config`](./63-audio-config/) | AudioCapture internals — AudioWorklet vs ScriptProcessor detection, audio chunk stats |
 | 64 | [`64-custom-provider`](./64-custom-provider/) | Build a custom LLM provider — MockLLM with canned responses, no API keys needed |
-| 65 | [`65-multi-language`](./65-multi-language/) | Language switching demo — change DeepgramSTT language at runtime with a selector |
+| 65 | [`65-multi-language`](./65-multi-language/) | Language switching demo — change SpeechmaticsSTT language at runtime with a selector |
 
 ### Agent providers (70-79)
 
@@ -125,9 +125,9 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 
 | # | Example | What it demonstrates |
 |---|---------|----------------------|
-| 80 | [`80-twilio-phone-agent`](./80-twilio-phone-agent/) | Phone agent on Twilio Media Streams — TwilioMediaStream + DeepgramSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
-| 81 | [`81-vonage-phone-agent`](./81-vonage-phone-agent/) | Phone agent on the Vonage Voice API WebSocket bridge — VonageAudioSocket + DeepgramSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
-| 83 | [`83-discord-voice-bot`](./83-discord-voice-bot/) | Discord voice-channel bot — DiscordVoice duplex provider with Deepgram STT/TTS and Claude |
+| 80 | [`80-twilio-phone-agent`](./80-twilio-phone-agent/) | Phone agent on Twilio Media Streams — TwilioMediaStream + SpeechmaticsSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
+| 81 | [`81-vonage-phone-agent`](./81-vonage-phone-agent/) | Phone agent on the Vonage Voice API WebSocket bridge — VonageAudioSocket + SpeechmaticsSTT + AnthropicLLM + DeepgramTTS, one pipeline per call |
+| 83 | [`83-discord-voice-bot`](./83-discord-voice-bot/) | Discord voice-channel bot — DiscordVoice duplex provider with Speechmatics STT, Deepgram TTS, and Claude |
 | 84 | [`84-zoom-meeting-listener`](./84-zoom-meeting-listener/) | Zoom RTMS meeting listener — live transcripts over a plain node:http webhook, with an end-of-meeting Claude summary |
 | 85 | [`85-webrtc-loopback`](./85-webrtc-loopback/) | WebRTCInput + WebRTCOutput over a local RTCPeerConnection loopback — join anything WebRTC with zero platform accounts |
 | 86 | [`86-google-meet-listener`](./86-google-meet-listener/) | GoogleMeetInput (Developer Preview) — transcribe a live Google Meet conference and take LLM notes, receive-only |
@@ -151,7 +151,9 @@ The `_shared/` directory contains reusable pieces for all examples:
 | Provider | URL | Used by |
 |----------|-----|---------|
 | Anthropic | [console.anthropic.com](https://console.anthropic.com/) | Most examples (LLM) |
-| Deepgram | [console.deepgram.com](https://console.deepgram.com/) | 20-24 (STT/TTS) |
+| Speechmatics | [portal.speechmatics.com](https://portal.speechmatics.com/) | Default STT across the examples |
+| Speechify | [console.sws.speechify.com](https://console.sws.speechify.com/) | Default TTS across the examples |
+| Deepgram | [console.deepgram.com](https://console.deepgram.com/) | 11, 14, 31, 70, and the stages that need streaming/raw-PCM audio (52-54, 62, 80-83) |
 | OpenAI | [platform.openai.com](https://platform.openai.com/) | 40-42 (LLM/TTS) |
 | Groq | [console.groq.com](https://console.groq.com/) | 60 (LLM) |
 | AssemblyAI | [assemblyai.com](https://www.assemblyai.com/) | 70 (STT) |

@@ -5,9 +5,9 @@ Pipeline backpressure demo. Adjust `maxPendingChunks` and observe how it throttl
 | | Provider | Role |
 |-|----------|------|
 | **Input** | `MicrophoneInput` | Explicit audio input |
-| **STT** | `DeepgramSTT` | WebSocket STT |
+| **STT** | `SpeechmaticsSTT` | WebSocket STT |
 | **LLM** | `AnthropicLLM` | Claude via HTTP streaming |
-| **TTS** | `DeepgramTTS` | WebSocket TTS |
+| **TTS** | `DeepgramTTS` | WebSocket TTS — backpressure only throttles a streaming provider, so this stage stays on Deepgram |
 | **Output** | `BrowserAudioOutput` | Web Audio playback |
 
 ## What you'll learn
@@ -22,7 +22,7 @@ Pipeline backpressure demo. Adjust `maxPendingChunks` and observe how it throttl
 ```bash
 pnpm install && pnpm build
 cp examples/62-backpressure/sample.env examples/62-backpressure/.env
-# Edit .env with DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env with SPEECHMATICS_API_KEY, DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
@@ -36,7 +36,7 @@ export default function App() {
     const newAgent = new CompositeVoice({
       providers: [
         new MicrophoneInput({ sampleRate: 16000, format: 'pcm' }),
-        new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+        new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
           model: 'claude-haiku-4-5-20251001',

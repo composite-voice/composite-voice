@@ -5,9 +5,9 @@ The flagship "join anything WebRTC" demo — with **zero platform accounts**. Tw
 | | Provider | Notes |
 |-|----------|-------|
 | **Input** | `WebRTCInput` | Consumes the remote track from pcB (`startListening(track)`) |
-| **STT** | `DeepgramSTT` | Nova via WebSocket proxy, auto-configured to linear16/16000 |
+| **STT** | `SpeechmaticsSTT` | Real-time WebSocket transcription via the Vite proxy, `pcm_s16le` @ 16000 Hz |
 | **LLM** | `AnthropicLLM` | Claude Haiku via proxy |
-| **TTS** | `DeepgramTTS` | Aura, `linear16` @ 24000 Hz (streams cleanly into WebRTC) |
+| **TTS** | `SpeechifyTTS` | REST synthesis returning one complete MP3 per utterance; `WebRTCOutput` is told the format up front with `configure()` because REST providers emit no metadata |
 | **Output** | `WebRTCOutput` | Produces a `MediaStreamTrack` published on pcB |
 
 ## What you'll learn
@@ -22,7 +22,7 @@ The flagship "join anything WebRTC" demo — with **zero platform accounts**. Tw
 ```
 Mic (getUserMedia) ──addTrack──▶ pcA ══WebRTC══▶ pcB ──ontrack──▶ WebRTCInput
                                                                        │
-                                                        DeepgramSTT → AnthropicLLM → DeepgramTTS
+                                                        SpeechmaticsSTT → AnthropicLLM → SpeechifyTTS
                                                                        │
 <audio> ◀──ontrack── pcA ◀══WebRTC══ pcB ◀──addTrack── WebRTCOutput.getTrack()
 ```
@@ -35,7 +35,7 @@ pnpm install && pnpm build
 
 # Add your keys to the root .env
 cp examples/85-webrtc-loopback/sample.env .env
-# Edit .env and set DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env and set SPEECHMATICS_API_KEY, SPEECHIFY_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

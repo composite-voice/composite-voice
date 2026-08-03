@@ -1,46 +1,47 @@
 # Example 03 -- Cloud Providers
 
-Upgrades from browser-native providers to cloud-grade alternatives: Deepgram WebSocket STT and TTS for real-time audio streaming, and Anthropic Claude for the LLM. All API keys stay server-side via the Vite dev proxy.
+Upgrades from browser-native providers to cloud-grade alternatives: Speechmatics WebSocket STT for real-time transcription, Speechify REST TTS for synthesis, and Anthropic Claude for the LLM. All API keys stay server-side via the Vite dev proxy.
 
 | | Provider | Transport | Browser support |
 |-|----------|-----------|-----------------|
-| **STT** | `DeepgramSTT` | WebSocket, real-time streaming | All modern browsers |
+| **STT** | `SpeechmaticsSTT` | WebSocket, real-time streaming | All modern browsers |
 | **LLM** | `AnthropicLLM` -- claude-haiku-4-5 | HTTP streaming | All |
-| **TTS** | `DeepgramTTS` | WebSocket, 24 kHz audio | All modern browsers |
+| **TTS** | `SpeechifyTTS` | REST, one MP3 per utterance | All modern browsers |
 
 ---
 
 ## What you'll learn
 
-- How to swap `NativeSTT` / `NativeTTS` for Deepgram WebSocket providers
+- How to swap `NativeSTT` / `NativeTTS` for cloud providers
 - How the Vite proxy injects API keys so nothing is exposed in the browser
 - The difference in latency and accuracy between native and cloud providers
-- How `DeepgramSTT` streams interim transcripts word-by-word via WebSocket
-- How `DeepgramTTS` streams synthesized audio for lower time-to-first-audio
+- How `SpeechmaticsSTT` streams interim transcripts over a WebSocket and completes a turn with `EndOfUtterance`
+- How a REST TTS provider like `SpeechifyTTS` differs from a streaming one: one HTTP request per reply, complete audio returned as a `Blob`
 
 ---
 
 ## What this adds over Example 00
 
-Example 00 uses browser-native providers (Web Speech API for STT, SpeechSynthesis for TTS). This example replaces both with Deepgram WebSocket providers while keeping the same SDK lifecycle and events.
+Example 00 uses browser-native providers (Web Speech API for STT, SpeechSynthesis for TTS). This example replaces both with cloud providers while keeping the same SDK lifecycle and events.
 
 **STT upgrade:**
-- Real-time word-by-word interim transcripts over WebSocket
+- Real-time interim transcripts over WebSocket
 - Works in Chrome, Edge, **and Firefox** (no Web Speech API dependency)
 - Higher accuracy across accents, noise conditions, and languages
-- Voice Activity Detection for precise end-of-speech detection
+- Server-side end-of-utterance detection for precise turn-taking
 
 **TTS upgrade:**
-- Streams 24 kHz synthesized audio directly from Deepgram
-- Noticeably more natural than the browser's SpeechSynthesis API
-- Lower time-to-first-audio on most systems
+- Simba voices are noticeably more natural than the browser's SpeechSynthesis API
+- One HTTP request per reply, no WebSocket to manage
+- Trade-off: audio arrives only when the whole utterance is synthesized, so time-to-first-audio is higher than with a streaming TTS provider
 
 ---
 
 ## Prerequisites
 
 - **Node.js** 18 or later and **pnpm** (`npm install -g pnpm`)
-- A [Deepgram API key](https://console.deepgram.com/) -- free tier, no credit card required
+- A [Speechmatics API key](https://portal.speechmatics.com/) -- free trial hours, no credit card required
+- A [Speechify API key](https://console.sws.speechify.com/)
 - An [Anthropic API key](https://console.anthropic.com/) -- free to create, pay per token
 
 ---
@@ -53,14 +54,16 @@ Run all commands from the **repo root**:
 # 1. Install dependencies and build the SDK
 pnpm install && pnpm build
 
-# 2. Copy the env template
-cp examples/03-cloud-providers/sample.env examples/03-cloud-providers/.env
+# 2. See which keys this example needs
+cat examples/03-cloud-providers/sample.env
 ```
 
-Open `.env` and fill in your keys:
+Vite loads the **repo-root** `.env` (`envDir` points there). Add any of these keys it
+does not already have — do not append duplicates:
 
 ```env
-DEEPGRAM_API_KEY=your-deepgram-key-here
+SPEECHMATICS_API_KEY=your-speechmatics-key-here
+SPEECHIFY_API_KEY=your-speechify-key-here
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
@@ -87,14 +90,14 @@ Open [http://localhost:3003](http://localhost:3003) in any modern browser -- Chr
 ```
 Microphone (browser MediaStream API)
     |
-DeepgramSTT (WebSocket, real-time streaming)
-    |  transcription.interim  -- word by word as you speak
-    |  transcription.speechFinal  -- VAD detects end of utterance, triggers LLM
+SpeechmaticsSTT (WebSocket, real-time streaming)
+    |  transcription.interim  -- partials as you speak
+    |  transcription.speechFinal  -- EndOfUtterance ends the turn, triggers LLM
     v
 AnthropicLLM (claude-haiku-4-5, HTTP streaming)
     |  llm.chunk  -- token by token
     v
-DeepgramTTS (WebSocket, 24 kHz audio)
+SpeechifyTTS (REST, complete MP3 per reply)
     |
 Speakers
     |  returns to listening automatically
@@ -107,9 +110,9 @@ Three cloud providers, zero client-side keys. The Vite dev proxy injects API key
 ```tsx
 const voice = new CompositeVoice({
   providers: [
-    new DeepgramSTT({ proxyUrl: '/proxy/deepgram', interimResults: true }),
+    new SpeechmaticsSTT({ proxyUrl: '/proxy/speechmatics', interimResults: true }),
     new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: 'claude-haiku-4-5' }),
-    new DeepgramTTS({ proxyUrl: '/proxy/deepgram' }),
+    new SpeechifyTTS({ proxyUrl: '/proxy/speechify', voiceId: 'geffen_32' }),
   ],
 });
 
@@ -121,16 +124,17 @@ await voice.startListening();
 
 ## Provider options
 
-### DeepgramSTT
+### SpeechmaticsSTT
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `proxyUrl` | required | URL prefix for the WebSocket proxy |
-| `interimResults` | `false` | Emit partial transcripts while speaking |
-| `language` | `'en-US'` | BCP-47 language tag |
-| `model` | `'nova-3'` | Transcription model |
-| `smartFormat` | `false` | Automatically format numbers, dates, currency |
-| `endpointing` | `300` | ms of silence before `speechFinal` fires |
+| `interimResults` | `true` | Emit partial transcripts while speaking |
+| `language` | `'en'` | ISO 639-1 language code |
+| `outputLocale` | -- | Transcript spelling, e.g. `'en-GB'` |
+| `operatingPoint` | server default | `'standard'` or `'enhanced'` (more accurate, more latency) |
+| `endOfUtteranceSilenceTrigger` | `0.75` | Seconds of silence that end a turn; `0` disables detection |
+| `maxDelay` | `1` | Seconds between a spoken word and its final transcript; must exceed the silence trigger |
 
 ### AnthropicLLM
 
@@ -142,22 +146,23 @@ await voice.startListening();
 | `maxTokens` | `200` | Maximum response length in tokens |
 | `temperature` | `0.7` | Randomness: `0` = deterministic, `1` = creative |
 
-### DeepgramTTS
+### SpeechifyTTS
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `proxyUrl` | required | URL prefix for the WebSocket proxy |
-| `model` | `'aura-2-thalia-en'` | Voice model |
-| `encoding` | `'linear16'` | Audio encoding |
-| `sampleRate` | `24000` | Output sample rate in Hz |
+| `proxyUrl` | required | URL prefix for the HTTP proxy |
+| `voiceId` | required | Voice to synthesize with -- list them via Speechify's `GET /v1/voices` |
+| `model` | `'simba-english'` | Simba model; use `'simba-multilingual'` for non-English |
+| `audioFormat` | `'mp3'` | `mp3`, `wav`, `ogg`, or `aac` |
+| `language` | auto-detected | ISO 639-1 code, optionally with a region (`'en-US'`) |
 
 ---
 
 ## Troubleshooting
 
-**WebSocket connection fails / "Unable to connect to Deepgram"**
+**WebSocket connection fails / "Unable to connect to Speechmatics"**
 
-- Verify your API key is correct at [console.deepgram.com](https://console.deepgram.com/)
+- Verify your API key is correct at [portal.speechmatics.com](https://portal.speechmatics.com/)
 - Check the browser console for the specific error
 - Corporate VPNs or firewalls may block outbound WebSocket connections
 
@@ -165,7 +170,7 @@ await voice.startListening();
 
 - Confirm system audio is not muted
 - Check the browser console for TTS errors
-- Some voice models require a paid Deepgram plan -- try `aura-2-thalia-en` (available on free tier)
+- A `voiceId` that does not exist on your Speechify account fails the request -- list valid ids with `GET /v1/voices`
 
 **"Cannot find module '@lukeocodes/composite-voice'"**
 
@@ -182,4 +187,4 @@ pnpm build
 | [01 -- Conversation History](../01-conversation-history/) | Multi-turn memory so the AI remembers earlier exchanges |
 | [04 -- Error Recovery](../04-error-recovery/) | Graceful degradation and reconnection strategies |
 | [05 -- Turn Taking](../05-turn-taking/) | Auto, conservative, aggressive, and detect modes |
-| [20 -- Deepgram Pipeline](../20-deepgram-pipeline/) | Full Deepgram pipeline with advanced configuration |
+| [11 -- Deepgram STT](../11-deepgram-stt/) | A streaming Deepgram pipeline with advanced configuration |

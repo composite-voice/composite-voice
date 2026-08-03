@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   CompositeVoice,
   GoogleMeetInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   NullOutput,
 } from '@lukeocodes/composite-voice';
@@ -130,7 +130,7 @@ export default function App() {
       const agent = new CompositeVoice({
         providers: [
           meet,
-          new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+          new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
@@ -184,7 +184,7 @@ export default function App() {
   return (
     <ExampleShell
       title="Google Meet Listener"
-      description="GoogleMeetInput joins a live Google Meet conference over WebRTC (Meet Media API, Developer Preview) and streams the mixed meeting audio into DeepgramSTT. Receive-only: the agent listens and takes notes, it cannot speak."
+      description="GoogleMeetInput joins a live Google Meet conference over WebRTC (Meet Media API, Developer Preview) and streams the mixed meeting audio into SpeechmaticsSTT. Receive-only: the agent listens and takes notes, it cannot speak."
       number="86"
     >
       <div className="space-y-6">

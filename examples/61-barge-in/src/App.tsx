@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
@@ -55,13 +55,16 @@ export default function App() {
       const agent = new CompositeVoice({
         providers: [
           new MicrophoneInput({ sampleRate: 16000, format: 'pcm' }),
-          new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+          new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
             systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown. Give detailed responses of about 4-5 sentences so the user has time to interrupt you.',
             maxTokens: 400,
           }),
+          // Streaming TTS on purpose: barge-in cancels queued audio chunks, but
+          // a REST provider's single synthesize() call cannot be aborted, so an
+          // interrupted reply would still play once the HTTP request resolved.
           new DeepgramTTS({
             proxyUrl: `${window.location.origin}/proxy/deepgram`,
             model: 'aura-asteria-en',

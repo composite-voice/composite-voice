@@ -4,7 +4,8 @@ export default createExampleConfig({
   port: 3063,
   title: 'Audio Config Internals',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
+    speechify: true,
     anthropic: true,
   },
 });

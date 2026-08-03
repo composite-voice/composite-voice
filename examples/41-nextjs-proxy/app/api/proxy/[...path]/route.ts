@@ -8,11 +8,14 @@
  * Route: /api/proxy/[...path]
  *   - /api/proxy/anthropic/* -> https://api.anthropic.com/*
  *   - /api/proxy/openai/*    -> https://api.openai.com/*
+ *   - /api/proxy/speechify/* -> https://api.speechify.ai/*
  *
- * Note: WebSocket proxying (Deepgram, ElevenLabs, Cartesia) requires
- * a custom Next.js server — the standard Vercel runtime does not
- * support WebSocket upgrades. This example demonstrates HTTP-only
- * proxying, which works on all hosting platforms including Vercel.
+ * Note: WebSocket proxying (Speechmatics, Deepgram, ElevenLabs, Cartesia)
+ * requires a custom Next.js server — the standard Vercel runtime does not
+ * support WebSocket upgrades. This example demonstrates HTTP-only proxying,
+ * which works on all hosting platforms including Vercel. SpeechifyTTS is a
+ * REST provider, so it proxies fine here; SpeechmaticsSTT needs the
+ * WebSocket setup in example 42.
  */
 
 import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
@@ -21,6 +24,7 @@ const { GET, POST, PUT, DELETE, OPTIONS } = createNextJsProxy({
   // Provider API keys — server-side only
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
+  speechifyApiKey: process.env.SPEECHIFY_API_KEY,
 
   // Must match the file system route path
   pathPrefix: '/api/proxy',

@@ -6,7 +6,7 @@
  *
  *   speakers      → DiscordVoice   (Opus decoded to 48 kHz mono PCM
  *                                    via prism-media)
- *                 → DeepgramSTT    (linear16 @ 48 kHz)
+ *                 → SpeechmaticsSTT (pcm_s16le @ 48 kHz)
  *                 → AnthropicLLM   (claude-haiku-4-5)
  *                 → DeepgramTTS    (linear16 @ 24 kHz — DiscordVoice
  *                                    resamples to 48 kHz stereo itself,
@@ -25,7 +25,7 @@ import { joinVoiceChannel } from '@discordjs/voice';
 import {
   CompositeVoice,
   DiscordVoice,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
 } from '@lukeocodes/composite-voice';
@@ -34,6 +34,7 @@ const {
   DISCORD_BOT_TOKEN,
   DISCORD_GUILD_ID,
   DISCORD_CHANNEL_ID,
+  SPEECHMATICS_API_KEY,
   DEEPGRAM_API_KEY,
   ANTHROPIC_API_KEY,
 } = process.env;
@@ -42,6 +43,7 @@ if (
   !DISCORD_BOT_TOKEN ||
   !DISCORD_GUILD_ID ||
   !DISCORD_CHANNEL_ID ||
+  !SPEECHMATICS_API_KEY ||
   !DEEPGRAM_API_KEY ||
   !ANTHROPIC_API_KEY
 ) {
@@ -65,14 +67,16 @@ const agent = new CompositeVoice({
 
     // DiscordVoice emits 48 kHz mono linear16 PCM (Opus decoded + downmixed).
     //
-    // `endpointing` is essential here, not a tuning knob. It defaults to false,
-    // and with it off Deepgram never emits speech_final for this stream — the
-    // utterance stays interim forever and the agent never replies. Discord also
-    // sends no packets between utterances, so DiscordVoice emits a short
-    // silence tail when a speaker stops; this is the threshold that acts on it.
-    new DeepgramSTT({
-      apiKey: DEEPGRAM_API_KEY,
-      options: { encoding: 'linear16', sampleRate: 48000, endpointing: 300 },
+    // `endOfUtteranceSilenceTrigger` is what completes a turn: without it
+    // Speechmatics never marks the utterance complete and the agent never
+    // replies. Discord sends no packets between utterances, so DiscordVoice
+    // emits a short silence tail when a speaker stops; this is the threshold
+    // that acts on it. It must stay below `maxDelay` (1 s by default).
+    new SpeechmaticsSTT({
+      apiKey: SPEECHMATICS_API_KEY,
+      audioFormat: 'pcm_s16le',
+      sampleRate: 48000,
+      endOfUtteranceSilenceTrigger: 0.6,
     }),
 
     new AnthropicLLM({
@@ -84,7 +88,8 @@ const agent = new CompositeVoice({
     }),
 
     // Raw PCM only: DiscordVoice rejects compressed TTS formats (mp3/opus)
-    // because decoding them server-side would need ffmpeg. 24 kHz mono
+    // because decoding them server-side would need ffmpeg — which rules out
+    // SpeechifyTTS, whose REST API returns a complete MP3. 24 kHz mono
     // upsamples cleanly to Discord's native 48 kHz stereo.
     new DeepgramTTS({
       apiKey: DEEPGRAM_API_KEY,

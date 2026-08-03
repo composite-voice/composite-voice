@@ -6,9 +6,9 @@ A voice agent callers can talk to over a phone call on a [Vonage](https://develo
 |-----------|---------|
 | **Server** | `node:http` + `ws` on port 3081 |
 | **Input/Output** | `VonageAudioSocket` (duplex, linear16 @ 16 kHz) |
-| **STT** | `DeepgramSTT` — `nova-3`, linear16/16000 |
+| **STT** | `SpeechmaticsSTT` — pcm_s16le/16000 |
 | **LLM** | `AnthropicLLM` — `claude-haiku-4-5` |
-| **TTS** | `DeepgramTTS` — linear16/16000 (matches the NCCO rate) |
+| **TTS** | `DeepgramTTS` — linear16/16000 (matches the NCCO rate; Vonage WebSockets carry raw PCM only, so a REST/MP3 provider like Speechify cannot be used here) |
 
 ---
 
@@ -27,7 +27,7 @@ A voice agent callers can talk to over a phone call on a [Vonage](https://develo
 - **Node.js 21+** (or 22 LTS) — the SDK's streaming STT/TTS providers use the global `WebSocket`
 - **pnpm** and a build of the SDK (`pnpm install && pnpm build` at the repo root)
 - A [Vonage API account](https://dashboard.nexmo.com) with a **Voice-enabled application** and a **linked phone number**
-- A [Deepgram API key](https://console.deepgram.com) and an [Anthropic API key](https://console.anthropic.com)
+- A [Speechmatics API key](https://portal.speechmatics.com), a [Deepgram API key](https://console.deepgram.com) and an [Anthropic API key](https://console.anthropic.com)
 - [ngrok](https://ngrok.com) (or any tunnel that gives you public `https://`/`wss://`)
 
 ---
