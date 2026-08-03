@@ -1,6 +1,6 @@
 {
   "name": "composite-voice",
-  "version": "0.2.0",
+  "version": "0.0.5",
   "description": "Extensible composite AI voice-agent browser SDK",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
