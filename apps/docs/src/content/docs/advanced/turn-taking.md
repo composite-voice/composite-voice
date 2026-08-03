@@ -23,7 +23,7 @@ The top-level control is `pauseCaptureOnPlayback`, which accepts three values:
 The default is `'auto'`.
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -200,7 +200,7 @@ const agent = new CompositeVoice({
 
 **Production Deepgram pipeline with full-duplex:**
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

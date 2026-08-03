@@ -6,7 +6,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Card,
@@ -17,7 +17,7 @@ import {
   Checkbox,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 const ALL_EVENTS = [
   'transcription.start', 'transcription.interim', 'transcription.final',

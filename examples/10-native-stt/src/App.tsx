@@ -10,13 +10,13 @@ import {
   Input,
   Checkbox,
   Badge,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 export default function App() {
   const agentRef = useRef<CompositeVoice | null>(null);

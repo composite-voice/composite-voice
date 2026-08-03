@@ -6,7 +6,7 @@ import {
   Button,
   Heading,
   Text,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function LoadingShowcase() {
   const [progressValue, setProgressValue] = useState(30);

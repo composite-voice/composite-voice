@@ -18,7 +18,7 @@ cp examples/01-first-voice-pipeline/sample.env examples/01-first-voice-pipeline/
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/cv-example-01-first-voice-pipeline dev
+pnpm --filter cv-example-01-first-voice-pipeline dev
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in Chrome or Edge.

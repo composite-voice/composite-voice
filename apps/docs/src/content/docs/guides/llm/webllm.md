@@ -19,7 +19,7 @@ pnpm add @mlc-ai/web-llm
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -66,7 +66,7 @@ See [WebLLM's model list](https://github.com/mlc-ai/web-llm#available-models) fo
 ## Complete example
 
 ```typescript
-import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, WebLLMLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const statusEl = document.getElementById('status')!;
 

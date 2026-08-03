@@ -75,7 +75,7 @@ async function loadWs(): Promise<{
     throw new Error(
       'WebSocket proxying requires the "ws" package.\n' +
         'Install it with: pnpm add ws\n' +
-        'The "ws" package is an optional peer dependency of @lukeocodes/composite-voice.'
+        'The "ws" package is an optional peer dependency of composite-voice.'
     );
   }
 }
@@ -119,7 +119,7 @@ async function loadWs(): Promise<{
  *
  * @example
  * ```typescript
- * import { proxyWebSocket } from '@lukeocodes/composite-voice/proxy';
+ * import { proxyWebSocket } from 'composite-voice/proxy';
  *
  * server.on('upgrade', (req, socket, head) => {
  *   proxyWebSocket(req, socket, head, 'wss://api.deepgram.com/v1/listen', {

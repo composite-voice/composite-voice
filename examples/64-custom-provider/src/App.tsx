@@ -3,15 +3,15 @@ import {
   CompositeVoice,
   NativeSTT,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import type {
   LLMProvider,
   LLMProviderConfig,
   LLMGenerationOptions,
   LLMMessage,
   ProviderType,
-} from '@lukeocodes/composite-voice';
-import type { ProviderRole } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { ProviderRole } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -23,7 +23,7 @@ import {
   Label,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 // ─── MockLLM: A custom LLM provider ─────────────────────────────────────
 
@@ -214,8 +214,8 @@ export default function App() {
               <CodeBlock language="typescript" code={`import type {
   LLMProvider, LLMProviderConfig, LLMGenerationOptions,
   LLMMessage, ProviderType,
-} from '@lukeocodes/composite-voice';
-import type { ProviderRole } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { ProviderRole } from 'composite-voice';
 
 class MockLLM implements LLMProvider {
   public readonly type: ProviderType = 'rest';

@@ -15,7 +15,7 @@
  *
  * @example
  * ```typescript
- * import { AudioCapture, AudioPlayer } from '@lukeocodes/composite-voice';
+ * import { AudioCapture, AudioPlayer } from 'composite-voice';
  * ```
  */
 

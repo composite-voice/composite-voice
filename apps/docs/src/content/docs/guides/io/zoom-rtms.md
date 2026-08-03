@@ -35,7 +35,7 @@ On the `meeting.rtms_stopped` webhook (or when Zoom reports the stream terminate
 
 ```typescript
 import express from 'express';
-import { CompositeVoice, ZoomRtmsInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, NullOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, ZoomRtmsInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, NullOutput } from 'composite-voice';
 
 const zoom = new ZoomRtmsInput({
   clientId: process.env.ZOOM_CLIENT_ID!,

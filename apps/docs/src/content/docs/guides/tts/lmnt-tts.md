@@ -20,7 +20,7 @@ import {
   AnthropicLLM,
   LMNTTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -84,7 +84,7 @@ import {
   AnthropicLLM,
   LMNTTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const tts = new LMNTTTS({
   proxyUrl: '/api/proxy/lmnt',

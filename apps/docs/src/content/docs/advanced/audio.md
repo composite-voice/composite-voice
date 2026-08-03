@@ -14,7 +14,7 @@ CompositeVoice manages audio through input and output providers that sit at oppo
 Configure audio settings directly on the input and output providers, not on the top-level `CompositeVoice` config:
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -181,7 +181,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

@@ -28,7 +28,7 @@ cp examples/62-backpressure/sample.env examples/62-backpressure/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-62-backpressure dev
+pnpm --filter composite-voice-example-62-backpressure dev
 ```
 
 Open [http://localhost:3062](http://localhost:3062) in Chrome or Edge.

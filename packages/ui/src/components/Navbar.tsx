@@ -105,7 +105,7 @@ export function Navbar({
         )}
 
         <a
-          href="https://github.com/lukeocodes/composite-voice"
+          href="https://github.com/composite-voice/composite-voice"
           className="p-2 rounded-md text-foreground-muted hover:text-foreground hover:bg-neutral-100 transition-colors"
           aria-label="GitHub repository"
           target="_blank"

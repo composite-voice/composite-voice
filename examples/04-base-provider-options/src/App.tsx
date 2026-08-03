@@ -10,7 +10,7 @@ import {
   Select,
   Label,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   DeepgramSTT,
@@ -18,7 +18,7 @@ import {
   DeepgramTTS,
   MicrophoneInput,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 type AuthType = 'token' | 'bearer';
 

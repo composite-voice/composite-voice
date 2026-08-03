@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-23-gemini-llm",
+  "name": "composite-voice-example-23-gemini-llm",
   "version": "0.0.0",
   "private": true,
   "description": "Gemini LLM provider — NativeSTT + GeminiLLM + NativeTTS with model/temperature controls",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

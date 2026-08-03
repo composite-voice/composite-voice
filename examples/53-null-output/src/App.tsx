@@ -5,7 +5,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   NullOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -15,7 +15,7 @@ import {
   Badge,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 interface TTSEvent {
   id: number;
@@ -144,7 +144,7 @@ export default function App() {
               Usage <Badge variant="neutral">NullOutput</Badge>
             </CardTitle>
             <div className="mt-3">
-              <CodeBlock language="typescript" code={`import { NullOutput } from '@lukeocodes/composite-voice';
+              <CodeBlock language="typescript" code={`import { NullOutput } from 'composite-voice';
 
 // NullOutput implements AudioOutputProvider as a null sink.
 // All methods are no-ops — audio is silently discarded.

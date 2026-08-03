@@ -12,12 +12,12 @@ Use SonioxSTT when you need real-time transcription across 60+ languages with au
 
 No peer dependencies are required. SonioxSTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side, or generate [temporary API keys](https://soniox.com/docs) server-side and pass an async `apiKey` factory.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side, or generate [temporary API keys](https://soniox.com/docs) server-side and pass an async `apiKey` factory.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, SonioxSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, SonioxSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -63,7 +63,7 @@ See the [API reference](/api/classes/sonioxstt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, SonioxSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, SonioxSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -118,6 +118,6 @@ Keep `enableEndpointDetection` at its default (`true`) for voice-agent pipelines
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: SonioxSTT](/api/classes/sonioxstt)
 - [Providers reference](/reference/providers)

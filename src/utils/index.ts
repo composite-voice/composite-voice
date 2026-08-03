@@ -27,7 +27,7 @@
  *   WebSocketManager,
  *   floatTo16BitPCM,
  *   calculateRMS,
- * } from '@lukeocodes/composite-voice/utils';
+ * } from 'composite-voice/utils';
  * ```
  */
 

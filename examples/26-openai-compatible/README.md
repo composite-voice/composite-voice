@@ -40,7 +40,7 @@ No proxy API keys needed -- provide your endpoint URL and optional API key direc
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-26-openai-compatible dev
+pnpm --filter composite-voice-example-26-openai-compatible dev
 ```
 
 Open [http://localhost:3026](http://localhost:3026) in Chrome or Edge.

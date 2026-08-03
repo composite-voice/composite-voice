@@ -15,7 +15,7 @@ Use CartesiaTTS for the lowest-latency streaming synthesis available. Cartesia's
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -75,7 +75,7 @@ await voice.startListening();
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, CartesiaTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new CartesiaTTS({
   proxyUrl: '/api/proxy/cartesia',

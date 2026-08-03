@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { CompositeVoice as CompositeVoiceType } from '@lukeocodes/composite-voice';
+import type { CompositeVoice as CompositeVoiceType } from 'composite-voice';
 import type {
   VoiceAgentConfig,
   VoiceAgentState,
@@ -83,7 +83,7 @@ export function useVoiceAgent(config: VoiceAgentConfig): [VoiceAgentState, Voice
         AnthropicLLM,
         DeepgramTTS,
         BrowserAudioOutput,
-      } = await import(/* @vite-ignore */ '@lukeocodes/composite-voice');
+      } = await import(/* @vite-ignore */ 'composite-voice');
 
       const cfg = configRef.current;
 

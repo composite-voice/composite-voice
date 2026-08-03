@@ -14,7 +14,7 @@ Use SpeechifyTTS when you want high-quality speech synthesis from Speechify's Si
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -68,7 +68,7 @@ List voices with Speechify's [`GET /v1/voices`](https://docs.sws.speechify.com/)
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new SpeechifyTTS({
   proxyUrl: '/api/proxy/speechify',

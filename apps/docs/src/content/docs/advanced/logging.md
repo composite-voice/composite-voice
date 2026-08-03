@@ -9,7 +9,7 @@ order: 8
 Logging is disabled by default. Enable it through the `logging` option when creating a `CompositeVoice` instance:
 
 ```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
+import { CompositeVoice } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [/* ...your providers */],
@@ -91,7 +91,7 @@ When provided, the SDK calls this function instead of `console.debug`, `console.
 Route SDK logs into a structured logging library by mapping the level and parsing or forwarding the message:
 
 ```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
+import { CompositeVoice } from 'composite-voice';
 import pino from 'pino';
 
 const log = pino({ level: 'debug' });
@@ -143,7 +143,7 @@ const agent = new CompositeVoice({
 A common pattern is to wrap SDK logging into your application's existing logger and add your own application-level logs alongside it:
 
 ```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
+import { CompositeVoice } from 'composite-voice';
 
 function createSDKLogger() {
   return (level: string, message: string, ...args: unknown[]) => {

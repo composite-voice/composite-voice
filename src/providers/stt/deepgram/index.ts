@@ -12,7 +12,7 @@
  *
  * @example
  * ```typescript
- * import { DeepgramSTT } from '@lukeocodes/composite-voice';
+ * import { DeepgramSTT } from 'composite-voice';
  *
  * const stt = new DeepgramSTT({
  *   proxyUrl: '/api/proxy/deepgram',

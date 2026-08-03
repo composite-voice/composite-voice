@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-84-zoom-meeting-listener",
+  "name": "composite-voice-example-84-zoom-meeting-listener",
   "version": "0.1.0",
   "private": true,
   "description": "Zoom RTMS meeting listener — live transcripts over a plain node:http webhook, with an end-of-meeting Claude summary",
@@ -9,7 +9,7 @@
     "start": "PORT=3084 node --env-file=.env --import tsx/esm server.ts"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
+    "composite-voice": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.0.0"

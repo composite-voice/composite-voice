@@ -40,7 +40,7 @@ No API keys needed.
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-25-webllm dev
+pnpm --filter composite-voice-example-25-webllm dev
 ```
 
 Open [http://localhost:3025](http://localhost:3025) in Chrome or Edge.

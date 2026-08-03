@@ -20,7 +20,7 @@ import {
   AnthropicLLM,
   MiniMaxTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -88,7 +88,7 @@ import {
   AnthropicLLM,
   MiniMaxTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const tts = new MiniMaxTTS({
   proxyUrl: '/api/proxy/minimax',

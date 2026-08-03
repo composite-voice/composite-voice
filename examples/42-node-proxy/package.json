@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-42-node-proxy",
+  "name": "composite-voice-example-42-node-proxy",
   "version": "0.1.0",
   "private": true,
   "description": "Plain Node.js HTTP server proxy — createNodeProxy with handleRequest + attachWebSocket",
@@ -13,7 +13,7 @@
     "start": "tsx server.ts"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
+    "composite-voice": "workspace:*"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

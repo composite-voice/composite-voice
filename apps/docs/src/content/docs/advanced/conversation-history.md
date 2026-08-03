@@ -24,7 +24,7 @@ Without conversation history, the second exchange would fail -- the LLM would ha
 Pass the `conversationHistory` option when creating the agent:
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -194,7 +194,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

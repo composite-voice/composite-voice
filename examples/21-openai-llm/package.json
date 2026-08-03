@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-21-openai-llm",
+  "name": "composite-voice-example-21-openai-llm",
   "version": "0.0.0",
   "private": true,
   "description": "OpenAI LLM provider — NativeSTT + OpenAILLM + NativeTTS with model/temperature/token controls",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

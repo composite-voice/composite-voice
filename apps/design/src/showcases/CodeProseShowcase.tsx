@@ -9,9 +9,9 @@ import {
   Mark,
   Prose,
   BrandName,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
-const tsExample = `import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from "@lukeocodes/composite-voice";
+const tsExample = `import { CompositeVoice, DeepgramSTT, AnthropicLLM, DeepgramTTS } from "composite-voice";
 
 const voice = new CompositeVoice({
   providers: [
@@ -28,7 +28,7 @@ voice.on("transcription.speechFinal", ({ text }) => {
 await voice.initialize();
 await voice.startListening();`;
 
-const jsExample = `const { CompositeVoice, OpenAILLM, NativeTTS } = require("@lukeocodes/composite-voice");
+const jsExample = `const { CompositeVoice, OpenAILLM, NativeTTS } = require("composite-voice");
 
 const voice = new CompositeVoice({
   providers: [
@@ -44,7 +44,7 @@ voice.on("transcription.speechFinal", ({ text }) => {
 await voice.initialize();
 await voice.startListening();`;
 
-const bashExample = `pnpm add @lukeocodes/composite-voice`;
+const bashExample = `pnpm add composite-voice`;
 
 const cssExample = `@theme {
   --color-primary-500: oklch(0.637 0.237 25.331);
@@ -279,7 +279,7 @@ export default function CodeProseShowcase() {
             </blockquote>
             <p>
               Visit the{" "}
-              <a href="https://github.com/lukeocodes/composite-voice">
+              <a href="https://github.com/composite-voice/composite-voice">
                 GitHub repository
               </a>{" "}
               for full documentation.

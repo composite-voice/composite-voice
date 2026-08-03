@@ -11,7 +11,7 @@
  *
  * @example
  * ```typescript
- * import { MistralLLM } from '@lukeocodes/composite-voice';
+ * import { MistralLLM } from 'composite-voice';
  *
  * const llm = new MistralLLM({
  *   proxyUrl: '/api/proxy/mistral',

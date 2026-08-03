@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-web",
+  "name": "composite-voice-web",
   "private": true,
   "type": "module",
   "version": "0.0.1",
@@ -13,7 +13,7 @@
     "@4hse/astro-llms-txt": "^1.0.4",
     "@astrojs/react": "^4.2.1",
     "@astrojs/sitemap": "^3.7.0",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "@playform/compress": "^0.2.1",
     "@playform/inline": "^0.1.2",
     "@tailwindcss/vite": "^4.1.8",

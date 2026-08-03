@@ -12,12 +12,12 @@ Use AzureSTT when you need real-time transcription backed by Microsoft Azure's S
 
 No peer dependencies are required. AzureSTT speaks the Speech service's real-time WebSocket protocol (the same one used by the official `microsoft-cognitiveservices-speech-sdk` package) over a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your key stays server-side, or issue [10-minute bearer tokens](https://learn.microsoft.com/azure/ai-services/speech-service/rest-text-to-speech#authentication) server-side and pass an async `apiKey` factory.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your key stays server-side, or issue [10-minute bearer tokens](https://learn.microsoft.com/azure/ai-services/speech-service/rest-text-to-speech#authentication) server-side and pass an async `apiKey` factory.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, AzureSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AzureSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -62,7 +62,7 @@ See the [API reference](/api/classes/azurestt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, AzureSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AzureSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -122,6 +122,6 @@ Browsers cannot set WebSocket headers, so in direct mode AzureSTT passes the cre
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: AzureSTT](/api/classes/azurestt)
 - [Providers reference](/reference/providers)

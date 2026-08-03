@@ -5,8 +5,8 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
-import type { AudioOutputConfig } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { AudioOutputConfig } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -20,7 +20,7 @@ import {
   Select,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 const BUFFER_SIZES = [1024, 2048, 4096, 8192, 16384];
 

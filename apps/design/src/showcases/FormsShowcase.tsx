@@ -11,7 +11,7 @@ import {
   SearchIcon,
   MailIcon,
   EyeIcon,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 const frameworkOptions = [
   { value: "react", label: "React" },

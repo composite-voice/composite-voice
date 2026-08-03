@@ -14,7 +14,7 @@ Use AzureTTS when you want Microsoft Azure's catalog of hundreds of neural voice
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, AzureTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, AzureTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -71,7 +71,7 @@ List voices with `GET https://<region>.tts.speech.microsoft.com/cognitiveservice
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, AzureTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, AzureTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new AzureTTS({
   proxyUrl: '/api/proxy/azure-tts',

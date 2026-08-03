@@ -17,7 +17,7 @@ Use `DeepgramAgent` when you want a single WebSocket connection that handles spe
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -117,7 +117,7 @@ speak: {
 DeepgramAgent supports both client-side and server-side function calling. Client-side functions are handled by the `onFunctionCall` callback. Server-side functions define an `endpoint` and are executed by Deepgram directly.
 
 ```typescript
-import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [

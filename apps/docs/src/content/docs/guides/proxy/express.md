@@ -15,7 +15,7 @@ Use the Express adapter when your backend runs Express 4/5, Connect, Polka, or R
 ## Install dependencies
 
 ```bash
-pnpm add express @lukeocodes/composite-voice
+pnpm add express composite-voice
 ```
 
 If you use TypeScript, also add the dev dependency:
@@ -31,7 +31,7 @@ Create a file called `server.ts` at your project root:
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 app.use(express.json());
@@ -104,7 +104,7 @@ server.listen(3000);
 Point each provider at the proxy URL instead of supplying an API key:
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -124,7 +124,7 @@ The browser never sees API keys. The proxy injects them server-side.
 The Deepgram Agent provider connects through its own proxy route (`deepgram-agent`) because it targets a different upstream host (`wss://agent.deepgram.com`):
 
 ```typescript
-import { CompositeVoice, DeepgramAgent, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -200,5 +200,5 @@ const proxy = createExpressProxy({
 
 ## Further reading
 
-- [Example: Express proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server)
+- [Example: Express proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server)
 - [Server Proxy overview](/advanced/server-proxy)

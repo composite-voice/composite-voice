@@ -43,7 +43,7 @@ export function Footer({ sites, className }: FooterProps) {
               </a>
             ))}
             <a
-              href="https://github.com/lukeocodes/composite-voice"
+              href="https://github.com/composite-voice/composite-voice"
               className="text-xs text-foreground-muted hover:text-foreground transition-colors"
               target="_blank"
               rel="noopener noreferrer"

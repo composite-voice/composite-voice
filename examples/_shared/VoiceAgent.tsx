@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Button, Card, CardBody, CardTitle, Badge, Alert } from '@lukeocodes/composite-voice-ui';
-import type { CompositeVoice, AgentState } from '@lukeocodes/composite-voice';
+import { Button, Card, CardBody, CardTitle, Badge, Alert } from 'composite-voice-ui';
+import type { CompositeVoice, AgentState } from 'composite-voice';
 
 interface VoiceAgentProps {
   agent: CompositeVoice | null;

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Badge } from '@lukeocodes/composite-voice-ui';
+import { Badge } from 'composite-voice-ui';
 // Each example must import its own styles.css that includes:
 // @import "tailwindcss";
-// @import "@lukeocodes/composite-voice-ui/theme.css";
+// @import "composite-voice-ui/theme.css";
 
 interface ExampleShellProps {
   title: string;

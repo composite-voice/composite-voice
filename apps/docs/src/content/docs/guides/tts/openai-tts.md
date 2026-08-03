@@ -14,7 +14,7 @@ Use OpenAITTS when you want high-quality speech synthesis via a simple REST call
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, OpenAITTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, OpenAITTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -70,7 +70,7 @@ Each voice has distinct characteristics. Preview them in the [OpenAI TTS guide](
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, OpenAITTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, OpenAITTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new OpenAITTS({
   proxyUrl: '/api/proxy/openai',

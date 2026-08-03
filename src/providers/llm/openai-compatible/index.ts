@@ -13,8 +13,8 @@
  *
  * @example
  * ```typescript
- * import { OpenAICompatibleLLM } from '@lukeocodes/composite-voice';
- * import type { OpenAICompatibleLLMConfig } from '@lukeocodes/composite-voice';
+ * import { OpenAICompatibleLLM } from 'composite-voice';
+ * import type { OpenAICompatibleLLMConfig } from 'composite-voice';
  *
  * class MyCustomLLM extends OpenAICompatibleLLM {
  *   constructor(config: OpenAICompatibleLLMConfig) {

@@ -15,7 +15,7 @@ Use ElevenLabsTTS for high-fidelity voice cloning and expressive synthesis. Text
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -74,7 +74,7 @@ await voice.startListening();
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new ElevenLabsTTS({
   proxyUrl: '/api/proxy/elevenlabs',

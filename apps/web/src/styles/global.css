@@ -1,4 +1,4 @@
 @import "tailwindcss";
-@import "@lukeocodes/composite-voice-ui/theme.css";
+@import "composite-voice-ui/theme.css";
 
 @source "../../../../packages/ui/src";

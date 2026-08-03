@@ -18,7 +18,7 @@
  * @example Express / Connect
  * ```typescript
  * import express from 'express';
- * import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createExpressProxy } from 'composite-voice/proxy';
  *
  * const app = express();
  * const proxy = createExpressProxy({
@@ -34,7 +34,7 @@
  *
  * @example Next.js App Router (`app/api/proxy/[...path]/route.ts`)
  * ```typescript
- * import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNextJsProxy } from 'composite-voice/proxy';
  *
  * const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
  *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -47,7 +47,7 @@
  * @example Plain Node.js
  * ```typescript
  * import http from 'http';
- * import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNodeProxy } from 'composite-voice/proxy';
  *
  * const proxy = createNodeProxy({
  *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -60,10 +60,10 @@
  *
  * @example Browser-side configuration
  * ```typescript
- * import { CompositeVoice } from '@lukeocodes/composite-voice';
- * import { DeepgramSTT } from '@lukeocodes/composite-voice/providers/stt';
- * import { AnthropicLLM } from '@lukeocodes/composite-voice/providers/llm';
- * import { DeepgramTTS } from '@lukeocodes/composite-voice/providers/tts';
+ * import { CompositeVoice } from 'composite-voice';
+ * import { DeepgramSTT } from 'composite-voice/providers/stt';
+ * import { AnthropicLLM } from 'composite-voice/providers/llm';
+ * import { DeepgramTTS } from 'composite-voice/providers/tts';
  *
  * const PROXY = 'http://localhost:3000/api/proxy';
  *

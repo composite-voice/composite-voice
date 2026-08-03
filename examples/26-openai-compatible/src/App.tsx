@@ -4,7 +4,7 @@ import {
   NativeSTT,
   NativeTTS,
   OpenAICompatibleLLM,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import {
   Card,
   CardBody,
@@ -14,8 +14,8 @@ import {
   Input,
   Textarea,
   Alert,
-} from '@lukeocodes/composite-voice-ui';
-import '@lukeocodes/composite-voice-ui/theme.css';
+} from 'composite-voice-ui';
+import 'composite-voice-ui/theme.css';
 
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';

@@ -9,7 +9,7 @@
  *
  * @example
  * ```typescript
- * import { AnthropicLLM } from '@lukeocodes/composite-voice';
+ * import { AnthropicLLM } from 'composite-voice';
  *
  * const llm = new AnthropicLLM({
  *   proxyUrl: '/api/proxy/anthropic',

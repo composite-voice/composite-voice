@@ -14,8 +14,8 @@ Every example follows this structure:
 - `README.md` — What the example demonstrates
 
 ## Rules
-1. Use the design system: import from `@lukeocodes/composite-voice-ui`
-2. Import `@lukeocodes/composite-voice-ui/theme.css` in the entry point
+1. Use the design system: import from `composite-voice-ui`
+2. Import `composite-voice-ui/theme.css` in the entry point
 3. Use `ExampleShell` from `_shared/ExampleShell.tsx` for consistent layout
 4. Use `VoiceAgent` from `_shared/VoiceAgent.tsx` for the standard voice UI
 5. Only create a backend when demonstrating the proxy server

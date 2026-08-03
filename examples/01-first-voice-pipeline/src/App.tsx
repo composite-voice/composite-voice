@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { CompositeVoice, AnthropicLLM } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 

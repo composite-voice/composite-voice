@@ -30,7 +30,7 @@
  *   LLMProvider,
  *   TTSProvider,
  *   ResolvedPipeline,
- * } from '@lukeocodes/composite-voice';
+ * } from 'composite-voice';
  * ```
  */
 

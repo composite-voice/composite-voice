@@ -14,7 +14,7 @@ Use `MistralLLM` when you need strong multilingual support, especially for Europ
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MistralLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MistralLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -64,7 +64,7 @@ import {
   DeepgramSTT,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

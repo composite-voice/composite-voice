@@ -19,8 +19,8 @@
  *
  * @example
  * ```typescript
- * import { BaseLLMProvider } from '@lukeocodes/composite-voice';
- * import type { LLMProviderConfig, LLMMessage } from '@lukeocodes/composite-voice';
+ * import { BaseLLMProvider } from 'composite-voice';
+ * import type { LLMProviderConfig, LLMMessage } from 'composite-voice';
  *
  * class MyCustomLLM extends BaseLLMProvider {
  *   // ... implement abstract methods

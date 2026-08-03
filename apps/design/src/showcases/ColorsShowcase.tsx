@@ -4,7 +4,7 @@ import {
   Heading,
   Text,
   BrandName,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 const palettes = [
   {

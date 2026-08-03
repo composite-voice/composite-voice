@@ -31,7 +31,7 @@ STT providers ([DeepgramSTT](/guides/stt/deepgram-stt), [AssemblyAISTT](/guides/
 Configure reconnection behavior at the top level of the `CompositeVoice` config:
 
 ```typescript
-import { CompositeVoice } from '@lukeocodes/composite-voice';
+import { CompositeVoice } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [/* ...your providers */],

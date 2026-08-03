@@ -5,8 +5,8 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   SpeechifyTTS,
-} from '@lukeocodes/composite-voice';
-import type { TeamsCallState } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { TeamsCallState } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Alert,
@@ -18,7 +18,7 @@ import {
   FormField,
   Input,
   Textarea,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 interface TranscriptEntry {
   id: number;

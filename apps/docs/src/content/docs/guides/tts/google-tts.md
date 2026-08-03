@@ -14,7 +14,7 @@ Use GoogleTTS when you want Google Cloud Text-to-Speech's voice catalog -- from 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, GoogleTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, GoogleTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -71,7 +71,7 @@ Voice names encode the language, family, and variant. Current families include *
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, GoogleTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, GoogleTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new GoogleTTS({
   proxyUrl: '/api/proxy/google-tts',

@@ -11,14 +11,14 @@ import {
   Label,
   Button,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
-import type { LoggingConfig } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { LoggingConfig } from 'composite-voice';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

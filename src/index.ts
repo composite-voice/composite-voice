@@ -26,7 +26,7 @@
  *   NativeSTT,
  *   AnthropicLLM,
  *   NativeTTS,
- * } from '@lukeocodes/composite-voice';
+ * } from 'composite-voice';
  *
  * const voice = new CompositeVoice({
  *   providers: [
@@ -46,7 +46,7 @@
  *
  * @example Creating a custom provider
  * ```typescript
- * import { BaseLLMProvider } from '@lukeocodes/composite-voice';
+ * import { BaseLLMProvider } from 'composite-voice';
  *
  * class MyCustomLLM extends BaseLLMProvider {
  *   // ... implement abstract methods
@@ -54,7 +54,7 @@
  * ```
  *
  * @see {@link CompositeVoice} for the main orchestrator class
- * @see {@link https://github.com/lukeocodes/composite-voice | GitHub repository} for full documentation
+ * @see {@link https://github.com/composite-voice/composite-voice | GitHub repository} for full documentation
  */
 
 // Main SDK class

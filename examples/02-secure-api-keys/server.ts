@@ -1,5 +1,5 @@
 import express from 'express';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const proxy = createExpressProxy({

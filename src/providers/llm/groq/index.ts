@@ -11,7 +11,7 @@
  *
  * @example
  * ```typescript
- * import { GroqLLM } from '@lukeocodes/composite-voice';
+ * import { GroqLLM } from 'composite-voice';
  *
  * const llm = new GroqLLM({
  *   proxyUrl: '/api/proxy/groq',

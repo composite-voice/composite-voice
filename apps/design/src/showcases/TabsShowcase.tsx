@@ -8,7 +8,7 @@ import {
   Text,
   Alert,
   Prose,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function TabsShowcase() {
   const [activeTab, setActiveTab] = useState("controlled1");

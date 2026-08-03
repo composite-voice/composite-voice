@@ -15,12 +15,12 @@ Use DeepgramSTT for production voice pipelines that need high accuracy, word-lev
 
 DeepgramSTT connects through a raw native `WebSocket` connection that it manages directly.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -88,7 +88,7 @@ V1 uses an event-streaming model with `Results` events containing `is_final` and
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -144,10 +144,10 @@ DeepgramSTT buffers `is_final` segments from the Deepgram WebSocket and emits th
 
 ## Related resources
 
-- [Deepgram pipeline example](https://github.com/lukeocodes/composite-voice/tree/main/examples/20-deepgram-pipeline) -- full Deepgram STT + TTS pipeline
-- [Eager pipeline example](https://github.com/lukeocodes/composite-voice/tree/main/examples/21-eager-pipeline) -- preflight signals with speculative LLM (uses DeepgramFlux)
-- [Deepgram options example](https://github.com/lukeocodes/composite-voice/tree/main/examples/22-deepgram-options) -- explore transcription options
+- [Deepgram pipeline example](https://github.com/composite-voice/composite-voice/tree/main/examples/20-deepgram-pipeline) -- full Deepgram STT + TTS pipeline
+- [Eager pipeline example](https://github.com/composite-voice/composite-voice/tree/main/examples/21-eager-pipeline) -- preflight signals with speculative LLM (uses DeepgramFlux)
+- [Deepgram options example](https://github.com/composite-voice/composite-voice/tree/main/examples/22-deepgram-options) -- explore transcription options
 - [DeepgramFlux guide](/guides/stt/deepgram-flux) -- V2 Flux provider with eager end-of-turn signals
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: DeepgramSTT](/api/classes/deepgramstt)
 - [Providers reference](/reference/providers)

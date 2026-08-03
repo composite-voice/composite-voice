@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-50-microphone-input",
+  "name": "composite-voice-example-50-microphone-input",
   "version": "0.0.0",
   "private": true,
   "description": "Deep-dive into MicrophoneInput config — all AudioInputConfig options with real-time audio level meter",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

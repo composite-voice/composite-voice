@@ -16,7 +16,7 @@ No API keys or peer dependencies are required.
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -53,7 +53,7 @@ See the [API reference](/api/classes/nativestt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -101,7 +101,7 @@ NativeSTT emits one result per utterance. When the Web Speech API fires a final 
 
 ## Related resources
 
-- [Minimal voice agent example](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent) -- uses NativeSTT with NativeTTS
-- [Multi-language example](https://github.com/lukeocodes/composite-voice/tree/main/examples/13-multi-language) -- switch languages at runtime
+- [Minimal voice agent example](https://github.com/composite-voice/composite-voice/tree/main/examples/00-minimal-voice-agent) -- uses NativeSTT with NativeTTS
+- [Multi-language example](https://github.com/composite-voice/composite-voice/tree/main/examples/13-multi-language) -- switch languages at runtime
 - [API reference: NativeSTT](/api/classes/nativestt)
 - [Providers reference](/reference/providers)

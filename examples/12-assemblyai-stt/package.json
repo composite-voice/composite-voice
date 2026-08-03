@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-12-assemblyai-stt",
+  "name": "composite-voice-example-12-assemblyai-stt",
   "version": "0.1.0",
   "private": true,
   "description": "AssemblyAISTT configuration explorer — AssemblyAI + Anthropic Claude + NativeTTS",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

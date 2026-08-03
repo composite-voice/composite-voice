@@ -35,7 +35,7 @@
  *
  * @example
  * ```typescript
- * import { DeepgramSTT, NativeSTT, AssemblyAISTT } from '@lukeocodes/composite-voice/providers/stt';
+ * import { DeepgramSTT, NativeSTT, AssemblyAISTT } from 'composite-voice/providers/stt';
  *
  * const stt = new DeepgramSTT({
  *   proxyUrl: '/api/proxy/deepgram',
@@ -71,5 +71,5 @@ export * from './transcribe/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:
-// import { OpenAISTT } from '@lukeocodes/composite-voice/providers/stt/openai';
+// import { OpenAISTT } from 'composite-voice/providers/stt/openai';
 export * from './openai/index';

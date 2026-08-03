@@ -16,7 +16,7 @@
  *
  * @example
  * ```typescript
- * import { AnthropicLLM, OpenAILLM, GroqLLM } from '@lukeocodes/composite-voice/providers/llm';
+ * import { AnthropicLLM, OpenAILLM, GroqLLM } from 'composite-voice/providers/llm';
  *
  * const llm = new AnthropicLLM({
  *   proxyUrl: '/api/proxy/anthropic',

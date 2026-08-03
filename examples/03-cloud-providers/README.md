@@ -172,7 +172,7 @@ await voice.startListening();
 - Check the browser console for TTS errors
 - A `voiceId` that does not exist on your Speechify account fails the request -- list valid ids with `GET /v1/voices`
 
-**"Cannot find module '@lukeocodes/composite-voice'"**
+**"Cannot find module 'composite-voice'"**
 
 ```bash
 pnpm build

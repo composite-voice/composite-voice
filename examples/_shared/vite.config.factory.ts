@@ -118,11 +118,11 @@ export function createExampleConfig(config: ExampleConfig): UserConfig {
     },
     resolve: {
       alias: {
-        '@lukeocodes/composite-voice': path.resolve(__dirname, '../../dist/index.mjs'),
-        '@lukeocodes/composite-voice/proxy': path.resolve(__dirname, '../../dist/proxy/index.mjs'),
-        '@lukeocodes/composite-voice-ui/theme.css': path.resolve(__dirname, '../../packages/ui/src/theme.css'),
-        '@lukeocodes/composite-voice-ui/icons': path.resolve(__dirname, '../../packages/ui/src/icons.tsx'),
-        '@lukeocodes/composite-voice-ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
+        'composite-voice': path.resolve(__dirname, '../../dist/index.mjs'),
+        'composite-voice/proxy': path.resolve(__dirname, '../../dist/proxy/index.mjs'),
+        'composite-voice-ui/theme.css': path.resolve(__dirname, '../../packages/ui/src/theme.css'),
+        'composite-voice-ui/icons': path.resolve(__dirname, '../../packages/ui/src/icons.tsx'),
+        'composite-voice-ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
       },
     },
     envDir: rootDir,

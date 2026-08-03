@@ -4,7 +4,7 @@ import {
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Card,
@@ -14,7 +14,7 @@ import {
   Badge,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 interface Turn {
   role: 'user' | 'assistant';

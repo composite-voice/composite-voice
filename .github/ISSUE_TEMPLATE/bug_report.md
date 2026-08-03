@@ -44,7 +44,7 @@ labels: bug
      If you can reproduce it in one of the existing examples, mention which one. -->
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 // paste your minimal reproduction here
 ```
@@ -69,7 +69,7 @@ paste error output here
 - **OS:** (e.g. macOS 15.2, Windows 11, Ubuntu 24.04)
 - **Browser + version:** (e.g. Chrome 122.0.6261.94, Firefox 124.0 — include the full version; behaviour differs)
 - **Node.js version:** (run `node -v` — relevant if using the proxy server)
-- **`@lukeocodes/composite-voice` version:** (from your `package.json`)
+- **`composite-voice` version:** (from your `package.json`)
 - **STT provider:** (e.g. `NativeSTT`, `DeepgramSTT` with model `nova-3`)
 - **LLM provider:** (e.g. `AnthropicLLM` with `claude-haiku-4-5-20251001`)
 - **TTS provider:** (e.g. `NativeTTS`, `DeepgramTTS` with `aura-2-thalia-en`)

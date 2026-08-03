@@ -9,14 +9,14 @@ import {
   Button,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
-import type { AgentState, LLMToolDefinition, LLMToolCall, LLMToolResult } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { AgentState, LLMToolDefinition, LLMToolCall, LLMToolResult } from 'composite-voice';
 
 interface ToolEvent {
   type: 'call' | 'result';

@@ -27,7 +27,7 @@ cp examples/63-audio-config/sample.env examples/63-audio-config/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-63-audio-config dev
+pnpm --filter composite-voice-example-63-audio-config dev
 ```
 
 Open [http://localhost:3063](http://localhost:3063) in Chrome or Edge.

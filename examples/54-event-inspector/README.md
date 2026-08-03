@@ -29,7 +29,7 @@ cp examples/54-event-inspector/sample.env examples/54-event-inspector/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-54-event-inspector dev
+pnpm --filter composite-voice-example-54-event-inspector dev
 ```
 
 Open [http://localhost:3054](http://localhost:3054) in Chrome or Edge.

@@ -40,7 +40,7 @@ cp examples/20-anthropic-llm/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-20-anthropic-llm dev
+pnpm --filter composite-voice-example-20-anthropic-llm dev
 ```
 
 Open [http://localhost:3020](http://localhost:3020) in Chrome or Edge.

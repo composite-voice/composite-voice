@@ -39,7 +39,7 @@ cp examples/23-gemini-llm/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-23-gemini-llm dev
+pnpm --filter composite-voice-example-23-gemini-llm dev
 ```
 
 Open [http://localhost:3023](http://localhost:3023) in Chrome or Edge.

@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-25-webllm",
+  "name": "composite-voice-example-25-webllm",
   "version": "0.0.0",
   "private": true,
   "description": "WebLLM in-browser LLM — NativeSTT + WebLLMLLM + NativeTTS, no server needed",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "@mlc-ai/web-llm": "^0.2.74",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

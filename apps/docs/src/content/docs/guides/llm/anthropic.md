@@ -14,7 +14,7 @@ Use `AnthropicLLM` when you want Claude's strong instruction-following and reaso
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -65,7 +65,7 @@ import {
   DeepgramSTT,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

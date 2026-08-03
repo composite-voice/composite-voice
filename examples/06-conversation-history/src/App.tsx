@@ -11,14 +11,14 @@ import {
   Label,
   Checkbox,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
-import type { ConversationHistoryConfig, LLMMessage } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { ConversationHistoryConfig, LLMMessage } from 'composite-voice';
 
 export default function App() {
   const [maxTurns, setMaxTurns] = useState(10);

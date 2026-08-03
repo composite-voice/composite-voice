@@ -14,7 +14,7 @@ Use MurfTTS when you want natural, studio-quality speech synthesis from Murf AI'
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, MurfTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, MurfTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -73,7 +73,7 @@ List voices with Murf's [`GET /v1/speech/voices`](https://murf.ai/api/docs) endp
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, MurfTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, MurfTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new MurfTTS({
   proxyUrl: '/api/proxy/murf',

@@ -6,7 +6,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -19,7 +19,7 @@ import {
   Alert,
   CodeBlock,
   ProgressBar,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 export default function App() {
   const [agent, setAgent] = useState<CompositeVoice | null>(null);

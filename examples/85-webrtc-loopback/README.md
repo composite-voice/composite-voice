@@ -41,7 +41,7 @@ cp examples/85-webrtc-loopback/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-85-webrtc-loopback dev
+pnpm --filter composite-voice-example-85-webrtc-loopback dev
 ```
 
 Open [http://localhost:3085](http://localhost:3085), click **Start Loopback Call**, grant microphone access, and talk. **Wear headphones** — the agent's voice plays out of your speakers and would otherwise feed back into the mic.

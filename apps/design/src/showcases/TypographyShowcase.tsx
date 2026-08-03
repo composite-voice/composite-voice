@@ -1,4 +1,4 @@
-import { Heading, Text } from "@lukeocodes/composite-voice-ui";
+import { Heading, Text } from "composite-voice-ui";
 
 export default function TypographyShowcase() {
   return (

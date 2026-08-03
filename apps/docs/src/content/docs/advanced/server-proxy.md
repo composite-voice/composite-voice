@@ -30,7 +30,7 @@ Browser                          Server                         Provider
 ### Installation
 The proxy is included in the main package:
 ```typescript
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 ```
 
 ### Configuration
@@ -83,7 +83,7 @@ const proxy = createExpressProxy({
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const server = createServer(app);
@@ -108,7 +108,7 @@ Compatible with Express 4/5, Connect, Polka, and Restify.
 Create a catch-all API route at `app/api/proxy/[...path]/route.ts`:
 
 ```typescript
-import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNextJsProxy } from 'composite-voice/proxy';
 
 const proxy = createNextJsProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -125,7 +125,7 @@ Works with any framework that exposes `http.Server`:
 
 ```typescript
 import { createServer } from 'http';
-import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNodeProxy } from 'composite-voice/proxy';
 
 const proxy = createNodeProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,

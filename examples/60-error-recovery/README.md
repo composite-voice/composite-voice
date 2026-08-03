@@ -26,7 +26,7 @@ cp examples/60-error-recovery/sample.env examples/60-error-recovery/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-60-error-recovery dev
+pnpm --filter composite-voice-example-60-error-recovery dev
 ```
 
 Open [http://localhost:3060](http://localhost:3060) in Chrome or Edge.

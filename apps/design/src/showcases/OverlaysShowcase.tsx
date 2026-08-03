@@ -11,7 +11,7 @@ import {
   FormField,
   Alert,
   Prose,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function OverlaysShowcase() {
   const [defaultOpen, setDefaultOpen] = useState(false);

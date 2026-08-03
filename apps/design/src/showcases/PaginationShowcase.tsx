@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pagination, Heading, Text, Alert, Code } from "@lukeocodes/composite-voice-ui";
+import { Pagination, Heading, Text, Alert, Code } from "composite-voice-ui";
 
 export default function PaginationShowcase() {
   const [currentPage1, setCurrentPage1] = useState(1);

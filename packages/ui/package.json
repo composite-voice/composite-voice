@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-ui",
+  "name": "composite-voice-ui",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -11,12 +11,12 @@
     "./agent": "./src/agent/index.ts"
   },
   "peerDependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
+    "composite-voice": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "peerDependenciesMeta": {
-    "@lukeocodes/composite-voice": {
+    "composite-voice": {
       "optional": true
     }
   },

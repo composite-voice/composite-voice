@@ -62,7 +62,7 @@ cp examples/86-google-meet-listener/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-86-google-meet-listener dev
+pnpm --filter composite-voice-example-86-google-meet-listener dev
 ```
 
 Open [http://localhost:3086](http://localhost:3086):

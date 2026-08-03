@@ -92,8 +92,8 @@ If you witness or experience something that violates this code of conduct, pleas
 
 **Step 2:** Report through one of these private channels:
 
-- **GitHub Security Advisory (preferred):** [Open a Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This creates a private channel visible only to the maintainer and is designed for confidential communication.
-- **Direct contact:** Reach the maintainer via [GitHub](https://github.com/lukeocodes).
+- **GitHub Security Advisory (preferred):** [Open a Security Advisory](https://github.com/composite-voice/composite-voice/security/advisories/new). This creates a private channel visible only to the maintainer and is designed for confidential communication.
+- **Direct contact:** Reach the maintainer via [GitHub](https://github.com/composite-voice).
 
 **Step 3:** Include what you're comfortable sharing:
 

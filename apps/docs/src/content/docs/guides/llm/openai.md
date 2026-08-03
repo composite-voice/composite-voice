@@ -14,7 +14,7 @@ Use `OpenAILLM` when you want GPT models for your voice assistant.
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, OpenAILLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, OpenAILLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -66,7 +66,7 @@ import {
   DeepgramSTT,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

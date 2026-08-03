@@ -12,7 +12,7 @@
  *
  * @example
  * ```typescript
- * import { OpenAILLM } from '@lukeocodes/composite-voice';
+ * import { OpenAILLM } from 'composite-voice';
  *
  * const llm = new OpenAILLM({
  *   proxyUrl: '/api/proxy/openai',

@@ -27,7 +27,7 @@ cp examples/52-browser-audio-output/sample.env examples/52-browser-audio-output/
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-52-browser-audio-output dev
+pnpm --filter composite-voice-example-52-browser-audio-output dev
 ```
 
 Open [http://localhost:3052](http://localhost:3052) in Chrome or Edge.

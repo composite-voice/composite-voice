@@ -27,7 +27,7 @@ cp examples/50-microphone-input/sample.env examples/50-microphone-input/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-50-microphone-input dev
+pnpm --filter composite-voice-example-50-microphone-input dev
 ```
 
 Open [http://localhost:3050](http://localhost:3050) in Chrome or Edge.

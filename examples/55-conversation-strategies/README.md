@@ -26,7 +26,7 @@ cp examples/55-conversation-strategies/sample.env examples/55-conversation-strat
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-55-conversation-strategies dev
+pnpm --filter composite-voice-example-55-conversation-strategies dev
 ```
 
 Open [http://localhost:3055](http://localhost:3055) in Chrome or Edge.

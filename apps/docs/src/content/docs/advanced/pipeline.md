@@ -133,7 +133,7 @@ Extend the base classes to add your own input, STT, LLM, TTS, or output provider
 
 **Custom LLM provider:**
 ```typescript
-import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from '@lukeocodes/composite-voice';
+import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from 'composite-voice';
 
 class MyLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
@@ -176,7 +176,7 @@ class MyLLM extends BaseLLMProvider {
 
 **Custom WebSocket TTS provider:**
 ```typescript
-import { LiveTTSProvider, TTSProviderConfig } from '@lukeocodes/composite-voice';
+import { LiveTTSProvider, TTSProviderConfig } from 'composite-voice';
 
 class MyTTS extends LiveTTSProvider {
   private ws: WebSocket | null = null;

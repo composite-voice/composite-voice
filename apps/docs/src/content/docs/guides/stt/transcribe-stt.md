@@ -13,12 +13,12 @@ Use TranscribeSTT when you want real-time transcription backed by Amazon Transcr
 
 No peer dependencies and no AWS SDK are required. TranscribeSTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`, presigns URLs with a built-in WebCrypto SigV4 signer, and frames audio with a built-in `application/vnd.amazon.eventstream` codec.
 
-For production browsers, either set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so AWS credentials stay server-side, or vend temporary credentials (STS `AssumeRole` / Cognito Identity Pools) from your backend and pass an async `credentials` factory.
+For production browsers, either set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so AWS credentials stay server-side, or vend temporary credentials (STS `AssumeRole` / Cognito Identity Pools) from your backend and pass an async `credentials` factory.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -85,7 +85,7 @@ The `sessionToken` is signed into the presigned URL as `X-Amz-Security-Token`.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -142,7 +142,7 @@ Browsers cannot set headers on WebSocket handshakes, so Transcribe streaming aut
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- keep AWS credentials server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- keep AWS credentials server-side
 - [Amazon Transcribe streaming docs](https://docs.aws.amazon.com/transcribe/latest/dg/streaming.html)
 - [API reference: TranscribeSTT](/api/classes/transcribestt)
 - [Providers reference](/reference/providers)

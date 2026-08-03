@@ -39,7 +39,7 @@ cp examples/21-openai-llm/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-21-openai-llm dev
+pnpm --filter composite-voice-example-21-openai-llm dev
 ```
 
 Open [http://localhost:3021](http://localhost:3021) in Chrome or Edge.

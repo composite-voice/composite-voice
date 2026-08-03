@@ -48,7 +48,7 @@ function buildTable(): Uint32Array {
  *
  * @example
  * ```ts
- * import { crc32 } from '@lukeocodes/composite-voice/utils';
+ * import { crc32 } from 'composite-voice/utils';
  *
  * crc32(new TextEncoder().encode('hello')); // 0x3610a686
  * ```

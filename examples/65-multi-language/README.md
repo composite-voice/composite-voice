@@ -27,7 +27,7 @@ cp examples/65-multi-language/sample.env examples/65-multi-language/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-65-multi-language dev
+pnpm --filter composite-voice-example-65-multi-language dev
 ```
 
 Open [http://localhost:3065](http://localhost:3065) in Chrome or Edge.

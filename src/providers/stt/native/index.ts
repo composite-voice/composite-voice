@@ -9,7 +9,7 @@
  *
  * @example
  * ```typescript
- * import { NativeSTT } from '@lukeocodes/composite-voice';
+ * import { NativeSTT } from 'composite-voice';
  *
  * const stt = new NativeSTT({ language: 'en-US', continuous: true });
  * ```

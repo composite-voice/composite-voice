@@ -14,7 +14,7 @@ Use SmallestTTS when you want ultra-low-latency speech synthesis from Smallest.a
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, SmallestTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, SmallestTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -69,7 +69,7 @@ Browse and preview voices in the [Waves console](https://waves.smallest.ai/), or
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, SmallestTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, SmallestTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new SmallestTTS({
   proxyUrl: '/api/proxy/smallest',

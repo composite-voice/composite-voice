@@ -28,7 +28,7 @@ cp examples/61-barge-in/sample.env examples/61-barge-in/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-61-barge-in dev
+pnpm --filter composite-voice-example-61-barge-in dev
 ```
 
 Open [http://localhost:3061](http://localhost:3061) in Chrome or Edge.

@@ -65,7 +65,7 @@ cp examples/87-teams-meeting-agent/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-87-teams-meeting-agent dev
+pnpm --filter composite-voice-example-87-teams-meeting-agent dev
 ```
 
 Open [http://localhost:3087](http://localhost:3087):

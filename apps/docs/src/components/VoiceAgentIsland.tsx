@@ -11,12 +11,12 @@ import {
   AgentPanel,
   ChatPanel,
   useVoiceAgent,
-} from '@lukeocodes/composite-voice-ui/agent';
+} from 'composite-voice-ui/agent';
 import type {
   AgentToolDefinition,
   AgentToolCall,
   AgentToolResult,
-} from '@lukeocodes/composite-voice-ui/agent';
+} from 'composite-voice-ui/agent';
 
 /* ── Credentials ─────────────────────────────── */
 

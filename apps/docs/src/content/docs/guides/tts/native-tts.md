@@ -15,7 +15,7 @@ Use NativeTTS when you need speech synthesis without API keys, external services
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -52,7 +52,7 @@ Voice selection follows this priority: name match, then language match, then loc
 ## Complete example
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const tts = new NativeTTS({
   voiceName: 'Google US English',

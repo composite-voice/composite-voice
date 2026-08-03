@@ -10,7 +10,7 @@ import {
   Alert,
   SettingsIcon,
   InfoIcon,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function TooltipsShowcase() {
   return (

@@ -24,7 +24,7 @@ The package is loaded lazily during `initialize()` -- if it is missing, initiali
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, FishAudioTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, FishAudioTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -90,7 +90,7 @@ Fish Audio also accepts JSON for text-only requests, but inline reference audio 
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, FishAudioTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, FishAudioTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new FishAudioTTS({
   proxyUrl: '/api/proxy/fishaudio',
