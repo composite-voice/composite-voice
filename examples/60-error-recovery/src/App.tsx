@@ -5,8 +5,8 @@ import {
   AnthropicLLM,
   NativeTTS,
   RecoveryOrchestrator,
-} from '@lukeocodes/composite-voice';
-import type { RecoveryStrategy, RecoveryEvent } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { RecoveryStrategy, RecoveryEvent } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -20,7 +20,7 @@ import {
   Select,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 interface RecoveryLogEntry {
   id: number;

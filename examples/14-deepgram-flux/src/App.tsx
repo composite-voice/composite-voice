@@ -9,7 +9,7 @@ import {
   FormField,
   Input,
   Badge,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   DeepgramFlux,
@@ -17,7 +17,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 interface TurnEvent {
   id: number;

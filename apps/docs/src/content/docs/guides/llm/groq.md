@@ -14,7 +14,7 @@ Use `GroqLLM` when you need the lowest possible LLM latency. Groq's custom LPU h
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, GroqLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, GroqLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -67,7 +67,7 @@ import {
   DeepgramSTT,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [

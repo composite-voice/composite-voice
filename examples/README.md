@@ -24,7 +24,7 @@ pnpm install && pnpm build
 Run any example using the generic script:
 
 ```bash
-pnpm example @lukeocodes/composite-voice-example-XX-name dev
+pnpm example composite-voice-example-XX-name dev
 ```
 
 Or navigate into the example directory:
@@ -166,7 +166,7 @@ The `_shared/` directory contains reusable pieces for all examples:
 
 ## Troubleshooting
 
-**"Cannot find module '@lukeocodes/composite-voice'" or blank page**
+**"Cannot find module 'composite-voice'" or blank page**
 
 The SDK must be compiled before examples can import it:
 

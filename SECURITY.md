@@ -15,7 +15,7 @@ Only the latest release receives security updates. If you're running an older ve
 
 **Please do not report security vulnerabilities through public GitHub issues.** A public report before a fix is available tells every potential attacker exactly what to exploit — and puts every person using this SDK at risk.
 
-Instead, please open a [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). This creates a private, encrypted channel visible only to the maintainer. It allows a fix to be developed, tested, and released before any public disclosure.
+Instead, please open a [GitHub Security Advisory](https://github.com/composite-voice/composite-voice/security/advisories/new). This creates a private, encrypted channel visible only to the maintainer. It allows a fix to be developed, tested, and released before any public disclosure.
 
 ### What to include
 
@@ -61,7 +61,7 @@ The SDK includes built-in proxy middleware that keeps all credentials on your se
 // server.ts
 import express from 'express';
 import { createServer } from 'http';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const server = createServer(app);
@@ -86,7 +86,7 @@ import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const stt = new DeepgramSTT({ proxyUrl: '/proxy/deepgram', options: { model: 'nova-3' } });
 const llm = new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: 'claude-haiku-4-5-20251001' });

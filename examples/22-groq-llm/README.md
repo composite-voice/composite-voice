@@ -40,7 +40,7 @@ cp examples/22-groq-llm/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-22-groq-llm dev
+pnpm --filter composite-voice-example-22-groq-llm dev
 ```
 
 Open [http://localhost:3022](http://localhost:3022) in Chrome or Edge.

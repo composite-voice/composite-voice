@@ -20,7 +20,7 @@ CompositeVoice uses five pipeline roles — **input** (audio capture), **STT** (
 Captures audio from the browser's microphone via `getUserMedia` and `AudioContext`. Use this when pairing with a WebSocket-based STT provider like DeepgramSTT or AssemblyAISTT.
 
 ```typescript
-import { MicrophoneInput } from '@lukeocodes/composite-voice';
+import { MicrophoneInput } from 'composite-voice';
 
 const input = new MicrophoneInput({
   sampleRate: 16000,        // audio sample rate in Hz
@@ -36,7 +36,7 @@ const input = new MicrophoneInput({
 Accepts audio data pushed programmatically. Use this for server-side pipelines (Node.js, Bun, Deno) where there is no microphone.
 
 ```typescript
-import { BufferInput } from '@lukeocodes/composite-voice';
+import { BufferInput } from 'composite-voice';
 
 const input = new BufferInput({
   sampleRate: 16000,
@@ -59,7 +59,7 @@ input.push(audioBuffer);
 Extracts mono linear16 PCM from a WebRTC `MediaStreamTrack` the application obtained from any peer connection — LiveKit, Daily, or a raw `RTCPeerConnection`. The app owns the connection and the track; the provider only runs the local processing graph.
 
 ```typescript
-import { WebRTCInput } from '@lukeocodes/composite-voice';
+import { WebRTCInput } from 'composite-voice';
 
 const input = new WebRTCInput({ targetSampleRate: 16000 });
 
@@ -95,7 +95,7 @@ pc.ontrack = (event) => {
 Uses the browser's built-in Web Speech API. Zero API keys required. Best for prototyping and demos.
 
 ```typescript
-import { NativeSTT } from '@lukeocodes/composite-voice';
+import { NativeSTT } from 'composite-voice';
 
 const stt = new NativeSTT({
   language: 'en-US',        // BCP 47 language tag
@@ -118,7 +118,7 @@ const stt = new NativeSTT({
 Production-grade real-time speech recognition via WebSocket using Deepgram's V1 (Nova) API. Best accuracy across the widest range of languages.
 
 ```typescript
-import { DeepgramSTT } from '@lukeocodes/composite-voice';
+import { DeepgramSTT } from 'composite-voice';
 
 const stt = new DeepgramSTT({
   proxyUrl: '/api/proxy/deepgram',   // server proxy (recommended)
@@ -153,7 +153,7 @@ const stt = new DeepgramSTT({
 Low-latency real-time speech recognition via WebSocket using Deepgram's V2 (Flux) API. Supports eager end-of-turn signals for the [eager LLM pipeline](/advanced/pipeline#eager-llm-pipeline).
 
 ```typescript
-import { DeepgramFlux } from '@lukeocodes/composite-voice';
+import { DeepgramFlux } from 'composite-voice';
 
 const stt = new DeepgramFlux({
   proxyUrl: '/api/proxy/deepgram',   // server proxy (recommended)
@@ -179,7 +179,7 @@ const stt = new DeepgramFlux({
 Real-time speech recognition via WebSocket with word boosting for domain-specific vocabulary.
 
 ```typescript
-import { AssemblyAISTT } from '@lukeocodes/composite-voice';
+import { AssemblyAISTT } from 'composite-voice';
 
 const stt = new AssemblyAISTT({
   proxyUrl: '/api/proxy/assemblyai',
@@ -201,7 +201,7 @@ const stt = new AssemblyAISTT({
 Real-time speech recognition via WebSocket using ElevenLabs Scribe V2 with ~150ms latency and 90+ language support.
 
 ```typescript
-import { ElevenLabsSTT } from '@lukeocodes/composite-voice';
+import { ElevenLabsSTT } from 'composite-voice';
 
 const stt = new ElevenLabsSTT({
   proxyUrl: '/api/proxy/elevenlabs',
@@ -228,7 +228,7 @@ const stt = new ElevenLabsSTT({
 Real-time multilingual speech recognition via WebSocket with built-in endpoint detection for turn-taking.
 
 ```typescript
-import { SonioxSTT } from '@lukeocodes/composite-voice';
+import { SonioxSTT } from 'composite-voice';
 
 const stt = new SonioxSTT({
   proxyUrl: '/api/proxy/soniox',
@@ -255,7 +255,7 @@ const stt = new SonioxSTT({
 Real-time speech recognition via Gladia's v2 live API (Solaria models) with configurable server-side endpointing for turn-taking.
 
 ```typescript
-import { GladiaSTT } from '@lukeocodes/composite-voice';
+import { GladiaSTT } from 'composite-voice';
 
 const stt = new GladiaSTT({
   proxyUrl: '/api/proxy/gladia',
@@ -282,7 +282,7 @@ const stt = new GladiaSTT({
 Real-time speech recognition via WebSocket with built-in end-of-utterance detection for turn-taking.
 
 ```typescript
-import { SpeechmaticsSTT } from '@lukeocodes/composite-voice';
+import { SpeechmaticsSTT } from 'composite-voice';
 
 const stt = new SpeechmaticsSTT({
   proxyUrl: '/api/proxy/speechmatics',
@@ -309,7 +309,7 @@ const stt = new SpeechmaticsSTT({
 Real-time speech recognition via WebSocket with punctuated, confidence-scored final transcripts.
 
 ```typescript
-import { RevAISTT } from '@lukeocodes/composite-voice';
+import { RevAISTT } from 'composite-voice';
 
 const stt = new RevAISTT({
   proxyUrl: '/api/proxy/revai',
@@ -335,7 +335,7 @@ const stt = new RevAISTT({
 Real-time speech recognition via OpenAI's Realtime API transcription intent, with server or semantic VAD turn detection.
 
 ```typescript
-import { OpenAIRealtimeSTT } from '@lukeocodes/composite-voice';
+import { OpenAIRealtimeSTT } from 'composite-voice';
 
 const stt = new OpenAIRealtimeSTT({
   proxyUrl: '/api/proxy/openai-realtime',
@@ -360,7 +360,7 @@ const stt = new OpenAIRealtimeSTT({
 Batch (per-utterance) speech recognition via Google Cloud Speech-to-Text's synchronous REST endpoint. Each `transcribe(blob)` call uploads a complete recording (up to 60 seconds) and emits one final result with `utteranceComplete: true`.
 
 ```typescript
-import { GoogleSTT } from '@lukeocodes/composite-voice';
+import { GoogleSTT } from 'composite-voice';
 
 const stt = new GoogleSTT({
   proxyUrl: '/api/proxy/google-stt',
@@ -388,7 +388,7 @@ const stt = new GoogleSTT({
 Microsoft Azure Speech real-time recognition via WebSocket, speaking the same wire protocol as the official Speech SDK.
 
 ```typescript
-import { AzureSTT } from '@lukeocodes/composite-voice';
+import { AzureSTT } from 'composite-voice';
 
 const stt = new AzureSTT({
   proxyUrl: '/api/proxy/azure-stt',
@@ -412,7 +412,7 @@ const stt = new AzureSTT({
 Amazon Transcribe streaming speech recognition over WebSocket, authenticated with SigV4-presigned URLs. No AWS SDK required.
 
 ```typescript
-import { TranscribeSTT } from '@lukeocodes/composite-voice';
+import { TranscribeSTT } from 'composite-voice';
 
 const stt = new TranscribeSTT({
   proxyUrl: '/api/proxy/transcribe',
@@ -453,7 +453,7 @@ const stt = new TranscribeSTT({
 Claude models via the Anthropic API. Uses a dedicated SDK (not OpenAI-compatible).
 
 ```typescript
-import { AnthropicLLM } from '@lukeocodes/composite-voice';
+import { AnthropicLLM } from 'composite-voice';
 
 const llm = new AnthropicLLM({
   proxyUrl: '/api/proxy/anthropic',
@@ -473,7 +473,7 @@ const llm = new AnthropicLLM({
 GPT models via the OpenAI API.
 
 ```typescript
-import { OpenAILLM } from '@lukeocodes/composite-voice';
+import { OpenAILLM } from 'composite-voice';
 
 const llm = new OpenAILLM({
   proxyUrl: '/api/proxy/openai',
@@ -489,7 +489,7 @@ const llm = new OpenAILLM({
 Ultra-fast inference on Groq's LPU hardware. Supports open-source models.
 
 ```typescript
-import { GroqLLM } from '@lukeocodes/composite-voice';
+import { GroqLLM } from 'composite-voice';
 
 const llm = new GroqLLM({
   proxyUrl: '/api/proxy/groq',
@@ -507,7 +507,7 @@ const llm = new GroqLLM({
 Mistral models with strong multilingual support.
 
 ```typescript
-import { MistralLLM } from '@lukeocodes/composite-voice';
+import { MistralLLM } from 'composite-voice';
 
 const llm = new MistralLLM({
   proxyUrl: '/api/proxy/mistral',
@@ -522,7 +522,7 @@ const llm = new MistralLLM({
 Google Gemini models via their OpenAI-compatible endpoint.
 
 ```typescript
-import { GeminiLLM } from '@lukeocodes/composite-voice';
+import { GeminiLLM } from 'composite-voice';
 
 const llm = new GeminiLLM({
   proxyUrl: '/api/proxy/gemini',
@@ -537,7 +537,7 @@ const llm = new GeminiLLM({
 Run LLMs entirely in the browser via WebGPU. No API keys, no network, full privacy.
 
 ```typescript
-import { WebLLMLLM } from '@lukeocodes/composite-voice';
+import { WebLLMLLM } from 'composite-voice';
 
 const llm = new WebLLMLLM({
   model: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
@@ -559,7 +559,7 @@ const llm = new WebLLMLLM({
 Base class for any service that speaks the OpenAI chat completions format. Use this to connect custom or self-hosted models.
 
 ```typescript
-import { OpenAICompatibleLLM } from '@lukeocodes/composite-voice';
+import { OpenAICompatibleLLM } from 'composite-voice';
 
 const llm = new OpenAICompatibleLLM({
   endpoint: 'https://my-model-server.example.com/v1',
@@ -597,7 +597,7 @@ const llm = new OpenAICompatibleLLM({
 Uses the browser's built-in SpeechSynthesis API. Zero API keys required.
 
 ```typescript
-import { NativeTTS } from '@lukeocodes/composite-voice';
+import { NativeTTS } from 'composite-voice';
 
 const tts = new NativeTTS({
   voiceName: 'Samantha',    // partial match against available voices
@@ -620,7 +620,7 @@ const tts = new NativeTTS({
 Low-latency real-time streaming TTS via WebSocket with Aura 2 voices.
 
 ```typescript
-import { DeepgramTTS } from '@lukeocodes/composite-voice';
+import { DeepgramTTS } from 'composite-voice';
 
 const tts = new DeepgramTTS({
   proxyUrl: '/api/proxy/deepgram',
@@ -641,7 +641,7 @@ const tts = new DeepgramTTS({
 OpenAI text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { OpenAITTS } from '@lukeocodes/composite-voice';
+import { OpenAITTS } from 'composite-voice';
 
 const tts = new OpenAITTS({
   proxyUrl: '/api/proxy/openai',
@@ -663,7 +663,7 @@ const tts = new OpenAITTS({
 High-quality voice cloning and synthesis via WebSocket streaming.
 
 ```typescript
-import { ElevenLabsTTS } from '@lukeocodes/composite-voice';
+import { ElevenLabsTTS } from 'composite-voice';
 
 const tts = new ElevenLabsTTS({
   proxyUrl: '/api/proxy/elevenlabs',
@@ -687,7 +687,7 @@ const tts = new ElevenLabsTTS({
 Ultra-low-latency streaming TTS with emotion controls.
 
 ```typescript
-import { CartesiaTTS } from '@lukeocodes/composite-voice';
+import { CartesiaTTS } from 'composite-voice';
 
 const tts = new CartesiaTTS({
   proxyUrl: '/api/proxy/cartesia',
@@ -713,7 +713,7 @@ const tts = new CartesiaTTS({
 Speechify Simba text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { SpeechifyTTS } from '@lukeocodes/composite-voice';
+import { SpeechifyTTS } from 'composite-voice';
 
 const tts = new SpeechifyTTS({
   proxyUrl: '/api/proxy/speechify',
@@ -735,7 +735,7 @@ const tts = new SpeechifyTTS({
 Murf AI Gen2 text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { MurfTTS } from '@lukeocodes/composite-voice';
+import { MurfTTS } from 'composite-voice';
 
 const tts = new MurfTTS({
   proxyUrl: '/api/proxy/murf',
@@ -760,7 +760,7 @@ const tts = new MurfTTS({
 LMNT Blizzard text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { LMNTTTS } from '@lukeocodes/composite-voice';
+import { LMNTTTS } from 'composite-voice';
 
 const tts = new LMNTTTS({
   proxyUrl: '/api/proxy/lmnt',
@@ -784,7 +784,7 @@ const tts = new LMNTTTS({
 Smallest.ai Lightning text-to-speech via the Waves REST API. Returns complete audio in one request.
 
 ```typescript
-import { SmallestTTS } from '@lukeocodes/composite-voice';
+import { SmallestTTS } from 'composite-voice';
 
 const tts = new SmallestTTS({
   proxyUrl: '/api/proxy/smallest',
@@ -807,7 +807,7 @@ const tts = new SmallestTTS({
 Rime text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { RimeTTS } from '@lukeocodes/composite-voice';
+import { RimeTTS } from 'composite-voice';
 
 const tts = new RimeTTS({
   proxyUrl: '/api/proxy/rime',
@@ -829,7 +829,7 @@ const tts = new RimeTTS({
 MiniMax Speech text-to-speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { MiniMaxTTS } from '@lukeocodes/composite-voice';
+import { MiniMaxTTS } from 'composite-voice';
 
 const tts = new MiniMaxTTS({
   proxyUrl: '/api/proxy/minimax',
@@ -853,7 +853,7 @@ Fish Audio speech models (S1, S2 Pro, S2.1 Pro) via REST with msgpack-encoded re
 **Requires the optional peer dependency [`@msgpack/msgpack`](https://www.npmjs.com/package/@msgpack/msgpack)** (`>=3.0.0`) -- Fish Audio's API takes MessagePack request bodies, which also carry binary reference audio for instant voice cloning. Install it with `pnpm add @msgpack/msgpack`. This is the only TTS provider with a peer dependency.
 
 ```typescript
-import { FishAudioTTS } from '@lukeocodes/composite-voice';
+import { FishAudioTTS } from 'composite-voice';
 
 const tts = new FishAudioTTS({
   proxyUrl: '/api/proxy/fishaudio',
@@ -876,7 +876,7 @@ const tts = new FishAudioTTS({
 Google Cloud Text-to-Speech via REST. Returns complete audio in one request.
 
 ```typescript
-import { GoogleTTS } from '@lukeocodes/composite-voice';
+import { GoogleTTS } from 'composite-voice';
 
 const tts = new GoogleTTS({
   proxyUrl: '/api/proxy/google-tts',
@@ -900,7 +900,7 @@ const tts = new GoogleTTS({
 Microsoft Azure Speech text-to-speech via REST (SSML). Returns complete audio in one request.
 
 ```typescript
-import { AzureTTS } from '@lukeocodes/composite-voice';
+import { AzureTTS } from 'composite-voice';
 
 const tts = new AzureTTS({
   proxyUrl: '/api/proxy/azure-tts',
@@ -924,7 +924,7 @@ const tts = new AzureTTS({
 Amazon Polly text-to-speech via SigV4-signed REST calls. Returns complete audio in one request. No AWS SDK required.
 
 ```typescript
-import { PollyTTS } from '@lukeocodes/composite-voice';
+import { PollyTTS } from 'composite-voice';
 
 const tts = new PollyTTS({
   proxyUrl: '/api/proxy/polly',
@@ -957,7 +957,7 @@ Agent providers collapse the STT + LLM + TTS pipeline into a single persistent c
 Connects to the Deepgram Voice Agent API via a single WebSocket. Deepgram handles speech recognition, LLM inference, and text-to-speech synthesis server-side -- the client only sends raw audio and receives raw audio back.
 
 ```typescript
-import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -1002,7 +1002,7 @@ const voice = new CompositeVoice({
 Plays audio through the browser's `AudioContext` and speakers. Use this when pairing with a WebSocket-based or REST-based TTS provider like DeepgramTTS, ElevenLabsTTS, or OpenAITTS.
 
 ```typescript
-import { BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { BrowserAudioOutput } from 'composite-voice';
 
 const output = new BrowserAudioOutput();
 ```
@@ -1015,7 +1015,7 @@ const output = new BrowserAudioOutput();
 Silently discards all audio. Use this for server-side pipelines where there are no speakers.
 
 ```typescript
-import { NullOutput } from '@lukeocodes/composite-voice';
+import { NullOutput } from 'composite-voice';
 
 const output = new NullOutput();
 ```
@@ -1031,7 +1031,7 @@ const output = new NullOutput();
 Renders TTS audio into a publishable `MediaStreamTrack` so the agent's voice can be added to any WebRTC room.
 
 ```typescript
-import { WebRTCOutput } from '@lukeocodes/composite-voice';
+import { WebRTCOutput } from 'composite-voice';
 
 const output = new WebRTCOutput();
 await output.initialize();
@@ -1060,7 +1060,7 @@ Platform providers connect the pipeline to call and chat platforms.
 Duplex provider for [Twilio Media Streams](https://www.twilio.com/docs/voice/media-streams). Your server accepts Twilio's `<Connect><Stream>` WebSocket and hands each socket to the provider.
 
 ```typescript
-import { TwilioMediaStream } from '@lukeocodes/composite-voice';
+import { TwilioMediaStream } from 'composite-voice';
 
 const twilio = new TwilioMediaStream();
 wss.on('connection', (socket) => twilio.attach(socket));
@@ -1077,7 +1077,7 @@ wss.on('connection', (socket) => twilio.attach(socket));
 Duplex provider for the [Vonage Voice API WebSocket](https://developer.vonage.com/en/voice/voice-api/concepts/websockets) endpoint. Your NCCO `connect` action points at your server; each accepted socket is handed to the provider.
 
 ```typescript
-import { VonageAudioSocket } from '@lukeocodes/composite-voice';
+import { VonageAudioSocket } from 'composite-voice';
 
 const vonage = new VonageAudioSocket();
 wss.on('connection', (socket) => vonage.attach(socket));
@@ -1095,7 +1095,7 @@ wss.on('connection', (socket) => vonage.attach(socket));
 Puts the agent in a Discord voice channel. Your bot joins the channel with `@discordjs/voice`'s `joinVoiceChannel` and hands the connection to the provider.
 
 ```typescript
-import { DiscordVoice } from '@lukeocodes/composite-voice';
+import { DiscordVoice } from 'composite-voice';
 import { joinVoiceChannel } from '@discordjs/voice';
 
 const discord = new DiscordVoice();
@@ -1113,7 +1113,7 @@ discord.attach(joinVoiceChannel({ channelId, guildId, adapterCreator, selfDeaf: 
 Streams live Zoom meeting audio into the pipeline via [Realtime Media Streams](https://developers.zoom.us/docs/rtms/). Zero dependencies — the RTMS signaling/media WebSocket protocol (HMAC-SHA256 handshakes, keep-alives, base64 L16 audio) is implemented directly.
 
 ```typescript
-import { ZoomRtmsInput } from '@lukeocodes/composite-voice';
+import { ZoomRtmsInput } from 'composite-voice';
 
 const zoom = new ZoomRtmsInput({ clientId, clientSecret });
 
@@ -1132,7 +1132,7 @@ await zoom.connect({ meetingUuid, rtmsStreamId, serverUrl });
 Joins a Google Meet conference through the [Meet Media API](https://developers.google.com/workspace/meet/media-api/guides/overview) and mixes the conference audio into the pipeline. Zero dependencies — the WebRTC offer/answer exchange (`spaces.connectActiveConference`), session-control and media-stats data channels are implemented directly, following Google's reference client.
 
 ```typescript
-import { GoogleMeetInput } from '@lukeocodes/composite-voice';
+import { GoogleMeetInput } from 'composite-voice';
 
 const meet = new GoogleMeetInput({
   apiKey: async () => getOAuthAccessToken(), // meetings.conference.media.audio.readonly
@@ -1151,7 +1151,7 @@ const meet = new GoogleMeetInput({
 Joins a Microsoft Teams meeting as an external participant via [Azure Communication Services Teams interop](https://learn.microsoft.com/en-us/azure/communication-services/concepts/teams-interop), with raw media access in both directions.
 
 ```typescript
-import { TeamsCall } from '@lukeocodes/composite-voice';
+import { TeamsCall } from 'composite-voice';
 
 const teams = new TeamsCall({
   token: acsUserAccessToken,

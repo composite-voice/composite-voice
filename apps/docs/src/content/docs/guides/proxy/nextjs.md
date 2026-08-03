@@ -14,7 +14,7 @@ Use the Next.js adapter when your application already runs on Next.js 13+ with t
 ## Install dependencies
 
 ```bash
-pnpm add @lukeocodes/composite-voice
+pnpm add composite-voice
 ```
 
 No extra server packages are needed -- the adapter works with the built-in Next.js runtime.
@@ -24,7 +24,7 @@ No extra server packages are needed -- the adapter works with the built-in Next.
 Create a catch-all API route at `app/api/proxy/[...path]/route.ts`:
 
 ```typescript
-import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNextJsProxy } from 'composite-voice/proxy';
 
 const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -91,7 +91,7 @@ For self-hosted Next.js deployments (not Vercel), use a custom server with `crea
 Point HTTP providers at the proxy URL:
 
 ```typescript
-import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM, NativeSTT, NativeTTS } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -156,6 +156,6 @@ const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
 
 ## Further reading
 
-- [Example: Next.js proxy](https://github.com/lukeocodes/composite-voice/tree/main/examples/11-nextjs-proxy)
+- [Example: Next.js proxy](https://github.com/composite-voice/composite-voice/tree/main/examples/11-nextjs-proxy)
 - [Server Proxy overview](/advanced/server-proxy)
 - [Node.js adapter](/guides/proxy/node) -- for WebSocket provider support

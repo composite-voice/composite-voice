@@ -1,4 +1,4 @@
-import { Banner, Heading, Text, Alert, Code } from "@lukeocodes/composite-voice-ui";
+import { Banner, Heading, Text, Alert, Code } from "composite-voice-ui";
 
 export default function BannersShowcase() {
   return (

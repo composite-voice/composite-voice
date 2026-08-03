@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-80-twilio-phone-agent",
+  "name": "composite-voice-example-80-twilio-phone-agent",
   "version": "0.1.0",
   "private": true,
   "description": "Phone agent on Twilio Media Streams — TwilioMediaStream + SpeechmaticsSTT + AnthropicLLM + DeepgramTTS, one pipeline per call",
@@ -9,7 +9,7 @@
     "start": "PORT=3080 node --env-file=.env --import tsx/esm server.ts"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
+    "composite-voice": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

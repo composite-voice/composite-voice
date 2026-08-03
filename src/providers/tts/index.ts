@@ -46,7 +46,7 @@
  *
  * @example
  * ```typescript
- * import { DeepgramTTS, ElevenLabsTTS, OpenAITTS } from '@lukeocodes/composite-voice/providers/tts';
+ * import { DeepgramTTS, ElevenLabsTTS, OpenAITTS } from 'composite-voice/providers/tts';
  *
  * const tts = new DeepgramTTS({
  *   proxyUrl: '/api/proxy/deepgram',

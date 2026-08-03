@@ -13,12 +13,12 @@ Use ElevenLabsSTT when you need low-latency real-time transcription (~150ms) wit
 
 ElevenLabsSTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side. The proxy uses the same `elevenlabsApiKey` config used for ElevenLabsTTS.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side. The proxy uses the same `elevenlabsApiKey` config used for ElevenLabsTTS.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -103,7 +103,7 @@ Omit the `language` option entirely to enable auto-detection (90+ languages).
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, ElevenLabsSTT, AnthropicLLM, ElevenLabsTTS, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -162,9 +162,9 @@ ElevenLabsSTT sets `utteranceComplete: true` when the server sends a committed o
 
 ## Related resources
 
-- [ElevenLabs STT example](https://github.com/lukeocodes/composite-voice/tree/main/examples/81-elevenlabs-stt) -- standalone STT with proxy
-- [ElevenLabs pipeline example](https://github.com/lukeocodes/composite-voice/tree/main/examples/80-elevenlabs-pipeline) -- full ElevenLabs STT + TTS pipeline
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [ElevenLabs STT example](https://github.com/composite-voice/composite-voice/tree/main/examples/81-elevenlabs-stt) -- standalone STT with proxy
+- [ElevenLabs pipeline example](https://github.com/composite-voice/composite-voice/tree/main/examples/80-elevenlabs-pipeline) -- full ElevenLabs STT + TTS pipeline
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [ElevenLabsTTS guide](/guides/tts/elevenlabs-tts) -- ElevenLabs text-to-speech provider
 - [API reference: ElevenLabsSTT](/api/classes/elevenlabsstt)
 - [Providers reference](/reference/providers)

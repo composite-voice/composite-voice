@@ -13,7 +13,7 @@ order: 1
 ## Install
 
 ```bash
-pnpm add @lukeocodes/composite-voice
+pnpm add composite-voice
 ```
 
 ## Your first voice pipeline
@@ -24,7 +24,7 @@ The simplest pipeline is an LLM-only text agent. When no providers are supplied 
 import {
   CompositeVoice,
   AnthropicLLM,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -85,7 +85,7 @@ Create an Express server:
 
 ```typescript
 import express from 'express';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const proxy = createExpressProxy({
@@ -111,7 +111,7 @@ If you want production-quality voice with minimal configuration, **agent provide
 import {
   CompositeVoice,
   DeepgramAgent,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -120,7 +120,7 @@ const voice = new CompositeVoice({
 });
 ```
 
-This replaces three separate providers with a single connection. See the [Agent Providers guide](/guides/agents) and the [70-deepgram-agent example](https://github.com/lukeocodes/composite-voice/tree/main/examples/70-deepgram-agent) for a full walkthrough.
+This replaces three separate providers with a single connection. See the [Agent Providers guide](/guides/agents) and the [70-deepgram-agent example](https://github.com/composite-voice/composite-voice/tree/main/examples/70-deepgram-agent) for a full walkthrough.
 
 ## Upgrade to cloud providers
 
@@ -134,7 +134,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -168,4 +168,4 @@ Every provider you configure in the proxy gets its own route. Add keys for only 
 - [Configuration](/guides/configuration) -- pipeline options, turn-taking, and audio settings
 - [Providers](/reference/providers) -- all available STT, LLM, and TTS providers
 - [Events](/reference/events) -- the full event reference
-- [Examples](https://github.com/lukeocodes/composite-voice/tree/main/examples) -- runnable demo apps
+- [Examples](https://github.com/composite-voice/composite-voice/tree/main/examples) -- runnable demo apps

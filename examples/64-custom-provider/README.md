@@ -27,7 +27,7 @@ No API keys needed for this example.
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-64-custom-provider dev
+pnpm --filter composite-voice-example-64-custom-provider dev
 ```
 
 Open [http://localhost:3064](http://localhost:3064) in Chrome or Edge.

@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-40-express-proxy",
+  "name": "composite-voice-example-40-express-proxy",
   "version": "0.1.0",
   "private": true,
   "description": "Express proxy with full security config — rateLimit, maxBodySize, authenticate, CORS",
@@ -13,7 +13,7 @@
     "start": "tsx server.ts"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
+    "composite-voice": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

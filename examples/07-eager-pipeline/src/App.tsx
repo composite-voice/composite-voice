@@ -9,7 +9,7 @@ import {
   Button,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 import {
   CompositeVoice,
   DeepgramFlux,
@@ -17,8 +17,8 @@ import {
   SpeechifyTTS,
   MicrophoneInput,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
-import type { AgentState } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { AgentState } from 'composite-voice';
 
 interface TimingEvent {
   label: string;

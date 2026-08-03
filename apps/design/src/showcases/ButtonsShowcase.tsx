@@ -10,7 +10,7 @@ import {
   SettingsIcon,
   ArrowRightIcon,
   ChevronDownIcon,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function ButtonsShowcase() {
   return (

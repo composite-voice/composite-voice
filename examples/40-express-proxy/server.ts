@@ -16,7 +16,7 @@ import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3041);

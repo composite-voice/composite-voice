@@ -12,7 +12,7 @@ Use SpeechmaticsSTT when you need real-time transcription across 50+ languages w
 
 No peer dependencies are required. SpeechmaticsSTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side, or generate [temporary keys](https://docs.speechmatics.com) (JWTs) server-side and pass an async `apiKey` factory.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side, or generate [temporary keys](https://docs.speechmatics.com) (JWTs) server-side and pass an async `apiKey` factory.
 
 ## Basic setup
 
@@ -23,7 +23,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -77,7 +77,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -138,6 +138,6 @@ Keep `endOfUtteranceSilenceTrigger` at its default (`0.75`, within Speechmatics'
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: SpeechmaticsSTT](/api/classes/speechmaticsstt)
 - [Providers reference](/reference/providers)

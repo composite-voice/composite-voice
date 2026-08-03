@@ -12,12 +12,12 @@ Use AssemblyAISTT when you need real-time transcription with word boosting for d
 
 No peer dependencies are required. AssemblyAISTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -56,7 +56,7 @@ See the [API reference](/api/classes/assemblyaistt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, AssemblyAISTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -107,6 +107,6 @@ AssemblyAISTT sets `utteranceComplete: true` on `FinalTranscript` messages from 
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: AssemblyAISTT](/api/classes/assemblyaistt)
 - [Providers reference](/reference/providers)

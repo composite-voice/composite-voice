@@ -10,7 +10,7 @@ Quick answers for the most common issues developers hit when building with Compo
 
 ## Setup & Installation
 
-### "Cannot find module '@lukeocodes/composite-voice'"
+### "Cannot find module 'composite-voice'"
 
 The SDK must be built before examples or consuming apps can import it:
 
@@ -312,5 +312,5 @@ Before deploying:
 
 - Enable debug logging: `logging: { enabled: true, level: 'debug' }` — the SDK logs every state transition, WebSocket message, and provider call.
 - Check the [Error Recovery guide](/advanced/error-recovery) for auto-recovery patterns.
-- Browse the [examples](https://github.com/lukeocodes/composite-voice/tree/main/examples) — each one has a troubleshooting section in its README.
-- Open an issue on [GitHub](https://github.com/lukeocodes/composite-voice/issues).
+- Browse the [examples](https://github.com/composite-voice/composite-voice/tree/main/examples) — each one has a troubleshooting section in its README.
+- Open an issue on [GitHub](https://github.com/composite-voice/composite-voice/issues).

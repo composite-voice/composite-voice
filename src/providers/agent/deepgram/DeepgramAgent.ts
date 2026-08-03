@@ -19,7 +19,7 @@
  *
  * @example
  * ```typescript
- * import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+ * import { CompositeVoice, DeepgramAgent } from 'composite-voice';
  *
  * const voice = new CompositeVoice({
  *   providers: [

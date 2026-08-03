@@ -17,7 +17,7 @@
  * @example
  * ```typescript
  * import http from 'http';
- * import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNodeProxy } from 'composite-voice/proxy';
  *
  * const proxy = createNodeProxy({
  *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -96,7 +96,7 @@ export interface NodeProxyHandlers {
  * @example
  * ```typescript
  * import http from 'http';
- * import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNodeProxy } from 'composite-voice/proxy';
  *
  * const proxy = createNodeProxy({
  *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,

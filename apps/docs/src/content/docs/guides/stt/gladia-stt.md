@@ -14,12 +14,12 @@ No peer dependencies are required. GladiaSTT initiates the session with native `
 
 Gladia's live flow has two steps: a `POST /v2/live` session-init request (this is where the API key goes, via the `x-gladia-key` header) that returns a WebSocket URL with an embedded single-use token, then a direct WebSocket connection to that URL. Because only the init request needs credentials, the proxy forwards just that one POST — audio always streams straight to Gladia.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, GladiaSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, GladiaSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -68,7 +68,7 @@ See the [API reference](/api/classes/gladiastt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, GladiaSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, GladiaSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -124,6 +124,6 @@ Gladia's default endpointing (0.05 s) is very aggressive and can split sentences
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [API reference: GladiaSTT](/api/classes/gladiastt)
 - [Providers reference](/reference/providers)

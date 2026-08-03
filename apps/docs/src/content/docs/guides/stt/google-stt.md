@@ -18,7 +18,7 @@ Use GoogleSTT when you want Google Cloud Speech-to-Text's recognition models in 
 GoogleSTT works with any code path that produces complete audio recordings -- for example a `MediaRecorder`-based capture flow, uploaded files, or server-side buffers:
 
 ```typescript
-import { GoogleSTT } from '@lukeocodes/composite-voice';
+import { GoogleSTT } from 'composite-voice';
 
 const stt = new GoogleSTT({
   proxyUrl: '/api/proxy/google-stt',

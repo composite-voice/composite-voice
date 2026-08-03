@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-81-vonage-phone-agent",
+  "name": "composite-voice-example-81-vonage-phone-agent",
   "version": "0.1.0",
   "private": true,
   "description": "Phone agent on the Vonage Voice API WebSocket bridge — VonageAudioSocket + SpeechmaticsSTT + AnthropicLLM + DeepgramTTS, one pipeline per call",
@@ -9,7 +9,7 @@
     "start": "PORT=3081 node --env-file=.env --import tsx/esm server.ts"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
+    "composite-voice": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

@@ -26,7 +26,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   NullOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const { ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_SECRET_TOKEN, SPEECHMATICS_API_KEY, ANTHROPIC_API_KEY } =
   process.env;

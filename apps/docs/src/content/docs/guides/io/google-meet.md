@@ -33,7 +33,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   NullOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const meet = new GoogleMeetInput({
   // OAuth access token — prefer an async factory so a fresh token is used

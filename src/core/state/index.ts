@@ -15,8 +15,8 @@
  *
  * @example
  * ```typescript
- * import { AgentStateMachine } from '@lukeocodes/composite-voice';
- * import type { AgentState } from '@lukeocodes/composite-voice';
+ * import { AgentStateMachine } from 'composite-voice';
+ * import type { AgentState } from 'composite-voice';
  * ```
  */
 

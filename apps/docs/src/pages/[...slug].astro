@@ -1,7 +1,7 @@
 ---
 import { getCollection, render } from "astro:content";
 import DocsLayout from "../layouts/DocsLayout.astro";
-import { Prose } from "@lukeocodes/composite-voice-ui";
+import { Prose } from "composite-voice-ui";
 
 export async function getStaticPaths() {
   const entries = await getCollection("docs");

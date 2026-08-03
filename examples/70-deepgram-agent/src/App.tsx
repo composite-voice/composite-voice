@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 

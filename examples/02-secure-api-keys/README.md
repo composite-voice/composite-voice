@@ -13,7 +13,7 @@ Demonstrates the Express proxy pattern for keeping API keys server-side. The bro
 ## What you'll learn
 
 - Why API keys in browser bundles are a security risk — they're visible in DevTools to anyone
-- How `createExpressProxy` from `@lukeocodes/composite-voice/proxy` works
+- How `createExpressProxy` from `composite-voice/proxy` works
 - How `proxyUrl` replaces `apiKey` in every provider config
 - Running a separate Express proxy server alongside Vite with `concurrently`
 - Why env vars must **not** use the `VITE_` prefix to remain server-side only
@@ -75,7 +75,7 @@ SPEECHIFY_API_KEY=your-speechify-key-here
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/cv-example-02-secure-api-keys dev
+pnpm --filter cv-example-02-secure-api-keys dev
 ```
 
 This starts both the Express proxy on [http://localhost:3001](http://localhost:3001) and the Vite dev server on [http://localhost:3002](http://localhost:3002).
@@ -95,7 +95,7 @@ Open [http://localhost:3002](http://localhost:3002).
 
 ```typescript
 import express from 'express';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const proxy = createExpressProxy({
@@ -150,7 +150,7 @@ The Express proxy is configured with `cors: { origins: ['http://localhost:3002']
 
 `proxy.attachWebSocket(server)` must be called with the `http.Server` instance returned by `app.listen()`. This enables WebSocket proxying for Speechmatics STT. SpeechifyTTS is REST, so it goes through `proxy.middleware` instead.
 
-**"Cannot find module '@lukeocodes/composite-voice'"**
+**"Cannot find module 'composite-voice'"**
 
 The SDK must be built before examples can import it:
 

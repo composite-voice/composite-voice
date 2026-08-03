@@ -25,7 +25,7 @@ import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const input = new WebRTCInput({ targetSampleRate: 16000 });
 const output = new WebRTCOutput({ sampleRate: 48000 });

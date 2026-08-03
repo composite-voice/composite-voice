@@ -5,8 +5,8 @@ import {
   NativeSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
-import type { AudioInputConfig } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { AudioInputConfig } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import {
@@ -21,7 +21,7 @@ import {
   Alert,
   ProgressBar,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 const SAMPLE_RATES = [8000, 16000, 24000, 44100, 48000];
 const FORMATS = ['pcm', 'opus', 'mp3', 'wav', 'webm'];

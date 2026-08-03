@@ -5,7 +5,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   NativeTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Card,
@@ -17,7 +17,7 @@ import {
   Label,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 // Speechmatics takes an ISO 639-1 language code plus an optional `outputLocale`
 // that only affects transcript spelling. `id` is the selector value — English

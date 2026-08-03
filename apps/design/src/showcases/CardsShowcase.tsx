@@ -11,7 +11,7 @@ import {
   Text,
   Heading,
   BrandName,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 export default function CardsShowcase() {
   return (

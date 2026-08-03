@@ -122,7 +122,7 @@ export interface AwsSigV4RouteConfig {
  *
  * @example
  * ```typescript
- * import { buildRoutes } from '@lukeocodes/composite-voice/proxy';
+ * import { buildRoutes } from 'composite-voice/proxy';
  *
  * const routes = buildRoutes({
  *   anthropicApiKey: 'sk-...',

@@ -51,7 +51,7 @@ check_vite_example() {
   fi
 
   # Write the temp file inside the example directory so tsc can resolve
-  # @lukeocodes/composite-voice via the workspace symlink in node_modules.
+  # composite-voice via the workspace symlink in node_modules.
   local ts_file="$example_dir/__check_imports.ts"
 
   python3 - "$html_file" "$ts_file" << 'PYEOF'
@@ -90,7 +90,7 @@ with open(ts_path, 'w') as f:
 PYEOF
 
   # If the generated file only has `export {};`, there are no SDK imports
-  if ! grep -q '@lukeocodes/composite-voice' "$ts_file" 2>/dev/null; then
+  if ! grep -q 'composite-voice' "$ts_file" 2>/dev/null; then
     rm -f "$ts_file"
     printf "  ${YELLOW}SKIP${NC}  %-45s (no SDK imports in HTML)\n" "$example_name"
     skipped=$((skipped + 1))
@@ -154,7 +154,7 @@ check_ts_example() {
   # Filter to only files that reference the SDK
   local sdk_files=()
   for f in "${ts_files[@]}"; do
-    if grep -q '@lukeocodes/composite-voice' "$f" 2>/dev/null; then
+    if grep -q 'composite-voice' "$f" 2>/dev/null; then
       sdk_files+=("$f")
     fi
   done
@@ -181,7 +181,7 @@ for src in source_files:
     # Strip template literal strings to avoid matching imports inside code examples
     content = re.sub(r'`[^`]*`', '""', content, flags=re.DOTALL)
     for m in re.finditer(
-        r"(import\s*(?:type\s*)?\{[^}]+\}\s*from\s*['\"]@lukeocodes/composite-voice(?:/[^'\"]*)?['\"])\s*;?",
+        r"(import\s*(?:type\s*)?\{[^}]+\}\s*from\s*['\"]composite-voice(?:/[^'\"]*)?['\"])\s*;?",
         content, re.DOTALL
     ):
         # Skip UI package imports — only check SDK imports
@@ -205,7 +205,7 @@ with open(out_path, 'w') as f:
         f.write('export {};\n')
 PYEOF
 
-  if ! grep -q '@lukeocodes/composite-voice' "$ts_check" 2>/dev/null; then
+  if ! grep -q 'composite-voice' "$ts_check" 2>/dev/null; then
     rm -f "$ts_check"
     return 0
   fi

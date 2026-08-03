@@ -56,7 +56,7 @@
  *   DeepgramSTT,
  *   AnthropicLLM,
  *   DeepgramTTS,
- * } from '@lukeocodes/composite-voice';
+ * } from 'composite-voice';
  *
  * const vonage = new VonageAudioSocket();
  * const agent = new CompositeVoice({
@@ -290,7 +290,7 @@ export type VonageDtmfCallback = (digit: string, duration?: number) => void;
  * @example
  * ```typescript
  * import { WebSocketServer } from 'ws';
- * import { VonageAudioSocket } from '@lukeocodes/composite-voice';
+ * import { VonageAudioSocket } from 'composite-voice';
  *
  * const vonage = new VonageAudioSocket({ debug: true });
  * await vonage.initialize();

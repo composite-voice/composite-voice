@@ -18,7 +18,7 @@ import {
   PackageIcon,
   CodeIcon,
   FilterIcon,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 const CV_DOCS_URL = process.env.CV_DOCS_URL || "/";
 const version = pkg.version;
@@ -77,7 +77,7 @@ const exampleCode = `import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from "@lukeocodes/composite-voice";
+} from "composite-voice";
 
 const voice = new CompositeVoice({
   providers: [
@@ -114,13 +114,13 @@ await voice.startListening();`;
         <Button as="a" href={`${CV_DOCS_URL}/guides/getting-started/`} size="lg" client:load>
           Get Started
         </Button>
-        <Button as="a" href="https://github.com/lukeocodes/composite-voice" variant="outline" size="lg" client:load>
+        <Button as="a" href="https://github.com/composite-voice/composite-voice" variant="outline" size="lg" client:load>
           GitHub
         </Button>
       </div>
 
       <div class="mt-8 flex justify-center">
-        <CopyCommand command={`pnpm i @lukeocodes/composite-voice@${version}`} client:load />
+        <CopyCommand command={`pnpm i composite-voice@${version}`} client:load />
       </div>
     </div>
   </section>
@@ -212,7 +212,7 @@ await voice.startListening();`;
           Read the Docs
         </a>
         <a
-          href="https://github.com/lukeocodes/composite-voice"
+          href="https://github.com/composite-voice/composite-voice"
           class="inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-button border border-on-filled/30 text-on-filled hover:bg-on-filled/10 transition-colors"
           target="_blank"
           rel="noopener noreferrer"

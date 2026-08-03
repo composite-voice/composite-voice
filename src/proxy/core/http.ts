@@ -153,7 +153,7 @@ export class BodyTooLargeError extends Error {
  *
  * @example
  * ```typescript
- * import { forwardHttpRequest } from '@lukeocodes/composite-voice/proxy';
+ * import { forwardHttpRequest } from 'composite-voice/proxy';
  *
  * await forwardHttpRequest(req, res, 'https://api.anthropic.com/v1/messages', {
  *   'x-api-key': process.env.ANTHROPIC_API_KEY!,

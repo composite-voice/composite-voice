@@ -14,7 +14,7 @@
  *
  * @example
  * ```typescript
- * import { DeepgramSTT, AnthropicLLM, DeepgramTTS } from '@lukeocodes/composite-voice/providers';
+ * import { DeepgramSTT, AnthropicLLM, DeepgramTTS } from 'composite-voice/providers';
  * ```
  */
 

@@ -29,7 +29,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@lukeocodes/composite-voice': path.resolve(__dirname, '../../dist/index.mjs'),
+      'composite-voice': path.resolve(__dirname, '../../dist/index.mjs'),
     },
   },
 });

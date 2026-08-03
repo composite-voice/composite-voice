@@ -19,7 +19,7 @@
  * @example
  * ```typescript
  * // app/api/proxy/[...path]/route.ts
- * import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNextJsProxy } from 'composite-voice/proxy';
  *
  * const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
  *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
@@ -120,7 +120,7 @@ async function readStreamToBytes(
  * @example
  * ```typescript
  * // app/api/proxy/[...path]/route.ts
- * import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+ * import { createNextJsProxy } from 'composite-voice/proxy';
  *
  * const { GET, POST, PUT, DELETE, PATCH, OPTIONS } = createNextJsProxy({
  *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,

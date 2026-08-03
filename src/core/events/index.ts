@@ -12,8 +12,8 @@
  *
  * @example
  * ```typescript
- * import { EventEmitter } from '@lukeocodes/composite-voice';
- * import type { TranscriptionEvent, LLMEvent, TTSEvent } from '@lukeocodes/composite-voice';
+ * import { EventEmitter } from 'composite-voice';
+ * import type { TranscriptionEvent, LLMEvent, TTSEvent } from 'composite-voice';
  *
  * const emitter = new EventEmitter();
  * emitter.on('transcription:speechFinal', (event: TranscriptionSpeechFinalEvent) => {

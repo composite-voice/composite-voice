@@ -53,7 +53,7 @@ import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],

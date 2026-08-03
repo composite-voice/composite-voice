@@ -19,7 +19,7 @@ Errors in a CompositeVoice agent fall into three broad categories:
 Set `autoRecover: true` on the top-level config to let the SDK attempt automatic recovery from provider errors instead of propagating them immediately. When enabled, the SDK reinitializes crashed providers and resumes the pipeline where possible.
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -149,7 +149,7 @@ agent.on('audio.playback.error', (event) => {
 All SDK-thrown errors extend `CompositeVoiceError`, which adds structured metadata to the standard `Error` class:
 
 ```typescript
-import { CompositeVoiceError } from '@lukeocodes/composite-voice';
+import { CompositeVoiceError } from 'composite-voice';
 
 agent.on('agent.error', (event) => {
   if (event.error instanceof CompositeVoiceError) {
@@ -268,7 +268,7 @@ const agent = new CompositeVoice({
 **Handle microphone permission denial at initialization.** The `MicrophonePermissionError` is the most common non-recoverable error. Catch it early and show a clear prompt:
 
 ```typescript
-import { MicrophonePermissionError } from '@lukeocodes/composite-voice';
+import { MicrophonePermissionError } from 'composite-voice';
 
 try {
   await agent.initialize();
@@ -309,7 +309,7 @@ import {
   BrowserAudioOutput,
   CompositeVoiceError,
   MicrophonePermissionError,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -389,4 +389,4 @@ try {
 }
 ```
 
-See the [Events reference](/reference/events) for the full event catalog and [Example 04 (Error Recovery)](https://github.com/lukeocodes/composite-voice/tree/main/examples/04-error-recovery) for a runnable demo with error simulation.
+See the [Events reference](/reference/events) for the full event catalog and [Example 04 (Error Recovery)](https://github.com/composite-voice/composite-voice/tree/main/examples/04-error-recovery) for a runnable demo with error simulation.

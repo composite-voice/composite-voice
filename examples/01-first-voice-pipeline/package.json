@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/cv-example-01-first-voice-pipeline",
+  "name": "cv-example-01-first-voice-pipeline",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -6,7 +6,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   SpeechifyTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Alert,
@@ -15,7 +15,7 @@ import {
   Card,
   CardBody,
   CardTitle,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 type Status = 'idle' | 'connecting' | 'live';
 

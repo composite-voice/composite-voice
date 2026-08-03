@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice",
+  "name": "composite-voice",
   "version": "0.1.2",
   "description": "Extensible composite AI voice-agent browser SDK",
   "main": "dist/index.js",
@@ -136,12 +136,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lukeocodes/composite-voice.git"
+    "url": "https://github.com/composite-voice/composite-voice.git"
   },
   "bugs": {
-    "url": "https://github.com/lukeocodes/composite-voice/issues"
+    "url": "https://github.com/composite-voice/composite-voice/issues"
   },
-  "homepage": "https://github.com/lukeocodes/composite-voice#readme",
+  "homepage": "https://github.com/composite-voice/composite-voice#readme",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@discordjs/opus"

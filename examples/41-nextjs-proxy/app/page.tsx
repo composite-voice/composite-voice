@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 export default function Home() {
   const agentRef = useRef<CompositeVoice | null>(null);

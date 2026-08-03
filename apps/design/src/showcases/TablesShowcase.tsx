@@ -12,7 +12,7 @@ import {
   Text,
   Alert,
   Code,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 const users = [
   { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "Admin", status: "Active" },

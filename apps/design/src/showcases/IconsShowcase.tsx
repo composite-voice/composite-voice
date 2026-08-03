@@ -130,7 +130,7 @@ import {
   MoreHorizontalIcon,
   MoreVerticalIcon,
   PrintIcon,
-} from "@lukeocodes/composite-voice-ui";
+} from "composite-voice-ui";
 
 type IconEntry = {
   name: string;
@@ -369,7 +369,7 @@ export default function IconsShowcase() {
         </Text>
         <div className="mt-4">
           <CodeBlock
-            code={`import { HeartIcon, StarIcon } from "@lukeocodes/composite-voice-ui";
+            code={`import { HeartIcon, StarIcon } from "composite-voice-ui";
 
 // Basic usage
 <HeartIcon size="md" />

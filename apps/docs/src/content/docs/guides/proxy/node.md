@@ -14,7 +14,7 @@ Use the Node.js adapter when you need full control over the HTTP server or your 
 ## Install dependencies
 
 ```bash
-pnpm add @lukeocodes/composite-voice
+pnpm add composite-voice
 ```
 
 No additional server framework is required. The adapter uses only the built-in `http` module.
@@ -25,7 +25,7 @@ Create a file called `server.ts`:
 
 ```typescript
 import { createServer } from 'http';
-import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNodeProxy } from 'composite-voice/proxy';
 
 const proxy = createNodeProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -113,7 +113,7 @@ This makes the Node.js adapter a good choice for self-hosted Next.js deployments
 Point each provider at the proxy URL:
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -137,7 +137,7 @@ const stt = new DeepgramSTT({ proxyUrl: 'https://proxy.example.com/api/proxy/dee
 The Deepgram Agent provider connects through its own proxy route (`deepgram-agent`) because it targets a different upstream host (`wss://agent.deepgram.com`):
 
 ```typescript
-import { CompositeVoice, DeepgramAgent, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [

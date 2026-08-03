@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-32-openai-tts",
+  "name": "composite-voice-example-32-openai-tts",
   "version": "0.1.0",
   "private": true,
   "description": "OpenAI TTS provider — NativeSTT + Anthropic Claude + OpenAI TTS with model, voice, format, and speed options",
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
+    "composite-voice": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.0.0"

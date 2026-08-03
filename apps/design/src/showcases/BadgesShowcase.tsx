@@ -1,4 +1,4 @@
-import { Badge, Heading, Text } from "@lukeocodes/composite-voice-ui";
+import { Badge, Heading, Text } from "composite-voice-ui";
 
 const noop = () => {};
 

@@ -12,12 +12,12 @@ Use RevAISTT when you need real-time transcription with punctuated, confidence-s
 
 No peer dependencies are required. RevAISTT connects through a raw WebSocket managed by the SDK's built-in `WebSocketManager`.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your access token stays server-side.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your access token stays server-side.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, RevAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, RevAISTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -67,7 +67,7 @@ See the [API reference](/api/classes/revaistt) for the full list.
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, RevAISTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, RevAISTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -122,6 +122,6 @@ Tune `maxSegmentDurationSeconds` (5-30) to force finals sooner during long monol
 
 ## Related resources
 
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your access token server-side
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your access token server-side
 - [API reference: RevAISTT](/api/classes/revaistt)
 - [Providers reference](/reference/providers)

@@ -1,14 +1,14 @@
 # CompositeVoice
 
-[![npm version](https://badge.fury.io/js/%40lukeocodes%2Fcomposite-voice.svg)](https://www.npmjs.com/package/@lukeocodes/composite-voice)
-[![CI](https://github.com/lukeocodes/composite-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/lukeocodes/composite-voice/actions/workflows/ci.yml)
+[![npm version](https://badge.fury.io/js/composite-voice.svg)](https://www.npmjs.com/package/composite-voice)
+[![CI](https://github.com/composite-voice/composite-voice/actions/workflows/ci.yml/badge.svg)](https://github.com/composite-voice/composite-voice/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
 **An SDK for building AI voice agents — wire together any combination of input, STT, LLM, TTS, and output providers behind one unified 5-role pipeline.**
 
 ```typescript
-import { CompositeVoice, AnthropicLLM } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM } from 'composite-voice';
 
 // Text agent — NullInput + NullOutput auto-filled
 const agent = new CompositeVoice({
@@ -76,7 +76,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 ## Installation
 
 ```bash
-pnpm add @lukeocodes/composite-voice
+pnpm add composite-voice
 ```
 
 Node.js 18 or later is required.
@@ -100,7 +100,7 @@ Anthropic, OpenAI, Groq, Gemini, Mistral, Deepgram, AssemblyAI, Soniox, Gladia, 
 Pass just an LLM (or even an empty array) and the SDK defaults to a text-only agent. NullInput and NullOutput are auto-filled — no microphone, no speaker. You interact via `agent.pushText()` and subscribe to LLM events.
 
 ```typescript
-import { CompositeVoice, AnthropicLLM } from '@lukeocodes/composite-voice';
+import { CompositeVoice, AnthropicLLM } from 'composite-voice';
 
 // Just an LLM — NullInput + NullOutput auto-filled for text-only mode
 const agent = new CompositeVoice({
@@ -121,7 +121,7 @@ await agent.initialize();
 Add NativeSTT and NativeTTS for a voice agent using the browser's Web Speech API and SpeechSynthesis. Works in Chrome and Edge.
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, NativeTTS } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -156,7 +156,7 @@ import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 // 3-provider config — MicrophoneInput + BrowserAudioOutput auto-filled
 const agent = new CompositeVoice({
@@ -1199,7 +1199,7 @@ The proxy supports all API-based providers: Deepgram, Anthropic, OpenAI, Groq, G
 ```typescript
 import express from 'express';
 import { createServer } from 'http';
-import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
+import { createExpressProxy } from 'composite-voice/proxy';
 
 const app = express();
 const server = createServer(app);
@@ -1242,7 +1242,7 @@ server.listen(3010);
 
 ```typescript
 // app/proxy/[...path]/route.ts
-import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNextJsProxy } from 'composite-voice/proxy';
 
 const proxy = createNextJsProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -1257,7 +1257,7 @@ export const POST = proxy.handler;
 
 ```typescript
 import { createServer } from 'http';
-import { createNodeProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNodeProxy } from 'composite-voice/proxy';
 
 const proxy = createNodeProxy({
   deepgramApiKey: process.env.DEEPGRAM_API_KEY,
@@ -1337,7 +1337,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   NullOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 // Define the audio format you will push
 const input = new BufferInput({
@@ -1395,7 +1395,7 @@ import type {
   AudioMetadata,
   ProviderType,
   ProviderRole,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 class MyInput implements AudioInputProvider {
   public readonly type: ProviderType = 'rest';
@@ -1440,7 +1440,7 @@ class MyInput implements AudioInputProvider {
 ### STT provider skeleton
 
 ```typescript
-import { BaseSTTProvider } from '@lukeocodes/composite-voice';
+import { BaseSTTProvider } from 'composite-voice';
 
 class MySTT extends BaseSTTProvider {
   // Declare the roles this provider covers
@@ -1470,7 +1470,7 @@ class MySTT extends BaseSTTProvider {
 ### LLM provider skeleton
 
 ```typescript
-import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from '@lukeocodes/composite-voice';
+import { BaseLLMProvider, LLMMessage, LLMGenerationOptions } from 'composite-voice';
 
 class MyLLM extends BaseLLMProvider {
   protected async onInitialize(): Promise<void> {
@@ -1498,7 +1498,7 @@ class MyLLM extends BaseLLMProvider {
 The fastest way to add a new LLM provider that has an OpenAI-compatible API:
 
 ```typescript
-import { OpenAICompatibleLLM, OpenAICompatibleLLMConfig } from '@lukeocodes/composite-voice';
+import { OpenAICompatibleLLM, OpenAICompatibleLLMConfig } from 'composite-voice';
 
 class MyLLM extends OpenAICompatibleLLM {
   constructor(config: OpenAICompatibleLLMConfig) {
@@ -1517,7 +1517,7 @@ const llm = new MyLLM({
 ### TTS provider skeleton
 
 ```typescript
-import { BaseTTSProvider } from '@lukeocodes/composite-voice';
+import { BaseTTSProvider } from 'composite-voice';
 
 class MyTTS extends BaseTTSProvider {
   public readonly roles = ['tts'] as const;
@@ -1544,7 +1544,7 @@ import type {
   AudioMetadata,
   ProviderType,
   ProviderRole,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 class MyOutput implements AudioOutputProvider {
   public readonly type: ProviderType = 'rest';
@@ -1805,12 +1805,12 @@ For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `S
 Contributions are welcome — new providers, bug fixes, documentation improvements, and feature requests. Every contribution matters, and there are options at every experience level.
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — development setup, workflow, and conventions
-- [GitHub Issues](https://github.com/lukeocodes/composite-voice/issues) — bug reports and feature requests
-- [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions) — questions, ideas, and show & tell
+- [GitHub Issues](https://github.com/composite-voice/composite-voice/issues) — bug reports and feature requests
+- [GitHub Discussions](https://github.com/composite-voice/composite-voice/discussions) — questions, ideas, and show & tell
 - [Code of Conduct](./CODE_OF_CONDUCT.md) — community standards
 - [Security Policy](./SECURITY.md) — how to report vulnerabilities privately
 
-New here? Look for issues labelled [`good first issue`](https://github.com/lukeocodes/composite-voice/labels/good%20first%20issue).
+New here? Look for issues labelled [`good first issue`](https://github.com/composite-voice/composite-voice/labels/good%20first%20issue).
 
 ---
 
@@ -1818,10 +1818,10 @@ New here? Look for issues labelled [`good first issue`](https://github.com/lukeo
 
 CompositeVoice is built in the open and shaped by the people who use it.
 
-- **[GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions)** — share what you built, ask questions, propose ideas
-- **[GitHub Issues](https://github.com/lukeocodes/composite-voice/issues)** — bug reports and concrete feature requests
-- **[Good first issues](https://github.com/lukeocodes/composite-voice/labels/good%20first%20issue)** — well-scoped tasks for new contributors
-- **[Security advisories](https://github.com/lukeocodes/composite-voice/security/advisories/new)** — private channel for vulnerability reports
+- **[GitHub Discussions](https://github.com/composite-voice/composite-voice/discussions)** — share what you built, ask questions, propose ideas
+- **[GitHub Issues](https://github.com/composite-voice/composite-voice/issues)** — bug reports and concrete feature requests
+- **[Good first issues](https://github.com/composite-voice/composite-voice/labels/good%20first%20issue)** — well-scoped tasks for new contributors
+- **[Security advisories](https://github.com/composite-voice/composite-voice/security/advisories/new)** — private channel for vulnerability reports
 
 If you build something with CompositeVoice, share it in Discussions. Seeing real applications is one of the best ways to understand what the SDK does well and where it still has gaps.
 
@@ -1829,4 +1829,4 @@ If you build something with CompositeVoice, share it in Discussions. Seeing real
 
 ## License
 
-MIT © [Luke Oliff](https://github.com/lukeocodes)
+MIT © [Luke Oliff](https://github.com/composite-voice)

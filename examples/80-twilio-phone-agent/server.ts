@@ -29,7 +29,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 
 const PORT = Number(process.env.PORT ?? 3080);

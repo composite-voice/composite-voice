@@ -14,7 +14,7 @@ Use RimeTTS when you want expressive, low-latency speech synthesis from Rime's C
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, RimeTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, RimeTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -72,7 +72,7 @@ Voice availability depends on the selected model -- browse the per-model catalog
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, RimeTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, RimeTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new RimeTTS({
   proxyUrl: '/api/proxy/rime',

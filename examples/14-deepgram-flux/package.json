@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-14-deepgram-flux",
+  "name": "composite-voice-example-14-deepgram-flux",
   "version": "0.1.0",
   "private": true,
   "description": "DeepgramFlux (V2 STT) demo — currently disabled, shows eager pipeline concept",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

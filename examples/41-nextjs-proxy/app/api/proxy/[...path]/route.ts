@@ -18,7 +18,7 @@
  * WebSocket setup in example 42.
  */
 
-import { createNextJsProxy } from '@lukeocodes/composite-voice/proxy';
+import { createNextJsProxy } from 'composite-voice/proxy';
 
 const { GET, POST, PUT, DELETE, OPTIONS } = createNextJsProxy({
   // Provider API keys — server-side only

@@ -10,7 +10,7 @@
  *
  * @example
  * ```typescript
- * import type { CompositeVoiceProxyConfig } from '@lukeocodes/composite-voice/proxy';
+ * import type { CompositeVoiceProxyConfig } from 'composite-voice/proxy';
  *
  * const config: CompositeVoiceProxyConfig = {
  *   deepgramApiKey: process.env.DEEPGRAM_API_KEY,

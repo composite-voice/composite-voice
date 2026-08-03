@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-51-buffer-input",
+  "name": "composite-voice-example-51-buffer-input",
   "version": "0.0.0",
   "private": true,
   "description": "BufferInput for file/programmatic audio — upload a WAV file and feed it through the pipeline",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

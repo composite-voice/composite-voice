@@ -27,7 +27,7 @@ cp examples/53-null-output/sample.env examples/53-null-output/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-53-null-output dev
+pnpm --filter composite-voice-example-53-null-output dev
 ```
 
 Open [http://localhost:3053](http://localhost:3053) in Chrome or Edge.

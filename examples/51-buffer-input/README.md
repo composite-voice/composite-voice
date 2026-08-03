@@ -27,7 +27,7 @@ cp examples/51-buffer-input/sample.env examples/51-buffer-input/.env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-51-buffer-input dev
+pnpm --filter composite-voice-example-51-buffer-input dev
 ```
 
 Open [http://localhost:3051](http://localhost:3051) in Chrome or Edge.

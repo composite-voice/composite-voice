@@ -4,8 +4,8 @@ import {
   NativeSTT,
   NativeTTS,
   WebLLMLLM,
-} from '@lukeocodes/composite-voice';
-import type { WebLLMLoadProgress } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { WebLLMLoadProgress } from 'composite-voice';
 import {
   Card,
   CardBody,
@@ -16,8 +16,8 @@ import {
   ProgressBar,
   Alert,
   Textarea,
-} from '@lukeocodes/composite-voice-ui';
-import '@lukeocodes/composite-voice-ui/theme.css';
+} from 'composite-voice-ui';
+import 'composite-voice-ui/theme.css';
 
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';

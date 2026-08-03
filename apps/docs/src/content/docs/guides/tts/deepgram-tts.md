@@ -16,7 +16,7 @@ DeepgramTTS connects through a raw native WebSocket -- no external SDK or WebSoc
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -69,7 +69,7 @@ Spanish voices: `aura-2-sirio-es`, `aura-2-nestor-es`, `aura-2-carina-es`, `aura
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const tts = new DeepgramTTS({
   proxyUrl: '/api/proxy/deepgram',

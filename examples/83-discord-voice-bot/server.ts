@@ -28,7 +28,7 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const {
   DISCORD_BOT_TOKEN,

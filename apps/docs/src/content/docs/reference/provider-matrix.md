@@ -105,7 +105,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **TTS models:** Aura 2 (recommended — 40 English voices + 10 Spanish voices), Aura 1 (legacy — 12 English voices).
 
-**Guides:** [DeepgramSTT](/guides/stt/deepgram-stt) · [DeepgramFlux](/guides/stt/deepgram-flux) · [DeepgramTTS](/guides/tts/deepgram-tts) · **Examples:** [20](https://github.com/lukeocodes/composite-voice/tree/main/examples/20-deepgram-pipeline), [21](https://github.com/lukeocodes/composite-voice/tree/main/examples/21-eager-pipeline), [22](https://github.com/lukeocodes/composite-voice/tree/main/examples/22-deepgram-options), [23](https://github.com/lukeocodes/composite-voice/tree/main/examples/23-deepgram-voices), [24](https://github.com/lukeocodes/composite-voice/tree/main/examples/24-deepgram-conversation-history)
+**Guides:** [DeepgramSTT](/guides/stt/deepgram-stt) · [DeepgramFlux](/guides/stt/deepgram-flux) · [DeepgramTTS](/guides/tts/deepgram-tts) · **Examples:** [20](https://github.com/composite-voice/composite-voice/tree/main/examples/20-deepgram-pipeline), [21](https://github.com/composite-voice/composite-voice/tree/main/examples/21-eager-pipeline), [22](https://github.com/composite-voice/composite-voice/tree/main/examples/22-deepgram-options), [23](https://github.com/composite-voice/composite-voice/tree/main/examples/23-deepgram-voices), [24](https://github.com/composite-voice/composite-voice/tree/main/examples/24-deepgram-conversation-history)
 
 ---
 
@@ -129,7 +129,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Speak (TTS) providers:** Deepgram, ElevenLabs, Cartesia, OpenAI, AWS Polly.
 
-**Examples:** [70](https://github.com/lukeocodes/composite-voice/tree/main/examples/70-deepgram-agent)
+**Examples:** [70](https://github.com/composite-voice/composite-voice/tree/main/examples/70-deepgram-agent)
 
 ---
 
@@ -149,7 +149,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Models:** claude-haiku-4-5 (fastest), claude-sonnet-4-6 (balanced), claude-opus-4-6 (most capable).
 
-**Guides:** [AnthropicLLM](/guides/llm/anthropic) · **Examples:** [00](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent), [30](https://github.com/lukeocodes/composite-voice/tree/main/examples/30-anthropic-models), [31](https://github.com/lukeocodes/composite-voice/tree/main/examples/31-anthropic-streaming-config)
+**Guides:** [AnthropicLLM](/guides/llm/anthropic) · **Examples:** [00](https://github.com/composite-voice/composite-voice/tree/main/examples/00-minimal-voice-agent), [30](https://github.com/composite-voice/composite-voice/tree/main/examples/30-anthropic-models), [31](https://github.com/composite-voice/composite-voice/tree/main/examples/31-anthropic-streaming-config)
 
 ---
 
@@ -175,7 +175,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **TTS features:** 6 voices (alloy, echo, fable, onyx, nova, shimmer), quality/speed tradeoff via model selection (tts-1 fast, tts-1-hd quality), 5 output formats (mp3, opus, aac, flac, wav), speed control (0.25–4.0x), 4096 character limit per request, `endpoint` for Azure OpenAI compatibility.
 
-**Guides:** [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) · [OpenAILLM](/guides/llm/openai) · [OpenAITTS](/guides/tts/openai-tts) · **Examples:** [40](https://github.com/lukeocodes/composite-voice/tree/main/examples/40-openai-pipeline), [41](https://github.com/lukeocodes/composite-voice/tree/main/examples/41-openai-deepgram), [42](https://github.com/lukeocodes/composite-voice/tree/main/examples/42-openai-tts-pipeline)
+**Guides:** [OpenAIRealtimeSTT](/guides/stt/openai-realtime-stt) · [OpenAILLM](/guides/llm/openai) · [OpenAITTS](/guides/tts/openai-tts) · **Examples:** [40](https://github.com/composite-voice/composite-voice/tree/main/examples/40-openai-pipeline), [41](https://github.com/composite-voice/composite-voice/tree/main/examples/41-openai-deepgram), [42](https://github.com/composite-voice/composite-voice/tree/main/examples/42-openai-tts-pipeline)
 
 ---
 
@@ -195,7 +195,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Models:** llama-3.3-70b-versatile, mixtral-8x7b-32768, gemma2-9b-it, llama-3.1-8b-instant.
 
-**Guides:** [GroqLLM](/guides/llm/groq) · **Examples:** [60](https://github.com/lukeocodes/composite-voice/tree/main/examples/60-groq-pipeline)
+**Guides:** [GroqLLM](/guides/llm/groq) · **Examples:** [60](https://github.com/composite-voice/composite-voice/tree/main/examples/60-groq-pipeline)
 
 ---
 
@@ -215,7 +215,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Models:** gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash.
 
-**Guides:** [GeminiLLM](/guides/llm/gemini) · **Examples:** [100](https://github.com/lukeocodes/composite-voice/tree/main/examples/100-gemini-pipeline)
+**Guides:** [GeminiLLM](/guides/llm/gemini) · **Examples:** [100](https://github.com/composite-voice/composite-voice/tree/main/examples/100-gemini-pipeline)
 
 ---
 
@@ -235,7 +235,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Models:** mistral-small-latest, mistral-medium-latest, mistral-large-latest.
 
-**Guides:** [MistralLLM](/guides/llm/mistral) · **Examples:** [110](https://github.com/lukeocodes/composite-voice/tree/main/examples/110-mistral-pipeline)
+**Guides:** [MistralLLM](/guides/llm/mistral) · **Examples:** [110](https://github.com/composite-voice/composite-voice/tree/main/examples/110-mistral-pipeline)
 
 ---
 
@@ -253,7 +253,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **STT features:** Interim results, word boosting for domain vocabulary, word-level timestamps and confidence, automatic reconnection with exponential backoff, base64-encoded audio, graceful `terminate_session` on disconnect, configurable sample rate.
 
-**Guides:** [AssemblyAISTT](/guides/stt/assemblyai-stt) · **Examples:** [70](https://github.com/lukeocodes/composite-voice/tree/main/examples/70-assemblyai-pipeline)
+**Guides:** [AssemblyAISTT](/guides/stt/assemblyai-stt) · **Examples:** [70](https://github.com/composite-voice/composite-voice/tree/main/examples/70-assemblyai-pipeline)
 
 ---
 
@@ -347,7 +347,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **TTS models:** eleven_turbo_v2_5 (fast), eleven_turbo_v2, eleven_multilingual_v2, eleven_monolingual_v1.
 
-**Guides:** [ElevenLabsSTT](/guides/stt/elevenlabs-stt) · [ElevenLabsTTS](/guides/tts/elevenlabs-tts) · **Examples:** [80](https://github.com/lukeocodes/composite-voice/tree/main/examples/80-elevenlabs-pipeline), [81](https://github.com/lukeocodes/composite-voice/tree/main/examples/81-elevenlabs-stt)
+**Guides:** [ElevenLabsSTT](/guides/stt/elevenlabs-stt) · [ElevenLabsTTS](/guides/tts/elevenlabs-tts) · **Examples:** [80](https://github.com/composite-voice/composite-voice/tree/main/examples/80-elevenlabs-pipeline), [81](https://github.com/composite-voice/composite-voice/tree/main/examples/81-elevenlabs-stt)
 
 ---
 
@@ -367,7 +367,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Models:** sonic-2 (latest, lowest latency), sonic, sonic-multilingual.
 
-**Guides:** [CartesiaTTS](/guides/tts/cartesia-tts) · **Examples:** [90](https://github.com/lukeocodes/composite-voice/tree/main/examples/90-cartesia-pipeline)
+**Guides:** [CartesiaTTS](/guides/tts/cartesia-tts) · **Examples:** [90](https://github.com/composite-voice/composite-voice/tree/main/examples/90-cartesia-pipeline)
 
 ---
 
@@ -597,7 +597,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Limitations:** [NativeSTT](/guides/stt/native-stt) requires Chromium (no Firefox). Both use managed audio — the SDK cannot access raw audio streams. No preflight signals. Best for prototyping.
 
-**Guides:** [NativeSTT](/guides/stt/native-stt) · [NativeTTS](/guides/tts/native-tts) · **Examples:** [00](https://github.com/lukeocodes/composite-voice/tree/main/examples/00-minimal-voice-agent)
+**Guides:** [NativeSTT](/guides/stt/native-stt) · [NativeTTS](/guides/tts/native-tts) · **Examples:** [00](https://github.com/composite-voice/composite-voice/tree/main/examples/00-minimal-voice-agent)
 
 ---
 
@@ -617,7 +617,7 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 
 **Example models:** Llama-3.2-1B-Instruct-q4f16_1-MLC (~500 MB), Phi-2-q4f16_1-MLC (~1.5 GB).
 
-**Guides:** [WebLLMLLM](/guides/llm/webllm) · **Examples:** [50](https://github.com/lukeocodes/composite-voice/tree/main/examples/50-webllm-pipeline)
+**Guides:** [WebLLMLLM](/guides/llm/webllm) · **Examples:** [50](https://github.com/composite-voice/composite-voice/tree/main/examples/50-webllm-pipeline)
 
 ---
 

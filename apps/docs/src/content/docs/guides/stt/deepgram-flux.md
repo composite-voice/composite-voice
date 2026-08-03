@@ -16,12 +16,12 @@ Use DeepgramFlux for the lowest-latency voice pipelines. It connects to Deepgram
 
 No extra packages needed — DeepgramFlux uses a native WebSocket connection directly to the Deepgram V2 API.
 
-For production, set up a [proxy server](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
+For production, set up a [proxy server](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) so your API key stays server-side.
 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -146,7 +146,7 @@ The `similarityThreshold` controls how different the final text can be from the 
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const agent = new CompositeVoice({
   providers: [
@@ -205,9 +205,9 @@ await agent.startListening();
 
 ## Related resources
 
-- [Eager pipeline example](https://github.com/lukeocodes/composite-voice/tree/main/examples/21-eager-pipeline) -- preflight signals with speculative LLM
-- [Deepgram pipeline example](https://github.com/lukeocodes/composite-voice/tree/main/examples/20-deepgram-pipeline) -- full Deepgram STT + TTS pipeline
-- [Proxy server example](https://github.com/lukeocodes/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
+- [Eager pipeline example](https://github.com/composite-voice/composite-voice/tree/main/examples/21-eager-pipeline) -- preflight signals with speculative LLM
+- [Deepgram pipeline example](https://github.com/composite-voice/composite-voice/tree/main/examples/20-deepgram-pipeline) -- full Deepgram STT + TTS pipeline
+- [Proxy server example](https://github.com/composite-voice/composite-voice/tree/main/examples/10-proxy-server) -- secure your API key server-side
 - [Pipeline architecture](/advanced/pipeline#eager-llm-pipeline) -- how the eager pipeline works
 - [API reference: DeepgramFlux](/api/classes/deepgramflux)
 - [API reference: DeepgramFluxConfig](/api/interfaces/deepgramfluxconfig)

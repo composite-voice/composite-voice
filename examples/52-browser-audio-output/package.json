@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-52-browser-audio-output",
+  "name": "composite-voice-example-52-browser-audio-output",
   "version": "0.0.0",
   "private": true,
   "description": "Deep-dive into BrowserAudioOutput config — bufferSize, minBufferDuration, sampleRate, enableSmoothing",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*",
-    "@lukeocodes/composite-voice-ui": "workspace:*",
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

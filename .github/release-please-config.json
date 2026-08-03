@@ -2,7 +2,7 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "@lukeocodes/composite-voice",
+      "package-name": "composite-voice",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "exclude-paths": [

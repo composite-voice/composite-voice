@@ -11,7 +11,7 @@
  *
  * @example
  * ```typescript
- * import { AssemblyAISTT } from '@lukeocodes/composite-voice';
+ * import { AssemblyAISTT } from 'composite-voice';
  *
  * const stt = new AssemblyAISTT({
  *   proxyUrl: '/api/proxy/assemblyai',

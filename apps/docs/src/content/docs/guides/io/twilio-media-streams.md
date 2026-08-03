@@ -37,7 +37,7 @@ import {
   DeepgramSTT,
   AnthropicLLM,
   DeepgramTTS,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const app = express();
 

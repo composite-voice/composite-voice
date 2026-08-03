@@ -16,7 +16,7 @@ No additional dependencies are required. PollyTTS uses native `fetch` and signs 
 ## Basic setup
 
 ```typescript
-import { CompositeVoice, NativeSTT, AnthropicLLM, PollyTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, NativeSTT, AnthropicLLM, PollyTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -87,7 +87,7 @@ const tts = new PollyTTS({
 ## Complete example
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, PollyTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, TranscribeSTT, AnthropicLLM, PollyTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [

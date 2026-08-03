@@ -30,10 +30,10 @@ Not all contributions are code. Here's what's genuinely valued, regardless of wh
 
 **No code required:**
 
-- **Report a bug clearly.** A reproducible bug report with a stack trace and environment details saves hours of guesswork. The world would be better with more of these. Use the [bug report template](https://github.com/lukeocodes/composite-voice/issues/new?template=bug_report.md).
-- **Request a feature thoughtfully.** Describe the problem you're trying to solve, not just the solution you have in mind. The best feature requests explain the _why_. Use the [feature request template](https://github.com/lukeocodes/composite-voice/issues/new?template=feature_request.md).
+- **Report a bug clearly.** A reproducible bug report with a stack trace and environment details saves hours of guesswork. The world would be better with more of these. Use the [bug report template](https://github.com/composite-voice/composite-voice/issues/new?template=bug_report.md).
+- **Request a feature thoughtfully.** Describe the problem you're trying to solve, not just the solution you have in mind. The best feature requests explain the _why_. Use the [feature request template](https://github.com/composite-voice/composite-voice/issues/new?template=feature_request.md).
 - **Improve the docs.** Typos, unclear examples, missing edge cases, a confusing installation step — documentation improvements are low-friction and high-value. PRs for docs usually merge fast.
-- **Answer questions.** Help others in [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions). Your real-world experience is useful even when the answer is just "I hit this too — here's what worked for me."
+- **Answer questions.** Help others in [GitHub Discussions](https://github.com/composite-voice/composite-voice/discussions). Your real-world experience is useful even when the answer is just "I hit this too — here's what worked for me."
 - **Share what you built.** Post your project in Discussions. It helps everyone see what's actually possible and often surfaces missing features better than feature requests do.
 
 **With code:**
@@ -43,7 +43,7 @@ Not all contributions are code. Here's what's genuinely valued, regardless of wh
 - **Improve test coverage** — especially error paths, reconnection logic, and edge cases at boundaries. The happy path is usually tested; the rest is where bugs actually hide.
 - **Performance improvements** — please include before/after benchmarks or a reproduction that demonstrates the impact.
 
-**A note on larger changes:** If you're planning something that involves new top-level configuration options, architectural changes, new external dependencies, or changes to the public API, please [open an issue](https://github.com/lukeocodes/composite-voice/issues/new) before you start coding. It takes five minutes and prevents the situation where you've spent two days on something that turns out to conflict with the project's direction. For small fixes and documentation improvements, open a PR directly — no pre-approval needed.
+**A note on larger changes:** If you're planning something that involves new top-level configuration options, architectural changes, new external dependencies, or changes to the public API, please [open an issue](https://github.com/composite-voice/composite-voice/issues/new) before you start coding. It takes five minutes and prevents the situation where you've spent two days on something that turns out to conflict with the project's direction. For small fixes and documentation improvements, open a PR directly — no pre-approval needed.
 
 ---
 
@@ -51,9 +51,9 @@ Not all contributions are code. Here's what's genuinely valued, regardless of wh
 
 Not sure where to start? Browse the labelled issues:
 
-- [`good first issue`](https://github.com/lukeocodes/composite-voice/labels/good%20first%20issue) — small, well-scoped tasks that don't require deep codebase knowledge. These are deliberately kept available for new contributors.
-- [`help wanted`](https://github.com/lukeocodes/composite-voice/labels/help%20wanted) — issues where the direction is clear but maintainer bandwidth is limited.
-- [`documentation`](https://github.com/lukeocodes/composite-voice/labels/documentation) — docs improvements that don't require running code at all.
+- [`good first issue`](https://github.com/composite-voice/composite-voice/labels/good%20first%20issue) — small, well-scoped tasks that don't require deep codebase knowledge. These are deliberately kept available for new contributors.
+- [`help wanted`](https://github.com/composite-voice/composite-voice/labels/help%20wanted) — issues where the direction is clear but maintainer bandwidth is limited.
+- [`documentation`](https://github.com/composite-voice/composite-voice/labels/documentation) — docs improvements that don't require running code at all.
 
 If nothing in the issues fits, try running one of the [examples](./examples/) from scratch with fresh API keys and fresh eyes. Note anything that felt rough, unclear, or underdocumented. A clear bug report or a targeted documentation improvement is as valuable as a code fix.
 
@@ -71,7 +71,7 @@ Before you start work on an issue, leave a comment. It takes thirty seconds and 
 
 ### Fork and clone
 
-1. Fork the repository: click **Fork** at [github.com/lukeocodes/composite-voice](https://github.com/lukeocodes/composite-voice).
+1. Fork the repository: click **Fork** at [github.com/composite-voice/composite-voice](https://github.com/composite-voice/composite-voice).
 
 2. Clone your fork locally:
 
@@ -83,7 +83,7 @@ cd composite-voice
 3. Add the upstream remote so you can pull future changes from the original:
 
 ```bash
-git remote add upstream https://github.com/lukeocodes/composite-voice.git
+git remote add upstream https://github.com/composite-voice/composite-voice.git
 ```
 
 4. Create a branch for your work. Use a name that describes what you're doing:
@@ -104,7 +104,7 @@ pnpm build
 pnpm test
 ```
 
-All three should succeed on a clean install. If anything fails before you've changed a single line, [open an issue](https://github.com/lukeocodes/composite-voice/issues) with the error output — that's a bug in the setup experience and we want to fix it.
+All three should succeed on a clean install. If anything fails before you've changed a single line, [open an issue](https://github.com/composite-voice/composite-voice/issues) with the error output — that's a bug in the setup experience and we want to fix it.
 
 ---
 
@@ -615,9 +615,9 @@ Use the existing mock infrastructure in `tests/mocks/` for WebSocket and HTTP st
 
 ## Getting help
 
-- **Questions about using the SDK** — [GitHub Discussions](https://github.com/lukeocodes/composite-voice/discussions). This is the right place for "how do I..." questions, integration questions, and anything where you're not sure if it's a bug or a misunderstanding.
-- **Bug reports** — [GitHub Issues](https://github.com/lukeocodes/composite-voice/issues). Use the template; it asks for the details that make bugs diagnosable.
-- **Security vulnerabilities** — [GitHub Security Advisory](https://github.com/lukeocodes/composite-voice/security/advisories/new). Private channel, only visible to the maintainer.
+- **Questions about using the SDK** — [GitHub Discussions](https://github.com/composite-voice/composite-voice/discussions). This is the right place for "how do I..." questions, integration questions, and anything where you're not sure if it's a bug or a misunderstanding.
+- **Bug reports** — [GitHub Issues](https://github.com/composite-voice/composite-voice/issues). Use the template; it asks for the details that make bugs diagnosable.
+- **Security vulnerabilities** — [GitHub Security Advisory](https://github.com/composite-voice/composite-voice/security/advisories/new). Private channel, only visible to the maintainer.
 - **Code of Conduct** — [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 
 If something in this guide is unclear, incomplete, or just wrong, that's a documentation bug. Please open an issue or a PR. The best contributor guides are the ones that get corrected by the people who actually use them.

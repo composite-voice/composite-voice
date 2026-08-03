@@ -39,7 +39,7 @@ cp examples/24-mistral-llm/sample.env .env
 ## Run
 
 ```bash
-pnpm --filter @lukeocodes/composite-voice-example-24-mistral-llm dev
+pnpm --filter composite-voice-example-24-mistral-llm dev
 ```
 
 Open [http://localhost:3024](http://localhost:3024) in Chrome or Edge.

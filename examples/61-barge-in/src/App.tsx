@@ -6,7 +6,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Card,
@@ -16,7 +16,7 @@ import {
   Badge,
   Alert,
   CodeBlock,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 interface BargeInEvent {
   id: number;

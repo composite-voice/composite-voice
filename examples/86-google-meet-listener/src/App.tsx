@@ -5,8 +5,8 @@ import {
   SpeechmaticsSTT,
   AnthropicLLM,
   NullOutput,
-} from '@lukeocodes/composite-voice';
-import type { GoogleMeetSessionStatus } from '@lukeocodes/composite-voice';
+} from 'composite-voice';
+import type { GoogleMeetSessionStatus } from 'composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
   Alert,
@@ -17,7 +17,7 @@ import {
   CardTitle,
   FormField,
   Input,
-} from '@lukeocodes/composite-voice-ui';
+} from 'composite-voice-ui';
 
 type SessionState = 'disconnected' | 'connecting' | 'STATE_WAITING' | 'STATE_JOINED' | 'STATE_DISCONNECTED';
 

@@ -1,4 +1,4 @@
-import { Alert, Heading, Text, Prose, Code } from "@lukeocodes/composite-voice-ui";
+import { Alert, Heading, Text, Prose, Code } from "composite-voice-ui";
 
 export default function AlertsShowcase() {
   return (

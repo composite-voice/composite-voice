@@ -16,7 +16,7 @@ import {
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
-} from '@lukeocodes/composite-voice';
+} from 'composite-voice';
 
 const voice = new CompositeVoice({
   // Provider instances for the 5-role pipeline.
@@ -168,7 +168,7 @@ Available only with the [DeepgramFlux](/guides/stt/deepgram-flux) provider, whic
 If `cancelOnTextChange` is `true` and the final transcript differs beyond `similarityThreshold` (default: 0.8), the speculative generation is cancelled via `AbortSignal` and restarted with the confirmed text. If `cancelOnTextChange` is `false`, the SDK accepts the preflight result as-is for lower latency at a small accuracy trade-off.
 
 ```typescript
-import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, DeepgramFlux, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [
@@ -199,7 +199,7 @@ const voice = new CompositeVoice({
 Agent providers like `DeepgramAgent` collapse the STT + LLM + TTS pipeline into a single connection. Instead of configuring 3-5 separate providers, you pass one agent provider and the SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for the remaining `input` and `output` roles.
 
 ```typescript
-import { CompositeVoice, DeepgramAgent } from '@lukeocodes/composite-voice';
+import { CompositeVoice, DeepgramAgent } from 'composite-voice';
 
 const voice = new CompositeVoice({
   providers: [

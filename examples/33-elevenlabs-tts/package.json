@@ -1,5 +1,5 @@
 {
-  "name": "@lukeocodes/composite-voice-example-33-elevenlabs-tts",
+  "name": "composite-voice-example-33-elevenlabs-tts",
   "version": "0.1.0",
   "private": true,
   "description": "ElevenLabs TTS provider — NativeSTT + Anthropic Claude + ElevenLabs TTS with voiceId, modelId, stability, and similarityBoost",
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lukeocodes/composite-voice": "workspace:*"
+    "composite-voice": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.0.0"
