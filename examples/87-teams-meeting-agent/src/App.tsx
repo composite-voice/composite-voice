@@ -2,9 +2,9 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   CompositeVoice,
   TeamsCall,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
-  DeepgramTTS,
+  SpeechifyTTS,
 } from '@lukeocodes/composite-voice';
 import type { TeamsCallState } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
@@ -95,7 +95,7 @@ export default function App() {
       const agent = new CompositeVoice({
         providers: [
           teams, // duplex: fills both the 'input' and 'output' roles
-          new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+          new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
@@ -103,10 +103,9 @@ export default function App() {
               'You are a helpful assistant participating in a Microsoft Teams meeting. Respond in plain text only — no markdown, no lists, no code blocks. Keep responses to one or two short conversational sentences.',
             maxTokens: 200,
           }),
-          new DeepgramTTS({
-            proxyUrl: `${window.location.origin}/proxy/deepgram`,
-            outputFormat: 'linear16',
-            sampleRate: 24000,
+          new SpeechifyTTS({
+            proxyUrl: `${window.location.origin}/proxy/speechify`,
+            voiceId: 'geffen_32',
           }),
         ],
       });
@@ -250,7 +249,7 @@ export default function App() {
                 {reply || (
                   <span className="text-foreground-muted">
                     Claude's reply streams here — and is spoken into the meeting
-                    by DeepgramTTS through the TeamsCall output.
+                    by SpeechifyTTS through the TeamsCall output.
                   </span>
                 )}
               </p>

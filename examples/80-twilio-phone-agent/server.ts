@@ -5,10 +5,14 @@
  * then opens a WebSocket to wss://<host>/media. Each connection gets its own
  * CompositeVoice pipeline:
  *
- *   TwilioMediaStream (duplex, mulaw 8k)  — caller audio in, agent audio out
- *   DeepgramSTT  (mulaw / 8000, nova-3)   — telephony-grade transcription
- *   AnthropicLLM (claude-haiku-4-5)       — fast conversational replies
- *   DeepgramTTS  (mulaw / 8000)           — native passthrough, no transcoding
+ *   TwilioMediaStream (duplex, mulaw 8k)     — caller audio in, agent audio out
+ *   SpeechmaticsSTT (mulaw / 8000)           — telephony-grade transcription
+ *   AnthropicLLM    (claude-haiku-4-5)       — fast conversational replies
+ *   DeepgramTTS     (mulaw / 8000)           — native passthrough, no transcoding
+ *
+ * Twilio only accepts G.711 mu-law or raw linear16, so the TTS stage stays on
+ * a streaming provider that emits raw telephony audio. SpeechifyTTS returns a
+ * complete MP3 over REST, which TwilioMediaStream cannot play.
  *
  * Run with:
  *   node --env-file=.env --import tsx/esm server.ts
@@ -22,7 +26,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import {
   CompositeVoice,
   TwilioMediaStream,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
 } from '@lukeocodes/composite-voice';
@@ -32,7 +36,7 @@ const PORT = Number(process.env.PORT ?? 3080);
 
 // ── Startup checks ───────────────────────────────────────────────────────────
 
-for (const key of ['DEEPGRAM_API_KEY', 'ANTHROPIC_API_KEY'] as const) {
+for (const key of ['SPEECHMATICS_API_KEY', 'DEEPGRAM_API_KEY', 'ANTHROPIC_API_KEY'] as const) {
   if (!process.env[key]) {
     console.error(`Missing ${key} — copy sample.env to .env and fill in your keys.`);
     process.exit(1);
@@ -94,9 +98,10 @@ async function handleCall(callId: number, socket: WebSocket): Promise<void> {
   const agent = new CompositeVoice({
     providers: [
       twilio, // duplex: fills both the input and output roles
-      new DeepgramSTT({
-        apiKey: process.env.DEEPGRAM_API_KEY,
-        options: { model: 'nova-3', encoding: 'mulaw', sampleRate: 8000 },
+      new SpeechmaticsSTT({
+        apiKey: process.env.SPEECHMATICS_API_KEY,
+        audioFormat: 'mulaw',
+        sampleRate: 8000,
       }),
       new AnthropicLLM({
         apiKey: process.env.ANTHROPIC_API_KEY,

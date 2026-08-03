@@ -6,9 +6,9 @@ A voice agent callers can talk to over a regular phone call, using [Twilio Media
 |-----------|---------|
 | **Server** | `node:http` + `ws` on port 3080 |
 | **Input/Output** | `TwilioMediaStream` (duplex, G.711 mu-law @ 8 kHz) |
-| **STT** | `DeepgramSTT` — `nova-3`, mulaw/8000 |
+| **STT** | `SpeechmaticsSTT` — mulaw/8000 |
 | **LLM** | `AnthropicLLM` — `claude-haiku-4-5` |
-| **TTS** | `DeepgramTTS` — mulaw/8000 (native passthrough) |
+| **TTS** | `DeepgramTTS` — mulaw/8000 (native passthrough; Twilio accepts only raw mu-law or linear16, so a REST/MP3 provider like Speechify cannot be used here) |
 
 ---
 
@@ -27,7 +27,7 @@ A voice agent callers can talk to over a regular phone call, using [Twilio Media
 - **Node.js 21+** (or 22 LTS) — the SDK's streaming STT/TTS providers use the global `WebSocket`
 - **pnpm** and a build of the SDK (`pnpm install && pnpm build` at the repo root)
 - A [Twilio](https://www.twilio.com/console) account with a **voice-capable phone number**
-- A [Deepgram API key](https://console.deepgram.com) and an [Anthropic API key](https://console.anthropic.com)
+- A [Speechmatics API key](https://portal.speechmatics.com), a [Deepgram API key](https://console.deepgram.com) and an [Anthropic API key](https://console.anthropic.com)
 - [ngrok](https://ngrok.com) (or any tunnel that gives you public `https://`/`wss://`)
 
 ---
@@ -103,7 +103,7 @@ Interrupting the agent mid-sentence works out of the box. Twilio buffers outboun
 - **Caller hears silence.** The TwiML must use `<Connect><Stream>` — `<Start><Stream>` is listen-only. Also confirm the TTS is configured for `mulaw`/8000; other compressed formats are rejected at `configure()` time.
 - **Webhook errors in the Twilio debugger.** The webhook must be reachable over public HTTPS and answer `POST /twiml` with `text/xml`. Check the ngrok URL is current — free ngrok domains change on every restart.
 - **WebSocket never connects.** Twilio requires `wss://` with a trusted certificate; ngrok terminates TLS for you. Plain `ws://` or self-signed certs fail silently.
-- **No transcriptions.** Confirm `DEEPGRAM_API_KEY` is set and the STT options say `mulaw`/8000 (phone audio is narrowband).
+- **No transcriptions.** Confirm `SPEECHMATICS_API_KEY` is set and the STT config says `audioFormat: 'mulaw'` with `sampleRate: 8000` (phone audio is narrowband).
 - **`ERR_UNKNOWN_FILE_EXTENSION` or WebSocket errors at startup.** Use Node 21+ so the global `WebSocket` exists.
 
 ---

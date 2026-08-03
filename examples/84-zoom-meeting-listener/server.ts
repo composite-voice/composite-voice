@@ -7,7 +7,7 @@
  *
  *   meeting.rtms_started webhook → agent.startListening({ meetingUuid,
  *                                    rtmsStreamId, serverUrl })
- *   meeting audio (L16 @ 16 kHz) → ZoomRtmsInput → DeepgramSTT → console
+ *   meeting audio (L16 @ 16 kHz) → ZoomRtmsInput → SpeechmaticsSTT → console
  *   meeting.rtms_stopped webhook → zoom.disconnect() → Claude summarizes
  *                                    the collected transcript
  *
@@ -23,16 +23,16 @@ import { createHmac } from 'node:crypto';
 import {
   CompositeVoice,
   ZoomRtmsInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   NullOutput,
 } from '@lukeocodes/composite-voice';
 
-const { ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_SECRET_TOKEN, DEEPGRAM_API_KEY, ANTHROPIC_API_KEY } =
+const { ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_SECRET_TOKEN, SPEECHMATICS_API_KEY, ANTHROPIC_API_KEY } =
   process.env;
 const PORT = Number(process.env.PORT ?? 3084);
 
-if (!ZOOM_CLIENT_ID || !ZOOM_CLIENT_SECRET || !ZOOM_SECRET_TOKEN || !DEEPGRAM_API_KEY || !ANTHROPIC_API_KEY) {
+if (!ZOOM_CLIENT_ID || !ZOOM_CLIENT_SECRET || !ZOOM_SECRET_TOKEN || !SPEECHMATICS_API_KEY || !ANTHROPIC_API_KEY) {
   console.error('Missing env vars. Copy sample.env to .env and fill in every value.');
   process.exit(1);
 }
@@ -50,12 +50,13 @@ const agent = new CompositeVoice({
   providers: [
     zoom, // input only — RTMS is receive-only
 
-    // ZoomRtmsInput reports linear16 @ 16 kHz mono via getMetadata(), and
-    // the pipeline auto-configures Deepgram to match; set explicitly here
-    // for clarity.
-    new DeepgramSTT({
-      apiKey: DEEPGRAM_API_KEY,
-      options: { encoding: 'linear16', sampleRate: 16000 },
+    // ZoomRtmsInput reports linear16 @ 16 kHz mono via getMetadata(). Auto
+    // configuration only covers Deepgram-shaped configs, so state the format
+    // Speechmatics should expect.
+    new SpeechmaticsSTT({
+      apiKey: SPEECHMATICS_API_KEY,
+      audioFormat: 'pcm_s16le',
+      sampleRate: 16000,
     }),
 
     // The 'llm' role is mandatory. During the meeting it acknowledges each

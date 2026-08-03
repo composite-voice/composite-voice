@@ -71,7 +71,8 @@ Open [http://localhost:3042](http://localhost:3042) in Chrome or Edge.
 Next.js API routes run as serverless functions on platforms like Vercel. Serverless functions do not support WebSocket upgrades. This means:
 
 - HTTP proxying (Anthropic, OpenAI, Groq, Mistral, Gemini) works on all platforms
-- WebSocket proxying (Deepgram, ElevenLabs, AssemblyAI, Cartesia) requires a custom Next.js server or a separate WebSocket server
+- REST providers (Anthropic, OpenAI, Speechify) proxy fine on the standard runtime
+- WebSocket proxying (Speechmatics, Deepgram, ElevenLabs, AssemblyAI, Cartesia) requires a custom Next.js server or a separate WebSocket server
 
 For WebSocket support, see [Example 40 (Express Proxy)](../40-express-proxy/) or [Example 42 (Node Proxy)](../42-node-proxy/).
 

@@ -5,7 +5,7 @@ Deep-dive into `AudioCapture` internals. Detect AudioWorklet vs ScriptProcessor,
 | | Provider | Role |
 |-|----------|------|
 | **Input** | `MicrophoneInput` | Explicit audio input |
-| **STT** | `DeepgramSTT` | WebSocket STT |
+| **STT** | `SpeechmaticsSTT` | WebSocket STT |
 | **LLM** | `AnthropicLLM` | Claude via HTTP streaming |
 | **TTS** | `NativeTTS` | SpeechSynthesis API |
 
@@ -21,7 +21,7 @@ Deep-dive into `AudioCapture` internals. Detect AudioWorklet vs ScriptProcessor,
 ```bash
 pnpm install && pnpm build
 cp examples/63-audio-config/sample.env examples/63-audio-config/.env
-# Edit .env with DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env with SPEECHMATICS_API_KEY, SPEECHIFY_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

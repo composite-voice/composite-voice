@@ -14,7 +14,7 @@ import {
   CompositeVoice,
   DeepgramFlux,
   AnthropicLLM,
-  DeepgramTTS,
+  SpeechifyTTS,
   MicrophoneInput,
   BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
@@ -42,7 +42,7 @@ export default function App() {
     new MicrophoneInput(),
     new DeepgramFlux({ proxyUrl: '/proxy/deepgram', options: { eagerEotThreshold: 0.5, eotThreshold: 0.7 } }),
     new AnthropicLLM({ proxyUrl: '/proxy/anthropic', model: 'claude-haiku-4-5' }),
-    new DeepgramTTS({ proxyUrl: '/proxy/deepgram' }),
+    new SpeechifyTTS({ proxyUrl: '/proxy/speechify', voiceId: 'geffen_32' }),
     new BrowserAudioOutput(),
   ],
   eagerLLM: {
@@ -83,8 +83,9 @@ export default function App() {
           systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
           maxTokens: 150,
         }),
-        new DeepgramTTS({
-          proxyUrl: `${window.location.origin}/proxy/deepgram`,
+        new SpeechifyTTS({
+          proxyUrl: `${window.location.origin}/proxy/speechify`,
+          voiceId: 'geffen_32',
         }),
         new BrowserAudioOutput(),
       ],

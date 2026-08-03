@@ -5,9 +5,9 @@ Put a voice agent **inside a Microsoft Teams meeting**. `TeamsCall` joins as an 
 | | Provider | Notes |
 |-|----------|-------|
 | **Input + Output** | `TeamsCall` | ACS Teams interop; duplex (one instance, two roles) |
-| **STT** | `DeepgramSTT` | Auto-configured to linear16 @ 16000 Hz from the input metadata |
+| **STT** | `SpeechmaticsSTT` | `pcm_s16le` @ 16000 Hz, matching the input metadata |
 | **LLM** | `AnthropicLLM` | Claude Haiku, brief conversational replies |
-| **TTS** | `DeepgramTTS` | Aura, `linear16` @ 24000 Hz (streams cleanly into the call) |
+| **TTS** | `SpeechifyTTS` | REST synthesis returning one complete MP3 per utterance, which `TeamsCall` decodes with `decodeAudioData` |
 
 ## What you'll learn
 
@@ -18,7 +18,7 @@ Put a voice agent **inside a Microsoft Teams meeting**. `TeamsCall` joins as an 
 
 ## Prerequisites
 
-1. **Deepgram + Anthropic keys** in the root `.env` (see Setup).
+1. **Speechmatics + Speechify + Anthropic keys** in the root `.env` (see Setup).
 2. **An Azure Communication Services resource** in your Azure subscription.
 3. **An ACS user access token** with the `voip` scope (issued from that resource).
 4. **A Teams meeting join link** (`https://teams.microsoft.com/l/meetup-join/...`) from an Outlook/Teams invite. The meeting's tenant must allow anonymous/external join.
@@ -57,7 +57,7 @@ pnpm install && pnpm build
 
 # Add your keys to the root .env
 cp examples/87-teams-meeting-agent/sample.env .env
-# Edit .env and set DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env and set SPEECHMATICS_API_KEY, SPEECHIFY_API_KEY and ANTHROPIC_API_KEY
 ```
 
 `pnpm install` also pulls this example's ACS dependencies (`@azure/communication-calling`, `@azure/communication-common`).

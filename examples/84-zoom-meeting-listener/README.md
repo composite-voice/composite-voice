@@ -5,7 +5,7 @@ A meeting listener built on Zoom's **Realtime Media Streams (RTMS)**: a plain `n
 | Component | Details |
 |-----------|---------|
 | **Input** | `ZoomRtmsInput` (RTMS WebSocket protocol, receive-only, zero deps) |
-| **STT** | `DeepgramSTT` (linear16 @ 16 kHz mono) |
+| **STT** | `SpeechmaticsSTT` (pcm_s16le @ 16 kHz mono) |
 | **LLM** | `AnthropicLLM` (claude-haiku-4-5) — end-of-meeting summary |
 | **Output** | `NullOutput` — RTMS cannot play audio back into the meeting |
 | **Server** | `http.createServer` webhook on port **3084** (`/zoom/webhook`) |
@@ -27,9 +27,9 @@ RTMS is receive-only, so `NullOutput` covers the mandatory `tts` + `output` role
 
 ## Prerequisites
 
-- **Node.js 21+** (22 LTS recommended — RTMS and Deepgram both use the global `WebSocket`)
+- **Node.js 21+** (22 LTS recommended — RTMS and Speechmatics both use the global `WebSocket`)
 - **ngrok** (or any HTTPS tunnel) — Zoom must reach your webhook over public HTTPS
-- A [Deepgram API key](https://console.deepgram.com/) and an [Anthropic API key](https://console.anthropic.com/)
+- A [Speechmatics API key](https://portal.speechmatics.com) and an [Anthropic API key](https://console.anthropic.com/)
 - A **Zoom account with RTMS access** (RTMS requires Zoom Developer Pack credits) and a **General app** from the [Zoom App Marketplace](https://marketplace.zoom.us):
   1. In the app's **Features**, enable **Realtime Media Streams** and add the meeting RTMS scopes (`rtms:read:rtms_started`, `rtms:read:rtms_stopped`).
   2. Copy the app's **Client ID** and **Client Secret** (App Credentials page) and the webhook **Secret Token** (Features page).
@@ -113,7 +113,7 @@ Each new meeting resets the transcript; the server keeps running between meeting
 - **`meeting.rtms_started` never arrives** — check the event subscription includes both RTMS events, the endpoint passed validation, RTMS is enabled in the app's Features, and the app is authorized on the meeting host's account.
 - **`STATUS_INVALID_SIGNATURE` on connect** — `ZOOM_CLIENT_ID`/`ZOOM_CLIENT_SECRET` don't belong to the app that has RTMS enabled (or were regenerated). Note the *webhook* Secret Token is a different value from the Client Secret.
 - **`STATUS_INVALID_RTMS_STREAM_ID`** — the stream already ended, or a stale webhook was replayed. Webhook-delivered URLs are meant to be used right away.
-- **Connected but no `[transcript]` lines** — participants are muted, or the meeting has no speech yet. Also confirm Deepgram accepted the connection (watch for `[error]` lines).
+- **Connected but no `[transcript]` lines** — participants are muted, or the meeting has no speech yet. Also confirm Speechmatics accepted the connection (watch for `[error]` lines).
 - **No summary at the end** — the summary is skipped when nothing was transcribed; otherwise check for `[error]` lines from the LLM (invalid `ANTHROPIC_API_KEY`).
 
 ---

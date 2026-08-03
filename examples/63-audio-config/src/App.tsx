@@ -2,9 +2,9 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
-  DeepgramTTS,
+  SpeechifyTTS,
   BrowserAudioOutput,
 } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
@@ -86,14 +86,14 @@ export default function App() {
           noiseSuppression: true,
           autoGainControl: true,
         }),
-        new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+        new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
           model: 'claude-haiku-4-5',
           systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
           maxTokens: 200,
         }),
-        new DeepgramTTS({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+        new SpeechifyTTS({ proxyUrl: `${window.location.origin}/proxy/speechify`, voiceId: 'geffen_32' }),
         new BrowserAudioOutput(),
       ],
     });
@@ -276,8 +276,8 @@ InputQueue -> STT Provider`} />
   autoGainControl: true,    // Normalizes volume levels
 })
 
-// Full Deepgram pipeline:
-// MicrophoneInput -> DeepgramSTT -> AnthropicLLM -> DeepgramTTS -> BrowserAudioOutput`} />
+// Full cloud pipeline:
+// MicrophoneInput -> SpeechmaticsSTT -> AnthropicLLM -> SpeechifyTTS -> BrowserAudioOutput`} />
             </div>
           </CardBody>
         </Card>

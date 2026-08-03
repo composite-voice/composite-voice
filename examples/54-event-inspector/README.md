@@ -5,9 +5,9 @@ Advanced event usage with a real-time timeline, payload inspection, category fil
 | | Provider | Role |
 |-|----------|------|
 | **Input** | `MicrophoneInput` | Explicit audio input |
-| **STT** | `DeepgramSTT` | WebSocket STT |
+| **STT** | `SpeechmaticsSTT` | WebSocket STT |
 | **LLM** | `AnthropicLLM` | Claude via HTTP streaming |
-| **TTS** | `DeepgramTTS` | WebSocket TTS |
+| **TTS** | `DeepgramTTS` | WebSocket TTS — a streaming provider so `tts.audio` and `tts.metadata` events appear in the timeline |
 | **Output** | `BrowserAudioOutput` | Web Audio playback |
 
 ## What you'll learn
@@ -23,7 +23,7 @@ Advanced event usage with a real-time timeline, payload inspection, category fil
 ```bash
 pnpm install && pnpm build
 cp examples/54-event-inspector/sample.env examples/54-event-inspector/.env
-# Edit .env with DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env with SPEECHMATICS_API_KEY, DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

@@ -4,7 +4,8 @@ export default createExampleConfig({
   port: 3087,
   title: 'Teams Meeting Agent',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
+    speechify: true,
     anthropic: true,
   },
 });

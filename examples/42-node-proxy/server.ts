@@ -29,7 +29,8 @@ const PORT = Number(process.env.PORT ?? 3044);
 
 const proxy = createNodeProxy({
   // Provider API keys — server-side only
-  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
+  speechifyApiKey: process.env.SPEECHIFY_API_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
@@ -125,7 +126,7 @@ const server = http.createServer(async (req, res) => {
 // ── WebSocket upgrade attachment ─────────────────────────────────────────────
 //
 // This enables full WebSocket proxying for all streaming providers:
-//   - Deepgram (STT + TTS)
+//   - Speechmatics (STT)
 //   - ElevenLabs (STT + TTS)
 //   - AssemblyAI (STT)
 //   - Cartesia (TTS)
@@ -139,7 +140,8 @@ server.listen(PORT, () => {
   console.log(`\nRegistered proxy routes:`);
 
   const providers = [
-    { key: 'DEEPGRAM_API_KEY', name: 'Deepgram', protocol: 'ws' },
+    { key: 'SPEECHMATICS_API_KEY', name: 'Speechmatics', protocol: 'ws' },
+    { key: 'SPEECHIFY_API_KEY', name: 'Speechify', protocol: 'http' },
     { key: 'ANTHROPIC_API_KEY', name: 'Anthropic', protocol: 'http' },
     { key: 'OPENAI_API_KEY', name: 'OpenAI', protocol: 'http' },
     { key: 'ELEVENLABS_API_KEY', name: 'ElevenLabs', protocol: 'ws' },

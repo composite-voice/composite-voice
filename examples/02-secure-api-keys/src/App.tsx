@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { CompositeVoice, MicrophoneInput, DeepgramSTT, AnthropicLLM, DeepgramTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
+import { CompositeVoice, MicrophoneInput, SpeechmaticsSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 
@@ -12,13 +12,13 @@ export default function App() {
     const voice = new CompositeVoice({
       providers: [
         new MicrophoneInput(),
-        new DeepgramSTT({ proxyUrl: `${PROXY}/proxy/deepgram` }),
+        new SpeechmaticsSTT({ proxyUrl: `${PROXY}/proxy/speechmatics` }),
         new AnthropicLLM({
           proxyUrl: `${PROXY}/proxy/anthropic`,
           model: 'claude-haiku-4-5',
           systemPrompt: 'You are a helpful voice assistant. Respond in plain text only — no markdown, no bullet points, no numbered lists, no code blocks. Keep responses concise and conversational.',
         }),
-        new DeepgramTTS({ proxyUrl: `${PROXY}/proxy/deepgram` }),
+        new SpeechifyTTS({ proxyUrl: `${PROXY}/proxy/speechify`, voiceId: 'geffen_32' }),
         new BrowserAudioOutput(),
       ],
       logging: { enabled: true, level: 'debug' },

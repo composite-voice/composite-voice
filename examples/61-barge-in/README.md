@@ -5,9 +5,9 @@ Full-duplex barge-in demo. Interrupt the agent mid-speech by speaking or clickin
 | | Provider | Role |
 |-|----------|------|
 | **Input** | `MicrophoneInput` | Explicit audio input |
-| **STT** | `DeepgramSTT` | WebSocket STT |
+| **STT** | `SpeechmaticsSTT` | WebSocket STT |
 | **LLM** | `AnthropicLLM` | Claude via HTTP streaming |
-| **TTS** | `DeepgramTTS` | WebSocket TTS |
+| **TTS** | `DeepgramTTS` | WebSocket TTS — barge-in can only cut off a streaming provider mid-sentence |
 | **Output** | `BrowserAudioOutput` | Web Audio playback |
 
 ## What you'll learn
@@ -22,7 +22,7 @@ Full-duplex barge-in demo. Interrupt the agent mid-speech by speaking or clickin
 ```bash
 pnpm install && pnpm build
 cp examples/61-barge-in/sample.env examples/61-barge-in/.env
-# Edit .env with DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env with SPEECHMATICS_API_KEY, DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

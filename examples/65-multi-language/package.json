@@ -2,7 +2,7 @@
   "name": "@lukeocodes/composite-voice-example-65-multi-language",
   "version": "0.0.0",
   "private": true,
-  "description": "Language switching demo — change DeepgramSTT language at runtime with a selector",
+  "description": "Language switching demo — change SpeechmaticsSTT language at runtime with a selector",
   "type": "module",
   "scripts": {
     "dev": "vite",

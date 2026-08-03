@@ -2,7 +2,7 @@
   "name": "@lukeocodes/composite-voice-example-03-cloud-providers",
   "version": "0.0.0",
   "private": true,
-  "description": "Production-quality pipeline: Deepgram STT/TTS + Anthropic Claude via Vite proxy",
+  "description": "Production-quality pipeline: Speechmatics STT + Speechify TTS + Anthropic Claude via Vite proxy",
   "type": "module",
   "scripts": {
     "dev": "vite",

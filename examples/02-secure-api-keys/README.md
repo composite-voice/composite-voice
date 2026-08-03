@@ -1,12 +1,12 @@
 # Example 02 — Secure API Keys
 
-Demonstrates the Express proxy pattern for keeping API keys server-side. The browser never sees real credentials — it connects through a proxy that injects keys before forwarding requests to Deepgram and Anthropic.
+Demonstrates the Express proxy pattern for keeping API keys server-side. The browser never sees real credentials — it connects through a proxy that injects keys before forwarding requests to Speechmatics, Speechify, and Anthropic.
 
 | | Provider | Via | Browser support |
 |-|----------|-----|-----------------|
-| **STT** | `DeepgramSTT` — nova-3 | `proxyUrl` (no `apiKey`) | All modern browsers |
+| **STT** | `SpeechmaticsSTT` — real-time WebSocket | `proxyUrl` (no `apiKey`) | All modern browsers |
 | **LLM** | `AnthropicLLM` — claude-haiku-4-5 | `proxyUrl` (no `apiKey`) | All |
-| **TTS** | `DeepgramTTS` — aura-2 | `proxyUrl` (no `apiKey`) | All modern browsers |
+| **TTS** | `SpeechifyTTS` — simba, REST | `proxyUrl` (no `apiKey`) | All modern browsers |
 
 ---
 
@@ -28,11 +28,11 @@ This example runs **two processes** in parallel:
 Express proxy (port 3001)          Vite dev server (port 3002)
   - Loads API keys from .env         - Serves the React app
   - Injects keys into headers        - No proxy config needed
-  - Forwards to Deepgram / Anthropic - Browser connects to :3001 directly
+  - Forwards upstream               - Browser connects to :3001 directly
 ```
 
 ```
-Browser ──[no keys]──▶ Express proxy (3001) ──[key injected]──▶ Deepgram / Anthropic
+Browser ──[no keys]──▶ Express proxy (3001) ──[key injected]──▶ Speechmatics / Speechify / Anthropic
 ```
 
 ---
@@ -40,7 +40,8 @@ Browser ──[no keys]──▶ Express proxy (3001) ──[key injected]──
 ## Prerequisites
 
 - **Node.js** 18 or later and **pnpm** (`npm install -g pnpm`)
-- A [Deepgram API key](https://console.deepgram.com/) — free tier, no credit card required
+- A [Speechmatics API key](https://portal.speechmatics.com/) — free trial hours, no credit card required
+- A [Speechify API key](https://console.sws.speechify.com/)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ---
@@ -53,15 +54,18 @@ Run all commands from the **repo root**:
 # 1. Install dependencies and build the SDK
 pnpm install && pnpm build
 
-# 2. Copy the env template
-cp examples/02-secure-api-keys/sample.env examples/02-secure-api-keys/.env
+# 2. See which keys this example needs
+cat examples/02-secure-api-keys/sample.env
 ```
 
-Open `.env` and fill in your keys:
+The proxy server reads the **repo-root** `.env` (`tsx --env-file=../../.env`). Add any of
+these keys it does not already have — do not append duplicates, the two parsers in play
+disagree about which assignment wins:
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
-DEEPGRAM_API_KEY=your-deepgram-key-here
+SPEECHMATICS_API_KEY=your-speechmatics-key-here
+SPEECHIFY_API_KEY=your-speechify-key-here
 ```
 
 > **Important:** These env vars do **not** use the `VITE_` prefix. Any variable prefixed with `VITE_` is automatically bundled into the browser build by Vite — exactly what we're avoiding here.
@@ -79,7 +83,7 @@ This starts both the Express proxy on [http://localhost:3001](http://localhost:3
 Open [http://localhost:3002](http://localhost:3002).
 
 1. Click **Initialize** — connects providers through the proxy and requests microphone permission
-2. Click **Start Listening** — the agent begins listening via Deepgram
+2. Click **Start Listening** — the agent begins listening via Speechmatics
 3. Speak — your words appear as you talk, Claude's response streams back
 4. Click **Stop** when done
 
@@ -96,7 +100,8 @@ import { createExpressProxy } from '@lukeocodes/composite-voice/proxy';
 const app = express();
 const proxy = createExpressProxy({
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  deepgramApiKey: process.env.DEEPGRAM_API_KEY,
+  speechmaticsApiKey: process.env.SPEECHMATICS_API_KEY,
+  speechifyApiKey: process.env.SPEECHIFY_API_KEY,
   cors: { origins: ['http://localhost:3002'] },
 });
 
@@ -115,9 +120,9 @@ const PROXY = 'http://localhost:3001';
 
 const voice = new CompositeVoice({
   providers: [
-    new DeepgramSTT({ proxyUrl: `${PROXY}/proxy/deepgram` }),
+    new SpeechmaticsSTT({ proxyUrl: `${PROXY}/proxy/speechmatics` }),
     new AnthropicLLM({ proxyUrl: `${PROXY}/proxy/anthropic`, model: 'claude-haiku-4-5' }),
-    new DeepgramTTS({ proxyUrl: `${PROXY}/proxy/deepgram` }),
+    new SpeechifyTTS({ proxyUrl: `${PROXY}/proxy/speechify`, voiceId: 'geffen_32' }),
   ],
 });
 ```
@@ -131,7 +136,7 @@ The `proxyUrl` option tells each provider to route through the Express proxy ins
 1. Open DevTools in Chrome/Edge
 2. Go to **Sources** tab
 3. Search for your API key string — you will not find it
-4. Check the **Network** tab — requests go to `localhost:3001/proxy/*`, not directly to `api.deepgram.com` or `api.anthropic.com`
+4. Check the **Network** tab — requests go to `localhost:3001/proxy/*`, not directly to `eu.rt.speechmatics.com`, `api.speechify.ai`, or `api.anthropic.com`
 
 ---
 
@@ -143,7 +148,7 @@ The Express proxy is configured with `cors: { origins: ['http://localhost:3002']
 
 **WebSocket connections fail**
 
-`proxy.attachWebSocket(server)` must be called with the `http.Server` instance returned by `app.listen()`. This enables WebSocket proxying for Deepgram STT and TTS.
+`proxy.attachWebSocket(server)` must be called with the `http.Server` instance returned by `app.listen()`. This enables WebSocket proxying for Speechmatics STT. SpeechifyTTS is REST, so it goes through `proxy.middleware` instead.
 
 **"Cannot find module '@lukeocodes/composite-voice'"**
 
@@ -165,13 +170,13 @@ Ensure env vars in `.env` do **not** have the `VITE_` prefix. Any `VITE_*` varia
 |---------|-------------|
 | [10 — Proxy Server](../10-proxy-server/) | Full production proxy with Vite forwarding and static file serving |
 | [01 — Conversation History](../01-conversation-history/) | Multi-turn memory so the AI remembers earlier exchanges |
-| [20 — Deepgram Pipeline](../20-deepgram-pipeline/) | WebSocket STT/TTS with more Deepgram options |
+| [11 — Deepgram STT](../11-deepgram-stt/) | WebSocket STT/TTS with more Deepgram options |
 
 ---
 
 ## Browser support
 
-Deepgram providers use WebSocket connections — they do not depend on the Web Speech API. Audio capture uses the MediaStream API and audio playback uses the Web Audio API.
+Speechmatics uses a WebSocket connection and Speechify plain HTTP — neither depends on the Web Speech API. Audio capture uses the MediaStream API and audio playback uses the Web Audio API.
 
 | Browser | Microphone capture | Audio playback | Notes |
 |---------|-------------------|----------------|-------|

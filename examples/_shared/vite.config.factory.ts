@@ -7,6 +7,8 @@ export interface ExampleConfig {
   port: number;
   title?: string;
   proxies?: {
+    speechmatics?: boolean;
+    speechify?: boolean;
     deepgram?: boolean;
     deepgramAgent?: boolean;
     anthropic?: boolean;
@@ -27,6 +29,18 @@ interface ProxyTarget {
 }
 
 const PROXY_TARGETS: Record<string, ProxyTarget> = {
+  // SpeechmaticsSTT appends /v2 to its proxyUrl; the rewrite below strips the
+  // /proxy/speechmatics prefix so the upstream sees wss://eu.rt.speechmatics.com/v2.
+  speechmatics: {
+    target: 'wss://eu.rt.speechmatics.com',
+    ws: true,
+    headerFn: (env) => ({ Authorization: `Bearer ${env.SPEECHMATICS_API_KEY ?? ''}` }),
+  },
+  // SpeechifyTTS posts to /v1/audio/speech relative to its proxyUrl.
+  speechify: {
+    target: 'https://api.speechify.ai',
+    headerFn: (env) => ({ Authorization: `Bearer ${env.SPEECHIFY_API_KEY ?? ''}` }),
+  },
   deepgram: {
     target: 'wss://api.deepgram.com',
     ws: true,

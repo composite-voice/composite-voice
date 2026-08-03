@@ -17,7 +17,7 @@ Plain Node.js HTTP server with `createNodeProxy` -- the most flexible proxy adap
 - How to use `createNodeProxy` with a plain `http.createServer`
 - How `handleRequest` forwards HTTP requests (REST/SSE providers)
 - How `attachWebSocket` handles WebSocket upgrades for streaming providers
-- How the Node adapter supports all providers including Deepgram, ElevenLabs, and Cartesia
+- How the Node adapter supports all providers including Speechmatics, Speechify, ElevenLabs, and Cartesia
 - How to serve static files alongside the proxy (production deployment)
 
 ---
@@ -40,7 +40,8 @@ proxy.attachWebSocket(server);
 
 | Provider | Protocol | Route |
 |----------|----------|-------|
-| Deepgram | WebSocket | `/proxy/deepgram` |
+| Speechmatics | WebSocket | `/proxy/speechmatics` |
+| Speechify | HTTP | `/proxy/speechify` |
 | Anthropic | HTTP | `/proxy/anthropic` |
 | OpenAI | HTTP | `/proxy/openai` |
 | ElevenLabs | WebSocket | `/proxy/elevenlabs` |
@@ -55,7 +56,7 @@ Only providers with configured API keys have routes registered.
 - **Node.js** 18+ and **pnpm**
 - **Chrome or Edge**
 - An [Anthropic API key](https://console.anthropic.com/)
-- Optionally: keys for Deepgram, OpenAI, ElevenLabs, Cartesia
+- Optionally: keys for Speechmatics, Speechify, OpenAI, ElevenLabs, Cartesia
 
 ---
 

@@ -3,9 +3,9 @@ import {
   CompositeVoice,
   WebRTCInput,
   WebRTCOutput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
-  DeepgramTTS,
+  SpeechifyTTS,
 } from '@lukeocodes/composite-voice';
 import { ExampleShell } from '../../_shared/ExampleShell';
 import {
@@ -92,10 +92,16 @@ export default function App() {
       const input = new WebRTCInput({ targetSampleRate: 16000 });
       const output = new WebRTCOutput({ sampleRate: 48000 });
 
+      // SpeechifyTTS is a REST provider: it returns one complete MP3 per
+      // utterance and never emits format metadata, so the pipeline has nothing
+      // to forward to output.configure(). Declare the format up front — a whole
+      // MP3 file decodes cleanly through decodeAudioData.
+      output.configure({ encoding: 'mp3', sampleRate: 24000, channels: 1 });
+
       const agent = new CompositeVoice({
         providers: [
           input,
-          new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+          new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
           new AnthropicLLM({
             proxyUrl: `${window.location.origin}/proxy/anthropic`,
             model: 'claude-haiku-4-5-20251001',
@@ -103,10 +109,10 @@ export default function App() {
               'You are a helpful voice assistant on a WebRTC call. Respond in plain text only — no markdown, no lists, no code blocks. Keep responses to one or two short sentences.',
             maxTokens: 200,
           }),
-          new DeepgramTTS({
-            proxyUrl: `${window.location.origin}/proxy/deepgram`,
-            outputFormat: 'linear16',
-            sampleRate: 24000,
+          new SpeechifyTTS({
+            proxyUrl: `${window.location.origin}/proxy/speechify`,
+            voiceId: 'geffen_32',
+            audioFormat: 'mp3',
           }),
           output,
         ],

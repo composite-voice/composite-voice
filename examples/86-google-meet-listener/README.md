@@ -1,13 +1,13 @@
 # Example 86 — Google Meet Listener
 
-Join a live Google Meet conference as a **listener** and stream its mixed audio into the pipeline. `GoogleMeetInput` connects over WebRTC via the Google Meet Media API — no platform SDK, just `RTCPeerConnection` + `fetch`. Deepgram transcribes the meeting live and Claude turns each utterance into a running list of meeting notes.
+Join a live Google Meet conference as a **listener** and stream its mixed audio into the pipeline. `GoogleMeetInput` connects over WebRTC via the Google Meet Media API — no platform SDK, just `RTCPeerConnection` + `fetch`. Speechmatics transcribes the meeting live and Claude turns each utterance into a running list of meeting notes.
 
 > **Developer Preview.** The Meet Media API requires your Google Cloud project to be enrolled in the [Google Workspace Developer Preview Program](https://developers.google.com/workspace/preview), **and every participant in the conference must belong to an enrolled account**. Non-enrolled projects get `PERMISSION_DENIED`. Expect breaking changes until GA.
 
 | | Provider | Notes |
 |-|----------|-------|
 | **Input** | `GoogleMeetInput` | Meet Media API over WebRTC; emits linear16 @ 16000 Hz mono |
-| **STT** | `DeepgramSTT` | Auto-configured from the input metadata |
+| **STT** | `SpeechmaticsSTT` | `pcm_s16le` @ 16000 Hz, matching the input metadata |
 | **LLM** | `AnthropicLLM` | Claude Haiku as a silent note-taker |
 | **TTS + Output** | `NullOutput` | Meet Media API is **receive-only** — the agent cannot speak into the call |
 
@@ -20,7 +20,7 @@ Join a live Google Meet conference as a **listener** and stream its mixed audio 
 
 ## Prerequisites
 
-1. **Deepgram + Anthropic keys** in the root `.env` (see Setup).
+1. **Speechmatics + Anthropic keys** in the root `.env` (see Setup).
 2. **A Developer Preview–enrolled Google Cloud project** with the **Google Meet Media API** (and Google Meet REST API, for the space lookup) enabled.
 3. **An OAuth access token** with the scope `https://www.googleapis.com/auth/meetings.conference.media.audio.readonly` (or the broader `.media.readonly`).
 4. **An active conference** — someone must already be in the meeting when you click Join.
@@ -56,7 +56,7 @@ pnpm install && pnpm build
 
 # Add your keys to the root .env
 cp examples/86-google-meet-listener/sample.env .env
-# Edit .env and set DEEPGRAM_API_KEY and ANTHROPIC_API_KEY
+# Edit .env and set SPEECHMATICS_API_KEY and ANTHROPIC_API_KEY
 ```
 
 ## Run

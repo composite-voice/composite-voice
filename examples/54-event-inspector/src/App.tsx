@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
-  DeepgramSTT,
+  SpeechmaticsSTT,
   AnthropicLLM,
   DeepgramTTS,
   BrowserAudioOutput,
@@ -139,7 +139,7 @@ export default function App() {
     const agent = new CompositeVoice({
       providers: [
         new MicrophoneInput({ sampleRate: 16000, format: 'pcm' }),
-        new DeepgramSTT({ proxyUrl: `${window.location.origin}/proxy/deepgram` }),
+        new SpeechmaticsSTT({ proxyUrl: `${window.location.origin}/proxy/speechmatics` }),
         new AnthropicLLM({
           proxyUrl: `${window.location.origin}/proxy/anthropic`,
           model: 'claude-haiku-4-5-20251001',
@@ -189,7 +189,7 @@ export default function App() {
   return (
     <ExampleShell
       title="Advanced Event Inspector"
-      description="Real-time event timeline with payload inspection, category filtering, and event counts. Uses DeepgramSTT + AnthropicLLM + DeepgramTTS for full event coverage."
+      description="Real-time event timeline with payload inspection, category filtering, and event counts. Uses SpeechmaticsSTT + AnthropicLLM + DeepgramTTS for full event coverage."
       number="54"
     >
       <div className="space-y-6">

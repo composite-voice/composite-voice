@@ -4,7 +4,7 @@ export default createExampleConfig({
   port: 3086,
   title: 'Google Meet Listener',
   proxies: {
-    deepgram: true,
+    speechmatics: true,
     anthropic: true,
   },
 });

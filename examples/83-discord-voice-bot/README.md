@@ -5,9 +5,9 @@ A bot that joins a Discord voice channel at startup and holds a live conversatio
 | Component | Details |
 |-----------|---------|
 | **Input/Output** | `DiscordVoice` (`@discordjs/voice` connection, duplex) |
-| **STT** | `DeepgramSTT` (linear16 @ 48 kHz — Discord's native rate, downmixed to mono) |
+| **STT** | `SpeechmaticsSTT` (pcm_s16le @ 48 kHz — Discord's native rate, downmixed to mono) |
 | **LLM** | `AnthropicLLM` (claude-haiku-4-5) |
-| **TTS** | `DeepgramTTS` (linear16 @ 24 kHz — the provider resamples to 48 kHz stereo) |
+| **TTS** | `DeepgramTTS` (linear16 @ 24 kHz — the provider resamples to 48 kHz stereo; Discord playback needs raw PCM, so a REST/MP3 provider like Speechify cannot be used here) |
 | **Trigger** | Joins `DISCORD_CHANNEL_ID` in `DISCORD_GUILD_ID` on startup |
 
 This is a live stream: barge-in works — speak while the bot is talking and it stops playback and listens.
@@ -27,7 +27,7 @@ This is a live stream: barge-in works — speak while the bot is talking and it 
 
 - **Node.js 21+** (22 LTS recommended — the SDK's streaming providers use the global `WebSocket`)
 - A **Discord application + bot** (see setup below)
-- A [Deepgram API key](https://console.deepgram.com/)
+- A [Speechmatics API key](https://portal.speechmatics.com) and a [Deepgram API key](https://console.deepgram.com/)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ### Create the bot and invite it
