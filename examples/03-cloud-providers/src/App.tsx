@@ -1,5 +1,9 @@
 import { useState, useRef, useCallback } from 'react';
+<<<<<<< HEAD
 import { CompositeVoice, MicrophoneInput, SpeechmaticsSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from 'composite-voice';
+=======
+import { CompositeVoice, MicrophoneInput, SpeechmaticsSTT, AnthropicLLM, SpeechifyTTS, BrowserAudioOutput } from 'composite-voice';
+>>>>>>> origin/main
 import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 
