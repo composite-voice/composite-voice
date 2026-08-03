@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/composite-voice/composite-voice/compare/composite-voice-v0.1.2...composite-voice-v0.2.0) (2026-08-03)
+
+
+### Features
+
+* default the examples to Speechmatics STT and Speechify TTS ([#86](https://github.com/composite-voice/composite-voice/issues/86)) ([13ada16](https://github.com/composite-voice/composite-voice/commit/13ada16441254dd23f83d8306ca3547b3b849079))
+* platform input/output providers — Vonage, Zoom, Google Meet, and Teams ([#81](https://github.com/composite-voice/composite-voice/issues/81)) ([c8a3464](https://github.com/composite-voice/composite-voice/commit/c8a3464f9a399eb6c1748fd7cd40dde1bd0ac627))
+* TwilioMediaStream provider for phone calls ([#84](https://github.com/composite-voice/composite-voice/issues/84)) ([3727039](https://github.com/composite-voice/composite-voice/commit/3727039fbab17480b78629e6d3aee95872aee064))
+* WebRTC and Discord platform providers (verified) ([#82](https://github.com/composite-voice/composite-voice/issues/82)) ([8b84554](https://github.com/composite-voice/composite-voice/commit/8b8455471f3f941e9df368452f053ecc7131a178))
+
+
+### Bug Fixes
+
+* duplex stop dispatch, WebRTC audio hardening, Twilio socket errors ([#85](https://github.com/composite-voice/composite-voice/issues/85)) ([0105968](https://github.com/composite-voice/composite-voice/commit/0105968de17c7143a0104474c58ebc9e766349b8))
+
 ## [0.1.2](https://github.com/composite-voice/composite-voice/compare/composite-voice-v0.1.1...composite-voice-v0.1.2) (2026-07-13)
 
 
