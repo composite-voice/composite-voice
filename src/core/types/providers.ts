@@ -638,6 +638,77 @@ export interface LiveSTTProvider extends BaseProvider {
  */
 export type STTProvider = RestSTTProvider | LiveSTTProvider;
 
+// ────────────────────────────────────────────────────────────────────────────
+// Provider fallback chains
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Why a fallback chain swapped to another provider.
+ *
+ * @remarks
+ * - `'init-error'` — the provider failed to initialize during agent startup
+ * - `'connect-error'` — the provider's `connect()` rejected
+ * - `'connect-timeout'` — the provider's `connect()` exceeded the chain's
+ *   connect timeout
+ * - `'stream-error'` — the provider reported an error mid-session (an error
+ *   transcription result or a throwing `sendAudio()`)
+ *
+ * @see {@link ProviderFallbackInfo} for the full notification payload
+ */
+export type ProviderFallbackReason =
+  | 'init-error'
+  | 'connect-error'
+  | 'connect-timeout'
+  | 'stream-error';
+
+/**
+ * Notification payload emitted when a fallback chain swaps the active provider.
+ *
+ * @remarks
+ * Delivered to callbacks registered via
+ * {@link FallbackCapableProvider.onFallback | onFallback}, and re-emitted by
+ * CompositeVoice as the `'provider.fallback'` SDK event.
+ *
+ * @see {@link ProviderFallbackReason} for the possible reasons
+ */
+export interface ProviderFallbackInfo {
+  /** The pipeline role the swap occurred in (currently always `'stt'`). */
+  role: ProviderRole;
+
+  /** Class name of the provider that failed (e.g. `'DeepgramSTT'`). */
+  from: string;
+
+  /** Class name of the provider now active (e.g. `'AssemblyAISTT'`). */
+  to: string;
+
+  /** Why the swap happened. */
+  reason: ProviderFallbackReason;
+
+  /** The error that triggered the swap. */
+  error: Error;
+}
+
+/**
+ * A provider that can notify listeners when it swaps its underlying
+ * implementation (a fallback chain).
+ *
+ * @remarks
+ * CompositeVoice duck-types pipeline providers against this interface and,
+ * when `onFallback` is present, bridges each notification to the
+ * `'provider.fallback'` SDK event.
+ *
+ * @see {@link ProviderFallbackInfo} for the notification payload
+ */
+export interface FallbackCapableProvider {
+  /**
+   * Register a callback invoked whenever the chain fails over to another
+   * provider.
+   *
+   * @param callback - Invoked with a {@link ProviderFallbackInfo} per swap.
+   */
+  onFallback(callback: (info: ProviderFallbackInfo) => void): void;
+}
+
 /**
  * Configuration for large language model providers.
  *
