@@ -41,7 +41,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 | **Server-side proxy**           | Keep API keys completely off the client. Proxy middleware included for Express, Next.js, and plain Node.js — supports all providers.                                                              |
 | **Server-side pipelines**       | Run the full pipeline in Node.js, Bun, or Deno with `BufferInput` and `NullOutput` — no browser APIs required.                                                                                    |
 | **Platform inputs & outputs**   | Put the agent on a phone call (Twilio, Vonage), in a Discord voice channel or Teams meeting, or listening to Zoom/Google Meet — plus generic WebRTC in/out for LiveKit, Daily, and custom SFUs. |
-| **Agent providers**             | Collapse STT + LLM + TTS into a single connection. `DeepgramAgent` uses one WebSocket to the Deepgram Voice Agent API — the SDK auto-fills mic input and speaker output.                          |
+| **Agent providers**             | Collapse STT + LLM + TTS into a single connection. `DeepgramAgent`, `OpenAIRealtimeAgent`, `GeminiLiveAgent`, and `ElevenLabsAgent` each use one WebSocket — the SDK auto-fills mic input and speaker output. |
 | **Extensible**                  | Abstract base classes for all 5 roles plus `BaseAgentProvider` for multi-role agents. The `OpenAICompatibleLLM` base class means any OpenAI-compatible API works out of the box.                   |
 
 ---
@@ -785,9 +785,27 @@ new PollyTTS({
 
 Agent providers collapse the three middle pipeline roles (`stt` + `llm` + `tts`) into a single connection. Instead of wiring up separate STT, LLM, and TTS providers, one agent provider handles the entire server-side loop over a single WebSocket. The SDK auto-fills `MicrophoneInput` and `BrowserAudioOutput` for audio I/O, so a working voice agent requires just one provider in your config.
 
-| Provider        | Transport | Roles               | Peer Dependency | Description                                                                    |
-| --------------- | --------- | ------------------- | --------------- | ------------------------------------------------------------------------------ |
-| `DeepgramAgent` | WebSocket | `stt` + `llm` + `tts` | None            | Deepgram Voice Agent API — single WebSocket handles STT, LLM, and TTS server-side |
+| Provider              | Transport | Roles                 | Peer Dependency | Description                                                                              |
+| --------------------- | --------- | --------------------- | --------------- | ---------------------------------------------------------------------------------------- |
+| `DeepgramAgent`       | WebSocket | `stt` + `llm` + `tts` | None            | Deepgram Voice Agent API — configurable listen/think/speak stages, server-side functions |
+| `OpenAIRealtimeAgent` | WebSocket | `stt` + `llm` + `tts` | None            | OpenAI Realtime API — native speech-to-speech (`gpt-realtime`), server/semantic VAD, function calling |
+| `GeminiLiveAgent`     | WebSocket | `stt` + `llm` + `tts` | None            | Gemini Live API — native audio dialog over `BidiGenerateContent`, tool calling            |
+| `ElevenLabsAgent`     | WebSocket | `stt` + `llm` + `tts` | None            | ElevenLabs Conversational AI — dashboard-configured agents, overrides, client tools       |
+
+```typescript
+// One provider = a complete voice agent (mic + speakers auto-filled)
+const voice = new CompositeVoice({
+  providers: [
+    new OpenAIRealtimeAgent({
+      proxyUrl: '/api/proxy/openai-realtime',
+      voice: 'marin',
+      instructions: 'You are a helpful voice assistant. Keep answers brief.',
+    }),
+  ],
+});
+```
+
+All four speak the same SDK surface — `transcription.*`, `llm.*`, and `tts.*` events fire as usual, and each also exposes provider-specific events via `onDeepgramAgentEvent` / `onAgentEvent` (live captions, interruptions, latency metrics, tool calls). `GeminiLiveAgent` authenticates via `?key=` in direct mode or the `{pathPrefix}/gemini-live` proxy route; `ElevenLabsAgent` accepts a public `agentId`, a signed URL (or async factory), an `xi-api-key`, or the `{pathPrefix}/elevenlabs` proxy route.
 
 ### Audio Output
 

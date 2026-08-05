@@ -101,6 +101,21 @@ export abstract class BaseAgentProvider extends BaseProvider {
 
   private pendingLLMResolve: ((text: string) => void) | null = null;
   private pendingLLMReject: ((err: Error) => void) | null = null;
+
+  /**
+   * Assistant text that arrived before the LLM iterator registered its
+   * resolver.
+   *
+   * @remarks
+   * {@link emitUserTranscription} triggers the orchestrator's STT → LLM flow
+   * asynchronously, so a fast agent server can deliver the assistant's
+   * response text before {@link generateFromMessages}' iterator runs and
+   * registers {@link pendingLLMResolve}. Without buffering, that text would
+   * be dropped and the iterator would hang. Cleared at the start of each
+   * turn so a response abandoned by barge-in cannot leak into the next turn.
+   */
+  private bufferedAssistantText: string | null = null;
+
   private audioDonePromise: Promise<void> | null = null;
   private audioDoneResolve: (() => void) | null = null;
   private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -311,6 +326,14 @@ export abstract class BaseAgentProvider extends BaseProvider {
             if (done) return { done: true, value: undefined };
             done = true;
 
+            // The server may have answered before this iterator ran —
+            // consume text buffered by emitAssistantText for this turn.
+            if (self.bufferedAssistantText !== null) {
+              const buffered = self.bufferedAssistantText;
+              self.bufferedAssistantText = null;
+              return { done: false, value: buffered };
+            }
+
             const text = await new Promise<string>((resolve, reject) => {
               self.pendingLLMResolve = resolve;
               self.pendingLLMReject = reject;
@@ -414,6 +437,10 @@ export abstract class BaseAgentProvider extends BaseProvider {
    *   orchestrator's transcription callback.
    */
   protected emitUserTranscription(text: string): void {
+    // New turn — discard any assistant text left over from a previous turn
+    // (e.g. a response abandoned by barge-in that was never consumed).
+    this.bufferedAssistantText = null;
+
     // Fresh promise for this turn's audio completion
     this.audioDonePromise = new Promise<void>((resolve) => {
       this.audioDoneResolve = resolve;
@@ -431,6 +458,12 @@ export abstract class BaseAgentProvider extends BaseProvider {
    * Deliver the assistant's response text. Resolves the pending
    * {@link generateFromMessages} iterator.
    *
+   * @remarks
+   * When no iterator has registered yet — the orchestrator's STT → LLM flow
+   * runs asynchronously after {@link emitUserTranscription}, so a fast agent
+   * can respond first — the text is buffered and consumed by the next
+   * iterator for this turn instead of being dropped.
+   *
    * @param text - The assistant's response text received from the
    *   agent server.
    */
@@ -439,6 +472,8 @@ export abstract class BaseAgentProvider extends BaseProvider {
       this.pendingLLMResolve(text);
       this.pendingLLMResolve = null;
       this.pendingLLMReject = null;
+    } else {
+      this.bufferedAssistantText = text;
     }
   }
 
@@ -518,6 +553,7 @@ export abstract class BaseAgentProvider extends BaseProvider {
     this.pendingLLMReject?.(new Error(`${this.constructor.name}: connection closed`));
     this.pendingLLMResolve = null;
     this.pendingLLMReject = null;
+    this.bufferedAssistantText = null;
     this.audioDoneResolve?.();
     this.audioDoneResolve = null;
     this.audioDonePromise = null;
