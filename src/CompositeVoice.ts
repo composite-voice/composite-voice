@@ -43,6 +43,7 @@ import type {
   AudioInputProvider,
   AttachableInputProvider,
   StartListeningArgs,
+  FallbackCapableProvider,
 } from './core/types/providers';
 import type { AudioChunk } from './core/types/audio';
 import { AgentStateMachine } from './core/state/AgentStateMachine';
@@ -630,6 +631,28 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         timestamp: Date.now(),
       });
     });
+
+    // Bridge provider fallback notifications (e.g. FallbackSTT) to the
+    // 'provider.fallback' SDK event. Wired here rather than in
+    // setupProviders() because init-time failovers fire before setup runs.
+    const fallbackCapable = this.stt as STTProvider & Partial<FallbackCapableProvider>;
+    if (typeof fallbackCapable.onFallback === 'function') {
+      fallbackCapable.onFallback((info) => {
+        this.logger.warn(
+          `Provider fallback (${info.role}): ${info.from} -> ${info.to} [${info.reason}]`,
+          info.error
+        );
+        this.emitEvent({
+          type: 'provider.fallback',
+          role: info.role,
+          from: info.from,
+          to: info.to,
+          reason: info.reason,
+          error: info.error,
+          timestamp: Date.now(),
+        });
+      });
+    }
 
     // Wire queue overflow events to the event emitter
     this.inputQueue.onOverflow((droppedChunks, currentSize) => {

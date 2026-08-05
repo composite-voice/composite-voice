@@ -12,6 +12,7 @@
  * - **Audio events** (`audio.*`) - Microphone capture and audio playback status
  * - **Queue events** (`queue.*`) - Audio buffer queue overflow and stats
  * - **Turn events** (`turn.*`) - Per-turn latency metrics
+ * - **Provider events** (`provider.*`) - Provider fallback chain swaps
  *
  * Subscribe to events using the `on()` method on a CompositeVoice instance.
  * All event listeners receive a typed event object extending {@link BaseEvent}.
@@ -40,6 +41,8 @@
 
 import type { AudioChunk, AudioMetadata } from '../types/audio';
 import type { TurnMetricsSummary } from '../pipeline/TurnMetrics';
+import type { ProviderFallbackReason } from '../types/providers';
+import type { ProviderRole } from '../types/roles';
 
 /**
  * The possible states of the CompositeVoice agent.
@@ -1000,6 +1003,64 @@ export interface TurnMetricsEvent extends BaseEvent, TurnMetricsSummary {
 export type TurnEvent = TurnMetricsEvent;
 
 // ---------------------------------------------------------------------------
+// Provider events
+// ---------------------------------------------------------------------------
+
+/**
+ * Emitted when a provider fallback chain swaps the active provider.
+ *
+ * @remarks
+ * Fallback chains (e.g. `FallbackSTT`) wrap an ordered list of providers and
+ * automatically fail over when the active one cannot connect, times out, or
+ * errors mid-session. This event tells the application that a swap happened —
+ * useful for status indicators, alerting, and post-incident review.
+ *
+ * The pipeline keeps running through the swap; this event is informational,
+ * not an error. If the whole chain is exhausted, the normal error events
+ * (`transcription.error`, `agent.error`) fire instead.
+ *
+ * @example
+ * ```typescript
+ * agent.on('provider.fallback', (event) => {
+ *   console.warn(`${event.role} failed over: ${event.from} -> ${event.to} (${event.reason})`);
+ *   showDegradedBanner(`Using backup ${event.role} provider`);
+ * });
+ * ```
+ *
+ * @see {@link ProviderEvent} for all provider event types
+ */
+export interface ProviderFallbackEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'provider.fallback';
+
+  /** The pipeline role the swap occurred in (currently always `'stt'`). */
+  role: ProviderRole;
+
+  /** Class name of the provider that failed (e.g. `'DeepgramSTT'`). */
+  from: string;
+
+  /** Class name of the provider now active (e.g. `'AssemblyAISTT'`). */
+  to: string;
+
+  /**
+   * Why the swap happened.
+   *
+   * @see {@link ProviderFallbackReason}
+   */
+  reason: ProviderFallbackReason;
+
+  /** The error that triggered the swap. */
+  error: Error;
+}
+
+/**
+ * Union of all provider-level events.
+ *
+ * @see {@link ProviderFallbackEvent}
+ */
+export type ProviderEvent = ProviderFallbackEvent;
+
+// ---------------------------------------------------------------------------
 // Composite types
 // ---------------------------------------------------------------------------
 
@@ -1034,6 +1095,8 @@ export type TurnEvent = TurnMetricsEvent;
  * @see {@link AgentEvent}
  * @see {@link AudioEvent}
  * @see {@link QueueEvent}
+ * @see {@link TurnEvent}
+ * @see {@link ProviderEvent}
  */
 export type CompositeVoiceEvent =
   | TranscriptionEvent
@@ -1042,7 +1105,8 @@ export type CompositeVoiceEvent =
   | AgentEvent
   | AudioEvent
   | QueueEvent
-  | TurnEvent;
+  | TurnEvent
+  | ProviderEvent;
 
 /**
  * String union of all possible event type identifiers.
@@ -1190,4 +1254,7 @@ export interface EventListenerMap {
 
   /** Listener for {@link TurnMetricsEvent}. */
   'turn.metrics': EventListener<TurnMetricsEvent>;
+
+  /** Listener for {@link ProviderFallbackEvent}. */
+  'provider.fallback': EventListener<ProviderFallbackEvent>;
 }

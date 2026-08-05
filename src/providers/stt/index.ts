@@ -58,6 +58,7 @@
  */
 
 export * from './native/index';
+export * from './fallback/index';
 export * from './deepgram/index';
 export * from './assemblyai/index';
 export * from './elevenlabs/index';
