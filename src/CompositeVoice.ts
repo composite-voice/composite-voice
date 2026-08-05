@@ -64,6 +64,7 @@ import type { QueueStats } from './core/pipeline/AudioBufferQueue';
 import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
 import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
 import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
+import { TurnMetricsCollector } from './core/pipeline/TurnMetrics';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -410,6 +411,15 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   // LLM→TTS backpressure (when config.pipeline.maxPendingChunks is set)
   private ttsBackpressure: TTSBackpressure | null = null;
 
+  /**
+   * Per-turn latency metrics collector.
+   *
+   * @remarks
+   * Driven with `mark*()` calls at each pipeline stage; emits one
+   * `turn.metrics` event per conversation turn (completed or interrupted).
+   */
+  private turnMetrics!: TurnMetricsCollector;
+
   private initialized = false;
 
   /**
@@ -611,6 +621,15 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
     // Initialize event emitter
     this.events = new EventEmitter();
+
+    // Per-turn latency metrics → 'turn.metrics' events
+    this.turnMetrics = new TurnMetricsCollector((summary) => {
+      this.emitEvent({
+        type: 'turn.metrics',
+        ...summary,
+        timestamp: Date.now(),
+      });
+    });
 
     // Wire queue overflow events to the event emitter
     this.inputQueue.onOverflow((droppedChunks, currentSize) => {
@@ -822,6 +841,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       if (stt.isPreflight(result)) {
         // ── Preflight / eager end-of-turn ──────────────────────────────────
         // DeepgramFlux signals early completion before speech_final.
+        this.turnMetrics.markPreflight();
         this.emitEvent({
           type: 'transcription.preflight',
           text: result.text,
@@ -886,6 +906,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         tts.onAudio((chunk) => {
           if (!tts.isAudioReady(chunk)) return;
           this.ttsBackpressure?.release();
+          this.turnMetrics.markTTSFirstAudio();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -909,6 +930,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         tts.onAudio((chunk) => {
           if (!tts.isAudioReady(chunk)) return;
           this.ttsBackpressure?.release();
+          this.turnMetrics.markTTSFirstAudio();
           this.emitEvent({
             type: 'tts.audio',
             chunk,
@@ -938,6 +960,27 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           pipeline.output.enqueue(chunk);
         });
       }
+    }
+
+    // Observe real playback boundaries on the output provider (separate
+    // output only — multi-role providers manage playback internally and
+    // expose no callbacks to the pipeline). Feeds per-turn latency metrics
+    // and surfaces the audio.playback.* SDK events.
+    //
+    // Note: output providers hold a single callback per slot — register
+    // application listeners on the SDK events, not on the provider.
+    if (!this.isMultiRoleOutput) {
+      pipeline.output.onPlaybackStart(() => {
+        this.turnMetrics.markPlaybackStart();
+        this.emitEvent({ type: 'audio.playback.start', timestamp: Date.now() });
+      });
+      pipeline.output.onPlaybackEnd(() => {
+        this.turnMetrics.markPlaybackEnd();
+        this.emitEvent({ type: 'audio.playback.end', timestamp: Date.now() });
+      });
+      pipeline.output.onPlaybackError((error) => {
+        this.emitEvent({ type: 'audio.playback.error', error, timestamp: Date.now() });
+      });
     }
   }
 
@@ -1022,6 +1065,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           preflight: eagerText,
           final: text,
         });
+        this.turnMetrics.startTurn(text, { modality: 'voice', adoptEager: true });
         this.eagerAbortController = null;
         this.eagerText = null;
         return;
@@ -1032,6 +1076,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           'speech_final too different from preflight — cancelling eager, restarting',
           { similarity, threshold, preflight: eagerText, final: text }
         );
+        this.turnMetrics.startTurn(text, { modality: 'voice' });
         this.eagerAbortController.abort();
         this.eagerAbortController = null;
         this.eagerText = null;
@@ -1042,11 +1087,13 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           'speech_final differs but cancelOnTextChange=false — accepting eager response',
           { similarity, threshold }
         );
+        this.turnMetrics.startTurn(text, { modality: 'voice', adoptEager: true });
         this.eagerAbortController = null;
         this.eagerText = null;
       }
     } else {
       // No eager generation — normal path
+      this.turnMetrics.startTurn(text, { modality: 'voice' });
       void this.processLLM(text);
     }
   }
@@ -1101,6 +1148,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     // Update processing state machine → AgentStateMachine will derive 'thinking'
     this.processingStateMachine.setProcessing();
 
+    this.turnMetrics.markLLMStart();
     this.emitEvent({
       type: 'llm.start',
       prompt: text,
@@ -1141,6 +1189,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.llmAbortController = null;
 
         this.processingStateMachine.setComplete();
+        this.turnMetrics.markLLMComplete();
         this.emitEvent({ type: 'llm.complete', text: fullResponse, timestamp: Date.now() });
 
         if (useHistory && fullResponse) {
@@ -1157,6 +1206,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
         if (generationId === this.llmGenerationId) {
           this.processingStateMachine.setIdle();
+          this.turnMetrics.finishTurn();
         }
         return;
       }
@@ -1196,6 +1246,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           break;
         }
 
+        this.turnMetrics.markLLMFirstToken();
         fullResponse += chunk;
         const spokenChunk = stripMarkdownForTTS(chunk);
         this.emitEvent({
@@ -1261,6 +1312,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       this.processingStateMachine.setComplete();
 
+      this.turnMetrics.markLLMComplete();
       this.emitEvent({
         type: 'llm.complete',
         text: fullResponse,
@@ -1284,6 +1336,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       // Processing complete, reset to idle
       if (generationId === this.llmGenerationId) {
         this.processingStateMachine.setIdle();
+        this.turnMetrics.finishTurn();
       }
     } catch (error) {
       // If superseded by barge-in, don't touch state
@@ -1305,6 +1358,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       });
       this.processingStateMachine.setError();
       this.emitAgentError(error as Error, `LLM (${llmName})`);
+      this.turnMetrics.abortTurn();
     }
   }
 
@@ -1371,6 +1425,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         } else {
           // Separate output: synthesize to Blob, convert to AudioChunk, enqueue
           const audioBlob = await tts.synthesize(text);
+          this.turnMetrics.markTTSFirstAudio();
           const arrayBuffer = await audioBlob.arrayBuffer();
           const chunk: AudioChunk = { data: arrayBuffer, timestamp: Date.now() };
           pipeline.output.enqueue(chunk);
@@ -1485,6 +1540,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       const ttsName = this.pipeline.tts.constructor.name;
       this.emitAgentError(error as Error, `TTS (${ttsName})`);
+      this.turnMetrics.abortTurn();
     }
   }
 
@@ -1658,6 +1714,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       const ttsName2 = this.pipeline.tts.constructor.name;
       this.emitAgentError(error as Error, `TTS (${ttsName2})`);
+      this.turnMetrics.abortTurn();
       throw error;
     }
   }
@@ -1914,6 +1971,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.eagerText = null;
       }
 
+      // The turn is being cut short — report whatever timing was captured
+      this.turnMetrics.abortTurn();
+
       // Reset backpressure so stale waitForCapacity promises don't block
       this.ttsBackpressure?.reset();
 
@@ -1989,6 +2049,8 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       await this.stopSpeaking();
     }
 
+    this.turnMetrics.startTurn(text, { modality: 'text' });
+
     // processLLM guards on 'listening' | 'error' state, but sendMessage
     // should also work when input is muted (agent state = 'ready')
     const state = this.agentStateMachine.getState();
@@ -2013,6 +2075,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
     this.processingStateMachine.setProcessing();
 
+    this.turnMetrics.markLLMStart();
     this.emitEvent({
       type: 'llm.start',
       prompt: text,
@@ -2050,6 +2113,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.llmAbortController = null;
 
         this.processingStateMachine.setComplete();
+        this.turnMetrics.markLLMComplete();
         this.emitEvent({ type: 'llm.complete', text: fullResponse, timestamp: Date.now() });
 
         if (useHistory && fullResponse) {
@@ -2067,6 +2131,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
         if (generationId === this.llmGenerationId) {
           this.processingStateMachine.setIdle();
+          this.turnMetrics.finishTurn();
         }
         return;
       }
@@ -2093,6 +2158,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       let fullResponse = '';
       for await (const chunk of responseIterable) {
         if (llmController.signal.aborted) break;
+        this.turnMetrics.markLLMFirstToken();
         fullResponse += chunk;
         const spokenChunk = stripMarkdownForTTS(chunk);
         this.emitEvent({
@@ -2130,6 +2196,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       this.processingStateMachine.setComplete();
 
+      this.turnMetrics.markLLMComplete();
       this.emitEvent({
         type: 'llm.complete',
         text: fullResponse,
@@ -2150,6 +2217,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       if (generationId === this.llmGenerationId) {
         this.processingStateMachine.setIdle();
+        this.turnMetrics.finishTurn();
       }
     } catch (error) {
       if (generationId !== this.llmGenerationId) return;
@@ -2163,6 +2231,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       this.processingStateMachine.setError();
       const llmName2 = this.pipeline.llm.constructor.name;
       this.emitAgentError(error as Error, `LLM (${llmName2})`);
+      this.turnMetrics.abortTurn();
     }
   }
 
@@ -2217,6 +2286,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       if (signal.aborted) break;
 
       if (chunk.type === 'text') {
+        this.turnMetrics.markLLMFirstToken();
         fullText += chunk.text;
         router.push(chunk.text);
       } else if (chunk.type === 'tool_call_start') {

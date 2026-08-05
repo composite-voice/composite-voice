@@ -23,3 +23,5 @@ export { configureSTTFromMetadata } from './configureSTTFromMetadata';
 export { resolveProviders } from './resolveProviders';
 export { AudioHeaderCache } from './AudioHeaderCache';
 export { TTSBackpressure } from './TTSBackpressure';
+export { TurnMetricsCollector } from './TurnMetrics';
+export type { TurnMetricsSummary, TurnTimestamps, TurnDurations } from './TurnMetrics';
