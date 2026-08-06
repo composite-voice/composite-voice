@@ -705,8 +705,24 @@ export interface FallbackCapableProvider {
    * provider.
    *
    * @param callback - Invoked with a {@link ProviderFallbackInfo} per swap.
+   * @returns An unsubscribe function when the implementation supports it.
+   *   Callers that outlive the chain (the documented reuse pattern, where
+   *   one chain is shared across many agents) must call it on teardown.
    */
-  onFallback(callback: (info: ProviderFallbackInfo) => void): void;
+  onFallback(callback: (info: ProviderFallbackInfo) => void): (() => void) | void;
+
+  /**
+   * Register a source for the cached audio container header, re-injected
+   * into a replacement provider after an internal failover reconnect.
+   *
+   * @remarks
+   * Optional — only meaningful for chains that stream container-format
+   * audio (WebM/OGG/WAV). CompositeVoice wires this to its
+   * `AudioHeaderCache` when present.
+   *
+   * @param source - Returns the cached header, or `null` when unavailable.
+   */
+  setReconnectHeaderSource?(source: () => ArrayBuffer | null): void;
 }
 
 /**

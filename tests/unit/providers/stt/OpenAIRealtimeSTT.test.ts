@@ -15,6 +15,7 @@ const mockWsManager = {
   isConnected: jest.fn().mockReturnValue(true),
   getState: jest.fn().mockReturnValue('connected'),
   setHandlers: jest.fn(),
+  expectClose: jest.fn(),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -276,19 +277,44 @@ describe('OpenAIRealtimeSTT', () => {
       expect(input.noise_reduction).toEqual({ type: 'far_field' });
     });
 
-    it('should re-send the session configuration after a reconnection', async () => {
+    it('should disable auto-reconnection and re-send session config on each connect', async () => {
+      // Background retries silently dropped audio for the length of the
+      // backoff. Reconnection is now driven by the SDK through connect(),
+      // which re-sends the session configuration every time.
       const provider = new OpenAIRealtimeSTT({ apiKey: 'test-key' }, logger);
       await provider.initialize();
       await provider.connect();
+
+      expect(MockWebSocketManager).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reconnection: expect.objectContaining({ enabled: false }),
+        })
+      );
+
+      await provider.disconnect();
       mockWsManager.send.mockClear();
+      await provider.connect();
 
-      // WebSocketManager fires onOpen again after an automatic reconnect
-      getHandlers().onOpen();
-
-      expect(mockWsManager.send).toHaveBeenCalledTimes(1);
       const resent = JSON.parse(mockWsManager.send.mock.calls[0][0]);
       expect(resent.type).toBe('session.update');
       expect(resent.session.type).toBe('transcription');
+    });
+
+    it('should emit a ws_closed error result when the connection is lost', async () => {
+      const provider = new OpenAIRealtimeSTT({ apiKey: 'test-key' }, logger);
+      const results: TranscriptionResult[] = [];
+      provider.onTranscription((result) => results.push(result));
+      await provider.initialize();
+      await provider.connect();
+
+      getHandlers().onConnectionLost(new Error('Connection closed unexpectedly (code 1011)'));
+
+      expect(results).toHaveLength(1);
+      expect(results[0]).toMatchObject({
+        text: '',
+        isFinal: true,
+        metadata: expect.objectContaining({ error: 'ws_closed' }),
+      });
     });
 
     it('should throw ProviderConnectionError when the connection fails', async () => {

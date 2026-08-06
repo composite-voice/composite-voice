@@ -850,16 +850,21 @@ Failover triggers:
 | `'init-error'`      | A provider failed to initialize during `agent.initialize()`                          |
 | `'connect-error'`   | The active provider's `connect()` rejected                                           |
 | `'connect-timeout'` | `connect()` exceeded `connectTimeout` (default 10 s)                                 |
-| `'stream-error'`    | The active provider reported an error mid-session (error result or failing `sendAudio`) |
+| `'stream-error'`    | The active provider's stream died mid-session — an unexpected socket close, an error result, or a failing `sendAudio` |
 
 Behavior details:
 
-- **Audio is buffered during a mid-session swap** and replayed to the backup once it connects, so speech during the failover window is not lost.
+- **A dropped connection is detected immediately.** Every live STT provider reports an unexpectedly closed socket as a `ws_closed` error result, including a clean server-initiated close (quota exhausted, session limit) that raises no error event of its own. Providers do not silently auto-reconnect in the background, so the chain never spends a vendor outage dropping audio into a dead socket.
+- **Audio is buffered during a mid-session swap** and replayed to the backup once it connects, so speech during the failover window is not lost. If the buffer overflows, the *oldest* chunks are dropped so the replay stays contiguous with live audio.
+- **Container headers are re-injected.** When the input is a container format (WebM/OGG/WAV), the cached header is replayed to the backup before any buffered audio, so it can demux the stream it joins mid-flight.
 - **Failover is sticky** — a failed provider stays out of rotation for the rest of the session (no flapping during a vendor outage). Call `fallback.resetToPrimary()` between sessions to probe whether the primary has recovered.
 - **The chain only errors when exhausted.** If every provider in the chain fails, the normal error events (`transcription.error`, `agent.error`) fire.
 - Input audio format metadata is applied to **every** provider in the chain, so a backup connects already knowing the encoding/sample rate.
+- **Turn-taking sees through the chain.** A chain of full-duplex providers stays full-duplex (barge-in keeps working); it only falls back to pausing capture if a member needs it.
 
 Options: `new FallbackSTT(providers, { connectTimeout?: number, debug?: boolean })`.
+
+Reusing a chain across agents: `onFallback()` returns an unsubscribe function, and `dispose()` drops the chain's listener references. Call `resetToPrimary()` between sessions to put the primary back in rotation.
 
 Constraints: all chained providers must be live (WebSocket) STT providers covering only the `stt` role — multi-role providers like `NativeSTT` manage their own microphone and can't be swapped mid-session.
 

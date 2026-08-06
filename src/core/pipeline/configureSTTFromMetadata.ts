@@ -35,6 +35,7 @@
 
 import type { AudioMetadata } from '../types/audio';
 import type { BaseProvider } from '../types/providers';
+import { isProviderChain } from '../../utils/providerChain';
 
 /**
  * Maps {@link AudioMetadata.encoding} values to Deepgram encoding strings.
@@ -73,14 +74,6 @@ const DEEPGRAM_LIKE_NAMES = new Set(['DeepgramSTT', 'DeepgramFlux']);
  * @internal
  */
 const ASSEMBLYAI_LIKE_NAMES = new Set(['AssemblyAISTT']);
-
-/**
- * Provider class names that wrap a chain of STT providers (exposed via a
- * `providers` array) and should have every member configured.
- *
- * @internal
- */
-const FALLBACK_CHAIN_NAMES = new Set(['FallbackSTT']);
 
 /**
  * A minimal structural type representing a provider with a Deepgram-style config.
@@ -172,17 +165,16 @@ interface AssemblyAILikeSTT {
  * @see {@link AudioInputProvider.getMetadata} for how metadata is obtained
  */
 export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetadata): void {
-  const providerName = stt.constructor?.name ?? '';
-
   // Fallback chains wrap multiple providers — configure every member so a
   // failover lands on a provider that already knows the input audio format.
-  if (FALLBACK_CHAIN_NAMES.has(providerName)) {
-    const chain = (stt as unknown as { providers?: readonly BaseProvider[] }).providers ?? [];
-    for (const inner of chain) {
+  if (isProviderChain<BaseProvider>(stt)) {
+    for (const inner of stt.providers) {
       configureSTTFromMetadata(inner, metadata);
     }
     return;
   }
+
+  const providerName = stt.constructor?.name ?? '';
 
   if (DEEPGRAM_LIKE_NAMES.has(providerName)) {
     configureDeepgram(stt as unknown as DeepgramLikeSTT, metadata);
