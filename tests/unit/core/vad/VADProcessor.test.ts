@@ -249,6 +249,38 @@ describe('VADProcessor', () => {
       expect(processor.isSpeaking).toBe(false);
     });
 
+    it('reports speech duration without the trailing silence window', async () => {
+      // Advance the clock one frame (32 ms) per scored frame, so the reported
+      // duration can be checked against a known real-time timeline.
+      let clock = 0;
+      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => clock);
+
+      try {
+        class ClockedEngine extends FakeEngine {
+          override async process(frame: Float32Array): Promise<number> {
+            clock += 32;
+            return super.process(frame);
+          }
+        }
+
+        const engine = new ClockedEngine();
+        // 2 speech frames (64 ms of speech), then 2 silence frames to confirm.
+        engine.probabilities = [0.9, 0.9, 0.1, 0.1];
+        const processor = makeProcessor(engine);
+        const ends: number[] = [];
+        processor.onSpeechEnd(({ durationMs }) => ends.push(durationMs));
+
+        for (let i = 0; i < 4; i++) processor.push(pcmChunk(512));
+        await processor.flush();
+
+        // Speech ran 0–64 ms; the segment closed at 128 ms after the 64 ms
+        // silence window. Reporting 128 would count the silence as speech.
+        expect(ends).toEqual([64]);
+      } finally {
+        nowSpy.mockRestore();
+      }
+    });
+
     it('keeps the segment open through mid-sentence dips (hysteresis band)', async () => {
       const engine = new FakeEngine();
       // 0.4 is below the 0.5 entry threshold but above the 0.35 exit threshold
@@ -375,6 +407,44 @@ describe('VADProcessor', () => {
       await processor.flush();
 
       expect(engine.processedFrames).toHaveLength(1);
+    });
+
+    it('bounds the input backlog when inference falls behind', async () => {
+      // Park the first frame so the queue builds up behind it.
+      let release!: () => void;
+      const parked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      class StalledEngine extends FakeEngine {
+        calls = 0;
+        override async process(frame: Float32Array): Promise<number> {
+          this.calls++;
+          if (this.calls === 1) await parked;
+          return super.process(frame);
+        }
+      }
+
+      const engine = new StalledEngine();
+      const logger = new Logger('VADProcessorTest', { enabled: false });
+      const warn = jest.spyOn(logger, 'warn');
+      const processor = new VADProcessor(engine, { threshold: 0.5 }, logger);
+      processor.configure(LINEAR16_16K);
+
+      // 16384 samples = 32768 bytes = 32 frames per chunk.
+      const CHUNK_FRAMES = 32;
+      const CHUNKS = 13;
+      for (let i = 0; i < CHUNKS; i++) processor.push(pcmChunk(16384));
+      await Promise.resolve();
+
+      release();
+      await processor.flush();
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('input backlog exceeded'));
+      // Oldest chunks were dropped rather than retained for the whole call.
+      expect(engine.processedFrames.length).toBeLessThan(CHUNKS * CHUNK_FRAMES);
+      // …but the newest audio still got scored.
+      expect(engine.processedFrames.length).toBeGreaterThan(0);
     });
   });
 });

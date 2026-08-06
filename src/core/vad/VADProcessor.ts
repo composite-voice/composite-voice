@@ -72,6 +72,16 @@ const EXIT_THRESHOLD_GAP = 0.15;
 const MIN_EXIT_THRESHOLD = 0.05;
 
 /**
+ * Cap on queued-but-unprocessed input audio, in bytes.
+ *
+ * @remarks
+ * Roughly 10 s of 16 kHz mono linear16 — far more head-room than inference
+ * needs, so it only bites when the engine has genuinely stalled. Without a
+ * cap a stall would retain every chunk for the rest of the call.
+ */
+const MAX_PENDING_BYTES = 320_000;
+
+/**
  * Converts pipeline audio into VAD frames and tracks speech segments.
  *
  * @remarks
@@ -110,8 +120,17 @@ export class VADProcessor {
    */
   private byteRemainder: Uint8Array = new Uint8Array(0);
 
-  /** Serializes frame processing so state transitions stay ordered. */
-  private processingChain: Promise<void> = Promise.resolve();
+  /** Input chunks awaiting decode + inference, oldest first. */
+  private pending: ArrayBuffer[] = [];
+  private pendingBytes = 0;
+  private backlogDropWarned = false;
+
+  /**
+   * Serializes frame processing so state transitions stay ordered — exactly
+   * one {@link drain} runs at a time.
+   */
+  private draining = false;
+  private drainPromise: Promise<void> = Promise.resolve();
 
   /**
    * Bumped by {@link reset}; frames whose inference started before the bump
@@ -194,23 +213,29 @@ export class VADProcessor {
    * @param data - Raw audio bytes in the configured format.
    */
   push(data: ArrayBuffer): void {
-    this.processingChain = this.processingChain
-      .then(() => this.processChunk(data))
-      .catch((error) => {
-        this.logger?.warn('VADProcessor: error processing audio chunk', error);
-        // Drop the audio that failed. Without this the offending frame stays
-        // at the head of sampleBuffer and is retried against every later
-        // chunk, so the buffer grows without bound and no new audio is ever
-        // scored. Segment state is left intact so an open segment can still
-        // close normally once processing recovers.
-        this.sampleBuffer = new Float32Array(0);
-        this.byteRemainder = new Uint8Array(0);
-        try {
-          this.engine.reset();
-        } catch (resetError) {
-          this.logger?.warn('VADProcessor: engine reset after failure threw', resetError);
-        }
-      });
+    this.pending.push(data);
+    this.pendingBytes += data.byteLength;
+
+    // If inference can't keep up, drop the oldest queued audio rather than
+    // let the backlog grow for the length of the call. VAD cares about what
+    // the user is saying now, so the newest chunk is the one worth keeping.
+    while (this.pendingBytes > MAX_PENDING_BYTES && this.pending.length > 1) {
+      const dropped = this.pending.shift();
+      this.pendingBytes -= dropped?.byteLength ?? 0;
+      if (!this.backlogDropWarned) {
+        this.backlogDropWarned = true;
+        this.logger?.warn(
+          'VADProcessor: input backlog exceeded ' +
+            `${MAX_PENDING_BYTES} bytes — dropping the oldest audio. ` +
+            'VAD inference is not keeping up with the input stream.'
+        );
+      }
+    }
+
+    if (!this.draining) {
+      this.draining = true;
+      this.drainPromise = this.drain();
+    }
   }
 
   /**
@@ -220,7 +245,37 @@ export class VADProcessor {
    * Primarily for tests and orderly shutdown.
    */
   async flush(): Promise<void> {
-    await this.processingChain;
+    await this.drainPromise;
+  }
+
+  /** Process queued chunks one at a time until the queue is empty. */
+  private async drain(): Promise<void> {
+    try {
+      while (this.pending.length > 0) {
+        const chunk = this.pending.shift();
+        if (!chunk) continue;
+        this.pendingBytes -= chunk.byteLength;
+        try {
+          await this.processChunk(chunk);
+        } catch (error) {
+          this.logger?.warn('VADProcessor: error processing audio chunk', error);
+          // Drop the audio that failed. Without this the offending frame
+          // stays at the head of sampleBuffer and is retried against every
+          // later chunk, so no new audio is ever scored. Segment state is
+          // left intact so an open segment can still close normally once
+          // processing recovers.
+          this.sampleBuffer = new Float32Array(0);
+          this.byteRemainder = new Uint8Array(0);
+          try {
+            this.engine.reset();
+          } catch (resetError) {
+            this.logger?.warn('VADProcessor: engine reset after failure threw', resetError);
+          }
+        }
+      }
+    } finally {
+      this.draining = false;
+    }
   }
 
   /**
@@ -232,6 +287,8 @@ export class VADProcessor {
    */
   reset(): void {
     this.generation++;
+    this.pending = [];
+    this.pendingBytes = 0;
     this.sampleBuffer = new Float32Array(0);
     this.byteRemainder = new Uint8Array(0);
     this.speaking = false;
@@ -372,7 +429,10 @@ export class VADProcessor {
     if (probability < exitThreshold) {
       this.consecutiveSilenceFrames++;
       if (this.consecutiveSilenceFrames * frameMs >= this.options.silenceDurationMs) {
-        const durationMs = Math.max(0, Math.round(Date.now() - this.speechStartedAt));
+        // Discount the silence window we just waited out — the segment
+        // stopped when the silence began, not when it was confirmed.
+        const silenceMs = this.consecutiveSilenceFrames * frameMs;
+        const durationMs = Math.max(0, Math.round(Date.now() - this.speechStartedAt - silenceMs));
         this.speaking = false;
         this.consecutiveSpeechFrames = 0;
         this.consecutiveSilenceFrames = 0;
