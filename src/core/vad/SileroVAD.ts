@@ -156,6 +156,13 @@ export class SileroVAD implements VADEngine {
   /** Serializes inference so recurrent state updates stay ordered. */
   private inferenceChain: Promise<unknown> = Promise.resolve();
 
+  /**
+   * Bumped by {@link reset}; inferences that started before the bump
+   * discard their recurrent-state writes so pre-reset frames cannot
+   * resurrect stale state.
+   */
+  private generation = 0;
+
   constructor(options: SileroVADOptions = {}) {
     this.options = options;
   }
@@ -174,20 +181,30 @@ export class SileroVAD implements VADEngine {
     this.ort = this.options.ort ?? (await this.loadOrt());
 
     const modelUrl = this.options.modelUrl ?? DEFAULT_SILERO_MODEL_URL;
-    this.session = await this.ort.InferenceSession.create(modelUrl);
+    const session = await this.ort.InferenceSession.create(modelUrl);
 
-    const inputs = this.session.inputNames;
+    // Validate before caching the session, so a rejected model does not
+    // leave `initialize()` short-circuiting on a session we can't use.
+    const inputs = session.inputNames;
+    let modelVersion: 'v4' | 'v5';
     if (inputs.includes('state')) {
-      this.modelVersion = 'v5';
+      modelVersion = 'v5';
     } else if (inputs.includes('h') && inputs.includes('c')) {
-      this.modelVersion = 'v4';
+      modelVersion = 'v4';
     } else {
+      try {
+        await session.release?.();
+      } catch {
+        /* releasing a rejected session is best-effort */
+      }
       throw new Error(
         `SileroVAD: unrecognized model input signature [${inputs.join(', ')}] — ` +
           'expected a Silero VAD v5 ("state") or v4 ("h"/"c") ONNX export'
       );
     }
 
+    this.session = session;
+    this.modelVersion = modelVersion;
     this.reset();
   }
 
@@ -239,18 +256,23 @@ export class SileroVAD implements VADEngine {
       };
     }
 
+    const generation = this.generation;
     const results = await session.run(feeds);
 
-    // Carry recurrent state into the next frame
-    if (this.modelVersion === 'v5') {
-      const stateN = results.stateN ?? results.state;
-      if (stateN) {
-        this.state = Float32Array.from(stateN.data as ArrayLike<number>);
+    // Skip the state write if reset() ran while this inference was in
+    // flight — otherwise a pre-reset frame resurrects the state we cleared.
+    if (generation === this.generation) {
+      // Carry recurrent state into the next frame
+      if (this.modelVersion === 'v5') {
+        const stateN = results.stateN ?? results.state;
+        if (stateN) {
+          this.state = Float32Array.from(stateN.data as ArrayLike<number>);
+        }
+        this.context = frame.slice(SILERO_FRAME_SAMPLES - V5_CONTEXT_SAMPLES);
+      } else {
+        if (results.hn) this.h = Float32Array.from(results.hn.data as ArrayLike<number>);
+        if (results.cn) this.c = Float32Array.from(results.cn.data as ArrayLike<number>);
       }
-      this.context = frame.slice(SILERO_FRAME_SAMPLES - V5_CONTEXT_SAMPLES);
-    } else {
-      if (results.hn) this.h = Float32Array.from(results.hn.data as ArrayLike<number>);
-      if (results.cn) this.c = Float32Array.from(results.cn.data as ArrayLike<number>);
     }
 
     const output = results.output ?? results[Object.keys(results)[0] ?? ''];
@@ -259,6 +281,7 @@ export class SileroVAD implements VADEngine {
   }
 
   reset(): void {
+    this.generation++;
     this.state = new Float32Array(2 * 1 * 128);
     this.h = new Float32Array(2 * 1 * 64);
     this.c = new Float32Array(2 * 1 * 64);

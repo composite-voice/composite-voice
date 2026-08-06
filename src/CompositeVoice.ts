@@ -1074,6 +1074,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     // otherwise the new turn's marks land on the old one.
     this.turnMetrics.abortTurn();
 
+    // Release any generation parked on waitForCapacity — once the queue is
+    // cleared and Live TTS is disconnected no release() will ever arrive, so
+    // the aborted generation would never reach its abort-signal check.
+    this.ttsBackpressure?.reset();
+
     // Stop output immediately (sync)
     if (!this.isMultiRoleOutput) {
       this.outputQueue.clear();

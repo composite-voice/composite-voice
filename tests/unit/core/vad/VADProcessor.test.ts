@@ -6,6 +6,7 @@
 import { VADProcessor } from '../../../../src/core/vad/VADProcessor';
 import type { VADEngine } from '../../../../src/core/vad/types';
 import { encodeMulaw } from '../../../../src/utils/g711';
+import { Logger } from '../../../../src/utils/logger';
 
 /** Scripted engine: returns a queued probability per processed frame. */
 class FakeEngine implements VADEngine {
@@ -39,7 +40,12 @@ function pcmChunk(samples: number, value = 1000): ArrayBuffer {
   return Int16Array.from({ length: samples }, () => value).buffer;
 }
 
-const LINEAR16_16K = { sampleRate: 16000, encoding: 'linear16' as const, channels: 1, bitDepth: 16 };
+const LINEAR16_16K = {
+  sampleRate: 16000,
+  encoding: 'linear16' as const,
+  channels: 1,
+  bitDepth: 16,
+};
 
 // One 512-sample frame at 16 kHz = 32 ms.
 // minSpeechDurationMs: 64 → 2 frames to confirm speech.
@@ -124,7 +130,7 @@ describe('VADProcessor', () => {
       expect(engine.processedFrames).toHaveLength(0);
     });
 
-    it('drops a trailing odd byte from linear16 chunks', async () => {
+    it('holds back a trailing odd byte from linear16 chunks', async () => {
       const engine = new FakeEngine();
       const processor = makeProcessor(engine);
 
@@ -132,6 +138,58 @@ describe('VADProcessor', () => {
       processor.push(odd);
       await processor.flush();
 
+      expect(engine.processedFrames).toHaveLength(1);
+    });
+
+    it('carries a partial linear16 sample across chunks without shifting alignment', async () => {
+      const engine = new FakeEngine();
+      const processor = makeProcessor(engine);
+
+      // 512 samples plus the low byte of a 513th, then the high byte plus the
+      // rest. If the odd byte were dropped the second chunk would decode
+      // byte-shifted and every later sample would be garbage.
+      const full = new Uint8Array(Int16Array.from({ length: 1024 }, () => 16384).buffer);
+      processor.push(full.slice(0, 512 * 2 + 1).buffer);
+      processor.push(full.slice(512 * 2 + 1).buffer);
+      await processor.flush();
+
+      expect(engine.processedFrames).toHaveLength(2);
+      // Both frames decode to the same ~0.5 full-scale value.
+      expect(engine.processedFrames[1]![0]).toBeCloseTo(0.5, 1);
+      expect(engine.processedFrames[1]![511]).toBeCloseTo(0.5, 1);
+    });
+
+    it('carries a partial stereo sample across chunks so channels stay aligned', async () => {
+      const engine = new FakeEngine();
+      const processor = new VADProcessor(engine, { threshold: 0.5 });
+      processor.configure({ sampleRate: 16000, encoding: 'linear16', channels: 2, bitDepth: 16 });
+
+      // Left channel at full-ish scale, right channel silent — downmix ≈ 0.25.
+      // Split mid-sample-frame (3 bytes into a 4-byte stereo frame).
+      const stereo = new Uint8Array(
+        Int16Array.from({ length: 2048 }, (_, i) => (i % 2 === 0 ? 16384 : 0)).buffer
+      );
+      processor.push(stereo.slice(0, 1027).buffer);
+      processor.push(stereo.slice(1027).buffer);
+      await processor.flush();
+
+      expect(engine.processedFrames).toHaveLength(2);
+      // A rotated channel order would flip the pattern and change the mean.
+      expect(engine.processedFrames[1]![0]).toBeCloseTo(0.25, 1);
+    });
+
+    it('clears held-back bytes when the input format changes', async () => {
+      const engine = new FakeEngine();
+      const processor = makeProcessor(engine);
+
+      processor.push(new Uint8Array(1).buffer); // one byte, held back
+      await processor.flush();
+
+      processor.configure(LINEAR16_16K);
+      processor.push(pcmChunk(512));
+      await processor.flush();
+
+      // The stale byte must not have shifted this chunk into a partial frame.
       expect(engine.processedFrames).toHaveLength(1);
     });
 
@@ -243,6 +301,80 @@ describe('VADProcessor', () => {
       expect(processor.isSpeaking).toBe(false);
       expect(ends).toHaveLength(0);
       expect(engine.resetCount).toBe(1);
+    });
+
+    it('discards frames whose inference was in flight when reset() ran', async () => {
+      // Engine that parks the second frame until we release it, so reset()
+      // lands between the frame going in and its probability coming back.
+      let release!: () => void;
+      const parked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+
+      class ParkingEngine extends FakeEngine {
+        calls = 0;
+        override async process(frame: Float32Array): Promise<number> {
+          this.calls++;
+          if (this.calls === 2) await parked;
+          return super.process(frame);
+        }
+      }
+
+      const engine = new ParkingEngine();
+      engine.probabilities = [0.9, 0.9, 0.9];
+      const processor = makeProcessor(engine);
+      const starts: unknown[] = [];
+      processor.onSpeechStart((info) => starts.push(info));
+
+      processor.push(pcmChunk(512));
+      processor.push(pcmChunk(512)); // second frame parks mid-inference
+      await Promise.resolve();
+
+      processor.reset();
+      release();
+      await processor.flush();
+
+      // The parked frame belonged to the finished session — it must not
+      // complete the debounce and open a segment.
+      expect(starts).toHaveLength(0);
+      expect(processor.isSpeaking).toBe(false);
+    });
+  });
+
+  describe('error recovery', () => {
+    it('drops the failed audio so later chunks still get scored', async () => {
+      class FlakyEngine extends FakeEngine {
+        failNext = true;
+        override async process(frame: Float32Array): Promise<number> {
+          if (this.failNext) {
+            this.failNext = false;
+            throw new Error('inference exploded');
+          }
+          return super.process(frame);
+        }
+      }
+
+      const engine = new FlakyEngine();
+      engine.probabilities = [0.9];
+      const logger = new Logger('VADProcessorTest', { enabled: false });
+      const warn = jest.spyOn(logger, 'warn');
+      const processor = new VADProcessor(
+        engine,
+        { threshold: 0.5, minSpeechDurationMs: 64, silenceDurationMs: 64 },
+        logger
+      );
+      processor.configure(LINEAR16_16K);
+
+      processor.push(pcmChunk(512)); // fails
+      await processor.flush();
+      expect(warn).toHaveBeenCalled();
+
+      // Without clearing the buffer the failed frame would sit at the head
+      // forever and this chunk would produce nothing.
+      processor.push(pcmChunk(512));
+      await processor.flush();
+
+      expect(engine.processedFrames).toHaveLength(1);
     });
   });
 });
