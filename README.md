@@ -53,6 +53,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [5-role pipeline](#5-role-pipeline)
 - [Provider roles](#provider-roles)
 - [Providers](#providers)
+- [Provider fallback chains](#provider-fallback-chains)
 - [Configuration](#configuration)
 - [Events](#events)
 - [Agent states](#agent-states)
@@ -817,6 +818,57 @@ Platform providers connect the pipeline to call and chat platforms. Duplex provi
 
 ---
 
+## Provider fallback chains
+
+Voice agents die publicly when one vendor has an outage. `FallbackSTT` wraps an ordered list of live STT providers and automatically fails over to the next one when the active provider can't connect, times out, or errors mid-session — the pipeline keeps running on the backup:
+
+```typescript
+import { CompositeVoice, FallbackSTT, DeepgramSTT, AssemblyAISTT } from 'composite-voice';
+
+const agent = new CompositeVoice({
+  providers: [
+    new FallbackSTT([
+      new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }), // primary
+      new AssemblyAISTT({ proxyUrl: '/api/proxy/assemblyai' }), // backup
+    ]),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+});
+
+// Know when a swap happened
+agent.on('provider.fallback', ({ from, to, reason }) => {
+  console.warn(`STT failed over from ${from} to ${to} (${reason})`);
+});
+```
+
+Failover triggers:
+
+| Reason              | When                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `'init-error'`      | A provider failed to initialize during `agent.initialize()`                          |
+| `'connect-error'`   | The active provider's `connect()` rejected                                           |
+| `'connect-timeout'` | `connect()` exceeded `connectTimeout` (default 10 s)                                 |
+| `'stream-error'`    | The active provider's stream died mid-session — an unexpected socket close, an error result, or a failing `sendAudio` |
+
+Behavior details:
+
+- **A dropped connection is detected immediately.** Every live STT provider reports an unexpectedly closed socket as a `ws_closed` error result, including a clean server-initiated close (quota exhausted, session limit) that raises no error event of its own. Providers do not silently auto-reconnect in the background, so the chain never spends a vendor outage dropping audio into a dead socket.
+- **Audio is buffered during a mid-session swap** and replayed to the backup once it connects, so speech during the failover window is not lost. If the buffer overflows, the *oldest* chunks are dropped so the replay stays contiguous with live audio.
+- **Container headers are re-injected.** When the input is a container format (WebM/OGG/WAV), the cached header is replayed to the backup before any buffered audio, so it can demux the stream it joins mid-flight.
+- **Failover is sticky** — a failed provider stays out of rotation for the rest of the session (no flapping during a vendor outage). Call `fallback.resetToPrimary()` between sessions to probe whether the primary has recovered.
+- **The chain only errors when exhausted.** If every provider in the chain fails, the normal error events (`transcription.error`, `agent.error`) fire.
+- Input audio format metadata is applied to **every** provider in the chain, so a backup connects already knowing the encoding/sample rate.
+- **Turn-taking sees through the chain.** A chain of full-duplex providers stays full-duplex (barge-in keeps working); it only falls back to pausing capture if a member needs it.
+
+Options: `new FallbackSTT(providers, { connectTimeout?: number, debug?: boolean })`.
+
+Reusing a chain across agents: `onFallback()` returns an unsubscribe function, and `dispose()` drops the chain's listener references. Call `resetToPrimary()` between sessions to put the primary back in rotation.
+
+Constraints: all chained providers must be live (WebSocket) STT providers covering only the `stt` role — multi-role providers like `NativeSTT` manage their own microphone and can't be swapped mid-session.
+
+---
+
 ## Configuration
 
 Full `CompositeVoice` configuration reference:
@@ -969,6 +1021,12 @@ agent.on('queue.stats', (e) => {
   console.log(`Queue "${e.queueName}": ${e.size} buffered, ${e.totalEnqueued} total`);
 });
 ```
+
+### Provider events
+
+| Event               | Payload                             | Description                                                                |
+| ------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
+| `provider.fallback` | `{ role, from, to, reason, error }` | A [fallback chain](#provider-fallback-chains) swapped to a backup provider |
 
 ---
 

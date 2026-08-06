@@ -35,6 +35,7 @@
 
 import type { AudioMetadata } from '../types/audio';
 import type { BaseProvider } from '../types/providers';
+import { isProviderChain } from '../../utils/providerChain';
 
 /**
  * Maps {@link AudioMetadata.encoding} values to Deepgram encoding strings.
@@ -164,6 +165,15 @@ interface AssemblyAILikeSTT {
  * @see {@link AudioInputProvider.getMetadata} for how metadata is obtained
  */
 export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetadata): void {
+  // Fallback chains wrap multiple providers — configure every member so a
+  // failover lands on a provider that already knows the input audio format.
+  if (isProviderChain<BaseProvider>(stt)) {
+    for (const inner of stt.providers) {
+      configureSTTFromMetadata(inner, metadata);
+    }
+    return;
+  }
+
   const providerName = stt.constructor?.name ?? '';
 
   if (DEEPGRAM_LIKE_NAMES.has(providerName)) {

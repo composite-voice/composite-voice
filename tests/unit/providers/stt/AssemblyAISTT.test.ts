@@ -5,6 +5,7 @@
 import { AssemblyAISTT } from '../../../../src/providers/stt/assemblyai/AssemblyAISTT';
 import { Logger } from '../../../../src/utils/logger';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../../src/utils/errors';
+import type { TranscriptionResult } from '../../../../src/core/types/providers';
 
 // Mock WebSocketManager
 const mockWsManager = {
@@ -14,6 +15,7 @@ const mockWsManager = {
   isConnected: jest.fn().mockReturnValue(true),
   getState: jest.fn().mockReturnValue('connected'),
   setHandlers: jest.fn(),
+  expectClose: jest.fn(),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -198,17 +200,47 @@ describe('AssemblyAISTT', () => {
       await proxyProvider.dispose();
     });
 
-    it('should enable reconnection for STT sessions', async () => {
+    it('should disable auto-reconnection so a lost socket surfaces immediately', async () => {
+      // Background retries silently dropped audio for the length of the
+      // backoff; the session must fail fast instead so the SDK (or a
+      // FallbackSTT chain, which buffers audio) can recover without loss.
       await provider.connect();
 
       expect(MockWebSocketManager).toHaveBeenCalledWith(
         expect.objectContaining({
-          reconnection: expect.objectContaining({
-            enabled: true,
-            maxAttempts: 5,
-          }),
+          reconnection: expect.objectContaining({ enabled: false }),
         })
       );
+    });
+
+    it('should emit a ws_closed error result when the connection is lost', async () => {
+      const results: TranscriptionResult[] = [];
+      provider.onTranscription((result) => results.push(result));
+      await provider.connect();
+
+      const handlers = mockWsManager.setHandlers.mock.calls.at(-1)![0];
+      handlers.onConnectionLost(new Error('Connection closed unexpectedly (code 1011)'));
+
+      expect(provider.isWebSocketConnected()).toBe(false);
+      expect(results).toHaveLength(1);
+      expect(results[0]).toMatchObject({
+        text: '',
+        isFinal: true,
+        metadata: expect.objectContaining({ error: 'ws_closed' }),
+      });
+    });
+
+    it('should mark an intentional close as expected before ending the stream', async () => {
+      await provider.connect();
+      mockWsManager.expectClose.mockClear();
+
+      const disconnecting = provider.disconnect();
+      jest.advanceTimersByTime(1000);
+      await disconnecting;
+
+      // Guards the window between terminate_session and wsManager.disconnect(),
+      // where the server usually closes first — that close is not a failure.
+      expect(mockWsManager.expectClose).toHaveBeenCalled();
     });
 
     it('should not connect when already connected', async () => {

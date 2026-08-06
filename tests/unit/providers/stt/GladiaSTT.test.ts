@@ -67,6 +67,7 @@ const mockWsManager = {
   isConnected: jest.fn().mockReturnValue(true),
   getState: jest.fn().mockReturnValue('connected'),
   setHandlers: jest.fn(),
+  expectClose: jest.fn(),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

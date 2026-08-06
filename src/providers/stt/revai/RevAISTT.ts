@@ -483,13 +483,12 @@ export class RevAISTT extends LiveSTTProvider {
       const wsOptions: WebSocketManagerOptions = {
         url: wsUrl,
         connectionTimeout: this.config.timeout ?? 10000,
-        reconnection: {
-          enabled: true,
-          maxAttempts: 5,
-          initialDelay: 1000,
-          maxDelay: 30000,
-          backoffMultiplier: 2,
-        },
+        // Auto-reconnect is disabled: a reconnected socket starts a brand-new
+        // Rev AI job without the 'connected' handshake this provider waits
+        // for, so it would be a dead session. Unexpected closes surface
+        // immediately via onConnectionLost; SDK-level recovery (or a
+        // FallbackSTT chain) owns reconnection.
+        reconnection: { enabled: false },
         logger: this.logger,
       };
 
@@ -505,6 +504,10 @@ export class RevAISTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('Rev AI STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`Rev AI STT connection lost: ${error.message}`);
         },
       });
 
@@ -764,13 +767,27 @@ export class RevAISTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to Rev AI STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      await manager.disconnect();
       return;
     }
 
     try {
       this.logger.debug('Disconnecting from Rev AI STT WebSocket');
+
+      // The server usually closes in response to the end-of-stream message
+      // below; tell the manager that close is expected so it is not
+      // reported as a lost connection.
+      this.wsManager.expectClose();
 
       // Signal end-of-stream. Rev AI responds with the last final
       // hypothesis and then closes the connection.

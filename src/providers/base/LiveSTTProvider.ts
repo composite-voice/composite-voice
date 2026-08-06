@@ -156,6 +156,35 @@ export abstract class LiveSTTProvider extends BaseSTTProvider implements ILiveST
   protected abstract sendAudioToSocket(chunk: ArrayBuffer): void;
 
   /**
+   * Emit the standardized "connection lost" error result.
+   *
+   * @remarks
+   * Every live STT provider MUST call this when its streaming connection
+   * dies unexpectedly mid-session (server-initiated close, reconnection
+   * give-up, fatal transport error) and will not recover on its own.
+   * This error-shaped result is the liveness signal the pipeline's error
+   * handling (`transcription.error`) and `FallbackSTT`'s mid-session
+   * failover depend on — a provider that only logs and flips an internal
+   * flag leaves the session silently dead.
+   *
+   * Do NOT call this for closes the application requested via
+   * `disconnect()`.
+   *
+   * @param message - Human-readable description of why the connection died.
+   */
+  protected emitConnectionLost(message: string): void {
+    this.emitTranscription({
+      text: '',
+      isFinal: true,
+      confidence: 0,
+      metadata: {
+        error: 'ws_closed',
+        message,
+      },
+    });
+  }
+
+  /**
    * Close the WebSocket connection to the streaming STT service.
    *
    * @remarks
