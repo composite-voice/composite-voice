@@ -224,8 +224,18 @@ export class TurnMetricsCollector {
    * @remarks
    * Opens a fresh pending-eager buffer; a subsequent eager LLM generation's
    * marks accumulate there until {@link startTurn} adopts or discards them.
+   *
+   * Providers can emit several preflights for one utterance. Later ones move
+   * the mark while the buffer is still empty, but once an eager generation
+   * has recorded a mark the buffer is frozen: that generation is still
+   * running, and its first-write-wins marks will not fire again, so
+   * replacing the buffer would lose them for good.
    */
   markPreflight(): void {
+    const pending = this.pendingEager;
+    if (pending && (pending.llmStart !== undefined || pending.llmFirstToken !== undefined)) {
+      return;
+    }
     this.pendingEager = { preflight: this.now() };
   }
 
@@ -234,11 +244,14 @@ export class TurnMetricsCollector {
    *
    * @remarks
    * If a turn is already active it is finished as `interrupted` first.
-   * With `adoptEager: true`, marks buffered since the last
+   * With `adoptEager: true`, the LLM marks buffered since the last
    * {@link markPreflight} are copied into the new turn (this is how an
    * accepted eager generation's `llmFirstToken` can precede `sttFinal`).
-   * The pending-eager buffer is cleared either way — a new turn always
-   * invalidates old speculative marks.
+   * The buffered `preflight` timestamp is carried over either way — the
+   * early end-of-turn signal describes this utterance whether or not a
+   * speculative generation ran on it, or was accepted. The pending-eager
+   * buffer is cleared either way — a new turn always invalidates old
+   * speculative marks.
    *
    * @param transcript - The user text that starts the turn.
    * @param options - Turn modality and whether to adopt buffered eager marks.
@@ -251,8 +264,9 @@ export class TurnMetricsCollector {
       this.finish(true);
     }
 
-    const eager = options.adoptEager === true ? this.pendingEager : null;
+    const pending = this.pendingEager;
     this.pendingEager = null;
+    const eager = options.adoptEager === true ? pending : null;
 
     this.current = {
       turnId: ++this.turnCounter,
@@ -260,7 +274,7 @@ export class TurnMetricsCollector {
       modality: options.modality,
       eagerUsed: eager !== null,
       sttFinal: this.now(),
-      ...(eager?.preflight !== undefined ? { preflight: eager.preflight } : {}),
+      ...(pending?.preflight !== undefined ? { preflight: pending.preflight } : {}),
       ...(eager?.llmStart !== undefined ? { llmStart: eager.llmStart } : {}),
       ...(eager?.llmFirstToken !== undefined ? { llmFirstToken: eager.llmFirstToken } : {}),
     };

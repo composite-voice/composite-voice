@@ -789,53 +789,21 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       }
 
       // ── Barge-in: interrupt playback when user starts speaking ──────────
+      // The utterance-complete result that confirms an in-flight eager
+      // generation is not a barge-in: the agent is only 'thinking'/'speaking'
+      // because it is already answering *this* utterance speculatively.
+      // handleSpeechFinal() reconciles it — and interrupts itself when the
+      // confirmed text turns out to differ.
+      const confirmsEagerGeneration =
+        this.eagerAbortController !== null && stt.isUtteranceComplete(result);
+
       if (
+        !confirmsEagerGeneration &&
         (this.agentStateMachine.is('speaking') || this.agentStateMachine.is('thinking')) &&
         result.text?.trim()
       ) {
         this.logger.debug('Barge-in detected — stopping playback');
-        // Synchronously abort LLM + reset state machines so processLLM
-        // can start immediately in this same callback
-        if (this.llmAbortController) {
-          this.llmAbortController.abort();
-          this.llmAbortController = null;
-        }
-        if (this.eagerAbortController) {
-          this.eagerAbortController.abort();
-          this.eagerAbortController = null;
-          this.eagerText = null;
-        }
-        // Stop output immediately (sync)
-        if (!this.isMultiRoleOutput) {
-          this.outputQueue.clear();
-          this.stopOutputPlayback();
-        }
-        // Reset state machines so agent can process new input
-        const ps = this.playbackStateMachine.getState();
-        if (ps !== 'idle' && ps !== 'error') {
-          try {
-            this.playbackStateMachine.setStopped();
-          } catch {
-            /* ignore */
-          }
-          try {
-            this.playbackStateMachine.setIdle();
-          } catch {
-            /* ignore */
-          }
-        }
-        const prs = this.processingStateMachine.getState();
-        if (prs !== 'idle') {
-          try {
-            this.processingStateMachine.setIdle();
-          } catch {
-            /* ignore */
-          }
-        }
-        // Disconnect TTS in background (async, don't block)
-        if (isLiveTTS(tts)) {
-          void tts.disconnect();
-        }
+        this.interruptActiveResponse();
       }
 
       if (stt.isPreflight(result)) {
@@ -962,25 +930,87 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       }
     }
 
-    // Observe real playback boundaries on the output provider (separate
-    // output only — multi-role providers manage playback internally and
-    // expose no callbacks to the pipeline). Feeds per-turn latency metrics
-    // and surfaces the audio.playback.* SDK events.
+    // Observe real playback boundaries on the output provider. Every provider
+    // in the output slot implements these callbacks — including multi-role
+    // ones that play audio themselves (e.g. NativeTTS via SpeechSynthesis),
+    // which is the only place their playback timing is observable. Feeds
+    // per-turn latency metrics and the audio.playback.* SDK events.
     //
-    // Note: output providers hold a single callback per slot — register
-    // application listeners on the SDK events, not on the provider.
+    // Note: output providers hold a single callback per slot, so this claims
+    // it — applications subscribe to the audio.playback.* events instead of
+    // registering on the provider.
+    pipeline.output.onPlaybackStart(() => {
+      this.turnMetrics.markPlaybackStart();
+      this.emitEvent({ type: 'audio.playback.start', timestamp: Date.now() });
+    });
+    pipeline.output.onPlaybackEnd(() => {
+      this.turnMetrics.markPlaybackEnd();
+      this.emitEvent({ type: 'audio.playback.end', timestamp: Date.now() });
+    });
+    pipeline.output.onPlaybackError((error) => {
+      this.emitEvent({ type: 'audio.playback.error', error, timestamp: Date.now() });
+    });
+  }
+
+  /**
+   * Cuts the in-flight response short: aborts generation, stops audio, and
+   * resets the state machines so a new generation can start immediately —
+   * synchronously, within the caller's tick.
+   *
+   * @remarks
+   * Used by barge-in and by {@link CompositeVoice.handleSpeechFinal |
+   * handleSpeechFinal} when a speculative generation has to be thrown away
+   * because the confirmed transcript diverged from the preflight text.
+   */
+  private interruptActiveResponse(): void {
+    const { tts } = this;
+
+    if (this.llmAbortController) {
+      this.llmAbortController.abort();
+      this.llmAbortController = null;
+    }
+    if (this.eagerAbortController) {
+      this.eagerAbortController.abort();
+      this.eagerAbortController = null;
+      this.eagerText = null;
+    }
+
+    // Close out the interrupted turn before the caller can open a new one —
+    // otherwise the new turn's marks land on the old one.
+    this.turnMetrics.abortTurn();
+
+    // Stop output immediately (sync)
     if (!this.isMultiRoleOutput) {
-      pipeline.output.onPlaybackStart(() => {
-        this.turnMetrics.markPlaybackStart();
-        this.emitEvent({ type: 'audio.playback.start', timestamp: Date.now() });
-      });
-      pipeline.output.onPlaybackEnd(() => {
-        this.turnMetrics.markPlaybackEnd();
-        this.emitEvent({ type: 'audio.playback.end', timestamp: Date.now() });
-      });
-      pipeline.output.onPlaybackError((error) => {
-        this.emitEvent({ type: 'audio.playback.error', error, timestamp: Date.now() });
-      });
+      this.outputQueue.clear();
+      this.stopOutputPlayback();
+    }
+
+    // Reset state machines so the agent can process new input
+    const ps = this.playbackStateMachine.getState();
+    if (ps !== 'idle' && ps !== 'error') {
+      try {
+        this.playbackStateMachine.setStopped();
+      } catch {
+        /* ignore */
+      }
+      try {
+        this.playbackStateMachine.setIdle();
+      } catch {
+        /* ignore */
+      }
+    }
+    const prs = this.processingStateMachine.getState();
+    if (prs !== 'idle') {
+      try {
+        this.processingStateMachine.setIdle();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Disconnect TTS in background (async, don't block)
+    if (isLiveTTS(tts)) {
+      void tts.disconnect();
     }
   }
 
@@ -1076,10 +1106,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           'speech_final too different from preflight — cancelling eager, restarting',
           { similarity, threshold, preflight: eagerText, final: text }
         );
+        // The speculative answer was to the wrong question: abort it, drop any
+        // audio it already produced, and reset the state machines so the
+        // replacement generation passes processLLM's 'listening' guard.
+        this.interruptActiveResponse();
         this.turnMetrics.startTurn(text, { modality: 'voice' });
-        this.eagerAbortController.abort();
-        this.eagerAbortController = null;
-        this.eagerText = null;
         void this.processLLM(text);
       } else {
         // Accept the preflight response even though text changed beyond threshold
@@ -1134,6 +1165,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     // Ignore transcriptions that come in after stopping
     if (!this.agentStateMachine.isIn('listening', 'error')) {
       this.logger.debug('Ignoring transcription - not in listening state');
+      // Callers open the metrics turn before dispatching here; nothing will
+      // generate against it now, so close it rather than leave it running
+      // until the next turn absorbs the idle time.
+      this.turnMetrics.abortTurn();
       return;
     }
 
@@ -1420,7 +1455,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       // REST TTS: synthesize and play
       if (isRestTTS(tts)) {
         if (this.isMultiRoleOutput) {
-          // Provider covers the 'output' role (e.g. NativeTTS via SpeechSynthesis)
+          // Provider covers the 'output' role (e.g. NativeTTS via SpeechSynthesis).
+          // No audio crosses the pipeline here, so there is no ttsFirstAudio to
+          // mark — synthesize() resolves only once speech has finished, which
+          // would be a playback-end timestamp wearing a first-audio label. The
+          // provider's playback callbacks carry the real timing instead.
           await tts.synthesize(text);
         } else {
           // Separate output: synthesize to Blob, convert to AudioChunk, enqueue

@@ -1585,6 +1585,13 @@ export interface AudioOutputProvider extends BaseProvider {
   /**
    * Register a callback invoked when audio playback begins.
    *
+   * @remarks
+   * These slots hold a single callback each, and `CompositeVoice` claims all
+   * three when the provider is used in a pipeline — that is where the
+   * `audio.playback.*` events and the per-turn playback metrics come from.
+   * Applications should subscribe to those events on the agent instead of
+   * registering here, which would replace the pipeline's handler.
+   *
    * @param callback - Function called when playback starts
    */
   onPlaybackStart(callback: () => void): void;
@@ -1592,12 +1599,20 @@ export interface AudioOutputProvider extends BaseProvider {
   /**
    * Register a callback invoked when all audio has finished playing.
    *
+   * @remarks
+   * Single-slot and claimed by `CompositeVoice` — see
+   * {@link AudioOutputProvider.onPlaybackStart | onPlaybackStart}.
+   *
    * @param callback - Function called when playback ends
    */
   onPlaybackEnd(callback: () => void): void;
 
   /**
    * Register a callback invoked when a playback error occurs.
+   *
+   * @remarks
+   * Single-slot and claimed by `CompositeVoice` — see
+   * {@link AudioOutputProvider.onPlaybackStart | onPlaybackStart}.
    *
    * @param callback - Function called with the error
    */

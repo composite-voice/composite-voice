@@ -1008,7 +1008,9 @@ What you get per turn:
 - **`interrupted`** — turns cut short by barge-in, `stopSpeaking()`, or a pipeline error still report whatever marks were captured.
 - Typed turns via `sendMessage()` are reported too, with `modality: 'text'`.
 
-Fields are present only when the topology captures them — e.g. multi-role outputs like `NativeTTS` manage playback internally, so `playbackStart` is unavailable there.
+Fields are present only when the topology captures them — e.g. multi-role outputs like `NativeTTS` synthesize and play in one step, with no audio crossing the pipeline, so `ttsFirstAudio` (and the `firstTokenToFirstAudio` / `firstAudioToPlayback` durations) are unavailable there. `playbackStart` still is: it comes from the output provider's own playback callback.
+
+> **Note:** to observe playback, the SDK registers the output provider's `onPlaybackStart` / `onPlaybackEnd` / `onPlaybackError` callbacks — which hold **one** callback each. Subscribe to the `audio.playback.*` events on the agent rather than registering on the provider directly; registering on the provider replaces the SDK's handler and stops both the events and the playback metrics.
 
 **Exporting to tracing systems:** timestamps are absolute epoch milliseconds (the same clock as every SDK event), so each phase converts directly to a span — no clock translation needed. An OpenTelemetry example:
 

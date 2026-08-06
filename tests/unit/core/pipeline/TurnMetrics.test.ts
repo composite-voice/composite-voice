@@ -88,9 +88,10 @@ describe('TurnMetricsCollector', () => {
     expect(s.durations.sttFinalToFirstToken).toBe(-100);
   });
 
-  it('discards eager marks when not adopted', () => {
+  it('discards eager LLM marks when not adopted but keeps the preflight mark', () => {
     const { collector, clock, summaries } = makeCollector();
 
+    const preflightAt = clock.now();
     collector.markPreflight();
     collector.markLLMStart();
     collector.markLLMFirstToken();
@@ -104,8 +105,49 @@ describe('TurnMetricsCollector', () => {
 
     const s = summaries[0]!;
     expect(s.eagerUsed).toBe(false);
-    expect(s.timestamps.preflight).toBeUndefined();
+    // The early end-of-turn signal describes this utterance either way
+    expect(s.timestamps.preflight).toBe(preflightAt);
+    // ...but the cancelled generation's marks are not the turn's
     expect(s.durations.sttFinalToFirstToken).toBe(100);
+  });
+
+  it('reports the preflight mark when no eager generation ran at all', () => {
+    const { collector, clock, summaries } = makeCollector();
+
+    const preflightAt = clock.now();
+    collector.markPreflight();
+    clock.advance(120);
+    collector.startTurn('hello there', { modality: 'voice' });
+    collector.finishTurn();
+
+    const s = summaries[0]!;
+    expect(s.eagerUsed).toBe(false);
+    expect(s.timestamps.preflight).toBe(preflightAt);
+    expect(s.timestamps.sttFinal - s.timestamps.preflight!).toBe(120);
+  });
+
+  it('a repeated preflight moves the mark only while no eager marks are buffered', () => {
+    const { collector, clock, summaries } = makeCollector();
+
+    collector.markPreflight();
+    clock.advance(30);
+    collector.markPreflight(); // still empty — the later signal wins
+    const secondPreflightAt = clock.now();
+    clock.advance(20);
+    collector.markLLMStart(); // eager generation begins
+    clock.advance(80);
+    collector.markLLMFirstToken();
+    clock.advance(15);
+    collector.markPreflight(); // must not discard the running generation's marks
+    clock.advance(25);
+    collector.startTurn('confirmed', { modality: 'voice', adoptEager: true });
+    collector.finishTurn();
+
+    const s = summaries[0]!;
+    expect(s.eagerUsed).toBe(true);
+    expect(s.timestamps.preflight).toBe(secondPreflightAt);
+    expect(s.timestamps.llmStart).toBe(secondPreflightAt + 20);
+    expect(s.durations.sttFinalToFirstToken).toBe(-40);
   });
 
   it('finishes the previous turn as interrupted when a new one starts', () => {

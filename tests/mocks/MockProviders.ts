@@ -26,7 +26,8 @@ export class MockSTTProvider implements RestSTTProvider {
   roles: readonly ProviderRole[] = ['stt'];
   config: STTProviderConfig = { model: 'mock' };
   private ready = false;
-  private transcriptionCallback?: (result: TranscriptionResult) => void;
+  /** Protected so preflight-capable subclasses can emit their own results. */
+  protected transcriptionCallback?: (result: TranscriptionResult) => void;
 
   async initialize() {
     this.ready = true;
@@ -91,6 +92,8 @@ export class MockLLMProvider implements LLMProvider {
   private ready = false;
   public generateCalled = false;
   public lastPrompt = '';
+  /** How many generations were requested — speculative ones included. */
+  public promptCount = 0;
 
   async initialize() {
     this.ready = true;
@@ -107,6 +110,7 @@ export class MockLLMProvider implements LLMProvider {
   async processText(prompt: string) {
     this.generateCalled = true;
     this.lastPrompt = prompt;
+    this.promptCount++;
 
     const response = `Mock response to: ${prompt}`;
 

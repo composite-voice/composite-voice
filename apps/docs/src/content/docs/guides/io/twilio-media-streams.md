@@ -157,7 +157,7 @@ Custom parameters are the idiomatic way to pass per-call context (user id, sessi
 
 ## Troubleshooting
 
-- **Caller hears silence.** Almost always `<Start>` instead of `<Connect>` in the TwiML, or TTS audio in a format the provider rejected -- check for a `ConfigurationError` from `configure()` and your `onPlaybackError` callback.
+- **Caller hears silence.** Almost always `<Start>` instead of `<Connect>` in the TwiML, or TTS audio in a format the provider rejected -- check for a `ConfigurationError` from `configure()` and for `audio.playback.error` events on the agent. (Register playback listeners through the agent's events, not on the provider: the pipeline claims the provider's single `onPlaybackError` slot to report these.)
 - **Garbled or chipmunk audio.** The TTS is sending a different format than it declared (e.g. 24 kHz linear16 labelled as 8 kHz). Make sure the TTS `options` match its actual output; with Deepgram set both `encoding` and `sampleRate` explicitly.
 - **`flush()` never resolves.** The mark echo is not arriving -- verify the socket is still open and that you attached the provider before the call started flowing. On hangup, detach, or `stop()` pending flushes settle automatically.
 - **WebSocket never connects.** Twilio requires `wss://` (TLS) with a certificate it trusts -- plain `ws://` and self-signed certificates fail. ngrok terminates TLS for you in development.

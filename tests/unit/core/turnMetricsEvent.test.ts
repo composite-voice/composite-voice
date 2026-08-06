@@ -7,6 +7,7 @@
 import { CompositeVoice } from '../../../src/CompositeVoice';
 import type { TurnMetricsEvent, CompositeVoiceEvent } from '../../../src/core/events/types';
 import type { AudioChunk } from '../../../src/core/types/audio';
+import type { TranscriptionResult } from '../../../src/core/types/providers';
 import {
   MockSTTProvider,
   MockLLMProvider,
@@ -42,6 +43,29 @@ class AutoPlayOutput extends MockOutputProvider {
   }
 }
 
+/**
+ * STT that signals an early end-of-turn the way DeepgramFlux does, so the
+ * eager pipeline can be exercised end to end.
+ */
+class PreflightSTT extends MockSTTProvider {
+  override isPreflight(result: TranscriptionResult): boolean {
+    return result.metadata?.preflight === true;
+  }
+
+  override isUtteranceComplete(result: TranscriptionResult): boolean {
+    return result.isFinal === true;
+  }
+
+  emitPreflight(text: string): void {
+    this.transcriptionCallback?.({
+      text,
+      isFinal: false,
+      confidence: 0.9,
+      metadata: { preflight: true },
+    });
+  }
+}
+
 async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
   const start = Date.now();
   while (!condition()) {
@@ -62,6 +86,16 @@ function buildAgent() {
     providers: [input, stt, llm, tts, output],
   });
   return { agent, stt, llm, tts, input, output };
+}
+
+function buildEagerAgent() {
+  const stt = new PreflightSTT();
+  const llm = new MockLLMProvider();
+  const agent = new CompositeVoice({
+    providers: [new MockInputProvider(), stt, llm, new MockTTSProvider(), new AutoPlayOutput()],
+    eagerLLM: { enabled: true, similarityThreshold: 0.8, cancelOnTextChange: true },
+  });
+  return { agent, stt, llm };
 }
 
 describe('turn.metrics event', () => {
@@ -177,6 +211,128 @@ describe('turn.metrics event', () => {
 
     expect(playbackEvents).toContain('audio.playback.start');
     expect(playbackEvents).toContain('audio.playback.end');
+
+    await agent.dispose();
+  });
+
+  it('closes a turn whose generation is refused because the agent is not listening', async () => {
+    const { agent, stt } = buildAgent();
+    const metrics: TurnMetricsEvent[] = [];
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+
+    await agent.initialize(); // never started listening — processLLM will bail
+
+    stt.emitTranscription('ignored question');
+    await waitFor(() => metrics.length === 1);
+
+    const m = metrics[0]!;
+    expect(m).toMatchObject({ turnId: 1, transcript: 'ignored question', interrupted: true });
+    // Reported immediately, not left open to absorb the next silence
+    expect(m.timestamps.llmStart).toBeUndefined();
+    expect(m.durations.turnTotal).toBeLessThan(1000);
+
+    await agent.dispose();
+  });
+
+  it('reports the interrupted turn at the moment of barge-in', async () => {
+    const { agent, stt } = buildEagerAgent();
+    const metrics: TurnMetricsEvent[] = [];
+    let chunks = 0;
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+    agent.on('llm.chunk', () => {
+      chunks++;
+    });
+
+    await agent.initialize();
+    await agent.startListening();
+
+    stt.emitTranscription('first question');
+    await waitFor(() => chunks > 0); // agent is now answering the first one
+
+    stt.emitPreflight('second question'); // user talks over it
+
+    // Reported synchronously by the barge-in itself, not deferred until the
+    // next turn starts (which would inflate turnTotal by the interval)
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]).toMatchObject({
+      turnId: 1,
+      transcript: 'first question',
+      interrupted: true,
+    });
+
+    await agent.dispose();
+  });
+
+  it('adopts an eager generation and reports the latency it saved', async () => {
+    const { agent, stt, llm } = buildEagerAgent();
+    const metrics: TurnMetricsEvent[] = [];
+    let chunks = 0;
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+    agent.on('llm.chunk', () => {
+      chunks++;
+    });
+
+    await agent.initialize();
+    await agent.startListening();
+
+    stt.emitPreflight('what time is it'); // early end-of-turn → eager generation
+    await waitFor(() => chunks > 0); // first token, before speech_final
+    stt.emitTranscription('what time is it'); // confirms the preflight
+
+    await waitFor(() => metrics.length === 1);
+
+    const m = metrics[0]!;
+    expect(m).toMatchObject({ turnId: 1, eagerUsed: true, interrupted: false });
+    expect(m.timestamps.preflight).toBeDefined();
+    expect(m.timestamps.llmFirstToken).toBeLessThan(m.timestamps.sttFinal);
+    // The negative number is the latency the eager pipeline saved
+    expect(m.durations.sttFinalToFirstToken).toBeLessThan(0);
+    // The speculative generation was reused, not restarted
+    expect(llm.promptCount).toBe(1);
+
+    await agent.dispose();
+  });
+
+  it('restarts on a diverged transcript and reports the turn without eager marks', async () => {
+    const { agent, stt, llm } = buildEagerAgent();
+    const metrics: TurnMetricsEvent[] = [];
+    let chunks = 0;
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+    agent.on('llm.chunk', () => {
+      chunks++;
+    });
+
+    await agent.initialize();
+    await agent.startListening();
+
+    stt.emitPreflight('what time is it');
+    await waitFor(() => chunks > 0);
+    stt.emitTranscription('tell me a joke instead'); // nothing like the preflight
+
+    await waitFor(() => metrics.length === 1);
+
+    const m = metrics[0]!;
+    expect(m).toMatchObject({
+      turnId: 1,
+      transcript: 'tell me a joke instead',
+      eagerUsed: false,
+      interrupted: false,
+    });
+    // The preflight still marks when the user stopped speaking, even though
+    // the generation it triggered was thrown away
+    expect(m.timestamps.preflight).toBeDefined();
+    expect(m.durations.sttFinalToFirstToken).toBeGreaterThanOrEqual(0);
+    // Discarded generation plus the real one
+    expect(llm.promptCount).toBe(2);
+    expect(llm.lastPrompt).toContain('tell me a joke instead');
 
     await agent.dispose();
   });
