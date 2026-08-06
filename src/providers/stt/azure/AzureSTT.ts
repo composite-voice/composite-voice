@@ -579,13 +579,11 @@ export class AzureSTT extends LiveSTTProvider {
       const wsOptions: WebSocketManagerOptions = {
         url: wsUrl,
         connectionTimeout: this.config.timeout ?? 10000,
-        reconnection: {
-          enabled: true,
-          maxAttempts: 5,
-          initialDelay: 1000,
-          maxDelay: 30000,
-          backoffMultiplier: 2,
-        },
+        // Auto-reconnect is disabled: reopening the socket cannot replay the
+        // speech.config / turn.start handshake, so a reconnected socket would
+        // be a dead session. Unexpected closes surface immediately via
+        // onConnectionLost; the SDK (or a FallbackSTT chain) owns recovery.
+        reconnection: { enabled: false },
         logger: this.logger,
       };
 
@@ -601,6 +599,10 @@ export class AzureSTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('Azure STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`Azure STT connection lost: ${error.message}`);
         },
       });
 
@@ -827,13 +829,27 @@ export class AzureSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to Azure STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      await manager.disconnect();
       return;
     }
 
     try {
       this.logger.debug('Disconnecting from Azure STT WebSocket');
+
+      // The server usually closes in response to the end-of-stream message
+      // below; tell the manager that close is expected so it is not
+      // reported as a lost connection.
+      this.wsManager.expectClose();
       this.isStopping = true;
 
       // Zero-length audio message signals end-of-stream

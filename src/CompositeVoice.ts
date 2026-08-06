@@ -275,6 +275,12 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    */
   private headerCache: AudioHeaderCache;
 
+  /**
+   * Detaches this agent's provider-fallback listener on dispose. A fallback
+   * chain may be shared across agents and outlive any one of them.
+   */
+  private unsubscribeFallback?: () => void;
+
   // State machines
   private captureStateMachine: AudioCaptureStateMachine;
   private playbackStateMachine: AudioPlaybackStateMachine;
@@ -617,8 +623,13 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     // 'provider.fallback' SDK event. Wired here rather than in
     // setupProviders() because init-time failovers fire before setup runs.
     const fallbackCapable = this.stt as STTProvider & Partial<FallbackCapableProvider>;
+    if (typeof fallbackCapable.setReconnectHeaderSource === 'function') {
+      // Internal failover reconnects need the cached container header
+      // re-injected, just like the SDK's own reconnect paths.
+      fallbackCapable.setReconnectHeaderSource(() => this.headerCache.getHeader());
+    }
     if (typeof fallbackCapable.onFallback === 'function') {
-      fallbackCapable.onFallback((info) => {
+      const unsubscribe = fallbackCapable.onFallback((info) => {
         this.logger.warn(
           `Provider fallback (${info.role}): ${info.from} -> ${info.to} [${info.reason}]`,
           info.error
@@ -633,6 +644,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           timestamp: Date.now(),
         });
       });
+      if (typeof unsubscribe === 'function') {
+        this.unsubscribeFallback = unsubscribe;
+      }
     }
 
     // Wire queue overflow events to the event emitter
@@ -2816,6 +2830,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.eagerAbortController = null;
         this.eagerText = null;
       }
+
+      // Detach from the STT fallback chain, which may be reused by another
+      // agent after this one is gone.
+      this.unsubscribeFallback?.();
+      delete this.unsubscribeFallback;
 
       // Clear conversation history
       this.conversationHistory = [];

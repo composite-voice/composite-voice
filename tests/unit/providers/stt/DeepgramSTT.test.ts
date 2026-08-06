@@ -408,6 +408,38 @@ describe('DeepgramSTT', () => {
       await expect(uninitProvider.connect!()).rejects.toThrow();
     });
 
+    it('should emit an error result on an unexpected server-initiated close', async () => {
+      await connectProvider();
+      transcriptionCallback.mockClear();
+
+      // Clean closing handshake from the server (e.g. quota exhausted)
+      mockWs._triggerClose(1011, 'session limit');
+
+      expect(provider.isWebSocketConnected()).toBe(false);
+      expect(transcriptionCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: '',
+          isFinal: true,
+          confidence: 0,
+          metadata: expect.objectContaining({
+            error: 'ws_closed',
+            message: expect.stringContaining('1011'),
+          }),
+        })
+      );
+    });
+
+    it('should NOT emit an error result when the close was requested via disconnect()', async () => {
+      await connectProvider();
+      transcriptionCallback.mockClear();
+
+      const disconnectPromise = provider.disconnect!();
+      mockWs._triggerClose();
+      await disconnectPromise;
+
+      expect(transcriptionCallback).not.toHaveBeenCalled();
+    });
+
     it('should disconnect successfully', async () => {
       await connectProvider();
       expect(provider.isWebSocketConnected()).toBe(true);

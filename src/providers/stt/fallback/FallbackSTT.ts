@@ -67,7 +67,9 @@ const DEFAULT_CONNECT_TIMEOUT = 10_000;
 /**
  * Upper bound on audio chunks buffered while a mid-session failover is in
  * progress. At typical capture rates (~10-50 chunks/sec) this covers well
- * over the connect timeout; anything beyond it is dropped oldest-last.
+ * over the connect timeout. On overflow the oldest chunks are dropped
+ * (matching AudioBufferQueue's default) so the replayed audio stays
+ * contiguous with the live stream once the swap completes.
  */
 const MAX_PENDING_CHUNKS = 500;
 
@@ -167,11 +169,28 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
   /** Whether a streaming session is active (between connect() and disconnect()). */
   private connected = false;
 
+  /**
+   * Incremented on every disconnect()/dispose(). An in-flight failover
+   * captures the epoch before awaiting and abandons its work (tearing down
+   * any provider it connected) when the epoch has moved on.
+   */
+  private sessionEpoch = 0;
+
   /** Guards against concurrent failover attempts. */
   private failingOver = false;
 
   /** Audio buffered while a mid-session failover swaps providers. */
   private pendingAudio: ArrayBuffer[] = [];
+
+  /** Chunks dropped from the failover buffer since the last flush. */
+  private droppedDuringFailover = 0;
+
+  /**
+   * Supplies the cached container header (e.g. WebM/OGG/WAV) to re-inject
+   * after an internal failover reconnect, mirroring what the SDK does on
+   * its own reconnect paths. Set via {@link setReconnectHeaderSource}.
+   */
+  private reconnectHeaderSource?: () => ArrayBuffer | null;
 
   private initialized = false;
 
@@ -252,8 +271,30 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
    *
    * @param callback - Invoked with a {@link ProviderFallbackInfo} per swap.
    */
-  onFallback(callback: (info: ProviderFallbackInfo) => void): void {
+  onFallback(callback: (info: ProviderFallbackInfo) => void): (() => void) | void {
     this.fallbackCallbacks.push(callback);
+    return () => {
+      const index = this.fallbackCallbacks.indexOf(callback);
+      if (index !== -1) this.fallbackCallbacks.splice(index, 1);
+    };
+  }
+
+  /**
+   * Register a source for the cached audio container header.
+   *
+   * @remarks
+   * When the input stream uses a container format (WebM/OGG/WAV), a provider
+   * that connects mid-stream needs the container header before any audio
+   * frames or it cannot demux them. The SDK re-injects the header from its
+   * `AudioHeaderCache` on every reconnect it drives itself; this hook lets
+   * the chain do the same for its internal failover reconnects.
+   * CompositeVoice wires this automatically.
+   *
+   * @param source - Returns the cached header, or `null` when the stream is
+   *   raw PCM / has no extractable header.
+   */
+  setReconnectHeaderSource(source: () => ArrayBuffer | null): void {
+    this.reconnectHeaderSource = source;
   }
 
   /**
@@ -280,6 +321,12 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    // A fresh initialization gets a fresh chain: dead markers from a failed
+    // earlier attempt (or from before dispose()) must not survive, or a
+    // retry could brick the chain even though every provider is healthy now.
+    this.dead.clear();
+    this.activeIndex = 0;
 
     const results = await Promise.allSettled(this.providers.map((p) => p.initialize()));
 
@@ -316,8 +363,16 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
   }
 
   async dispose(): Promise<void> {
+    this.sessionEpoch++;
     this.connected = false;
     this.pendingAudio = [];
+    this.droppedDuringFailover = 0;
+    // Drop listener references: a chain outlives the agents built around it
+    // (the documented reuse pattern), and an append-only callback list would
+    // pin every disposed agent in memory and re-notify it on later swaps.
+    this.fallbackCallbacks.length = 0;
+    delete this.transcriptionCallback;
+    delete this.reconnectHeaderSource;
     await Promise.allSettled(this.providers.map((p) => p.dispose()));
     this.initialized = false;
   }
@@ -335,16 +390,35 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
    *   provider in the chain fails to connect.
    */
   async connect(): Promise<void> {
-    await this.connectChain();
+    const epoch = this.sessionEpoch;
+    await this.connectChain(epoch);
+
+    // A disconnect()/dispose() that landed while we were connecting wins:
+    // the provider's own disconnect() no-ops while it is still CONNECTING,
+    // so without this the chain would report a session nobody asked for and
+    // strand an open socket.
+    if (epoch !== this.sessionEpoch) {
+      await this.active.disconnect().catch(() => {});
+      return;
+    }
+
     this.connected = true;
-    this.flushPendingAudio();
+    const flushError = this.flushPendingAudio();
+    if (flushError) {
+      void this.failover('stream-error', flushError);
+    }
   }
 
   sendAudio(chunk: ArrayBuffer): void {
+    if (!this.connected) {
+      // Mirrors the wrapped providers' behavior — and prevents a throwing
+      // provider from marking itself dead over audio sent outside a session.
+      this.logger.warn('Cannot send audio: not connected');
+      return;
+    }
+
     if (this.failingOver) {
-      if (this.pendingAudio.length < MAX_PENDING_CHUNKS) {
-        this.pendingAudio.push(chunk);
-      }
+      this.bufferPendingAudio(chunk);
       return;
     }
 
@@ -353,14 +427,16 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
     } catch (error) {
       const err = toError(error);
       this.logger.warn('sendAudio failed on active provider — triggering failover', err);
-      this.pendingAudio.push(chunk);
+      this.bufferPendingAudio(chunk);
       void this.failover('stream-error', err);
     }
   }
 
   async disconnect(): Promise<void> {
+    this.sessionEpoch++;
     this.connected = false;
     this.pendingAudio = [];
+    this.droppedDuringFailover = 0;
     await this.active.disconnect();
   }
 
@@ -401,6 +477,16 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
     if (source !== this.active) return;
 
     const isErrorResult = !!result.metadata?.error && !result.text?.trim();
+
+    // Errors surfaced outside a session (e.g. a socket-teardown race during
+    // our own disconnect, or a stray event mid-connect) must not mark a
+    // healthy provider dead. Late *transcriptions* still pass through below —
+    // providers can deliver final results during the disconnect grace period.
+    if (isErrorResult && !this.connected) {
+      this.logger.debug('Ignoring error result while not connected', result.metadata?.error);
+      return;
+    }
+
     if (isErrorResult && this.hasFallbackRemaining()) {
       const message =
         (result.metadata?.message as string) ??
@@ -462,21 +548,74 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
   }
 
   /**
+   * Move the active pointer forward to the first provider not marked dead.
+   *
+   * @returns `false` when every provider from the active index on is dead.
+   */
+  private skipDeadProviders(): boolean {
+    for (let i = this.activeIndex; i < this.providers.length; i++) {
+      const candidate = this.providers[i];
+      if (candidate && !this.dead.has(candidate)) {
+        this.activeIndex = i;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Try to connect the active provider, advancing on each failure.
    * Throws the last error when the chain is exhausted.
+   *
+   * @remarks
+   * Known-dead providers are never retried (the documented sticky-failover
+   * contract): a reconnect after the whole chain has failed throws
+   * immediately instead of burning a connect timeout on a dead vendor.
+   *
+   * @param epoch - The {@link sessionEpoch} the caller started from. The
+   *   walk stops as soon as the epoch moves on, so a session torn down
+   *   mid-failover does not keep opening (billable) vendor connections.
    */
-  private async connectChain(): Promise<void> {
+  private async connectChain(epoch: number): Promise<void> {
+    if (!this.skipDeadProviders()) {
+      this.connected = false;
+      throw new InvalidStateError(
+        'all providers in the fallback chain marked failed',
+        'connect (call resetToPrimary() between sessions to retry them)'
+      );
+    }
+
     for (;;) {
+      if (epoch !== this.sessionEpoch) {
+        throw new InvalidStateError('session torn down', 'connect');
+      }
+
       const provider = this.active;
+      const connecting = provider.connect();
       try {
-        await this.withConnectTimeout(provider.connect(), provider.constructor.name);
+        await this.withConnectTimeout(connecting, provider.constructor.name);
         return;
       } catch (error) {
         const err = toError(error);
         const reason: ProviderFallbackReason =
           err instanceof TimeoutError ? 'connect-timeout' : 'connect-error';
-        // Tear down any half-open connection before moving on.
-        void provider.disconnect().catch(() => {});
+        if (err instanceof TimeoutError) {
+          // The provider is still CONNECTING, so disconnecting now would
+          // no-op. Tear it down whenever its connect() eventually settles,
+          // or the orphaned socket (and any keep-alive timer) leaks.
+          // Skip the teardown if that same provider has meanwhile become
+          // the live session: providers coalesce concurrent connect() calls
+          // onto one promise, so this promise may be exactly what a later,
+          // legitimate connect() is awaiting.
+          connecting
+            .then(() =>
+              this.connected && provider === this.active ? undefined : provider.disconnect()
+            )
+            .catch(() => {});
+        } else {
+          // Tear down any half-open connection before moving on.
+          void provider.disconnect().catch(() => {});
+        }
         if (!this.advance(reason, err)) {
           this.connected = false;
           throw err;
@@ -498,6 +637,11 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
     if (this.failingOver) return;
     this.failingOver = true;
 
+    // If disconnect()/dispose() runs while we're awaiting a connect below,
+    // the epoch moves on and this failover must abandon its work — including
+    // closing a backup socket that finished connecting after the teardown.
+    const epoch = this.sessionEpoch;
+
     try {
       const failed = this.active;
       void failed.disconnect().catch(() => {});
@@ -511,10 +655,33 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
       // between sessions just moves the pointer.
       if (!this.connected) return;
 
-      try {
-        await this.connectChain();
-        this.flushPendingAudio();
-      } catch (chainError) {
+      for (;;) {
+        await this.connectChain(epoch);
+
+        if (epoch !== this.sessionEpoch) {
+          void this.active.disconnect().catch(() => {});
+          return;
+        }
+
+        // Container streams need the header before any buffered frames,
+        // just like the SDK's own reconnect paths re-inject it.
+        this.injectReconnectHeader();
+
+        const flushError = this.flushPendingAudio();
+        if (!flushError) return;
+
+        // The replacement died during the replay — treat it like any other
+        // failed provider and keep walking the chain. (Re-entering failover
+        // here would no-op against the failingOver guard.)
+        this.logger.warn('Provider failed while replaying buffered audio', flushError);
+        void this.active.disconnect().catch(() => {});
+        if (!this.advance('stream-error', flushError)) {
+          this.abortSession(flushError);
+          return;
+        }
+      }
+    } catch (chainError) {
+      if (epoch === this.sessionEpoch) {
         this.abortSession(toError(chainError));
       }
     } finally {
@@ -526,6 +693,7 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
   private abortSession(error: Error): void {
     this.connected = false;
     this.pendingAudio = [];
+    this.droppedDuringFailover = 0;
     this.transcriptionCallback?.({
       text: '',
       isFinal: false,
@@ -536,19 +704,54 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
     });
   }
 
-  /** Replay audio buffered during a failover to the (new) active provider. */
-  private flushPendingAudio(): void {
-    if (this.pendingAudio.length === 0) return;
-    const chunks = this.pendingAudio;
-    this.pendingAudio = [];
-    for (const chunk of chunks) {
+  /**
+   * Buffer a chunk for replay after the in-flight failover, dropping the
+   * oldest chunk on overflow so the replay stays contiguous with live audio.
+   */
+  private bufferPendingAudio(chunk: ArrayBuffer): void {
+    this.pendingAudio.push(chunk);
+    if (this.pendingAudio.length > MAX_PENDING_CHUNKS) {
+      this.pendingAudio.shift();
+      this.droppedDuringFailover++;
+    }
+  }
+
+  /** Re-inject the cached container header after an internal reconnect. */
+  private injectReconnectHeader(): void {
+    const header = this.reconnectHeaderSource?.();
+    if (!header) return;
+    try {
+      this.active.sendAudio(header);
+    } catch (error) {
+      // A failing send here will also fail the flush right after, which
+      // drives the normal advance-and-retry path.
+      this.logger.warn('Failed to re-inject audio header after failover', error);
+    }
+  }
+
+  /**
+   * Replay audio buffered during a failover to the (new) active provider.
+   *
+   * @returns The send error when the provider fails mid-replay (unsent
+   *   chunks stay buffered for the next attempt), or `null` on success.
+   */
+  private flushPendingAudio(): Error | null {
+    if (this.droppedDuringFailover > 0) {
+      this.logger.warn(
+        `Failover buffer overflowed: dropped ${this.droppedDuringFailover} oldest audio chunk(s)`
+      );
+      this.droppedDuringFailover = 0;
+    }
+    while (this.pendingAudio.length > 0) {
+      const chunk = this.pendingAudio[0] as ArrayBuffer;
       try {
         this.active.sendAudio(chunk);
       } catch (error) {
-        this.logger.warn('Failed to flush buffered audio after failover', error);
-        return;
+        return toError(error);
       }
+      this.pendingAudio.shift();
     }
+    return null;
   }
 
   /** Race a provider's connect() against the configured timeout. */

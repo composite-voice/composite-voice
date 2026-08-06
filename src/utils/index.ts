@@ -37,6 +37,7 @@ export * from './websocket';
 export * from './audio';
 export * from './g711';
 export * from './turnTaking';
+export * from './providerChain';
 export * from './browserCapabilities';
 export * from './textSimilarity';
 export * from './audioFormat';

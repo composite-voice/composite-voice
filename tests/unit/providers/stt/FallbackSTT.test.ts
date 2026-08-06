@@ -459,4 +459,278 @@ describe('FallbackSTT', () => {
       expect(stt.isReady()).toBe(false);
     });
   });
+
+  // ─── Session-state and recovery guards ──────────────────────────────
+
+  describe('session-state guards', () => {
+    it('ignores error results while not connected (no spurious failover)', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup]);
+      const swaps: ProviderFallbackInfo[] = [];
+      const results: TranscriptionResult[] = [];
+      stt.onFallback((info) => swaps.push(info));
+      stt.onTranscription((result) => results.push(result));
+      await stt.initialize();
+      await stt.connect();
+      await stt.disconnect();
+
+      // e.g. an abnormal-close event racing our own teardown
+      primary.emit({ text: '', isFinal: true, metadata: { error: 'ws_closed' } });
+      await flushMicrotasks();
+
+      expect(swaps).toHaveLength(0);
+      expect(results).toHaveLength(0);
+      expect(stt.activeProvider).toBe(primary);
+
+      await stt.connect();
+      expect(primary.connected).toBe(true);
+    });
+
+    it('drops audio sent while not connected instead of failing over', async () => {
+      const primary = new MockChainSTT({ sendAudioError: new Error('not connected') });
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup]);
+      const swaps: ProviderFallbackInfo[] = [];
+      stt.onFallback((info) => swaps.push(info));
+      await stt.initialize();
+
+      stt.sendAudio(chunk(1));
+      await flushMicrotasks();
+
+      expect(swaps).toHaveLength(0);
+      expect(primary.receivedAudio).toHaveLength(0);
+    });
+
+    it('retries initialize() after a total failure once providers recover', async () => {
+      const primary = new MockChainSTT({ initError: new Error('primary down') });
+      const backup = new MockChainSTT({ initError: new Error('backup down') });
+      const stt = new FallbackSTT([primary, backup]);
+
+      await expect(stt.initialize()).rejects.toThrow('primary down');
+
+      delete primary.behavior.initError;
+      delete backup.behavior.initError;
+      await stt.initialize();
+
+      expect(stt.isReady()).toBe(true);
+      expect(stt.activeProvider).toBe(primary);
+    });
+
+    it('revives a once-dead primary on re-initialize after dispose()', async () => {
+      const primary = new MockChainSTT({ initError: new Error('bad key') });
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup]);
+      await stt.initialize();
+      expect(stt.activeProvider).toBe(backup);
+
+      await stt.dispose();
+      delete primary.behavior.initError;
+      await stt.initialize();
+
+      expect(stt.activeProvider).toBe(primary);
+    });
+
+    it('fails fast on connect() after the chain is exhausted instead of retrying dead providers', async () => {
+      const primary = new MockChainSTT({ connectError: new Error('primary refused') });
+      const backup = new MockChainSTT({ connectError: new Error('backup refused') });
+      const stt = new FallbackSTT([primary, backup]);
+      await stt.initialize();
+      await expect(stt.connect()).rejects.toThrow('backup refused');
+
+      await expect(stt.connect()).rejects.toThrow(/resetToPrimary/);
+
+      // No dead provider was given another connect attempt.
+      expect(primary.connectCalls).toBe(1);
+      expect(backup.connectCalls).toBe(1);
+    });
+
+    it('cancels an in-flight failover when disconnect() is called mid-swap', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT({ connectDelayMs: 30 });
+      const stt = new FallbackSTT([primary, backup]);
+      const results: TranscriptionResult[] = [];
+      stt.onTranscription((result) => results.push(result));
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      await flushMicrotasks();
+      // Teardown lands while the backup is still connecting.
+      await stt.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      // The backup socket that finished connecting after teardown is closed.
+      expect(backup.connected).toBe(false);
+      // And the abandoned failover surfaced no terminal error.
+      expect(results).toHaveLength(0);
+    });
+
+    it('advances to the next provider when the replacement fails during the buffered replay', async () => {
+      const primary = new MockChainSTT();
+      const flaky = new MockChainSTT({ connectDelayMs: 20, sendAudioError: new Error('dead') });
+      const healthy = new MockChainSTT();
+      const stt = new FallbackSTT([primary, flaky, healthy]);
+      const swaps: ProviderFallbackInfo[] = [];
+      stt.onFallback((info) => swaps.push(info));
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      stt.sendAudio(chunk(1));
+      stt.sendAudio(chunk(2));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(swaps).toHaveLength(2);
+      expect(stt.activeProvider).toBe(healthy);
+      // Nothing was lost: the replay lands on the provider that survived.
+      expect(healthy.receivedAudio).toHaveLength(2);
+    });
+
+    it('drops the oldest chunks when the failover buffer overflows', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT({ connectDelayMs: 30 });
+      const stt = new FallbackSTT([primary, backup]);
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      for (let i = 0; i < 502; i++) {
+        stt.sendAudio(chunk(i % 256));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      expect(backup.receivedAudio).toHaveLength(500);
+      // The two OLDEST chunks were dropped — the replay ends with the newest.
+      expect(new Uint8Array(backup.receivedAudio[0] as ArrayBuffer)[0]).toBe(2);
+      expect(new Uint8Array(backup.receivedAudio[499] as ArrayBuffer)[0]).toBe(501 % 256);
+    });
+
+    it('disconnects a timed-out provider once its connect() eventually resolves', async () => {
+      const primary = new MockChainSTT({ connectDelayMs: 60 });
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup], { connectTimeout: 20 });
+      await stt.initialize();
+
+      await stt.connect();
+      expect(stt.activeProvider).toBe(backup);
+
+      // The primary's hung connect resolves later — it must not leak an
+      // open socket.
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      expect(primary.disconnectCalls).toBeGreaterThanOrEqual(1);
+      expect(primary.connected).toBe(false);
+    });
+
+    it('does not mark the session connected when disconnect() lands mid-connect', async () => {
+      const primary = new MockChainSTT({ connectDelayMs: 30 });
+      const stt = new FallbackSTT([primary]);
+      await stt.initialize();
+
+      const connecting = stt.connect();
+      await stt.disconnect();
+      await connecting;
+
+      // The teardown wins: no ghost session, and no socket left open.
+      expect(primary.connected).toBe(false);
+      expect(() => stt.resetToPrimary()).not.toThrow();
+    });
+
+    it('stops walking the chain when the session is torn down mid-failover', async () => {
+      const primary = new MockChainSTT();
+      const slowBackups = [
+        new MockChainSTT({ connectDelayMs: 20, connectError: new Error('backup 1 down') }),
+        new MockChainSTT({ connectDelayMs: 20, connectError: new Error('backup 2 down') }),
+      ];
+      const stt = new FallbackSTT([primary, ...slowBackups]);
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      await flushMicrotasks();
+      await stt.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
+      // The last backup is never dialed for a session that no longer exists.
+      expect(slowBackups[1]!.connectCalls).toBe(0);
+    });
+
+    it('does not tear down a session re-established on a timed-out provider', async () => {
+      // Providers coalesce concurrent connect() calls onto one promise, so a
+      // stale timeout-teardown could otherwise kill the new session.
+      const primary = new MockChainSTT({ connectDelayMs: 40 });
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup], { connectTimeout: 15 });
+      await stt.initialize();
+
+      await stt.connect();
+      expect(stt.activeProvider).toBe(backup);
+
+      await stt.disconnect();
+      primary.behavior.connectDelayMs = 0;
+      stt.resetToPrimary();
+      await stt.connect();
+
+      // Let the original hung connect settle and fire its deferred teardown.
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(stt.activeProvider).toBe(primary);
+      expect(primary.connected).toBe(true);
+    });
+
+    it('dispose() drops listener references so a reused chain cannot leak agents', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup]);
+      const swaps: ProviderFallbackInfo[] = [];
+      stt.onFallback((info) => swaps.push(info));
+      await stt.initialize();
+      await stt.dispose();
+
+      // Re-initialize and fail over: the previous owner must not be notified.
+      await stt.initialize();
+      await stt.connect();
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      await flushMicrotasks();
+
+      expect(stt.activeProvider).toBe(backup);
+      expect(swaps).toHaveLength(0);
+    });
+
+    it('onFallback returns an unsubscribe function', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT();
+      const stt = new FallbackSTT([primary, backup]);
+      const swaps: ProviderFallbackInfo[] = [];
+      const unsubscribe = stt.onFallback((info) => swaps.push(info));
+      await stt.initialize();
+      await stt.connect();
+
+      expect(typeof unsubscribe).toBe('function');
+      (unsubscribe as () => void)();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      await flushMicrotasks();
+
+      expect(stt.activeProvider).toBe(backup);
+      expect(swaps).toHaveLength(0);
+    });
+
+    it('re-injects the cached audio header before replaying buffered audio', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT({ connectDelayMs: 20 });
+      const stt = new FallbackSTT([primary, backup]);
+      const header = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]).buffer;
+      stt.setReconnectHeaderSource(() => header);
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      stt.sendAudio(chunk(9));
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      expect(backup.receivedAudio[0]).toBe(header);
+      expect(new Uint8Array(backup.receivedAudio[1] as ArrayBuffer)[0]).toBe(9);
+    });
+  });
 });

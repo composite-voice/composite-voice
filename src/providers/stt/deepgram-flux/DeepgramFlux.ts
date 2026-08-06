@@ -146,6 +146,12 @@ export class DeepgramFlux extends LiveSTTProvider {
   private connectingPromise: Promise<void> | null = null;
 
   /**
+   * Set while disconnect() runs so the socket's close/error handlers can
+   * tell a requested teardown from the server dropping the connection.
+   */
+  private intentionalClose = false;
+
+  /**
    * Create a new DeepgramFlux provider.
    *
    * @param config - Deepgram Flux configuration. Must include either
@@ -272,10 +278,35 @@ export class DeepgramFlux extends LiveSTTProvider {
     }
   }
 
+  /**
+   * Release the current socket after a failed connection attempt.
+   *
+   * @remarks
+   * Detaches every handler and closes the socket even while it is still
+   * CONNECTING, so a late `open` cannot resurrect an abandoned attempt or
+   * leave a billed connection alive with nothing holding a reference to it.
+   */
+  private abandonSocket(): void {
+    const ws = this.ws;
+    this.ws = null;
+    this.isConnected = false;
+    if (!ws) return;
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+    try {
+      ws.close();
+    } catch {
+      /* ignore */
+    }
+  }
+
   /** Internal connect implementation — callers go through connect(). */
   private async doConnect(): Promise<void> {
     try {
       this.logger.debug('Connecting to Deepgram Flux WebSocket');
+      this.intentionalClose = false;
 
       // Close any stale socket before opening a new one
       if (this.ws) {
@@ -305,6 +336,19 @@ export class DeepgramFlux extends LiveSTTProvider {
 
         ws.onopen = () => {
           clearTimeout(timeout);
+          // A socket that opens after this attempt was abandoned (timeout /
+          // error) is an orphan: marking the provider connected here would
+          // strand isConnected=true with this.ws already null, which no
+          // later connect() or disconnect() could ever clear.
+          if (this.ws !== ws) {
+            this.logger.debug('Ignoring open event from an abandoned socket');
+            try {
+              ws.close();
+            } catch {
+              /* ignore */
+            }
+            return;
+          }
           this.isConnected = true;
           this.logger.info('Connected to Deepgram Flux WebSocket');
           resolve();
@@ -321,8 +365,9 @@ export class DeepgramFlux extends LiveSTTProvider {
       // Register event handlers after connection is open
       this.setupEventHandlers();
     } catch (error) {
-      this.ws = null;
-      this.isConnected = false;
+      // Abandon the socket for good: a still-CONNECTING socket would
+      // otherwise open later with nothing left to close it.
+      this.abandonSocket();
       throw new ProviderConnectionError('DeepgramFlux', error as Error);
     }
   }
@@ -382,7 +427,19 @@ export class DeepgramFlux extends LiveSTTProvider {
         code: event.code,
         reason: event.reason,
       });
+      const wasConnected = this.isConnected;
       this.isConnected = false;
+
+      // A clean server-initiated close fires no onerror, and later sends
+      // only warn — without this signal neither the pipeline nor a fallback
+      // chain would ever learn the stream is dead.
+      if (wasConnected && !this.intentionalClose) {
+        this.emitConnectionLost(
+          `Deepgram Flux WebSocket closed unexpectedly (code ${event.code}${
+            event.reason ? `: ${event.reason}` : ''
+          })`
+        );
+      }
     };
   }
 
@@ -565,6 +622,7 @@ export class DeepgramFlux extends LiveSTTProvider {
    */
   async disconnect(): Promise<void> {
     this.stopKeepAlive();
+    this.intentionalClose = true;
 
     if (!this.isConnected || !this.ws) {
       this.logger.warn('Not connected to Deepgram Flux');
@@ -573,6 +631,10 @@ export class DeepgramFlux extends LiveSTTProvider {
 
     try {
       this.logger.debug('Disconnecting from Deepgram Flux WebSocket');
+
+      // We asked for this close — an error racing our own teardown must not
+      // surface as a stream error (it would trip fallback chains).
+      this.ws.onerror = null;
 
       // Send CloseStream for graceful server-side cleanup
       try {

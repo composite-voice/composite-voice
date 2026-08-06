@@ -541,13 +541,11 @@ export class GladiaSTT extends LiveSTTProvider {
       const wsOptions: WebSocketManagerOptions = {
         url: session.url,
         connectionTimeout: this.config.timeout ?? 10000,
-        reconnection: {
-          enabled: true,
-          maxAttempts: 5,
-          initialDelay: 1000,
-          maxDelay: 30000,
-          backoffMultiplier: 2,
-        },
+        // Auto-reconnect is disabled: silent background retries drop every
+        // audio chunk for the length of the backoff, so a dead socket must
+        // surface immediately via onConnectionLost instead. The SDK drives
+        // reconnection through connect() (and FallbackSTT owns failover).
+        reconnection: { enabled: false },
         logger: this.logger,
       };
 
@@ -564,6 +562,10 @@ export class GladiaSTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('Gladia STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`Gladia STT connection lost: ${error.message}`);
         },
       });
 
@@ -766,13 +768,28 @@ export class GladiaSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to Gladia STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      this.sessionId = null;
+      await manager.disconnect();
       return;
     }
 
     try {
       this.logger.debug('Disconnecting from Gladia STT WebSocket');
+
+      // The server usually closes in response to the end-of-stream message
+      // below; tell the manager that close is expected so it is not
+      // reported as a lost connection.
+      this.wsManager.expectClose();
 
       // Signal end-of-stream so Gladia finalizes pending audio
       try {

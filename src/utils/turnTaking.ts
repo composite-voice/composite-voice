@@ -39,6 +39,7 @@
 import type { TurnTakingConfig } from '../core/types/config';
 import type { STTProvider, TTSProvider } from '../core/types/providers';
 import type { Logger } from './logger';
+import { flattenProviderChain } from './providerChain';
 
 /**
  * Maps known provider class names to their audio capture method.
@@ -66,6 +67,46 @@ const PROVIDER_CAPTURE_METHOD: Record<string, 'mediadevices' | 'speechrecognitio
 };
 
 /**
+ * Resolves the effective audio capture method for a provider instance.
+ *
+ * @remarks
+ * Fallback chains (e.g. `FallbackSTT`) are unwrapped to their members: a
+ * failover can land on any member mid-session, so the chain reports
+ * `'mediadevices'` only when *every* member does. A member with an unknown
+ * capture method makes the chain unknown, which the conservative strategy
+ * treats as not supporting echo cancellation.
+ *
+ * @param provider - The STT or TTS provider instance.
+ * @returns The capture method, or `undefined` when unknown.
+ *
+ * @internal
+ */
+function getCaptureMethod(
+  provider: STTProvider | TTSProvider
+): 'mediadevices' | 'speechrecognition' | 'none' | undefined {
+  const members = flattenProviderChain(provider);
+  if (members.length === 1) {
+    return PROVIDER_CAPTURE_METHOD[getProviderName(provider)];
+  }
+  const methods = members.map((member) => PROVIDER_CAPTURE_METHOD[getProviderName(member)]);
+  if (methods.every((method) => method === 'mediadevices')) return 'mediadevices';
+  if (methods.some((method) => method === 'speechrecognition')) return 'speechrecognition';
+  return undefined;
+}
+
+/**
+ * Returns every provider class name a combination rule could match: the
+ * provider's own name plus, for fallback chains, each member's name.
+ *
+ * @internal
+ */
+function getMatchableNames(provider: STTProvider | TTSProvider): string[] {
+  const names = flattenProviderChain(provider).map((member) => getProviderName(member));
+  const own = getProviderName(provider);
+  return names.includes(own) ? names : [own, ...names];
+}
+
+/**
  * TTS providers whose audio output bypasses the browser's echo cancellation.
  *
  * @remarks
@@ -85,13 +126,13 @@ const TTS_BYPASSES_ECHO_CANCELLATION: Record<string, boolean> = {
 /**
  * Checks whether a provider uses MediaDevices and can therefore support echo cancellation.
  *
- * @param providerName - The class name of the provider to check.
+ * @param provider - The provider instance to check (fallback chains are unwrapped).
  * @returns `true` if the provider uses `MediaDevices` for audio capture, `false` otherwise.
  *
  * @internal
  */
-function providerSupportsEchoCancellation(providerName: string): boolean {
-  return PROVIDER_CAPTURE_METHOD[providerName] === 'mediadevices';
+function providerSupportsEchoCancellation(provider: STTProvider | TTSProvider): boolean {
+  return getCaptureMethod(provider) === 'mediadevices';
 }
 
 /**
@@ -115,23 +156,27 @@ function getProviderName(provider: STTProvider | TTSProvider): string {
  * Supports wildcard matching via the special value `'any'`, which matches
  * any provider name.
  *
- * @param sttName - The class name of the STT provider.
- * @param ttsName - The class name of the TTS provider.
+ * For fallback chains, both the wrapper name and every member name are
+ * matched, so listing a chained provider (e.g. `DeepgramSTT` inside a
+ * `FallbackSTT`) still triggers the rule.
+ *
+ * @param sttNames - The matchable class names of the STT provider.
+ * @param ttsNames - The matchable class names of the TTS provider.
  * @param combinations - The list of provider combinations that should always pause.
  * @returns `true` if the combination requires pausing, `false` otherwise.
  *
  * @internal
  */
 function checkCombinationRequiresPause(
-  sttName: string,
-  ttsName: string,
+  sttNames: string[],
+  ttsNames: string[],
   combinations?: Array<{ stt: string; tts: string }>
 ): boolean {
   if (!combinations) return false;
 
   return combinations.some((combo) => {
-    const sttMatches = combo.stt === 'any' || combo.stt === sttName;
-    const ttsMatches = combo.tts === 'any' || combo.tts === ttsName;
+    const sttMatches = combo.stt === 'any' || sttNames.includes(combo.stt);
+    const ttsMatches = combo.tts === 'any' || ttsNames.includes(combo.tts);
     return sttMatches && ttsMatches;
   });
 }
@@ -155,10 +200,8 @@ function checkCombinationRequiresPause(
  * @internal
  */
 function detectEchoCancellationSupport(sttProvider: STTProvider): boolean {
-  const providerName = getProviderName(sttProvider);
-
   // SpeechRecognition API providers NEVER have echo cancellation
-  if (PROVIDER_CAPTURE_METHOD[providerName] === 'speechrecognition') {
+  if (getCaptureMethod(sttProvider) === 'speechrecognition') {
     return false;
   }
 
@@ -239,9 +282,9 @@ export function shouldPauseCaptureOnPlayback(
     case 'conservative': {
       // Pause by default, unless STT provider uses MediaDevices with echo cancellation
       // AND the TTS provider doesn't bypass echo cancellation (e.g. NativeTTS)
-      const supportsEchoCancellation = providerSupportsEchoCancellation(sttName);
+      const supportsEchoCancellation = providerSupportsEchoCancellation(sttProvider);
       const ttsBypassesEC = TTS_BYPASSES_ECHO_CANCELLATION[ttsName] === true;
-      const captureMethod = PROVIDER_CAPTURE_METHOD[sttName] || 'unknown';
+      const captureMethod = getCaptureMethod(sttProvider) || 'unknown';
       const shouldPause = !supportsEchoCancellation || ttsBypassesEC;
       logger?.debug(
         `Turn-taking: Conservative - ${shouldPause ? 'PAUSE' : 'CONTINUE'} ` +
@@ -255,8 +298,8 @@ export function shouldPauseCaptureOnPlayback(
     case 'aggressive': {
       // Only pause for known problematic combinations
       const requiresPause = checkCombinationRequiresPause(
-        sttName,
-        ttsName,
+        getMatchableNames(sttProvider),
+        getMatchableNames(ttsProvider),
         alwaysPauseCombinations
       );
       logger?.debug(`Turn-taking: Aggressive - ${requiresPause ? 'PAUSE' : 'CONTINUE'}`);
@@ -329,8 +372,8 @@ export function explainTurnTakingDecision(
   }
 
   const action = willPause ? 'PAUSE' : 'CONTINUE';
-  const captureMethod = PROVIDER_CAPTURE_METHOD[sttName] || 'unknown';
-  const supportsEC = providerSupportsEchoCancellation(sttName);
+  const captureMethod = getCaptureMethod(sttProvider) || 'unknown';
+  const supportsEC = providerSupportsEchoCancellation(sttProvider);
 
   return (
     `Capture will ${action} during playback (auto mode, ${autoStrategy} strategy)\n` +

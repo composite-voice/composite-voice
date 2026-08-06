@@ -256,4 +256,136 @@ describe('WebSocketManager', () => {
       }
     });
   });
+
+  // ─── Connection-loss signaling ────────────────────────────────────────
+
+  describe('onConnectionLost', () => {
+    /** Sockets created during a test, newest last. */
+    let sockets: MockSocket[];
+
+    class MockSocket {
+      static readonly OPEN = 1;
+      static readonly CLOSED = 3;
+      readyState = 0;
+      onopen: (() => void) | null = null;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      onclose: ((event: CloseEvent) => void) | null = null;
+      close = jest.fn(() => {
+        this.readyState = MockSocket.CLOSED;
+      });
+      send = jest.fn();
+
+      constructor() {
+        sockets.push(this);
+      }
+
+      open(): void {
+        this.readyState = MockSocket.OPEN;
+        this.onopen?.();
+      }
+
+      serverClose(code = 1011, reason = 'server gone'): void {
+        this.readyState = MockSocket.CLOSED;
+        this.onclose?.({ code, reason } as CloseEvent);
+      }
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      sockets = [];
+      (global as any).WebSocket = MockSocket;
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    /** Connect a manager and return its (opened) socket. */
+    async function connected(mgr: WebSocketManager): Promise<MockSocket> {
+      const connecting = mgr.connect();
+      sockets[sockets.length - 1]!.open();
+      await connecting;
+      return sockets[sockets.length - 1]!;
+    }
+
+    it('fires once when the server closes and reconnection is disabled', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: { enabled: false },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      socket.serverClose(1011, 'quota exhausted');
+
+      expect(onConnectionLost).toHaveBeenCalledTimes(1);
+      expect(onConnectionLost.mock.calls[0][0].message).toContain('1011');
+    });
+
+    it('does not fire for a close the caller requested via disconnect()', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: { enabled: false },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      const disconnecting = manager.disconnect();
+      socket.serverClose(1000, 'Normal closure');
+      await disconnecting;
+
+      expect(onConnectionLost).not.toHaveBeenCalled();
+    });
+
+    it('does not fire after expectClose(), covering the graceful-shutdown window', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: { enabled: false },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      // Provider sends its end-of-stream message; the server closes first.
+      manager.expectClose();
+      socket.serverClose(1000, 'session ended');
+
+      expect(onConnectionLost).not.toHaveBeenCalled();
+    });
+
+    it('keeps retrying after an attempt times out and still reports the terminal loss', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        connectionTimeout: 1000,
+        reconnection: {
+          enabled: true,
+          maxAttempts: 2,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      // Server drops the connection; reconnect attempts begin.
+      socket.serverClose(1006, 'abnormal');
+      expect(onConnectionLost).not.toHaveBeenCalled();
+
+      // Each retry hangs and times out rather than emitting a close event —
+      // the path that used to silently end the retry loop.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await jest.advanceTimersByTimeAsync(100); // backoff delay
+        await jest.advanceTimersByTimeAsync(1000); // connection timeout
+      }
+
+      expect(sockets.length).toBeGreaterThan(2);
+      expect(onConnectionLost).toHaveBeenCalledTimes(1);
+      expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
+    });
+  });
 });
