@@ -104,8 +104,20 @@ export class VADProcessor {
   /** Buffered mono samples at the engine's rate, awaiting a full frame. */
   private sampleBuffer: Float32Array = new Float32Array(0);
 
+  /**
+   * Trailing bytes of an incomplete encoded sample frame, carried into the
+   * next chunk so channel/sample alignment survives chunk boundaries.
+   */
+  private byteRemainder: Uint8Array = new Uint8Array(0);
+
   /** Serializes frame processing so state transitions stay ordered. */
   private processingChain: Promise<void> = Promise.resolve();
+
+  /**
+   * Bumped by {@link reset}; frames whose inference started before the bump
+   * are discarded instead of driving the state machine.
+   */
+  private generation = 0;
 
   // ─── Hysteresis state ───────────────────────────────────────────────
   private speaking = false;
@@ -141,6 +153,8 @@ export class VADProcessor {
    * dropped.
    */
   configure(metadata: AudioMetadata): void {
+    // Bytes held back under the old format can't be decoded under the new one.
+    this.byteRemainder = new Uint8Array(0);
     this.metadata = metadata;
   }
 
@@ -184,6 +198,18 @@ export class VADProcessor {
       .then(() => this.processChunk(data))
       .catch((error) => {
         this.logger?.warn('VADProcessor: error processing audio chunk', error);
+        // Drop the audio that failed. Without this the offending frame stays
+        // at the head of sampleBuffer and is retried against every later
+        // chunk, so the buffer grows without bound and no new audio is ever
+        // scored. Segment state is left intact so an open segment can still
+        // close normally once processing recovers.
+        this.sampleBuffer = new Float32Array(0);
+        this.byteRemainder = new Uint8Array(0);
+        try {
+          this.engine.reset();
+        } catch (resetError) {
+          this.logger?.warn('VADProcessor: engine reset after failure threw', resetError);
+        }
       });
   }
 
@@ -205,7 +231,9 @@ export class VADProcessor {
    * fires, because the session ending is not an end-of-turn signal.
    */
   reset(): void {
+    this.generation++;
     this.sampleBuffer = new Float32Array(0);
+    this.byteRemainder = new Uint8Array(0);
     this.speaking = false;
     this.consecutiveSpeechFrames = 0;
     this.consecutiveSilenceFrames = 0;
@@ -218,6 +246,7 @@ export class VADProcessor {
   private async processChunk(data: ArrayBuffer): Promise<void> {
     if (!this.metadata) return;
 
+    const generation = this.generation;
     const samples = this.decodeToEngineRate(data, this.metadata);
     if (!samples || samples.length === 0) return;
 
@@ -233,6 +262,10 @@ export class VADProcessor {
       const frame = this.sampleBuffer.subarray(offset, offset + frameSize);
       offset += frameSize;
       const probability = await this.engine.process(new Float32Array(frame));
+      // A reset() while this frame was in flight means it belongs to a
+      // finished session — it must not move the state machine or fire
+      // callbacks, and reset() has already cleared the buffers.
+      if (generation !== this.generation) return;
       this.applyFrame(probability);
     }
     this.sampleBuffer = this.sampleBuffer.slice(offset);
@@ -240,21 +273,26 @@ export class VADProcessor {
 
   /** Decode a chunk to mono Float32 at the engine's sample rate. */
   private decodeToEngineRate(data: ArrayBuffer, metadata: AudioMetadata): Float32Array | null {
-    let pcm: Float32Array;
+    const channels = metadata.channels ?? 1;
+
+    // `bytesPerFrame` is one sample across all channels — the granularity a
+    // chunk must be cut at to keep sample and channel alignment intact.
+    let bytesPerFrame: number;
+    let decode: (bytes: Uint8Array) => Float32Array;
 
     switch (metadata.encoding) {
-      case 'linear16': {
-        // Drop a trailing odd byte — Int16 views need even lengths.
-        const evenLength = data.byteLength - (data.byteLength % 2);
-        if (evenLength === 0) return null;
-        pcm = int16ToFloat(new Int16Array(data.slice(0, evenLength)));
+      case 'linear16':
+        bytesPerFrame = 2 * channels;
+        // Copy so the Int16Array view is guaranteed 2-byte aligned.
+        decode = (bytes) => int16ToFloat(new Int16Array(bytes.slice().buffer));
         break;
-      }
       case 'mulaw':
-        pcm = int16ToFloat(decodeMulaw(new Uint8Array(data)));
+        bytesPerFrame = channels;
+        decode = (bytes) => int16ToFloat(decodeMulaw(bytes));
         break;
       case 'alaw':
-        pcm = int16ToFloat(decodeAlaw(new Uint8Array(data)));
+        bytesPerFrame = channels;
+        decode = (bytes) => int16ToFloat(decodeAlaw(bytes));
         break;
       default:
         if (!this.unsupportedEncodingWarned) {
@@ -267,10 +305,28 @@ export class VADProcessor {
         return null;
     }
 
+    // Prepend bytes held back from the previous chunk, then hold back this
+    // chunk's trailing partial frame. Dropping it instead would shift every
+    // later sample by a byte (linear16) or rotate the channel order.
+    const incoming = new Uint8Array(data);
+    let bytes: Uint8Array;
+    if (this.byteRemainder.length === 0) {
+      bytes = incoming;
+    } else {
+      bytes = new Uint8Array(this.byteRemainder.length + incoming.length);
+      bytes.set(this.byteRemainder, 0);
+      bytes.set(incoming, this.byteRemainder.length);
+    }
+
+    const usableLength = bytes.length - (bytes.length % bytesPerFrame);
+    this.byteRemainder = bytes.slice(usableLength);
+    if (usableLength === 0) return null;
+
+    let pcm = decode(bytes.subarray(0, usableLength));
+
     // Downmix interleaved multi-channel audio to mono
-    const channels = metadata.channels ?? 1;
     if (channels > 1) {
-      const mono = new Float32Array(Math.floor(pcm.length / channels));
+      const mono = new Float32Array(pcm.length / channels);
       for (let i = 0; i < mono.length; i++) {
         let sum = 0;
         for (let ch = 0; ch < channels; ch++) {

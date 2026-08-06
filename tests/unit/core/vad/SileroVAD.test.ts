@@ -184,6 +184,30 @@ describe('SileroVAD', () => {
       await expect(vad.initialize()).rejects.toThrow(/unrecognized model input signature/);
     });
 
+    it('releases a rejected session and stays uninitialized', async () => {
+      const release = jest.fn(async () => {});
+      const fake = makeFakeOrt('v5', [0.5]);
+      const brokenOrt: OrtLike = {
+        ...fake.ort,
+        InferenceSession: {
+          create: async () => ({
+            inputNames: ['weird_input'],
+            run: async () => ({}),
+            release,
+          }),
+        },
+      };
+      const vad = new SileroVAD({ ort: brokenOrt });
+
+      await expect(vad.initialize()).rejects.toThrow(/unrecognized model input signature/);
+      expect(release).toHaveBeenCalled();
+
+      // The bad session must not have been cached — a retry has to fail the
+      // same way rather than short-circuit on it.
+      await expect(vad.initialize()).rejects.toThrow(/unrecognized model input signature/);
+      await expect(vad.process(frameOf(0))).rejects.toThrow(/not initialized/);
+    });
+
     it('rejects frames of the wrong size', async () => {
       const fake = makeFakeOrt('v5', [0.5]);
       const vad = new SileroVAD({ ort: fake.ort });
@@ -204,6 +228,51 @@ describe('SileroVAD', () => {
 
       expect(await vad.process(frameOf(0))).toBe(1);
     });
+  });
+
+  it('discards recurrent state from an inference that reset() interrupted', async () => {
+    // Park the run so reset() lands between the frame going in and the new
+    // state coming back.
+    let release!: () => void;
+    const parked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const runFeeds: Array<Record<string, FakeTensor>> = [];
+    let call = 0;
+
+    const ort: OrtLike = {
+      Tensor: FakeTensor as unknown as OrtLike['Tensor'],
+      InferenceSession: {
+        create: async () => ({
+          inputNames: ['input', 'state', 'sr'],
+          run: async (feeds: Record<string, OrtTensorLike>) => {
+            runFeeds.push(feeds as Record<string, FakeTensor>);
+            call++;
+            if (call === 1) await parked;
+            return {
+              output: { data: [0.5] },
+              stateN: { data: new Float32Array(2 * 1 * 128).fill(7) },
+            };
+          },
+        }),
+      },
+    };
+
+    const vad = new SileroVAD({ ort });
+    await vad.initialize();
+
+    const inFlight = vad.process(frameOf(0.4));
+    await Promise.resolve();
+    vad.reset();
+    release();
+    await inFlight;
+
+    // The next frame must start from cleared state and context, not from
+    // what the pre-reset inference returned.
+    await vad.process(frameOf(0.4));
+    const secondFeeds = runFeeds[1]!;
+    expect((secondFeeds.state!.data as Float32Array).every((v) => v === 0)).toBe(true);
+    expect((secondFeeds.input!.data as Float32Array).slice(0, 64).every((v) => v === 0)).toBe(true);
   });
 
   it('releases the session on dispose', async () => {
