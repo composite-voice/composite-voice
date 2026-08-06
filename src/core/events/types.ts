@@ -11,6 +11,7 @@
  * - **Agent events** (`agent.*`) - Agent lifecycle and state changes
  * - **Audio events** (`audio.*`) - Microphone capture and audio playback status
  * - **Queue events** (`queue.*`) - Audio buffer queue overflow and stats
+ * - **VAD events** (`vad.*`) - Local voice-activity detection
  *
  * Subscribe to events using the `on()` method on a CompositeVoice instance.
  * All event listeners receive a typed event object extending {@link BaseEvent}.
@@ -952,6 +953,87 @@ export interface QueueStatsEvent extends BaseEvent {
 export type QueueEvent = QueueOverflowEvent | QueueStatsEvent;
 
 // ---------------------------------------------------------------------------
+// VAD events
+// ---------------------------------------------------------------------------
+
+/**
+ * Emitted when the local VAD confirms the user has started speaking.
+ *
+ * @remarks
+ * Fires after {@link VADConfig.minSpeechDurationMs} of sustained speech
+ * probability — independent of the STT provider, and typically well before
+ * any transcription text arrives. Useful for instant speaking indicators
+ * and as the trigger for provider-independent barge-in.
+ *
+ * @example
+ * ```typescript
+ * agent.on('vad.speechStart', ({ probability }) => {
+ *   showSpeakingIndicator(probability);
+ * });
+ * ```
+ *
+ * @see {@link VADConfig} for enabling and tuning local VAD
+ * @see {@link VADEvent} for all VAD event types
+ */
+export interface VADSpeechStartEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'vad.speechStart';
+
+  /** Speech probability of the frame that confirmed the detection (0–1). */
+  probability: number;
+}
+
+/**
+ * Emitted when the local VAD detects the user has stopped speaking.
+ *
+ * @remarks
+ * Fires after {@link VADConfig.silenceDurationMs} of silence — the local,
+ * configurable end-of-turn signal. It does not by itself trigger LLM
+ * processing (the STT provider's utterance-complete result does that),
+ * but it is the earliest "user stopped speaking" timestamp available.
+ *
+ * @see {@link VADEvent} for all VAD event types
+ */
+export interface VADSpeechEndEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'vad.speechEnd';
+
+  /** How long the speech segment lasted, in milliseconds. */
+  durationMs: number;
+}
+
+/**
+ * Emitted when local VAD speech detection interrupted the agent.
+ *
+ * @remarks
+ * Fires when {@link VADConfig.bargeIn} is enabled and sustained speech was
+ * detected while the agent was `speaking` or `thinking`. The pipeline has
+ * already stopped playback and aborted the in-flight generation by the
+ * time this event is delivered.
+ *
+ * @see {@link VADEvent} for all VAD event types
+ */
+export interface VADBargeInEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'vad.bargeIn';
+
+  /** Speech probability of the frame that triggered the barge-in (0–1). */
+  probability: number;
+
+  /** The agent state at the moment of interruption. */
+  agentState: AgentState;
+}
+
+/**
+ * Union of all local-VAD events.
+ *
+ * @see {@link VADSpeechStartEvent}
+ * @see {@link VADSpeechEndEvent}
+ * @see {@link VADBargeInEvent}
+ */
+export type VADEvent = VADSpeechStartEvent | VADSpeechEndEvent | VADBargeInEvent;
+
+// ---------------------------------------------------------------------------
 // Composite types
 // ---------------------------------------------------------------------------
 
@@ -993,7 +1075,8 @@ export type CompositeVoiceEvent =
   | TTSEvent
   | AgentEvent
   | AudioEvent
-  | QueueEvent;
+  | QueueEvent
+  | VADEvent;
 
 /**
  * String union of all possible event type identifiers.
@@ -1138,4 +1221,13 @@ export interface EventListenerMap {
 
   /** Listener for {@link QueueStatsEvent}. */
   'queue.stats': EventListener<QueueStatsEvent>;
+
+  /** Listener for {@link VADSpeechStartEvent}. */
+  'vad.speechStart': EventListener<VADSpeechStartEvent>;
+
+  /** Listener for {@link VADSpeechEndEvent}. */
+  'vad.speechEnd': EventListener<VADSpeechEndEvent>;
+
+  /** Listener for {@link VADBargeInEvent}. */
+  'vad.bargeIn': EventListener<VADBargeInEvent>;
 }
