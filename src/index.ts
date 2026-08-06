@@ -112,6 +112,7 @@ export type {
   ConversationHistoryConfig,
   EagerLLMConfig,
   TurnTakingConfig,
+  VADConfig,
 } from './core/types/index';
 
 // Role constants
@@ -138,10 +139,24 @@ export type {
   TurnMetricsEvent,
   ProviderEvent,
   ProviderFallbackEvent,
+  VADEvent,
+  VADSpeechStartEvent,
+  VADSpeechEndEvent,
+  VADBargeInEvent,
 } from './core/events/index';
 
 // Event emitter
 export { EventEmitter } from './core/events/index';
+
+// Local voice activity detection
+export { SileroVAD, VADProcessor, DEFAULT_SILERO_MODEL_URL } from './core/vad/index';
+export type {
+  VADEngine,
+  SileroVADOptions,
+  VADProcessorOptions,
+  VADSpeechStartInfo,
+  VADSpeechEndInfo,
+} from './core/vad/index';
 
 // Audio components
 export { AudioCapture, AudioPlayer } from './core/audio/index';

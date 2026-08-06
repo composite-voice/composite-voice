@@ -63,6 +63,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Smart text routing](#smart-text-routing)
 - [Tool use / function calling](#tool-use--function-calling)
 - [Barge-in](#barge-in)
+- [Local VAD & smarter endpointing](#local-vad--smarter-endpointing)
 - [Turn-taking](#turn-taking)
 - [Server-side proxy](#server-side-proxy)
 - [Server-side usage](#server-side-usage)
@@ -1055,6 +1056,16 @@ agent.on('queue.stats', (e) => {
 | -------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `turn.metrics` | `{ turnId, transcript, modality, eagerUsed, interrupted, timestamps, durations }` | Per-turn latency breakdown — see [Latency observability](#latency-observability) |
 
+### VAD events
+
+Emitted when [local VAD](#local-vad--smarter-endpointing) is enabled.
+
+| Event             | Payload                       | Description                                              |
+| ----------------- | ----------------------------- | -------------------------------------------------------- |
+| `vad.speechStart` | `{ probability }`             | Local model confirmed the user started speaking          |
+| `vad.speechEnd`   | `{ durationMs }`              | Local model detected the user stopped speaking           |
+| `vad.bargeIn`     | `{ probability, agentState }` | Local speech interrupted the agent mid-response          |
+
 ---
 
 ## Latency observability
@@ -1303,7 +1314,66 @@ Barge-in happens automatically when the STT provider detects speech during agent
 agent.stopSpeaking();
 ```
 
-No configuration is required — barge-in is always active.
+No configuration is required — barge-in is always active. For faster, provider-independent interruption with echo resistance, add [local VAD](#local-vad--smarter-endpointing).
+
+---
+
+## Local VAD & smarter endpointing
+
+STT-driven barge-in has two weaknesses: it waits for the provider to return text (hundreds of ms after the user actually started talking), and it inherits whatever speech-detection quirks the vendor has. Local VAD fixes both by running the [Silero VAD](https://github.com/snakers4/silero-vad) model directly on the input audio — in the browser (via `onnxruntime-web`) or in Node (via `onnxruntime-node`):
+
+```bash
+pnpm add onnxruntime-web   # browser
+pnpm add onnxruntime-node  # server
+```
+
+```typescript
+const agent = new CompositeVoice({
+  providers: [
+    new MicrophoneInput(),
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+    new BrowserAudioOutput(),
+  ],
+  vad: {
+    enabled: true,
+    modelUrl: '/models/silero_vad_v5.onnx', // self-host for production
+    silenceDurationMs: 600,                 // end-of-turn sensitivity
+  },
+});
+
+agent.on('vad.speechStart', ({ probability }) => showSpeakingIndicator());
+agent.on('vad.speechEnd', ({ durationMs }) => hideSpeakingIndicator());
+agent.on('vad.bargeIn', ({ agentState }) => console.log(`interrupted while ${agentState}`));
+```
+
+What it gives you:
+
+- **Provider-independent barge-in** — sustained local speech while the agent is `speaking` or `thinking` triggers the same interruption path as STT-driven barge-in, but as soon as the audio says so rather than when the vendor's transcript arrives. Disable with `bargeIn: false` to keep VAD purely observational.
+- **False-barge-in resistance** — the classic bug is the agent's own TTS echoing into the microphone and interrupting itself. While the agent is speaking, detection requires the higher `bargeInThreshold` (default `0.75` vs the normal `0.5`), and `minSpeechDurationMs` (default `200`) debounces door slams and keyboard clatter. A hysteresis band also keeps segments from chattering: once speech starts, it only ends after `silenceDurationMs` below a *lower* exit threshold.
+- **Configurable end-of-turn sensitivity** — `silenceDurationMs` (default `800`) controls how much silence ends a speech segment: lower is snappier, higher is more patient with slow speakers. `vad.speechEnd` is the earliest "user stopped speaking" signal available, well before the STT final arrives.
+
+Configuration reference:
+
+| Option                | Default        | Description                                                        |
+| --------------------- | -------------- | ------------------------------------------------------------------ |
+| `enabled`             | `true`         | Master switch (when a `vad` object is present)                     |
+| `modelUrl`            | pinned CDN URL | Silero model location (URL, or file path in Node)                  |
+| `runtime`             | `'auto'`       | `'web'` / `'node'` / `'auto'` ONNX Runtime selection               |
+| `threshold`           | `0.5`          | Speech-probability threshold while the agent is quiet              |
+| `bargeInThreshold`    | `0.75`         | Threshold while the agent is speaking (echo resistance)            |
+| `minSpeechDurationMs` | `200`          | Sustained speech required before `vad.speechStart`                 |
+| `silenceDurationMs`   | `800`          | Silence required before `vad.speechEnd`                            |
+| `bargeIn`             | `true`         | Whether local speech interrupts the agent                          |
+| `engine`              | Silero         | Custom `VADEngine` implementation (alternative models, test stubs) |
+
+Both current Silero model generations are auto-detected (v5 `state` and legacy v4 `h`/`c` ONNX exports). Notes:
+
+- The default `modelUrl` points at a pinned public CDN copy for prototyping — self-host the model (and `onnxruntime-web`'s WASM assets) in production.
+- VAD needs the raw input audio, so it is unavailable with multi-role inputs like `NativeSTT` (which manage their own microphone); the SDK logs a warning and continues without it.
+- VAD is an enhancement, never a requirement: if the model or runtime fails to load, the pipeline continues with STT-driven barge-in only.
+- Supported input formats: linear16, mulaw, alaw — at any sample rate (resampled to 16 kHz internally), mono or interleaved multi-channel.
 
 ---
 

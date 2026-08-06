@@ -66,6 +66,9 @@ import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
 import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
 import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
 import { TurnMetricsCollector } from './core/pipeline/TurnMetrics';
+import { VADProcessor } from './core/vad/VADProcessor';
+import { SileroVAD } from './core/vad/SileroVAD';
+import type { VADEngine } from './core/vad/types';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -432,6 +435,17 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    */
   private turnMetrics!: TurnMetricsCollector;
 
+  /**
+   * Local VAD stack (when config.vad is enabled).
+   *
+   * @remarks
+   * The engine scores raw input frames; the processor layers format
+   * conversion and speech/silence hysteresis on top. `null` when VAD is
+   * not configured, unavailable (multi-role input), or failed to load.
+   */
+  private vadEngine: VADEngine | null = null;
+  private vadProcessor: VADProcessor | null = null;
+
   private initialized = false;
 
   /**
@@ -679,6 +693,14 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         previousState: oldState,
         timestamp: Date.now(),
       });
+
+      // Echo resistance: while the agent is speaking, its own TTS audio can
+      // leak into the microphone — require a higher VAD probability before
+      // treating input as user speech.
+      if (this.vadProcessor) {
+        const bargeInThreshold = this.config.vad?.bargeInThreshold ?? 0.75;
+        this.vadProcessor.setThresholdOverride(newState === 'speaking' ? bargeInThreshold : null);
+      }
     });
 
     // Note: agentStateMachine.initialize() is called in initialize()
@@ -752,6 +774,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       await Promise.all([...uniqueProviders].map((p) => p.initialize()));
 
       this.setupProviders();
+      await this.setupVAD();
 
       this.initialized = true;
 
@@ -1084,6 +1107,91 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     if (isLiveTTS(tts)) {
       void tts.disconnect();
     }
+  }
+
+  /**
+   * Initialize the local VAD stack when configured.
+   *
+   * @remarks
+   * VAD is an enhancement, never a requirement: initialization failures
+   * (missing ONNX Runtime peer dependency, unreachable model URL) are
+   * logged and the pipeline continues without local VAD. Multi-role
+   * inputs (e.g. NativeSTT) manage their own microphone, so the SDK never
+   * sees raw audio to score — VAD is skipped with a warning there.
+   */
+  private async setupVAD(): Promise<void> {
+    const vadConfig = this.config.vad;
+    if (!vadConfig || vadConfig.enabled === false) return;
+
+    if (this.isMultiRoleInput) {
+      this.logger.warn(
+        'Local VAD is configured but the input provider is multi-role (it manages its own ' +
+          'microphone), so the SDK never sees raw input audio. VAD is disabled.'
+      );
+      return;
+    }
+
+    try {
+      this.vadEngine =
+        vadConfig.engine ??
+        new SileroVAD({
+          ...(vadConfig.modelUrl !== undefined ? { modelUrl: vadConfig.modelUrl } : {}),
+          ...(vadConfig.runtime !== undefined ? { runtime: vadConfig.runtime } : {}),
+        });
+      await this.vadEngine.initialize();
+    } catch (error) {
+      this.logger.error('Failed to initialize local VAD — continuing without it', error);
+      this.vadEngine = null;
+      return;
+    }
+
+    const processor = new VADProcessor(
+      this.vadEngine,
+      {
+        ...(vadConfig.threshold !== undefined ? { threshold: vadConfig.threshold } : {}),
+        ...(vadConfig.minSpeechDurationMs !== undefined
+          ? { minSpeechDurationMs: vadConfig.minSpeechDurationMs }
+          : {}),
+        ...(vadConfig.silenceDurationMs !== undefined
+          ? { silenceDurationMs: vadConfig.silenceDurationMs }
+          : {}),
+      },
+      this.logger
+    );
+
+    processor.onSpeechStart(({ probability }) => {
+      this.emitEvent({ type: 'vad.speechStart', probability, timestamp: Date.now() });
+
+      const state = this.agentStateMachine.getState();
+      if ((vadConfig.bargeIn ?? true) && (state === 'speaking' || state === 'thinking')) {
+        this.logger.debug('VAD barge-in — interrupting agent', { probability, state });
+        this.performBargeIn();
+        this.emitEvent({
+          type: 'vad.bargeIn',
+          probability,
+          agentState: state,
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    processor.onSpeechEnd(({ durationMs }) => {
+      this.emitEvent({ type: 'vad.speechEnd', durationMs, timestamp: Date.now() });
+    });
+
+    this.vadProcessor = processor;
+    this.logger.info('Local VAD initialized');
+  }
+
+  /**
+   * Interrupt the agent because the user started speaking.
+   *
+   * @remarks
+   * VAD-triggered barge-in shares {@link CompositeVoice.interruptActiveResponse}
+   * with STT-driven barge-in so interrupted turns still emit `turn.metrics`.
+   */
+  private performBargeIn(): void {
+    this.interruptActiveResponse();
   }
 
   /**
@@ -1951,11 +2059,15 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         }
       } else {
         // Separate input + STT: apply the race condition fix.
-        // 1. Wire input → headerCache → inputQueue
+        // 1. Wire input → headerCache → inputQueue (and tap for local VAD)
         pipeline.input.onAudio((chunk: AudioChunk) => {
           this.headerCache.process(chunk.data);
           this.inputQueue.enqueue(chunk);
+          this.vadProcessor?.push(chunk.data);
         });
+
+        // Tell the VAD processor the input format before chunks arrive
+        this.vadProcessor?.configure(pipeline.input.getMetadata());
 
         // 2. Start capturing audio (sync — begins delivering chunks immediately)
         pipeline.input.start();
@@ -2052,6 +2164,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       // Reset header cache for next listening session
       this.headerCache.reset();
+
+      // Clear VAD segment state so this session's tail doesn't bias the next
+      this.vadProcessor?.reset();
 
       this.captureStateMachine.setStopped();
 
@@ -3016,6 +3131,17 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       // Clear queues
       this.inputQueue.clear();
       this.outputQueue.clear();
+
+      // Tear down the local VAD stack
+      if (this.vadEngine) {
+        try {
+          await this.vadEngine.dispose();
+        } catch (error) {
+          this.logger.warn('Error disposing VAD engine', error);
+        }
+        this.vadEngine = null;
+        this.vadProcessor = null;
+      }
 
       // Dispose all unique providers (deduplicated for multi-role instances)
       const uniqueProviders = new Set<BaseProvider>([
