@@ -218,20 +218,31 @@ describe('proxy routing', () => {
       expect(providers).toContain('cartesia');
     });
 
-    it('includes Gemini HTTP route when geminiApiKey is provided', () => {
+    it('includes Gemini HTTP and Live WebSocket routes when geminiApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         geminiApiKey: 'test-gemini-key',
       };
 
       const routes = buildRoutes(config);
 
-      expect(routes).toHaveLength(1);
+      expect(routes).toHaveLength(2);
       expect(routes[0]).toEqual({
         provider: 'gemini',
         type: 'http',
         targetBase: 'https://generativelanguage.googleapis.com/v1beta/openai',
         authHeaders: {
           Authorization: 'Bearer test-gemini-key',
+        },
+      });
+      // The Live API (GeminiLiveAgent) authenticates via the `key` query
+      // parameter — WebSocket upgrades cannot carry auth headers from browsers.
+      expect(routes[1]).toEqual({
+        provider: 'gemini-live',
+        type: 'websocket',
+        targetBase: 'wss://generativelanguage.googleapis.com',
+        authHeaders: {},
+        authQuery: {
+          key: 'test-gemini-key',
         },
       });
     });
