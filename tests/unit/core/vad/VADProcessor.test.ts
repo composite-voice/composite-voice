@@ -185,12 +185,15 @@ describe('VADProcessor', () => {
       processor.push(new Uint8Array(1).buffer); // one byte, held back
       await processor.flush();
 
-      processor.configure(LINEAR16_16K);
-      processor.push(pcmChunk(512));
+      processor.configure({ ...LINEAR16_16K, sampleRate: 8000 });
+      processor.push(pcmChunk(256, 16384)); // 256 @ 8k → 512 @ 16k = 1 frame
+
       await processor.flush();
 
-      // The stale byte must not have shifted this chunk into a partial frame.
+      // The stale byte must neither shift the first sample nor eat into the
+      // frame this chunk should produce under the new format.
       expect(engine.processedFrames).toHaveLength(1);
+      expect(engine.processedFrames[0]![0]).toBeCloseTo(0.5, 1);
     });
 
     it('drops chunks pushed before configure()', async () => {
