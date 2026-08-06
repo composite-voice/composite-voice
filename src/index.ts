@@ -131,6 +131,8 @@ export type {
   QueueEvent,
   QueueOverflowEvent,
   QueueStatsEvent,
+  TurnEvent,
+  TurnMetricsEvent,
 } from './core/events/index';
 
 // Event emitter
@@ -429,10 +431,12 @@ export {
   AudioBufferQueue,
   AudioHeaderCache,
   TTSBackpressure,
+  TurnMetricsCollector,
   resolveProviders,
   configureSTTFromMetadata,
 } from './core/pipeline/index';
 export type { QueueStats, DrainCallback, OverflowCallback } from './core/pipeline/index';
+export type { TurnMetricsSummary, TurnTimestamps, TurnDurations } from './core/pipeline/index';
 
 // Collaborator classes (extracted from CompositeVoice for modularity)
 export {
