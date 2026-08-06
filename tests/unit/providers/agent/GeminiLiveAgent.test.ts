@@ -148,6 +148,35 @@ describe('GeminiLiveAgent', () => {
 
       await expect(connecting).rejects.toThrow(/timed out/);
     });
+
+    it('resolves both callers when a second connect() piggybacks', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+
+      const first = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      const second = agent.connect();
+      sock._message({ setupComplete: {} });
+      await flush();
+
+      await expect(first).resolves.toBeUndefined();
+      await expect(second).resolves.toBeUndefined();
+    });
+
+    it('rejects both callers when a piggybacked handshake fails', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+
+      const first = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      const second = agent.connect();
+      sock._error();
+
+      await expect(first).rejects.toThrow(/WebSocket error/);
+      await expect(second).rejects.toThrow(/WebSocket error/);
+    });
   });
 
   describe('audio transport', () => {
@@ -164,6 +193,44 @@ describe('GeminiLiveAgent', () => {
         data: arrayBufferToBase64(chunk),
         mimeType: 'audio/pcm;rate=16000',
       });
+    });
+
+    it('labels frames with the input provider\'s actual rate', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const sock = await connectAgent(agent);
+
+      expect(agent.preferredInputSampleRate).toBe(16000);
+      agent.configureInputFormat({
+        sampleRate: 48000,
+        encoding: 'linear16',
+        channels: 1,
+        bitDepth: 16,
+      });
+      agent.sendAudio(new Uint8Array([1, 2, 3]).buffer);
+
+      const frame = sock.sentJson().find((m) => m.realtimeInput) as Record<string, any>;
+      expect(frame.realtimeInput.audio.mimeType).toBe('audio/pcm;rate=48000');
+    });
+
+    it('re-emits output metadata with every audio chunk', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const metadata: AudioMetadata[] = [];
+      agent.onMetadata((m) => metadata.push(m));
+      const sock = await connectAgent(agent);
+
+      expect(metadata).toHaveLength(1);
+
+      const audio = arrayBufferToBase64(new Uint8Array([5, 6]).buffer);
+      sock._message({
+        serverContent: {
+          modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm', data: audio } }] },
+        },
+      });
+      await flush();
+
+      expect(metadata).toHaveLength(2);
     });
 
     it('decodes modelTurn inline audio into audio chunks', async () => {
@@ -283,6 +350,30 @@ describe('GeminiLiveAgent', () => {
       expect(
         events.filter((e) => e.type === 'conversation_text' && e.role === 'assistant')
       ).toHaveLength(0);
+    });
+
+    it('still emits the next user turn after an interruption', async () => {
+      // The Live API sends no turnComplete for a generation it aborted, so
+      // the interruption itself has to reset the turn state.
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const results: TranscriptionResult[] = [];
+      agent.onTranscription((r) => results.push(r));
+      const sock = await connectAgent(agent);
+
+      sock._message({ serverContent: { inputTranscription: { text: 'first question' } } });
+      sock._message({ serverContent: { outputTranscription: { text: 'partial' } } });
+      sock._message({ serverContent: { interrupted: true } });
+      await flush();
+
+      expect(results.map((r) => r.text)).toEqual(['first question']);
+
+      // Next utterance — no turnComplete ever arrived for the aborted turn
+      sock._message({ serverContent: { inputTranscription: { text: 'second question' } } });
+      sock._message({ serverContent: { outputTranscription: { text: 'Answer' } } });
+      await flush();
+
+      expect(results.map((r) => r.text)).toEqual(['first question', 'second question']);
     });
 
     it('sendUserMessage sends a completed clientContent turn', async () => {

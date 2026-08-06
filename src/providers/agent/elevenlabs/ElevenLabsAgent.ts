@@ -52,7 +52,7 @@
  */
 
 import { BaseAgentProvider } from '../../base/BaseAgentProvider';
-import type { AudioEncoding } from '../../../core/types/audio';
+import type { AudioEncoding, AudioMetadata } from '../../../core/types/audio';
 import type { Logger } from '../../../utils/logger';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '../../../utils/base64';
 import type {
@@ -67,6 +67,9 @@ const ELEVENLABS_BASE = 'wss://api.elevenlabs.io';
 
 /** Conversational AI WebSocket path. */
 const CONVAI_PATH = '/v1/convai/conversation';
+
+/** ConvAI's default user input format is `pcm_16000`. */
+const DEFAULT_INPUT_SAMPLE_RATE = 16000;
 
 /**
  * ElevenLabs Conversational AI agent — covers STT + LLM + TTS in a single
@@ -92,6 +95,12 @@ export class ElevenLabsAgent extends BaseAgentProvider {
 
   /** Idle timer that marks the agent's turn done when audio stops arriving. */
   private audioIdleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The ConvAI default input rate — what an auto-created mic should use. */
+  public override readonly preferredInputSampleRate = DEFAULT_INPUT_SAMPLE_RATE;
+
+  /** Actual capture rate of the input provider, learned from the pipeline. */
+  private inputSampleRate = DEFAULT_INPUT_SAMPLE_RATE;
 
   private agentEventCallback?: (event: ElevenLabsAgentEvent) => void;
 
@@ -167,16 +176,18 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
     ) {
       if (!this.conversationStarted) {
+        // Chain onto the in-flight handshake: whichever way it settles, both
+        // this caller and the original one see the same outcome.
         await new Promise<void>((resolve, reject) => {
-          const prev = this.connectResolve;
-          this.connectReject = (err) => {
-            prev?.();
-            reject(err);
-          };
-          const prevR = this.connectReject;
+          const prevResolve = this.connectResolve;
+          const prevReject = this.connectReject;
           this.connectResolve = () => {
-            prevR?.(new Error('superseded'));
+            prevResolve?.();
             resolve();
+          };
+          this.connectReject = (err) => {
+            prevReject?.(err);
+            reject(err);
           };
         });
       }
@@ -254,6 +265,20 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       channels: 1,
       bitDepth: 16,
     });
+  }
+
+  /**
+   * Record the input provider's capture rate.
+   *
+   * @remarks
+   * The input format belongs to the agent's dashboard configuration, not to
+   * anything this client can negotiate, so a mismatch can only be reported —
+   * see the `user_input_audio_format` check in the initiation metadata.
+   *
+   * @param metadata - The input provider's audio format.
+   */
+  override configureInputFormat(metadata: AudioMetadata): void {
+    this.inputSampleRate = metadata.sampleRate;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -341,6 +366,7 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       case 'conversation_initiation_metadata': {
         const meta = msg.conversation_initiation_metadata_event ?? {};
         this.parseOutputFormat(meta.agent_output_audio_format);
+        this.warnOnInputFormatMismatch(meta.user_input_audio_format);
         this.conversationStarted = true;
         this.emitOutputMetadata();
         this.emitEvent({
@@ -361,6 +387,11 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       case 'user_transcript': {
         const transcript = (msg.user_transcription_event?.user_transcript ?? '').trim();
         if (transcript) {
+          // Disarm the previous turn's idle timer first: emitUserTranscription
+          // installs a fresh audio-done resolver, and a timer left over from
+          // the agent's last chunk would resolve it before this turn's audio
+          // has even started.
+          this.clearAudioIdleTimer();
           this.emitEvent({ type: 'conversation_text', role: 'user', content: transcript });
           this.emitUserTranscription(transcript);
         }
@@ -403,6 +434,7 @@ export class ElevenLabsAgent extends BaseAgentProvider {
             : {}),
         });
         this.clearAudioIdleTimer();
+        this.clearBufferedAssistantText();
         this.markAudioDone();
         break;
 
@@ -555,6 +587,30 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       encoding: match[1] === 'ulaw' ? 'mulaw' : 'linear16',
       sampleRate: Number(match[2]),
     };
+  }
+
+  /**
+   * Warn when the microphone's rate does not match what the agent expects.
+   *
+   * @remarks
+   * The input format is set on the agent in the ElevenLabs dashboard and is
+   * not negotiable over this socket, so the mismatch cannot be corrected
+   * here — but transcription degrades silently otherwise, which is worse
+   * than a log line.
+   */
+  private warnOnInputFormatMismatch(format?: string): void {
+    if (!format) return;
+    const match = /^(pcm|ulaw)_(\d+)$/.exec(format);
+    if (!match) return;
+
+    const expected = Number(match[2]);
+    if (expected !== this.inputSampleRate) {
+      this.logger.warn(
+        `ElevenLabsAgent: agent expects ${format} but the input provides ` +
+          `${this.inputSampleRate} Hz — set the microphone's sampleRate to ${expected} ` +
+          "or change the agent's input format, or transcription will be unreliable."
+      );
+    }
   }
 
   /**

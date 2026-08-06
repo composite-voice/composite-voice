@@ -11,6 +11,8 @@
  * explicitly set.
  *
  * Supported STT providers:
+ * - Anything exposing `configureInputFormat(metadata)` (all agent providers)
+ *   — the provider decides what to do with the format itself
  * - **DeepgramSTT** / **DeepgramFlux** — sets `config.options.encoding`,
  *   `config.options.sampleRate`, and `config.options.channels`
  * - **AssemblyAISTT** — sets `config.sampleRate`
@@ -105,6 +107,20 @@ interface AssemblyAILikeSTT {
 }
 
 /**
+ * A provider that accepts the input format directly instead of having its
+ * config fields filled in by class-name detection.
+ *
+ * @remarks
+ * {@link BaseAgentProvider} declares `configureInputFormat`, so every agent
+ * provider matches this shape.
+ *
+ * @internal
+ */
+interface SelfConfiguringSTT {
+  configureInputFormat?: (metadata: AudioMetadata) => void;
+}
+
+/**
  * Auto-configures an STT provider's audio format settings from input metadata.
  *
  * @remarks
@@ -165,6 +181,14 @@ interface AssemblyAILikeSTT {
  */
 export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetadata): void {
   const providerName = stt.constructor?.name ?? '';
+
+  // Providers that handle the format themselves (agent providers) get the
+  // metadata verbatim rather than having config fields poked from outside.
+  const selfConfiguring = stt as unknown as SelfConfiguringSTT;
+  if (typeof selfConfiguring.configureInputFormat === 'function') {
+    selfConfiguring.configureInputFormat(metadata);
+    return;
+  }
 
   if (DEEPGRAM_LIKE_NAMES.has(providerName)) {
     configureDeepgram(stt as unknown as DeepgramLikeSTT, metadata);

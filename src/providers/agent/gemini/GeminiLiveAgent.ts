@@ -54,6 +54,7 @@
 
 import { BaseAgentProvider } from '../../base/BaseAgentProvider';
 import type { Logger } from '../../../utils/logger';
+import type { AudioMetadata } from '../../../core/types/audio';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '../../../utils/base64';
 import type {
   GeminiLiveAgentConfig,
@@ -97,6 +98,12 @@ export class GeminiLiveAgent extends BaseAgentProvider {
 
   /** Whether the pending user transcript has been emitted for this turn. */
   private userTurnEmitted = false;
+
+  /** The Live API's native input rate — what an auto-created mic should use. */
+  public override readonly preferredInputSampleRate = INPUT_SAMPLE_RATE;
+
+  /** Actual capture rate of the input provider, learned from the pipeline. */
+  private inputSampleRate = INPUT_SAMPLE_RATE;
 
   private agentEventCallback?: (event: GeminiLiveAgentEvent) => void;
 
@@ -166,16 +173,18 @@ export class GeminiLiveAgent extends BaseAgentProvider {
       (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
     ) {
       if (!this.setupComplete) {
+        // Chain onto the in-flight handshake: whichever way it settles, both
+        // this caller and the original one see the same outcome.
         await new Promise<void>((resolve, reject) => {
-          const prev = this.connectResolve;
-          this.connectReject = (err) => {
-            prev?.();
-            reject(err);
-          };
-          const prevR = this.connectReject;
+          const prevResolve = this.connectResolve;
+          const prevReject = this.connectReject;
           this.connectResolve = () => {
-            prevR?.(new Error('superseded'));
+            prevResolve?.();
             resolve();
+          };
+          this.connectReject = (err) => {
+            prevReject?.(err);
+            reject(err);
           };
         });
       }
@@ -234,8 +243,9 @@ export class GeminiLiveAgent extends BaseAgentProvider {
   /**
    * Send a raw audio chunk to the agent for speech recognition.
    *
-   * @param chunk - Raw PCM16 audio at 16 kHz mono. The buffer is
-   *   base64-encoded into a `realtimeInput` JSON frame.
+   * @param chunk - Raw PCM16 mono audio at the rate reported by the input
+   *   provider (16 kHz by default). The buffer is base64-encoded into a
+   *   `realtimeInput` JSON frame tagged with that rate.
    *
    * @remarks
    * No-op when the WebSocket is not open — audio sent before {@link connect}
@@ -247,10 +257,24 @@ export class GeminiLiveAgent extends BaseAgentProvider {
       realtimeInput: {
         audio: {
           data: arrayBufferToBase64(chunk),
-          mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}`,
+          mimeType: `audio/pcm;rate=${this.inputSampleRate}`,
         },
       },
     });
+  }
+
+  /**
+   * Record the input provider's capture rate.
+   *
+   * @remarks
+   * The rate travels with each frame in the `mimeType`, so a caller-supplied
+   * microphone at a non-default rate needs no resampling — it just has to be
+   * labelled honestly, or the server hears the speech at the wrong speed.
+   *
+   * @param metadata - The input provider's audio format.
+   */
+  override configureInputFormat(metadata: AudioMetadata): void {
+    this.inputSampleRate = metadata.sampleRate;
   }
 
   protected emitOutputMetadata(): void {
@@ -397,8 +421,14 @@ export class GeminiLiveAgent extends BaseAgentProvider {
     if (content.interrupted) {
       // Barge-in: the server stopped generating. Discard the partial
       // response and unblock any pending finalize().
+      //
+      // The Live API sends no turnComplete for a generation it aborted, so
+      // the turn state has to be reset here too — otherwise userTurnEmitted
+      // stays true and flushUserTurn() silently swallows every later turn.
       this.emitEvent({ type: 'interrupted' });
       this.outputTranscript = '';
+      this.userTurnEmitted = false;
+      this.clearBufferedAssistantText();
       this.markAudioDone();
       return;
     }

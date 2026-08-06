@@ -178,6 +178,40 @@ describe('ElevenLabsAgent', () => {
 
       await expect(connecting).rejects.toThrow(/timed out/);
     });
+
+    it('resolves both callers when a second connect() piggybacks', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1' });
+      await agent.initialize();
+
+      const first = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      const second = agent.connect();
+      sock._message({
+        type: 'conversation_initiation_metadata',
+        conversation_initiation_metadata_event: {
+          conversation_id: 'conv_1',
+          agent_output_audio_format: 'pcm_16000',
+        },
+      });
+
+      await expect(first).resolves.toBeUndefined();
+      await expect(second).resolves.toBeUndefined();
+    });
+
+    it('rejects both callers when a piggybacked handshake fails', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1' });
+      await agent.initialize();
+
+      const first = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      const second = agent.connect();
+      sock._error();
+
+      await expect(first).rejects.toThrow(/WebSocket error/);
+      await expect(second).rejects.toThrow(/WebSocket error/);
+    });
   });
 
   describe('keep-alive', () => {
@@ -204,6 +238,23 @@ describe('ElevenLabsAgent', () => {
 
       const frame = sock.sentJson().find((m) => m.user_audio_chunk);
       expect(frame?.user_audio_chunk).toBe(arrayBufferToBase64(chunk));
+    });
+
+    it('re-emits output metadata with every audio chunk', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1' });
+      await agent.initialize();
+      const metadata: AudioMetadata[] = [];
+      agent.onMetadata((m) => metadata.push(m));
+      const sock = await connectAgent(agent, 'pcm_44100');
+
+      expect(metadata).toHaveLength(1);
+
+      const audio = arrayBufferToBase64(new Uint8Array([1, 2]).buffer);
+      sock._message({ type: 'audio', audio_event: { audio_base_64: audio, event_id: 1 } });
+      sock._message({ type: 'audio', audio_event: { audio_base_64: audio, event_id: 2 } });
+
+      expect(metadata).toHaveLength(3);
+      expect(metadata.every((m) => m.sampleRate === 44100)).toBe(true);
     });
 
     it('decodes audio events into audio chunks', async () => {
@@ -287,6 +338,35 @@ describe('ElevenLabsAgent', () => {
       await agent.finalize();
 
       expect(events.some((e) => e.type === 'agent_audio_done')).toBe(true);
+    });
+
+    it('does not let the previous turn\'s idle timer end the next turn', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1', audioDoneSilenceMs: 30 });
+      await agent.initialize();
+      const sock = await connectAgent(agent);
+
+      const audio = arrayBufferToBase64(new Uint8Array([1]).buffer);
+      sock._message({ type: 'user_transcript', user_transcription_event: { user_transcript: 'hi' } });
+      sock._message({ type: 'audio', audio_event: { audio_base_64: audio, event_id: 1 } });
+
+      // The user speaks again inside the idle window, before the timer fires
+      sock._message({
+        type: 'user_transcript',
+        user_transcription_event: { user_transcript: 'and another thing' },
+      });
+
+      // The stale timer would have fired by now — the new turn must still be open
+      let settled = false;
+      void agent.finalize().then(() => {
+        settled = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      expect(settled).toBe(false);
+
+      // The new turn ends on its own audio going silent
+      sock._message({ type: 'audio', audio_event: { audio_base_64: audio, event_id: 2 } });
+      await agent.finalize();
+      expect(settled).toBe(true);
     });
 
     it('unblocks the turn immediately on interruption', async () => {

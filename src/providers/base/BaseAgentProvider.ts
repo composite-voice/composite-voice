@@ -37,6 +37,7 @@
  * - `emitAssistantText(text)` — resolve the pending LLM generator
  * - `emitAudioChunk(data)` — forward audio to the output
  * - `markAudioDone()` — resolve the pending `finalize()` call
+ * - `clearBufferedAssistantText()` — drop a response abandoned by barge-in
  *
  * @example
  * ```typescript
@@ -111,8 +112,9 @@ export abstract class BaseAgentProvider extends BaseProvider {
    * asynchronously, so a fast agent server can deliver the assistant's
    * response text before {@link generateFromMessages}' iterator runs and
    * registers {@link pendingLLMResolve}. Without buffering, that text would
-   * be dropped and the iterator would hang. Cleared at the start of each
-   * turn so a response abandoned by barge-in cannot leak into the next turn.
+   * be dropped and the iterator would hang. Cleared by
+   * {@link clearBufferedAssistantText} when the user starts a new utterance,
+   * so a response abandoned by barge-in cannot leak into the next turn.
    */
   private bufferedAssistantText: string | null = null;
 
@@ -162,9 +164,10 @@ export abstract class BaseAgentProvider extends BaseProvider {
    * Emit audio format metadata so the output provider can decode PCM.
    *
    * @remarks
-   * Called after handshake and before each response turn (because
-   * `BrowserAudioOutput.stop()` clears metadata during barge-in).
-   * Subclasses should call `this.metadataCallback?.(metadata)`.
+   * Called after the handshake and again before every audio chunk (because
+   * `BrowserAudioOutput.stop()` clears metadata during barge-in). Must
+   * therefore be cheap and side-effect free — subclasses should do nothing
+   * but call `this.metadataCallback?.(metadata)`.
    *
    * @returns Nothing — metadata is delivered via the registered
    *   {@link metadataCallback}.
@@ -200,6 +203,37 @@ export abstract class BaseAgentProvider extends BaseProvider {
   onTranscription(callback: (result: TranscriptionResult) => void): void {
     this.transcriptionCallback = callback;
   }
+
+  /**
+   * The capture rate this agent wants from an auto-created microphone.
+   *
+   * @remarks
+   * Agent APIs accept audio at a fixed rate and have no way to detect a
+   * mismatch — they just hear speech at the wrong speed. When the pipeline
+   * auto-fills the `input` role it reads this value so the microphone
+   * captures at the rate the agent actually expects. `undefined` means "the
+   * microphone default is fine".
+   *
+   * @see {@link configureInputFormat} for the case where the caller supplies
+   *   their own input provider.
+   */
+  readonly preferredInputSampleRate?: number;
+
+  /**
+   * Learn the format the input provider actually produces.
+   *
+   * @remarks
+   * Called by `configureSTTFromMetadata()` once the input provider is known,
+   * which is the only point where the agent can find out that a
+   * caller-supplied microphone does not match
+   * {@link preferredInputSampleRate}. The base implementation is a no-op;
+   * subclasses override it to resample, renegotiate, or warn.
+   *
+   * @param _metadata - The input provider's audio format.
+   *
+   * @virtual
+   */
+  configureInputFormat(_metadata: AudioMetadata): void {}
 
   /**
    * No-op — the agent connection is persistent.
@@ -437,9 +471,12 @@ export abstract class BaseAgentProvider extends BaseProvider {
    *   orchestrator's transcription callback.
    */
   protected emitUserTranscription(text: string): void {
-    // New turn — discard any assistant text left over from a previous turn
-    // (e.g. a response abandoned by barge-in that was never consumed).
-    this.bufferedAssistantText = null;
+    // Note: bufferedAssistantText is NOT cleared here. Some providers deliver
+    // the user's transcription *after* the response it belongs to (OpenAI's
+    // input transcription is asynchronous and unordered against the response
+    // events), so clearing here would discard the very text this turn's
+    // iterator is about to consume. Subclasses call
+    // clearBufferedAssistantText() when a new user utterance begins instead.
 
     // Fresh promise for this turn's audio completion
     this.audioDonePromise = new Promise<void>((resolve) => {
@@ -478,13 +515,36 @@ export abstract class BaseAgentProvider extends BaseProvider {
   }
 
   /**
+   * Discard assistant text buffered for a response that is being abandoned.
+   *
+   * @remarks
+   * Call this when the user starts a new utterance (barge-in, or the
+   * provider's "user started speaking" event). Text left in the buffer by a
+   * response nobody consumed would otherwise be handed to the *next* turn's
+   * iterator as if it were that turn's answer.
+   */
+  protected clearBufferedAssistantText(): void {
+    this.bufferedAssistantText = null;
+  }
+
+  /**
    * Forward a binary audio chunk to the output provider.
+   *
+   * @remarks
+   * The audio format is re-asserted before every chunk. Barge-in tears down
+   * playback via `BrowserAudioOutput.stop()`, which clears the player's
+   * metadata, and nothing else replays it — without this, raw PCM arriving
+   * after the first barge-in has no format to decode with and the rest of
+   * the session is silent. {@link emitOutputMetadata} is a cheap field
+   * assignment on the output side, so re-asserting per chunk costs nothing
+   * and removes the race between "playback stopped" and "next chunk".
    *
    * @param data - Raw audio bytes to deliver via the registered
    *   {@link audioCallback}. Zero-length buffers are silently dropped.
    */
   protected emitAudioChunk(data: ArrayBuffer): void {
     if (data.byteLength === 0) return;
+    this.emitOutputMetadata();
     this.audioCallback?.({
       data,
       timestamp: Date.now(),

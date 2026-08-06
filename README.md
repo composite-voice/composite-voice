@@ -805,6 +805,8 @@ const voice = new CompositeVoice({
 });
 ```
 
+The auto-filled microphone captures at whatever rate the agent expects (24 kHz for `OpenAIRealtimeAgent`, 16 kHz for the rest). If you supply your own input provider instead, the agent adapts to the rate it reports — resampling or re-labelling the stream where the protocol allows it, and warning where it does not.
+
 All four speak the same SDK surface — `transcription.*`, `llm.*`, and `tts.*` events fire as usual, and each also exposes provider-specific events via `onDeepgramAgentEvent` / `onAgentEvent` (live captions, interruptions, latency metrics, tool calls). `GeminiLiveAgent` authenticates via `?key=` in direct mode or the `{pathPrefix}/gemini-live` proxy route; `ElevenLabsAgent` accepts a public `agentId`, a signed URL (or async factory), an `xi-api-key`, or the `{pathPrefix}/elevenlabs` proxy route.
 
 ### Audio Output

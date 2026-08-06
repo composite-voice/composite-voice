@@ -20,7 +20,9 @@
  * ```
  *
  * Audio format: input and output are both 24 kHz mono PCM16 — the only rate
- * the Realtime API supports for raw PCM.
+ * the Realtime API supports for raw PCM. An auto-created microphone captures
+ * at 24 kHz; a caller-supplied input at any other rate is resampled before
+ * being sent.
  *
  * @example
  * ```typescript
@@ -46,7 +48,9 @@
 
 import { BaseAgentProvider } from '../../base/BaseAgentProvider';
 import type { Logger } from '../../../utils/logger';
+import type { AudioMetadata } from '../../../core/types/audio';
 import { arrayBufferToBase64, base64ToArrayBuffer } from '../../../utils/base64';
+import { int16ToFloat, floatTo16BitPCM, resamplePcm } from '../../../utils/audio';
 import type {
   OpenAIRealtimeAgentConfig,
   OpenAIRealtimeAgentEvent,
@@ -76,8 +80,26 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
   private connectResolve: (() => void) | null = null;
   private connectReject: ((err: Error) => void) | null = null;
 
+  /**
+   * The Realtime API only accepts 24 kHz raw PCM, so that is what an
+   * auto-created microphone should capture.
+   *
+   * @see {@link configureInputFormat} for a caller-supplied input at a
+   *   different rate.
+   */
+  public override readonly preferredInputSampleRate = PCM_SAMPLE_RATE;
+
+  /** Actual capture rate of the input provider, learned from the pipeline. */
+  private inputSampleRate = PCM_SAMPLE_RATE;
+
   /** Accumulated output-audio transcript for the in-flight response. */
   private responseTranscript = '';
+
+  /** Whether the response in progress has produced any audio. */
+  private responseHadAudio = false;
+
+  /** Whether the response in progress asked for a tool call. */
+  private responseHadFunctionCall = false;
 
   private agentEventCallback?: (event: OpenAIRealtimeAgentEvent) => void;
 
@@ -150,16 +172,18 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
       (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
     ) {
       if (!this.sessionReady) {
+        // Chain onto the in-flight handshake: whichever way it settles, both
+        // this caller and the original one see the same outcome.
         await new Promise<void>((resolve, reject) => {
-          const prev = this.connectResolve;
-          this.connectReject = (err) => {
-            prev?.();
-            reject(err);
-          };
-          const prevR = this.connectReject;
+          const prevResolve = this.connectResolve;
+          const prevReject = this.connectReject;
           this.connectResolve = () => {
-            prevR?.(new Error('superseded'));
+            prevResolve?.();
             resolve();
+          };
+          this.connectReject = (err) => {
+            prevReject?.(err);
+            reject(err);
           };
         });
       }
@@ -221,8 +245,9 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
   /**
    * Send a raw audio chunk to the agent for speech recognition.
    *
-   * @param chunk - Raw PCM16 audio at 24 kHz mono. The buffer is
-   *   base64-encoded into an `input_audio_buffer.append` JSON frame.
+   * @param chunk - Raw PCM16 mono audio at the rate reported by the input
+   *   provider. Resampled to 24 kHz if needed, then base64-encoded into an
+   *   `input_audio_buffer.append` JSON frame.
    *
    * @remarks
    * No-op when the WebSocket is not open — audio sent before {@link connect}
@@ -232,8 +257,45 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     this.sendJson({
       type: 'input_audio_buffer.append',
-      audio: arrayBufferToBase64(chunk),
+      audio: arrayBufferToBase64(this.toRealtimeRate(chunk)),
     });
+  }
+
+  /**
+   * Record the input provider's capture rate.
+   *
+   * @remarks
+   * The Realtime API takes the input rate on trust — sending 16 kHz samples
+   * labelled 24 kHz makes every utterance play back 1.5× fast, which wrecks
+   * VAD and transcription without producing any error. Rather than trust the
+   * caller to match {@link preferredInputSampleRate}, remember what the
+   * input actually produces and resample in {@link sendAudio}.
+   *
+   * @param metadata - The input provider's audio format.
+   */
+  override configureInputFormat(metadata: AudioMetadata): void {
+    this.inputSampleRate = metadata.sampleRate;
+    if (metadata.sampleRate !== PCM_SAMPLE_RATE) {
+      this.logger.info(
+        `OpenAIRealtimeAgent: input is ${metadata.sampleRate} Hz, resampling to ` +
+          `${PCM_SAMPLE_RATE} Hz (the only rate the Realtime API accepts for raw PCM)`
+      );
+    }
+  }
+
+  /**
+   * Convert a PCM16 chunk to the 24 kHz the Realtime API requires.
+   *
+   * @returns The original buffer when the input is already 24 kHz or the
+   *   byte length is not a whole number of 16-bit samples.
+   */
+  private toRealtimeRate(chunk: ArrayBuffer): ArrayBuffer {
+    if (this.inputSampleRate === PCM_SAMPLE_RATE) return chunk;
+    if (chunk.byteLength % 2 !== 0) return chunk;
+
+    const samples = int16ToFloat(new Int16Array(chunk));
+    const resampled = resamplePcm(samples, this.inputSampleRate, PCM_SAMPLE_RATE);
+    return floatTo16BitPCM(resampled).buffer as ArrayBuffer;
   }
 
   protected emitOutputMetadata(): void {
@@ -350,6 +412,9 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
         break;
 
       case 'input_audio_buffer.speech_started':
+        // A new utterance begins — drop any response text left unconsumed by
+        // the turn this speech is interrupting.
+        this.clearBufferedAssistantText();
         this.emitEvent({ type: 'user_started_speaking' });
         break;
 
@@ -370,6 +435,7 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
       case 'response.output_audio.delta':
       case 'response.audio.delta':
         if (msg.delta) {
+          this.responseHadAudio = true;
           this.emitAudioChunk(base64ToArrayBuffer(msg.delta));
         }
         break;
@@ -393,17 +459,31 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
 
       case 'response.output_item.done':
         if (msg.item?.type === 'function_call') {
-          this.handleFunctionCall(msg.item);
+          this.responseHadFunctionCall = true;
+          void this.handleFunctionCall(msg.item);
         }
         break;
 
       case 'response.done': {
         const text = this.responseTranscript.trim();
+        const hadAudio = this.responseHadAudio;
+        const toolFollowUpPending =
+          !hadAudio && this.responseHadFunctionCall && this.config.onFunctionCall !== undefined;
         this.responseTranscript = '';
+        this.responseHadAudio = false;
+        this.responseHadFunctionCall = false;
+
         if (text) {
           this.emitEvent({ type: 'conversation_text', role: 'assistant', content: text });
           this.emitAssistantText(text);
         }
+
+        // A tool-call response carries no audio; the spoken answer arrives in
+        // the follow-up response that handleFunctionCall() requests. Ending
+        // the turn here would tell the orchestrator playback finished while
+        // the real answer is still to come.
+        if (toolFollowUpPending) break;
+
         this.emitEvent({ type: 'agent_audio_done' });
         this.markAudioDone();
         break;
@@ -464,6 +544,8 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
     this.ws = null;
     this.sessionReady = false;
     this.responseTranscript = '';
+    this.responseHadAudio = false;
+    this.responseHadFunctionCall = false;
     this.cleanupPendingState();
   }
 
