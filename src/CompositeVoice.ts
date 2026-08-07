@@ -64,6 +64,9 @@ import type { QueueStats } from './core/pipeline/AudioBufferQueue';
 import { AudioHeaderCache } from './core/pipeline/AudioHeaderCache';
 import { configureSTTFromMetadata } from './core/pipeline/configureSTTFromMetadata';
 import { TTSBackpressure } from './core/pipeline/TTSBackpressure';
+import { GuardrailPipeline } from './core/pipeline/GuardrailPipeline';
+import type { GuardrailStream } from './core/pipeline/GuardrailPipeline';
+import type { GuardrailContext, GuardrailStage } from './core/types/guardrails';
 
 /**
  * Type guard that checks whether an STT provider uses a live WebSocket connection.
@@ -410,6 +413,15 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   // LLM→TTS backpressure (when config.pipeline.maxPendingChunks is set)
   private ttsBackpressure: TTSBackpressure | null = null;
 
+  /**
+   * Guardrail chain applied to LLM text on its way to TTS.
+   *
+   * @remarks
+   * `null` when `config.guardrails` is absent, so the guardrail code path is
+   * skipped entirely rather than running an empty chain on every chunk.
+   */
+  private guardrails: GuardrailPipeline | null = null;
+
   private initialized = false;
 
   /**
@@ -631,6 +643,49 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         timestamp: Date.now(),
       });
     });
+
+    // Setup the LLM→TTS guardrail chain (opt-in via config), wiring each
+    // guardrail decision to a `guardrail.*` event
+    if (config.guardrails?.filters?.length) {
+      this.guardrails = new GuardrailPipeline(config.guardrails, {
+        logger: this.logger,
+        observer: {
+          onApplied: ({ guardrail, stage, original, text, reason, metadata }) => {
+            this.emitEvent({
+              type: 'guardrail.applied',
+              guardrail,
+              stage,
+              original,
+              text,
+              ...(reason !== undefined && { reason }),
+              ...(metadata !== undefined && { metadata }),
+              timestamp: Date.now(),
+            });
+          },
+          onBlocked: ({ guardrail, stage, original, reason, metadata }) => {
+            this.emitEvent({
+              type: 'guardrail.blocked',
+              guardrail,
+              stage,
+              original,
+              ...(reason !== undefined && { reason }),
+              ...(metadata !== undefined && { metadata }),
+              timestamp: Date.now(),
+            });
+          },
+          onError: ({ guardrail, stage, error, policy }) => {
+            this.emitEvent({
+              type: 'guardrail.error',
+              guardrail,
+              stage,
+              error,
+              policy,
+              timestamp: Date.now(),
+            });
+          },
+        },
+      });
+    }
 
     // Initialize the 3 state machines
     this.captureStateMachine = new AudioCaptureStateMachine(this.logger);
@@ -1151,7 +1206,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           if (isLiveTTS(tts)) {
             await this.finalizeLiveTTS(fullResponse);
           } else if (isRestTTS(tts)) {
-            await this.processTTS(fullResponse);
+            await this.processTTS(fullResponse, activeSignal);
           }
         }
 
@@ -1186,6 +1241,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         await tts.connect();
       }
 
+      // Guardrails between LLM and Live TTS, for the length of this generation
+      const guardStream = isLiveTTS(tts) ? this.openGuardrailStream(tts, activeSignal, true) : null;
+
       // Stream LLM response
       this.processingStateMachine.setStreaming();
       let hasCodeBlock = false;
@@ -1216,12 +1274,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         // Skip entirely once a code block is detected — the response contains a
         // skill invocation and shouldn't be spoken
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
-          if (this.ttsBackpressure) {
-            await this.ttsBackpressure.waitForCapacity();
-            tts.sendText(chunk);
-            this.ttsBackpressure.acquire();
+          if (guardStream) {
+            await guardStream.push(chunk);
           } else {
-            tts.sendText(chunk);
+            await this.sendTextToLiveTTS(tts, chunk, true);
           }
         }
       }
@@ -1275,8 +1331,12 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       // TTS — skip entirely when output is muted (text events still emitted above)
       if (!this._outputMuted && !hasCodeBlock) {
         if (isRestTTS(tts)) {
-          await this.processTTS(fullResponse);
+          await this.processTTS(fullResponse, activeSignal);
         } else if (isLiveTTS(tts)) {
+          // Flush whatever the guardrail stream is still holding — the tail of
+          // the last sentence in streaming mode, the whole response in
+          // buffered mode — before asking the provider to finalize.
+          if (guardStream) await guardStream.flush();
           await this.finalizeLiveTTS(fullResponse);
         }
       }
@@ -1309,6 +1369,92 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   }
 
   /**
+   * Sends a piece of text to a Live TTS provider, honouring backpressure.
+   *
+   * @remarks
+   * The single place text reaches a Live provider, so guardrail filtering and
+   * backpressure accounting stay in step: the pending-chunk counter is only
+   * incremented for text that was actually sent, not for text a guardrail
+   * dropped on the way.
+   *
+   * @param tts - The Live TTS provider to send to.
+   * @param text - Text to synthesize. Empty strings are ignored.
+   * @param useBackpressure - Whether to wait for capacity first. Only the
+   *   voice path applies backpressure; the text path streams unthrottled.
+   */
+  private async sendTextToLiveTTS(
+    tts: LiveTTSProvider,
+    text: string,
+    useBackpressure: boolean
+  ): Promise<void> {
+    if (!text) return;
+
+    if (useBackpressure && this.ttsBackpressure) {
+      await this.ttsBackpressure.waitForCapacity();
+      tts.sendText(text);
+      this.ttsBackpressure.acquire();
+      return;
+    }
+
+    tts.sendText(text);
+  }
+
+  /**
+   * Opens a guardrail stream for one Live TTS generation, if guardrails are
+   * configured.
+   *
+   * @remarks
+   * Returns `null` when there is nothing to filter, which lets callers fall
+   * back to sending chunks straight to the provider. The stream is per
+   * utterance: `push()` each LLM chunk, `flush()` once generation completes,
+   * and discard it without flushing when the turn is abandoned.
+   *
+   * @param tts - The Live TTS provider that will receive surviving text.
+   * @param signal - Signal for this generation, forwarded to every guardrail.
+   * @param useBackpressure - Whether the sink should wait for TTS capacity.
+   */
+  private openGuardrailStream(
+    tts: LiveTTSProvider,
+    signal: AbortSignal | undefined,
+    useBackpressure: boolean
+  ): GuardrailStream | null {
+    if (!this.guardrails?.enabled) return null;
+
+    return this.guardrails.createStream({
+      onText: (text) => this.sendTextToLiveTTS(tts, text, useBackpressure),
+      messages: this.conversationHistory,
+      ...(signal !== undefined && { signal }),
+    });
+  }
+
+  /**
+   * Runs the guardrail chain over a complete utterance.
+   *
+   * @param text - The full text about to be synthesized.
+   * @param stage - Which pipeline point this is, for guardrail dispatch.
+   * @param signal - Signal for the generation this text came from, forwarded to
+   *   every guardrail so a network-bound check can be cancelled on barge-in.
+   * @returns The surviving text, and `blocked` when it must not be spoken.
+   */
+  private async applyGuardrails(
+    text: string,
+    stage: GuardrailStage,
+    signal?: AbortSignal
+  ): Promise<{ text: string; blocked: boolean }> {
+    if (!this.guardrails?.enabled) return { text, blocked: false };
+
+    const context: GuardrailContext = {
+      stage,
+      accumulated: text,
+      messages: this.conversationHistory,
+    };
+    if (signal) context.signal = signal;
+
+    const outcome = await this.guardrails.run(text, context);
+    return { text: outcome.text, blocked: outcome.blocked };
+  }
+
+  /**
    * Synthesizes the given text through a REST TTS provider and plays the
    * resulting audio through the output provider.
    *
@@ -1329,9 +1475,24 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    * 6. On error, attempts to recover STT capture and emits `tts.error` and
    *    `agent.error` events.
    *
+   * When guardrails are configured they run first, at the `'final'` stage —
+   * REST providers synthesize the whole utterance in one call, so this is the
+   * last point at which the text can be rewritten or withheld. A block returns
+   * before any `tts.*` event is emitted and before playback state moves, so
+   * the turn ends as if the agent had nothing to say.
+   *
    * @param text - The complete text to synthesize into speech.
+   * @param signal - Signal for the generation that produced this text, passed
+   *   through to the guardrail chain.
    */
-  private async processTTS(text: string): Promise<void> {
+  private async processTTS(text: string, signal?: AbortSignal): Promise<void> {
+    const guarded = await this.applyGuardrails(text, 'final', signal);
+    if (this.guardrails?.enabled && (guarded.blocked || !guarded.text.trim())) {
+      this.logger.debug('TTS suppressed by guardrails', { blocked: guarded.blocked });
+      return;
+    }
+    text = guarded.text;
+
     this.emitEvent({
       type: 'tts.start',
       text,
@@ -2061,7 +2222,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           if (isLiveTTS(tts)) {
             await this.finalizeLiveTTS(fullResponse);
           } else if (isRestTTS(tts)) {
-            await this.processTTS(fullResponse);
+            await this.processTTS(fullResponse, llmController.signal);
           }
         }
 
@@ -2087,6 +2248,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         await tts.connect();
       }
 
+      // Guardrails between LLM and Live TTS, for the length of this generation
+      const guardStream = isLiveTTS(tts)
+        ? this.openGuardrailStream(tts, llmController.signal, false)
+        : null;
+
       this.processingStateMachine.setStreaming();
       let hasCodeBlock = false;
 
@@ -2109,7 +2275,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         }
 
         if (isLiveTTS(tts) && !this._outputMuted && !hasCodeBlock) {
-          tts.sendText(chunk);
+          if (guardStream) {
+            await guardStream.push(chunk);
+          } else {
+            await this.sendTextToLiveTTS(tts, chunk, false);
+          }
         }
       }
 
@@ -2142,8 +2312,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       if (!this._outputMuted && !hasCodeBlock) {
         if (isRestTTS(tts)) {
-          await this.processTTS(fullResponse);
+          await this.processTTS(fullResponse, llmController.signal);
         } else if (isLiveTTS(tts)) {
+          if (guardStream) await guardStream.flush();
           await this.finalizeLiveTTS(fullResponse);
         }
       }
@@ -2188,6 +2359,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
     let activeToolName = '';
     let activeToolId = '';
 
+    // Guardrails between LLM and Live TTS, shared across every round of the
+    // tool loop so a block stays in force for the whole turn
+    const guardStream = isLiveTTS(tts) ? this.openGuardrailStream(tts, signal, false) : null;
+
     const router = new LLMTextRouter(
       (visual, spoken, acc) =>
         this.emitEvent({
@@ -2198,8 +2373,13 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           spoken,
           timestamp: Date.now(),
         }),
-      (spoken) => {
-        if (isLiveTTS(tts) && !this._outputMuted) tts.sendText(spoken);
+      async (spoken) => {
+        if (!isLiveTTS(tts) || this._outputMuted) return;
+        if (guardStream) {
+          await guardStream.push(spoken);
+        } else {
+          await this.sendTextToLiveTTS(tts, spoken, false);
+        }
       }
     );
 
@@ -2218,7 +2398,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       if (chunk.type === 'text') {
         fullText += chunk.text;
-        router.push(chunk.text);
+        await router.push(chunk.text);
       } else if (chunk.type === 'tool_call_start') {
         activeToolId = chunk.toolCall.id;
         activeToolName = chunk.toolCall.name;
@@ -2240,9 +2420,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           // Finalize TTS for any text emitted before the tool call
           if (fullText.trim() && !this._outputMuted) {
             if (isLiveTTS(tts)) {
+              if (guardStream) await guardStream.flush();
               await this.finalizeLiveTTS(fullText);
             } else if (isRestTTS(tts)) {
-              await this.processTTS(fullText);
+              await this.processTTS(fullText, signal);
             }
           }
 
@@ -2291,7 +2472,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
               if (signal.aborted) break;
               if (chunk2.type === 'text') {
                 fullText += chunk2.text;
-                router.push(chunk2.text);
+                await router.push(chunk2.text);
               } else if (chunk2.type === 'tool_call_start') {
                 activeToolId = chunk2.toolCall.id;
                 activeToolName = chunk2.toolCall.name;
@@ -2311,9 +2492,10 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
                   // Finalize any intermediate text
                   if (fullText.trim() && !this._outputMuted) {
                     if (isLiveTTS(tts)) {
+                      if (guardStream) await guardStream.flush();
                       await this.finalizeLiveTTS(fullText);
                     } else if (isRestTTS(tts)) {
-                      await this.processTTS(fullText);
+                      await this.processTTS(fullText, signal);
                     }
                   }
 
@@ -2338,6 +2520,12 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           }
         }
       }
+    }
+
+    // The caller finalizes TTS for this text, so anything the guardrail stream
+    // is still holding has to reach the provider first.
+    if (guardStream && fullText.trim() && !this._outputMuted) {
+      await guardStream.flush();
     }
 
     return fullText;

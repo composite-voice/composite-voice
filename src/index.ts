@@ -109,10 +109,23 @@ export type {
   ConversationHistoryConfig,
   EagerLLMConfig,
   TurnTakingConfig,
+
+  // Guardrail types
+  Guardrail,
+  GuardrailContext,
+  GuardrailResult,
+  GuardrailStage,
+  GuardrailsConfig,
+  GuardrailMode,
+  GuardrailSegmentation,
+  GuardrailErrorPolicy,
 } from './core/types/index';
 
 // Role constants
 export { ALL_PROVIDER_ROLES } from './core/types/index';
+
+// Guardrail defaults
+export { DEFAULT_GUARDRAILS_CONFIG } from './core/types/index';
 
 // Event types
 export type {
@@ -126,6 +139,10 @@ export type {
   TranscriptionPreflightEvent,
   LLMEvent,
   TTSEvent,
+  GuardrailEvent,
+  GuardrailAppliedEvent,
+  GuardrailBlockedEvent,
+  GuardrailErrorEvent,
   AgentEvent,
   AudioEvent,
   QueueEvent,
@@ -429,10 +446,41 @@ export {
   AudioBufferQueue,
   AudioHeaderCache,
   TTSBackpressure,
+  GuardrailPipeline,
+  GuardrailStream,
   resolveProviders,
   configureSTTFromMetadata,
 } from './core/pipeline/index';
-export type { QueueStats, DrainCallback, OverflowCallback } from './core/pipeline/index';
+export type {
+  QueueStats,
+  DrainCallback,
+  OverflowCallback,
+  GuardrailApplication,
+  GuardrailOutcome,
+  GuardrailObserver,
+  GuardrailStreamOptions,
+} from './core/pipeline/index';
+
+// Built-in guardrails (LLM → TTS filters)
+export {
+  createPatternRedactionGuardrail,
+  createPIIRedactionGuardrail,
+  createPronunciationGuardrail,
+  createBlocklistGuardrail,
+  createModerationGuardrail,
+} from './guardrails/index';
+export type {
+  PIIType,
+  RedactionPattern,
+  PatternRedactionOptions,
+  PIIRedactionOptions,
+  PronunciationOptions,
+  BlocklistAction,
+  BlocklistOptions,
+  ModerationFn,
+  ModerationOptions,
+  ModerationVerdict,
+} from './guardrails/index';
 
 // Collaborator classes (extracted from CompositeVoice for modularity)
 export {

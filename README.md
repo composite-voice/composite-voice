@@ -59,6 +59,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Conversation history](#conversation-history)
 - [Eager LLM pipeline](#eager-llm-pipeline)
 - [Smart text routing](#smart-text-routing)
+- [Guardrails](#guardrails)
 - [Tool use / function calling](#tool-use--function-calling)
 - [Barge-in](#barge-in)
 - [Turn-taking](#turn-taking)
@@ -870,6 +871,14 @@ const agent = new CompositeVoice({
     maxPendingChunks: 10, // pause LLM if TTS has 10+ unprocessed chunks
   },
 
+  // Guardrails: async filters between LLM output and TTS
+  guardrails: {
+    filters: [createPIIRedactionGuardrail(), createModerationGuardrail({ moderate })],
+    mode: 'streaming', // 'streaming' (low latency) | 'buffered' (absolute blocking)
+    timeoutMs: 1000, // per-guardrail time limit
+    onError: 'passthrough', // 'passthrough' (fail open) | 'block' (fail closed)
+  },
+
   // WebSocket reconnection (applies to Deepgram providers)
   reconnection: {
     enabled: true, // required — enables reconnection
@@ -941,6 +950,16 @@ agent.once('event.name', handler); // fire once, then auto-unsubscribe
 | `tts.metadata` | `{ metadata }` | Audio format metadata                                  |
 | `tts.complete` | —              | Synthesis complete (playback may still be in progress) |
 | `tts.error`    | `{ error }`    | TTS error                                              |
+
+### Guardrail events
+
+| Event                | Payload                                                | Description                                          |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------- |
+| `guardrail.applied`  | `{ guardrail, stage, original, text, reason?, metadata? }` | A guardrail rewrote text on its way to TTS       |
+| `guardrail.blocked`  | `{ guardrail, stage, original, reason?, metadata? }`   | A guardrail suppressed text instead of speaking it   |
+| `guardrail.error`    | `{ guardrail, stage, error, policy }`                  | A guardrail threw or timed out; `policy` says how it was handled |
+
+See [Guardrails](#guardrails) for the filter interface and configuration.
 
 ### Audio events
 
@@ -1101,6 +1120,158 @@ voice.on('llm.chunk', ({ chunk }) => appendToUI(chunk));
 ```
 
 The routing is handled by `LLMTextRouter` and `ChunkSplitter` internally. The TTS provider receives pre-processed text via `ttsStrip`, which removes markdown syntax while preserving natural sentence structure.
+
+---
+
+## Guardrails
+
+Guardrails are pluggable async filters on the last hop of the pipeline — after the LLM has produced text, before that text reaches the TTS provider:
+
+```
+[LLM] → [Guardrails] → [TTS] → OutputQueue → [OutputProvider]
+```
+
+Each guardrail can rewrite the text (PII redaction, pronunciation fixes) or suppress it entirely (moderation, blocklists). They run in configuration order, each receiving the previous one's output.
+
+```typescript
+import {
+  CompositeVoice,
+  createPIIRedactionGuardrail,
+  createPronunciationGuardrail,
+} from 'composite-voice';
+
+const voice = new CompositeVoice({
+  providers: [
+    new DeepgramSTT({ proxyUrl: '/api/proxy/deepgram' }),
+    new AnthropicLLM({ proxyUrl: '/api/proxy/anthropic', model: 'claude-haiku-4-5' }),
+    new DeepgramTTS({ proxyUrl: '/api/proxy/deepgram' }),
+  ],
+  guardrails: {
+    filters: [
+      createPIIRedactionGuardrail({ types: ['email', 'phone', 'creditCard'] }),
+      createPronunciationGuardrail({
+        replacements: { SQL: 'sequel', kubectl: 'kube control' },
+      }),
+    ],
+  },
+});
+```
+
+Guardrails change only what is **spoken**. The `llm.chunk` and `llm.complete` events still carry the raw model output, so a chat transcript rendered from those events is unchanged. Subscribe to the `guardrail.*` events if the UI should reflect the filtered text instead.
+
+### The interface
+
+One method, sync or async:
+
+```typescript
+import type { Guardrail } from 'composite-voice';
+
+const houseStyle: Guardrail = {
+  name: 'house-style',
+  check(text, context) {
+    // Return nothing to pass the text through unchanged
+    if (!text.includes('utilize')) return;
+    return { text: text.replaceAll('utilize', 'use'), reason: 'house style' };
+  },
+};
+```
+
+`check(text, context)` returns:
+
+| Field      | Effect                                                                    |
+| ---------- | ------------------------------------------------------------------------- |
+| _(nothing)_ | Text passes through unchanged                                             |
+| `text`     | Replacement text to speak. `''` drops this text silently                   |
+| `block`    | Suppress the text — nothing is spoken                                      |
+| `reason`   | Explanation, surfaced on `guardrail.applied` / `guardrail.blocked`         |
+| `metadata` | Arbitrary detail (categories, scores), surfaced on the same events         |
+
+`context` carries the stage (`'chunk'` or `'final'`), all accumulated LLM text for the utterance, the conversation history, and the generation's `AbortSignal` — forward that signal to `fetch` so an interrupted turn cancels your moderation request.
+
+### Built-in guardrails
+
+| Factory                             | What it does                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `createPIIRedactionGuardrail`       | Redacts emails, phone numbers, SSNs, Luhn-validated credit cards, IPv4 addresses |
+| `createPatternRedactionGuardrail`   | Redacts arbitrary regex patterns, with string or function replacements          |
+| `createPronunciationGuardrail`      | Swaps terms a TTS voice mispronounces for a phonetic spelling                   |
+| `createBlocklistGuardrail`          | Blocks or redacts forbidden terms and patterns, locally                         |
+| `createModerationGuardrail`         | Adapts any async classification API to the guardrail interface                  |
+
+```typescript
+import { createModerationGuardrail } from 'composite-voice';
+
+createModerationGuardrail({
+  replacement: "I'm not able to help with that.",
+  async moderate(text, ctx) {
+    const res = await fetch('/api/moderate', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+      signal: ctx.signal,
+    });
+    const { flagged, categories } = await res.json();
+    return { flagged, categories };
+  },
+});
+```
+
+Order them cheap-and-local first, network-bound last — a blocklist match costs microseconds and saves a moderation round trip.
+
+### Streaming vs. buffered
+
+Live (WebSocket) TTS receives text as the LLM produces it, which is what keeps time-to-first-audio low. That creates a trade-off for blocking:
+
+| `mode`                    | Behaviour                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `'streaming'` _(default)_ | Filter each segment and forward it immediately. Lowest latency; a block can only suppress text that is not yet spoken   |
+| `'buffered'`              | Hold the whole response, filter once, then hand it to TTS. Blocking is absolute, at the cost of waiting for generation  |
+
+Use `'buffered'` when a flagged response must never be partially spoken. REST TTS always synthesizes the complete utterance, so it is filtered at the `'final'` stage either way and blocking is absolute regardless of mode.
+
+In streaming mode, text is accumulated to sentence boundaries before guardrails see it, so a pattern split across chunks — an email address arriving as `ada`, `@example`, `.com` — is still matched as one string.
+
+### Failure handling
+
+A guardrail that throws or exceeds `timeoutMs` is handled by the `onError` policy rather than taking down the turn:
+
+```typescript
+guardrails: {
+  filters: [createModerationGuardrail({ moderate })],
+  mode: 'buffered',
+  onError: 'block',   // fail closed: a classifier outage produces silence, not unfiltered output
+  timeoutMs: 2000,
+}
+```
+
+`'passthrough'` (the default) fails open — log, skip the guardrail, keep the text. Either way a `guardrail.error` event is emitted; treat it as an alert, since a guardrail that fails silently is not protecting anything.
+
+### Configuration
+
+| Option            | Default        | Description                                                            |
+| ----------------- | -------------- | ---------------------------------------------------------------------- |
+| `filters`         | _(required)_   | Guardrails to run, in order                                            |
+| `enabled`         | `true`         | Set `false` to disable the chain without removing the config           |
+| `mode`            | `'streaming'`  | `'streaming'` or `'buffered'` (Live TTS only)                          |
+| `segmentation`    | `'sentence'`   | `'sentence'` or `'chunk'` — how streaming text is cut before filtering  |
+| `maxSegmentChars` | `240`          | Flush a segment without a sentence boundary past this length           |
+| `timeoutMs`       | `1000`         | Per-guardrail time limit; `0` waits indefinitely                       |
+| `onError`         | `'passthrough'`| `'passthrough'` (fail open) or `'block'` (fail closed)                 |
+
+### Guardrail events
+
+```typescript
+voice.on('guardrail.applied', ({ guardrail, stage, original, text, reason }) => {
+  console.log(`${guardrail} rewrote ${stage} text: ${reason}`);
+});
+
+voice.on('guardrail.blocked', ({ guardrail, original, reason }) => {
+  showNotice(`Response withheld by ${guardrail}: ${reason}`);
+});
+
+voice.on('guardrail.error', ({ guardrail, error, policy }) => {
+  metrics.increment('guardrail.failure', { guardrail, policy });
+});
+```
 
 ---
 

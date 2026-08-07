@@ -13,6 +13,8 @@
  *   provider metadata, avoiding manual duplication of encoding/sampleRate/channels.
  * - {@link resolveProviders} — maps a flat provider array to a typed
  *   {@link ResolvedPipeline}, with auto-filling of NativeSTT/NativeTTS defaults.
+ * - {@link GuardrailPipeline} — runs the pluggable async filter chain between
+ *   LLM output and TTS (moderation, PII redaction, pronunciation fixes).
  *
  * @packageDocumentation
  */
@@ -23,3 +25,10 @@ export { configureSTTFromMetadata } from './configureSTTFromMetadata';
 export { resolveProviders } from './resolveProviders';
 export { AudioHeaderCache } from './AudioHeaderCache';
 export { TTSBackpressure } from './TTSBackpressure';
+export { GuardrailPipeline, GuardrailStream } from './GuardrailPipeline';
+export type {
+  GuardrailApplication,
+  GuardrailOutcome,
+  GuardrailObserver,
+  GuardrailStreamOptions,
+} from './GuardrailPipeline';
