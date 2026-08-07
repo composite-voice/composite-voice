@@ -1,0 +1,25 @@
+{
+  "name": "composite-voice-example-66-guardrails",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Guardrails demo — async filters between LLM output and TTS (PII redaction, pronunciation, blocklist, moderation)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "composite-voice": "workspace:*",
+    "composite-voice-ui": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "@vitejs/plugin-react": "^4.3.0",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0"
+  }
+}
