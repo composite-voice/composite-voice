@@ -1339,7 +1339,7 @@ import {
   NullOutput,
 } from 'composite-voice';
 
-// Define the audio format you will push
+// Define the audio format you will push (optional — see auto-detection below)
 const input = new BufferInput({
   sampleRate: 16000,
   encoding: 'linear16',
@@ -1365,6 +1365,38 @@ input.push(audioBuffer);
 ```
 
 `BufferInput` and `NullOutput` have zero browser dependencies — no `navigator`, `window`, or `AudioContext`.
+
+### Audio format auto-detection
+
+Declaring the format is optional. `BufferInput` sniffs the container signature of the audio you push — WAV, OGG, MP3, FLAC, WebM, AAC, MP4, AIFF — and fills in whatever the constructor left undeclared. Declared fields always win, so you can pin the parts you know and let the container supply the rest.
+
+The pipeline reads the input format while `startListening()` runs, before any audio is pushed. To have the detected format reach your STT provider, sniff the head of the stream first with `detectFormat()`:
+
+```typescript
+import { readFileSync } from 'node:fs';
+
+const audio = readFileSync('speech.wav');
+const input = new BufferInput(); // no format declared
+
+input.detectFormat(audio.buffer);
+// => { sampleRate: 16000, encoding: 'linear16', channels: 1,
+//      bitDepth: 16, mimeType: 'audio/wav' }
+
+await agent.startListening(); // STT is configured from the detected format
+input.push(audio.buffer);
+```
+
+Detection also runs during `push()`, reported through a callback:
+
+```typescript
+input.onFormatDetected((metadata, format) => {
+  console.log(`Detected ${format ?? 'raw pcm'} at ${metadata.sampleRate} Hz`);
+});
+```
+
+Sample rate, channel count, bit depth, and encoding are read from WAV, OGG (Opus and Vorbis), MP3, and FLAC headers; other containers report their format and MIME type only. Audio matching no signature is treated as raw PCM — 16 kHz mono `linear16` unless declared otherwise. Pushed bytes are never modified: container headers pass through to the STT provider intact.
+
+Pass `{ autoDetect: false }` as the second constructor argument to pin the metadata to the declared values. `detectFormat()` still works when detection is off, and `resetDetection()` clears the result so the next stream is sniffed afresh.
 
 ---
 

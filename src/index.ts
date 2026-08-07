@@ -317,6 +317,7 @@ export type {
 export { MicrophoneInput } from './providers/input/index';
 export type { MicrophoneInputConfig } from './providers/input/index';
 export { BufferInput } from './providers/input/index';
+export type { BufferInputOptions } from './providers/input/index';
 export { WebRTCInput } from './providers/input/index';
 export type { WebRTCInputConfig } from './providers/input/index';
 
@@ -400,11 +401,14 @@ export {
   // Audio format detection
   detectAudioFormat,
   extractHeader,
+  parseAudioMetadata,
+  getDetectedFormatMimeType,
   MIN_SNIFF_BYTES,
+  MAX_SNIFF_BYTES,
 } from './utils/index';
 
 // Audio format detection types
-export type { DetectedAudioFormat } from './utils/index';
+export type { DetectedAudioFormat, ParsedAudioMetadata } from './utils/index';
 
 // AWS utilities (SigV4 signing + event-stream codec, WebCrypto-based)
 export {
