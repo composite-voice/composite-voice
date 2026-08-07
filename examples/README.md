@@ -114,6 +114,7 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | 63 | [`63-audio-config`](./63-audio-config/) | AudioCapture internals — AudioWorklet vs ScriptProcessor detection, audio chunk stats |
 | 64 | [`64-custom-provider`](./64-custom-provider/) | Build a custom LLM provider — MockLLM with canned responses, no API keys needed |
 | 65 | [`65-multi-language`](./65-multi-language/) | Language switching demo — change SpeechmaticsSTT language at runtime with a selector |
+| 66 | [`66-guardrails`](./66-guardrails/) | Guardrails demo — async filters between LLM output and TTS (PII redaction, pronunciation, blocklist, moderation) |
 
 ### Agent providers (70-79)
 
