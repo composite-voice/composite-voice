@@ -638,6 +638,96 @@ export interface LiveSTTProvider extends BaseProvider {
  */
 export type STTProvider = RestSTTProvider | LiveSTTProvider;
 
+// ────────────────────────────────────────────────────────────────────────────
+// Provider fallback chains
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Why a fallback chain swapped to another provider.
+ *
+ * @remarks
+ * - `'init-error'` — the provider failed to initialize during agent startup
+ * - `'connect-error'` — the provider's `connect()` rejected
+ * - `'connect-timeout'` — the provider's `connect()` exceeded the chain's
+ *   connect timeout
+ * - `'stream-error'` — the provider reported an error mid-session (an error
+ *   transcription result or a throwing `sendAudio()`)
+ *
+ * @see {@link ProviderFallbackInfo} for the full notification payload
+ */
+export type ProviderFallbackReason =
+  | 'init-error'
+  | 'connect-error'
+  | 'connect-timeout'
+  | 'stream-error';
+
+/**
+ * Notification payload emitted when a fallback chain swaps the active provider.
+ *
+ * @remarks
+ * Delivered to callbacks registered via
+ * {@link FallbackCapableProvider.onFallback | onFallback}, and re-emitted by
+ * CompositeVoice as the `'provider.fallback'` SDK event.
+ *
+ * @see {@link ProviderFallbackReason} for the possible reasons
+ */
+export interface ProviderFallbackInfo {
+  /** The pipeline role the swap occurred in (currently always `'stt'`). */
+  role: ProviderRole;
+
+  /** Class name of the provider that failed (e.g. `'DeepgramSTT'`). */
+  from: string;
+
+  /** Class name of the provider now active (e.g. `'AssemblyAISTT'`). */
+  to: string;
+
+  /** Why the swap happened. */
+  reason: ProviderFallbackReason;
+
+  /** The error that triggered the swap. */
+  error: Error;
+}
+
+/**
+ * A provider that can notify listeners when it swaps its underlying
+ * implementation (a fallback chain).
+ *
+ * @remarks
+ * CompositeVoice duck-types pipeline providers against this interface and,
+ * when `onFallback` is present, bridges each notification to the
+ * `'provider.fallback'` SDK event.
+ *
+ * @see {@link ProviderFallbackInfo} for the notification payload
+ */
+export interface FallbackCapableProvider {
+  /**
+   * Register a callback invoked whenever the chain fails over to another
+   * provider.
+   *
+   * @param callback - Invoked with a {@link ProviderFallbackInfo} per swap.
+   * @returns An unsubscribe function when the implementation supports it.
+   *   Callers that outlive the chain (the documented reuse pattern, where
+   *   one chain is shared across many agents) must call it on teardown.
+   */
+  onFallback(callback: (info: ProviderFallbackInfo) => void): (() => void) | void;
+
+  /**
+   * Register a source for the cached audio container header, re-injected
+   * into a replacement provider after an internal failover reconnect.
+   *
+   * @remarks
+   * Optional — only meaningful for chains that stream container-format
+   * audio (WebM/OGG/WAV). CompositeVoice wires this to its
+   * `AudioHeaderCache` when present.
+   *
+   * @param source - Returns the cached header, or `null` when unavailable.
+   * @returns An unsubscribe function when the implementation supports it.
+   *   Callers that outlive the chain must call it on teardown so a disposed
+   *   agent's `AudioHeaderCache` is not reused on a later failover.
+   */
+  setReconnectHeaderSource?(source: () => ArrayBuffer | null): (() => void) | void;
+}
+
 /**
  * Configuration for large language model providers.
  *

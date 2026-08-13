@@ -160,6 +160,21 @@ export interface WebSocketHandlers {
    * @param error - The error that occurred.
    */
   onError?: (error: Error) => void;
+
+  /**
+   * Called exactly once when the connection has been lost unexpectedly and
+   * the manager will NOT restore it: immediately on an unexpected close when
+   * reconnection is disabled, or when automatic reconnection gives up.
+   *
+   * @remarks
+   * User-initiated closes (via {@link WebSocketManager.disconnect}) never
+   * trigger this handler. This is the liveness signal consumers should use
+   * to fail over or surface a terminal stream error — unlike `onClose`,
+   * which also fires for transient closes that reconnection will heal.
+   *
+   * @param error - Describes why the connection is considered lost.
+   */
+  onConnectionLost?: (error: Error) => void;
 }
 
 /**
@@ -387,9 +402,19 @@ export class WebSocketManager {
     this.state = WebSocketState.DISCONNECTED;
     this.handlers.onClose?.(event);
 
-    // Attempt reconnection if enabled
+    // Attempt reconnection if enabled; otherwise the connection is gone
+    // for good and consumers need the terminal liveness signal.
     if (this.shouldReconnect && this.options.reconnection.enabled) {
       this.attemptReconnect();
+    } else if (this.shouldReconnect) {
+      this.shouldReconnect = false;
+      this.handlers.onConnectionLost?.(
+        new WebSocketError(
+          `Connection closed unexpectedly (code ${event.code}${
+            event.reason ? `: ${event.reason}` : ''
+          })`
+        )
+      );
     }
   }
 
@@ -409,7 +434,9 @@ export class WebSocketManager {
     if (maxAttempts && this.reconnectAttempts >= maxAttempts) {
       this.logger?.error(`Max reconnection attempts (${maxAttempts}) reached`);
       this.shouldReconnect = false;
-      this.handlers.onError?.(new WebSocketError('Max reconnection attempts reached'));
+      const terminal = new WebSocketError('Max reconnection attempts reached');
+      this.handlers.onError?.(terminal);
+      this.handlers.onConnectionLost?.(terminal);
       return;
     }
 
@@ -426,8 +453,36 @@ export class WebSocketManager {
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch((error) => {
         this.logger?.error('Reconnection failed', error);
+        // A rejected attempt (e.g. connection timeout) emits no close event
+        // — cleanup() already detached the handlers — so the retry loop must
+        // be continued from here or a single timed-out attempt would silently
+        // end reconnection without ever reaching the terminal signal above.
+        if (this.shouldReconnect && this.options.reconnection.enabled) {
+          this.attemptReconnect();
+        }
       });
     }, delay);
+  }
+
+  /**
+   * Declares that an imminent close is intentional.
+   *
+   * @remarks
+   * Call this before sending a protocol-level end-of-stream message (and the
+   * server-side close it triggers), so that close is not misreported through
+   * {@link WebSocketHandlers.onConnectionLost} as a lost connection. It also
+   * cancels any pending reconnection.
+   *
+   * {@link disconnect} does this implicitly; this method covers the window
+   * between "we asked the server to end the session" and "we tore down the
+   * socket", during which the server usually closes first.
+   */
+  expectClose(): void {
+    this.shouldReconnect = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
   }
 
   /**

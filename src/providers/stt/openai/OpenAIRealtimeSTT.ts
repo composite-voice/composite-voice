@@ -357,7 +357,7 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -508,10 +508,12 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
    * Open a WebSocket connection to OpenAI for real-time transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, waits
-   * for the connection to open, then sends the `session.update` event
-   * that configures the transcription session. If the manager reconnects
-   * after a drop, the session configuration is re-sent automatically.
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Waits for the connection to open, then sends the
+   * `session.update` event that configures the transcription session.
+   * Each call to {@link connect} re-sends the session configuration.
    * The connection timeout defaults to
    * {@link OpenAIRealtimeSTTConfig.timeout | config.timeout} (10 000 ms).
    *
@@ -536,13 +538,12 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
         url: wsUrl,
         protocols,
         connectionTimeout: this.config.timeout ?? 10000,
-        reconnection: {
-          enabled: true,
-          maxAttempts: 5,
-          initialDelay: 1000,
-          maxDelay: 30000,
-          backoffMultiplier: 2,
-        },
+        // Auto-reconnect is disabled: silent background retries drop every
+        // audio chunk for the length of the backoff, so a dead socket must
+        // surface immediately via onConnectionLost instead. The SDK drives
+        // reconnection through connect() (and FallbackSTT owns failover),
+        // and connect() re-sends the session configuration each time.
+        reconnection: { enabled: false },
         logger: this.logger,
       };
 
@@ -550,18 +551,6 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
 
       // Set up message handlers
       this.wsManager.setHandlers({
-        onOpen: () => {
-          // Re-configure the session after an automatic reconnection.
-          // The initial session.update is sent below, after connect().
-          if (this.isConnected && this.wsManager) {
-            this.logger.info('Reconnected; re-sending session configuration');
-            try {
-              this.wsManager.send(JSON.stringify(this.buildSessionUpdate()));
-            } catch (error) {
-              this.logger.error('Failed to re-send session configuration', error);
-            }
-          }
-        },
         onMessage: (event: MessageEvent) => {
           this.handleMessage(event);
         },
@@ -571,6 +560,10 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('OpenAI Realtime STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`OpenAI Realtime STT connection lost: ${error.message}`);
         },
       });
 
@@ -795,8 +788,17 @@ export class OpenAIRealtimeSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to OpenAI Realtime STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      await manager.disconnect();
       return;
     }
 

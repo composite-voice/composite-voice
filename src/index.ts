@@ -96,6 +96,9 @@ export type {
   LLMStreamChunk,
   TTSProvider,
   TTSProviderConfig,
+  ProviderFallbackReason,
+  ProviderFallbackInfo,
+  FallbackCapableProvider,
   ResolvedPipeline,
   AttachableInputProvider,
   InputAttachTarget,
@@ -133,6 +136,8 @@ export type {
   QueueStatsEvent,
   TurnEvent,
   TurnMetricsEvent,
+  ProviderEvent,
+  ProviderFallbackEvent,
 } from './core/events/index';
 
 // Event emitter
@@ -156,6 +161,8 @@ export {
 // Built-in providers - STT
 export { NativeSTT } from './providers/stt/native/index';
 export type { NativeSTTConfig } from './providers/stt/native/index';
+export { FallbackSTT } from './providers/stt/fallback/index';
+export type { FallbackSTTOptions } from './providers/stt/fallback/index';
 export { DeepgramSTT } from './providers/stt/deepgram/index';
 export type {
   DeepgramSTTConfig,

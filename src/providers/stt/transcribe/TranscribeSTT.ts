@@ -365,7 +365,7 @@ export class TranscribeSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -516,6 +516,10 @@ export class TranscribeSTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('Transcribe STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`Transcribe STT connection lost: ${error.message}`);
         },
       });
 
@@ -745,13 +749,27 @@ export class TranscribeSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to Transcribe STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      await manager.disconnect();
       return;
     }
 
     try {
       this.logger.debug('Disconnecting from Transcribe streaming WebSocket');
+
+      // The server usually closes in response to the end-of-stream message
+      // below; tell the manager that close is expected so it is not
+      // reported as a lost connection.
+      this.wsManager.expectClose();
 
       // Empty AudioEvent signals end-of-stream to Transcribe.
       try {

@@ -310,7 +310,7 @@ export class SonioxSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -402,11 +402,13 @@ export class SonioxSTT extends LiveSTTProvider {
    * Open a WebSocket connection to Soniox for real-time transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, waits
-   * for the connection to open, then sends the initial configuration
-   * message that starts the transcription session. The connection
-   * timeout defaults to {@link SonioxSTTConfig.timeout | config.timeout}
-   * (10 000 ms).
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Waits for the connection to open, then sends the
+   * initial configuration message that starts the transcription session.
+   * The connection timeout defaults to
+   * {@link SonioxSTTConfig.timeout | config.timeout} (10 000 ms).
    *
    * @throws {@link ProviderConnectionError}
    * Thrown when the provider is not initialized or the connection fails.
@@ -427,13 +429,11 @@ export class SonioxSTT extends LiveSTTProvider {
       const wsOptions: WebSocketManagerOptions = {
         url: wsUrl,
         connectionTimeout: this.config.timeout ?? 10000,
-        reconnection: {
-          enabled: true,
-          maxAttempts: 5,
-          initialDelay: 1000,
-          maxDelay: 30000,
-          backoffMultiplier: 2,
-        },
+        // Auto-reconnect is disabled: reopening the socket cannot replay the
+        // start-message handshake, so a reconnected socket would be a dead
+        // session. Unexpected closes surface immediately via onConnectionLost;
+        // SDK-level recovery (or a FallbackSTT chain) owns reconnection.
+        reconnection: { enabled: false },
         logger: this.logger,
       };
 
@@ -450,6 +450,10 @@ export class SonioxSTT extends LiveSTTProvider {
         },
         onError: (error: Error) => {
           this.logger.error('Soniox STT WebSocket error', error);
+        },
+        onConnectionLost: (error: Error) => {
+          this.isConnected = false;
+          this.emitConnectionLost(`Soniox STT connection lost: ${error.message}`);
         },
       });
 
@@ -655,13 +659,27 @@ export class SonioxSTT extends LiveSTTProvider {
    * @throws Re-throws any unexpected error during disconnection.
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected || !this.wsManager) {
+    if (!this.wsManager) {
       this.logger.warn('Not connected to Soniox STT');
+      return;
+    }
+
+    if (!this.isConnected) {
+      // The session is already dead, but the manager (and possibly a live
+      // socket) may still exist — tear it down for real so nothing leaks.
+      const manager = this.wsManager;
+      this.wsManager = null;
+      await manager.disconnect();
       return;
     }
 
     try {
       this.logger.debug('Disconnecting from Soniox STT WebSocket');
+
+      // The server usually closes in response to the end-of-stream message
+      // below; tell the manager that close is expected so it is not
+      // reported as a lost connection.
+      this.wsManager.expectClose();
 
       // Send an empty frame to signal end-of-stream
       try {

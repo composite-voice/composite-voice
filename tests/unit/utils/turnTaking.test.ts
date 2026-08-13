@@ -100,6 +100,49 @@ describe('shouldPauseCaptureOnPlayback', () => {
     });
   });
 
+  describe('fallback chains (FallbackSTT)', () => {
+    const config: TurnTakingConfig = {
+      pauseCaptureOnPlayback: 'auto',
+      autoStrategy: 'conservative',
+    };
+
+    function makeChain(memberNames: string[]): STTProvider {
+      const chain = makeSTT('FallbackSTT');
+      (chain as unknown as { providers: STTProvider[] }).providers = memberNames.map(makeSTT);
+      return chain;
+    }
+
+    it('should NOT pause when every chain member uses MediaDevices', () => {
+      const chain = makeChain(['DeepgramSTT', 'SpeechmaticsSTT']);
+      expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(false);
+    });
+
+    it('should NOT pause for a single-member MediaDevices chain', () => {
+      const chain = makeChain(['DeepgramSTT']);
+      expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(false);
+    });
+
+    it('should pause when any chain member has an unknown capture method', () => {
+      const chain = makeChain(['DeepgramSTT', 'UnknownSTT']);
+      expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(true);
+    });
+
+    it('should pause for a chain + NativeTTS (TTS bypasses echo cancellation)', () => {
+      const chain = makeChain(['DeepgramSTT']);
+      expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('NativeTTS'))).toBe(true);
+    });
+
+    it('should match aggressive combinations against chain member names', () => {
+      const aggressiveConfig: TurnTakingConfig = {
+        pauseCaptureOnPlayback: 'auto',
+        autoStrategy: 'aggressive',
+        alwaysPauseCombinations: [{ stt: 'DeepgramSTT', tts: 'any' }],
+      };
+      const chain = makeChain(['DeepgramSTT', 'SpeechmaticsSTT']);
+      expect(shouldPauseCaptureOnPlayback(aggressiveConfig, chain, makeTTS('AnyTTS'))).toBe(true);
+    });
+  });
+
   describe('auto strategy: aggressive', () => {
     const config: TurnTakingConfig = {
       pauseCaptureOnPlayback: 'auto',
