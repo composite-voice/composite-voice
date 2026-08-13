@@ -68,6 +68,11 @@ export interface ModerationOptions {
    * classifier can judge most reliably. Add `'chunk'` deliberately, with a
    * short `timeoutMs`, if you need earlier interception.
    *
+   * That default only runs against a Live (WebSocket) TTS provider when
+   * {@link GuardrailsConfig.mode} is `'buffered'`; the `'streaming'` path
+   * filters every segment, flush included, at the `'chunk'` stage. See
+   * {@link GuardrailStage}.
+   *
    * @defaultValue `['final']`
    */
   stages?: readonly GuardrailStage[] | undefined;
@@ -87,7 +92,10 @@ export interface ModerationOptions {
  * Pair with `mode: 'buffered'` and `onError: 'block'` when a flagged response
  * must never be partially spoken: buffering holds the audio until the verdict
  * is in, and the fail-closed policy means a classifier outage produces silence
- * rather than unfiltered output.
+ * rather than unfiltered output. With a Live TTS provider `'buffered'` is not
+ * merely advisable — the default `stages: ['final']` has nothing to run at in
+ * `'streaming'` mode. Set `stages: ['chunk', 'final']` if the guardrail has to
+ * apply in both.
  *
  * @example
  * ```typescript

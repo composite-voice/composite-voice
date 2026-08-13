@@ -154,7 +154,9 @@ export function createBlocklistGuardrail(options: BlocklistOptions): Guardrail {
 
         matched.push(source);
         if (action === 'redact') {
-          current = current.replace(matcher, replacement);
+          // Function form so a replacement containing `$&`, `$1`, or `$'` is
+          // inserted literally rather than read as a substitution token.
+          current = current.replace(matcher, () => replacement);
           matcher.lastIndex = 0;
         }
       }

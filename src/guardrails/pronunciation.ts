@@ -90,9 +90,11 @@ function buildMatcher(term: string, caseSensitive: boolean, wholeWord: boolean):
  *
  * @remarks
  * Longer terms are matched first, so a dictionary containing both `AWS` and
- * `AWS Lambda` applies the more specific entry. Replacements are applied to the
- * original text in one pass per term and are not re-scanned, so a replacement
- * containing another dictionary key will not cascade.
+ * `AWS Lambda` applies the more specific entry. Each term then runs in turn over
+ * the result of the previous one, so a spoken form that happens to contain
+ * another (shorter) dictionary key will itself be rewritten — mapping
+ * `{ PostgreSQL: 'post gres SQL', SQL: 'sequel' }` speaks "post gres sequel".
+ * Spell replacements out phonetically to avoid the cascade.
  *
  * @example
  * ```typescript
@@ -135,7 +137,9 @@ export function createPronunciationGuardrail(options: PronunciationOptions): Gua
 
       for (const { term, spoken, matcher } of entries) {
         matcher.lastIndex = 0;
-        const next = current.replace(matcher, spoken);
+        // Function form so a spoken value containing `$&`, `$1`, or `$'` is
+        // inserted literally rather than read as a substitution token.
+        const next = current.replace(matcher, () => spoken);
         if (next !== current) {
           applied.push(term);
           current = next;

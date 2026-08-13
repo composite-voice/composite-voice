@@ -322,6 +322,9 @@ export class GuardrailStream {
   /** Text forwarded to the sink so far. */
   private emitted = '';
 
+  /** How much of {@link emitted} {@link takeSpokenText} has already reported. */
+  private reported = 0;
+
   private blocked = false;
 
   /** @internal Constructed via {@link GuardrailPipeline.createStream}. */
@@ -339,6 +342,22 @@ export class GuardrailStream {
   /** Text forwarded to the sink so far. */
   get spokenText(): string {
     return this.emitted;
+  }
+
+  /**
+   * Text forwarded to the sink since the last call, marking it as reported.
+   *
+   * @remarks
+   * The caller finalizing a TTS provider needs the text of *that* utterance, not
+   * of the whole stream. A tool loop shares one stream across rounds and
+   * finalizes at each tool boundary, so reading {@link spokenText} there would
+   * repeat everything spoken in earlier rounds. Returns `''` once a guardrail
+   * has blocked and nothing further reached the provider.
+   */
+  takeSpokenText(): string {
+    const next = this.emitted.slice(this.reported);
+    this.reported = this.emitted.length;
+    return next;
   }
 
   /**
@@ -379,8 +398,12 @@ export class GuardrailStream {
    *
    * @remarks
    * In `'buffered'` mode this is where the entire response is filtered and
-   * emitted. Call once, after the LLM stream completes and before finalizing
-   * the TTS provider. Safe to call when nothing is buffered.
+   * emitted, at the `'final'` stage. In `'streaming'` mode the only text left is
+   * the tail of the last sentence, and it is filtered at the `'chunk'` stage
+   * like every segment before it — so a guardrail restricted to `['final']` does
+   * not run on the streaming path at all. Call once, after the LLM stream
+   * completes and before finalizing the TTS provider. Safe to call when nothing
+   * is buffered.
    *
    * @returns The full text that was forwarded to the sink for this utterance.
    */
@@ -412,6 +435,7 @@ export class GuardrailStream {
     this.buffer = '';
     this.accumulated = '';
     this.emitted = '';
+    this.reported = 0;
     this.blocked = false;
   }
 

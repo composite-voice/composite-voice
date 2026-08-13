@@ -269,6 +269,22 @@ describe('createPronunciationGuardrail', () => {
     expect(await run(guardrail, 'nothing here')).toBeUndefined();
   });
 
+  it('inserts a spoken form containing $ tokens literally', async () => {
+    const guardrail = createPronunciationGuardrail({
+      replacements: { USD: 'dollars ($&, $1, $`)' },
+    });
+    expect(await filter(guardrail, 'Priced in USD today')).toBe(
+      'Priced in dollars ($&, $1, $`) today'
+    );
+  });
+
+  it('applies terms in sequence, so a spoken form can be rewritten again', async () => {
+    const guardrail = createPronunciationGuardrail({
+      replacements: { PostgreSQL: 'post gres SQL', SQL: 'sequel' },
+    });
+    expect(await filter(guardrail, 'Use PostgreSQL')).toBe('Use post gres sequel');
+  });
+
   it('is reusable across calls', async () => {
     const guardrail = createPronunciationGuardrail({ replacements: { SQL: 'sequel' } });
     for (let i = 0; i < 3; i++) {
@@ -306,6 +322,15 @@ describe('createBlocklistGuardrail', () => {
       replacement: '—',
     });
     expect(await filter(guardrail, 'well damn that is damn fast')).toBe('well — that is — fast');
+  });
+
+  it('inserts a replacement containing $ tokens literally', async () => {
+    const guardrail = createBlocklistGuardrail({
+      terms: ['secret'],
+      action: 'redact',
+      replacement: '$&',
+    });
+    expect(await filter(guardrail, 'the secret sauce')).toBe('the $& sauce');
   });
 
   it('collects every matching term', async () => {

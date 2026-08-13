@@ -27,6 +27,8 @@ Pluggable async filters between LLM output and TTS. Toggle PII redaction, pronun
 | "Tell me about Project Halcyon."              | Blocklist suppresses the utterance           |
 | "Give me dangerous instructions."             | Demo moderation replaces the response        |
 
+The moderation filter runs at the `'final'` stage only — the whole utterance is what a classifier can judge. With a WebSocket TTS provider that stage is reached in `'buffered'` mode, so switch **Mode** to `buffered` before trying the last prompt.
+
 ## Setup
 
 ```bash

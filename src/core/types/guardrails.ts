@@ -39,6 +39,14 @@ import type { LLMMessage } from './providers';
  *   {@link GuardrailsConfig.mode} is `'buffered'`. A block here suppresses the
  *   whole utterance.
  *
+ * On the Live TTS path in `'streaming'` mode every call is a `'chunk'` call,
+ * including the flush of the trailing partial sentence at the end of the
+ * utterance — there is no `'final'` call, because by then most of the response
+ * has already reached the provider. A guardrail restricted to `['final']`
+ * therefore never runs against a Live provider unless
+ * {@link GuardrailsConfig.mode} is `'buffered'`. Leave
+ * {@link Guardrail.stages} unset if a guardrail must run in both modes.
+ *
  * @see {@link Guardrail.stages} to restrict a guardrail to one stage.
  */
 export type GuardrailStage = 'chunk' | 'final';

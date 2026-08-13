@@ -1485,7 +1485,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       if (this.config.tools && isToolAware(llm) && useHistory) {
         this.processingStateMachine.setStreaming();
         const msgs = [...(ioContext ? [ioContext] : []), ...this.conversationHistory];
-        const fullResponse = await this.processLLMToolLoop(msgs, activeSignal, generationId);
+        const { text: fullResponse, spoken: spokenResponse } = await this.processLLMToolLoop(
+          msgs,
+          activeSignal,
+          generationId
+        );
 
         if (generationId !== this.llmGenerationId) return;
         if (activeSignal.aborted) {
@@ -1504,7 +1508,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
         if (!this._outputMuted && fullResponse.trim()) {
           if (isLiveTTS(tts)) {
-            await this.finalizeLiveTTS(fullResponse);
+            await this.finalizeLiveTTS(spokenResponse ?? fullResponse);
           } else if (isRestTTS(tts)) {
             await this.processTTS(fullResponse, activeSignal);
           }
@@ -1640,7 +1644,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           // the last sentence in streaming mode, the whole response in
           // buffered mode — before asking the provider to finalize.
           if (guardStream) await guardStream.flush();
-          await this.finalizeLiveTTS(fullResponse);
+          await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullResponse);
         }
       }
 
@@ -1980,8 +1984,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    * 6. On error, attempt to recover STT capture and re-throw after emitting
    *    `tts.error` and `agent.error` events.
    *
-   * @param fullText - The complete LLM response text (used for the `tts.start`
-   *   event payload).
+   * @param fullText - The text this utterance is speaking, used for the
+   *   `tts.start` event payload. When guardrails are configured this is what
+   *   survived them rather than the raw LLM response — matching {@link
+   *   processTTS}, and empty when a guardrail blocked the whole utterance. The
+   *   raw text still reaches `llm.complete` and the conversation history.
    *
    * @throws Re-throws any error encountered during TTS finalization or audio
    *   playback, after attempting capture recovery.
@@ -2526,7 +2533,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.processingStateMachine.setProcessing();
         this.processingStateMachine.setStreaming();
         const msgs = [...(ioContext ? [ioContext] : []), ...this.conversationHistory];
-        const fullResponse = await this.processLLMToolLoop(
+        const { text: fullResponse, spoken: spokenResponse } = await this.processLLMToolLoop(
           msgs,
           llmController.signal,
           generationId
@@ -2546,7 +2553,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         // Finalize TTS for the follow-up text
         if (!this._outputMuted && fullResponse.trim()) {
           if (isLiveTTS(tts)) {
-            await this.finalizeLiveTTS(fullResponse);
+            await this.finalizeLiveTTS(spokenResponse ?? fullResponse);
           } else if (isRestTTS(tts)) {
             await this.processTTS(fullResponse, llmController.signal);
           }
@@ -2644,7 +2651,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           await this.processTTS(fullResponse, llmController.signal);
         } else if (isLiveTTS(tts)) {
           if (guardStream) await guardStream.flush();
-          await this.finalizeLiveTTS(fullResponse);
+          await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullResponse);
         }
       }
 
@@ -2671,13 +2678,20 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
   /**
    * Process an LLM call with tool support. Handles the tool_use → execute → resume loop.
    *
-   * @returns The full text response from the LLM (may be empty if only tool calls occurred).
+   * @remarks
+   * TTS for text emitted *before* a tool call is finalized here; the caller
+   * finalizes the last round. `spoken` carries what survived the guardrails for
+   * that final round so the caller's `tts.start` event reports the text actually
+   * synthesized, and is `null` when no guardrail stream was in play.
+   *
+   * @returns The raw text response from the LLM (may be empty if only tool calls
+   *   occurred) plus the filtered text still awaiting finalization.
    */
   private async processLLMToolLoop(
     messages: LLMMessage[],
     signal: AbortSignal,
     _generationId: number
-  ): Promise<string> {
+  ): Promise<{ text: string; spoken: string | null }> {
     const { llm, tts } = this;
     if (!isToolAware(llm) || !this.config.tools) {
       throw new Error('processLLMToolLoop called but LLM does not support tools');
@@ -2753,7 +2767,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           if (fullText.trim() && !this._outputMuted) {
             if (isLiveTTS(tts)) {
               if (guardStream) await guardStream.flush();
-              await this.finalizeLiveTTS(fullText);
+              await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullText);
             } else if (isRestTTS(tts)) {
               await this.processTTS(fullText, signal);
             }
@@ -2825,7 +2839,9 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
                   if (fullText.trim() && !this._outputMuted) {
                     if (isLiveTTS(tts)) {
                       if (guardStream) await guardStream.flush();
-                      await this.finalizeLiveTTS(fullText);
+                      await this.finalizeLiveTTS(
+                        guardStream ? guardStream.takeSpokenText() : fullText
+                      );
                     } else if (isRestTTS(tts)) {
                       await this.processTTS(fullText, signal);
                     }
@@ -2860,7 +2876,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       await guardStream.flush();
     }
 
-    return fullText;
+    return { text: fullText, spoken: guardStream ? guardStream.takeSpokenText() : null };
   }
 
   /**

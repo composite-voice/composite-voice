@@ -325,6 +325,33 @@ describe('guardrails with Live TTS (chunk stage)', () => {
     await voice.dispose();
   });
 
+  it('reports the filtered text on tts.start, not the raw response', async () => {
+    const tts = new RecordingLiveTTS();
+    const voice = new CompositeVoice({
+      providers: [
+        new MockSTTProvider(),
+        new ScriptedLLM(['Run the ', 'SQL ', 'query now. ']),
+        tts,
+        new MockOutputProvider(),
+      ],
+      guardrails: {
+        filters: [createPronunciationGuardrail({ replacements: { SQL: 'sequel' } })],
+      },
+    });
+
+    const started: string[] = [];
+    const completed: string[] = [];
+    voice.on('tts.start', (event) => void started.push(event.text));
+    voice.on('llm.complete', (event) => void completed.push(event.text));
+
+    await speak(voice);
+
+    // What is spoken is filtered; the transcript events stay raw.
+    expect(started).toEqual(['Run the sequel query now. ']);
+    expect(completed).toEqual(['Run the SQL query now. ']);
+    await voice.dispose();
+  });
+
   it('matches a pattern split across streamed chunks', async () => {
     const tts = new RecordingLiveTTS();
     const voice = new CompositeVoice({

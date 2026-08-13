@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   CompositeVoice,
   MicrophoneInput,
@@ -158,6 +158,18 @@ export default function App() {
     setAgent(newAgent);
   }, [buildFilters, mode]);
 
+  // Release the microphone and the provider sockets when the page navigates
+  // away or the module is hot-reloaded.
+  useEffect(() => {
+    return () => {
+      const active = agentRef.current;
+      agentRef.current = null;
+      void active?.dispose().catch(() => {
+        // Nothing useful to do while unmounting.
+      });
+    };
+  }, []);
+
   const handleStart = useCallback(async () => {
     setLog([]);
     await agentRef.current?.startListening();
@@ -228,6 +240,15 @@ export default function App() {
                 setModeration
               )}
             </div>
+
+            {moderation && mode === 'streaming' && (
+              <Alert variant="warning" title="Moderation needs buffered mode" className="mt-4">
+                This filter declares <code>stages: [&apos;final&apos;]</code>, and the final stage
+                is only reached on a WebSocket TTS provider when the response is buffered. In{' '}
+                <strong>streaming</strong> mode every segment — including the last — is filtered at
+                the chunk stage, so this filter never runs.
+              </Alert>
+            )}
 
             <div className="mt-5">
               <Label htmlFor="mode">Mode</Label>

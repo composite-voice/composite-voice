@@ -425,6 +425,51 @@ describe('GuardrailStream', () => {
     });
   });
 
+  describe('takeSpokenText', () => {
+    /** Blocks once the accumulated text mentions the trigger word. */
+    const blockOnSecret: Guardrail = {
+      name: 'secret',
+      check: (text) => (text.includes('secret') ? { block: true, reason: 'secret' } : undefined),
+    };
+
+    it('returns only what was forwarded since the previous call', async () => {
+      const stream = new GuardrailPipeline({ filters: [upper] }).createStream({
+        onText: () => {},
+      });
+
+      await stream.push('One. ');
+      expect(stream.takeSpokenText()).toBe('ONE.');
+
+      // A tool loop finalizes once per round against one shared stream, so the
+      // second round must not repeat the first round's text.
+      await stream.push('Two. ');
+      expect(stream.takeSpokenText()).toBe(' TWO.');
+      expect(stream.spokenText).toBe('ONE. TWO.');
+    });
+
+    it('returns an empty string once a guardrail has blocked', async () => {
+      const stream = new GuardrailPipeline({ filters: [blockOnSecret] }).createStream({
+        onText: () => {},
+      });
+
+      await stream.push('Fine. ');
+      expect(stream.takeSpokenText()).toBe('Fine.');
+
+      await stream.push('secret. ');
+      await stream.flush();
+      expect(stream.takeSpokenText()).toBe('');
+    });
+
+    it('starts over after reset', async () => {
+      const stream = new GuardrailPipeline({ filters: [noop] }).createStream({ onText: () => {} });
+
+      await stream.push('One. ');
+      stream.reset();
+      await stream.push('Two. ');
+      expect(stream.takeSpokenText()).toBe('Two.');
+    });
+  });
+
   describe('sink ordering and backpressure', () => {
     it('awaits an async sink before filtering the next segment', async () => {
       const order: string[] = [];
