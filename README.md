@@ -859,12 +859,12 @@ Behavior details:
 - **Container headers are re-injected.** When the input is a container format (WebM/OGG/WAV), the cached header is replayed to the backup before any buffered audio, so it can demux the stream it joins mid-flight.
 - **Failover is sticky** — a failed provider stays out of rotation for the rest of the session (no flapping during a vendor outage). Call `fallback.resetToPrimary()` between sessions to probe whether the primary has recovered.
 - **The chain only errors when exhausted.** If every provider in the chain fails, the normal error events (`transcription.error`, `agent.error`) fire.
-- Input audio format metadata is applied to **every** provider in the chain, so a backup connects already knowing the encoding/sample rate.
+- Input audio format metadata is applied to **every** provider in the chain (Deepgram, AssemblyAI, Azure, ElevenLabs, Gladia, Speechmatics, Soniox, OpenAI Realtime, Transcribe, and Rev AI), so a backup connects already knowing the encoding/sample rate.
 - **Turn-taking sees through the chain.** A chain of full-duplex providers stays full-duplex (barge-in keeps working); it only falls back to pausing capture if a member needs it.
 
 Options: `new FallbackSTT(providers, { connectTimeout?: number, debug?: boolean })`.
 
-Reusing a chain across agents: `onFallback()` returns an unsubscribe function, and `dispose()` drops the chain's listener references. Call `resetToPrimary()` between sessions to put the primary back in rotation.
+Reusing a chain across agents: `onFallback()` and `setReconnectHeaderSource()` each return an unsubscribe function. CompositeVoice calls both when initialize fails and when `dispose()` runs. The chain's own `dispose()` drops leftover listener references. Call `resetToPrimary()` between sessions to put the primary back in rotation.
 
 Constraints: all chained providers must be live (WebSocket) STT providers covering only the `stt` role — multi-role providers like `NativeSTT` manage their own microphone and can't be swapped mid-session.
 

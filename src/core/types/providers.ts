@@ -721,8 +721,11 @@ export interface FallbackCapableProvider {
    * `AudioHeaderCache` when present.
    *
    * @param source - Returns the cached header, or `null` when unavailable.
+   * @returns An unsubscribe function when the implementation supports it.
+   *   Callers that outlive the chain must call it on teardown so a disposed
+   *   agent's `AudioHeaderCache` is not reused on a later failover.
    */
-  setReconnectHeaderSource?(source: () => ArrayBuffer | null): void;
+  setReconnectHeaderSource?(source: () => ArrayBuffer | null): (() => void) | void;
 }
 
 /**

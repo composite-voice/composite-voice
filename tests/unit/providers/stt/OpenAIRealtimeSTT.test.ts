@@ -317,6 +317,19 @@ describe('OpenAIRealtimeSTT', () => {
       });
     });
 
+    it('should disconnect the manager on dispose after connection loss', async () => {
+      const provider = new OpenAIRealtimeSTT({ apiKey: 'test-key' }, logger);
+      await provider.initialize();
+      await provider.connect();
+      mockWsManager.disconnect.mockClear();
+
+      getHandlers().onConnectionLost(new Error('Connection closed unexpectedly (code 1011)'));
+
+      await provider.dispose();
+
+      expect(mockWsManager.disconnect).toHaveBeenCalled();
+    });
+
     it('should throw ProviderConnectionError when the connection fails', async () => {
       mockWsManager.connect.mockRejectedValueOnce(new Error('boom'));
 

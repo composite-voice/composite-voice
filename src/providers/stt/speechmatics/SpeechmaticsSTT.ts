@@ -360,7 +360,7 @@ export class SpeechmaticsSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -497,10 +497,13 @@ export class SpeechmaticsSTT extends LiveSTTProvider {
    * transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, waits
-   * for the connection to open, sends the `StartRecognition` message,
-   * and waits for the server's `RecognitionStarted` acknowledgement
-   * before resolving. The connection timeout defaults to
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Waits for the connection to open, sends the
+   * `StartRecognition` message, and waits for the server's
+   * `RecognitionStarted` acknowledgement before resolving. The connection
+   * timeout defaults to
    * {@link SpeechmaticsSTTConfig.timeout | config.timeout} (10 000 ms).
    *
    * @throws {@link ProviderConnectionError}

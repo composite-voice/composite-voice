@@ -11,12 +11,22 @@
  * explicitly set.
  *
  * Supported STT providers:
- * - **DeepgramSTT** / **DeepgramFlux** — sets `config.options.encoding`,
- *   `config.options.sampleRate`, and `config.options.channels`
- * - **AssemblyAISTT** — sets `config.sampleRate`
+ * - **DeepgramSTT** / **DeepgramFlux** — `config.options.encoding`,
+ *   `config.options.sampleRate`, `config.options.channels`
+ * - **AssemblyAISTT** — `config.sampleRate`
+ * - **AzureSTT** — `config.sampleRate`, `config.numChannels`, `config.bitsPerSample`
+ * - **ElevenLabsSTT** — `config.audioFormat` (`pcm_<rate>` or `mulaw_8000`)
+ * - **GladiaSTT** — `config.encoding`, `config.sampleRate`, `config.channels`,
+ *   `config.bitDepth`
+ * - **SpeechmaticsSTT** — `config.audioFormat`, `config.sampleRate`
+ * - **SonioxSTT** — `config.audioFormat`, `config.sampleRate`, `config.numChannels`
+ * - **OpenAIRealtimeSTT** — `config.inputAudioFormat`
+ * - **TranscribeSTT** — `config.mediaEncoding`, `config.sampleRate`
+ * - **RevAISTT** — `config.sampleRate`, `config.audioFormat`, `config.numChannels`
  *
- * Providers without compatible config fields (NativeSTT, ElevenLabsSTT, etc.)
- * are silently ignored.
+ * Providers without compatible config fields (NativeSTT) are silently ignored.
+ * Fallback chains recurse into every member so a failover lands on a provider
+ * that already knows the input format.
  *
  * ```
  * [InputProvider] ──getMetadata()──▶ configureSTTFromMetadata(stt, metadata)
@@ -33,7 +43,7 @@
  * @packageDocumentation
  */
 
-import type { AudioMetadata } from '../types/audio';
+import type { AudioEncoding, AudioMetadata } from '../types/audio';
 import type { BaseProvider } from '../types/providers';
 import { isProviderChain } from '../../utils/providerChain';
 
@@ -55,54 +65,39 @@ const ENCODING_TO_DEEPGRAM: Record<string, string> = {
   mp3: 'mp3',
 };
 
-/**
- * Provider class names that use the Deepgram-style nested `options` config.
- *
- * @remarks
- * Detection is based on `constructor.name` because the `options` property
- * may not be physically present on the config object when the user hasn't
- * set any transcription options. The SDK is published as ES modules (never
- * minified), so class names are stable at runtime.
- *
- * @internal
- */
-const DEEPGRAM_LIKE_NAMES = new Set(['DeepgramSTT', 'DeepgramFlux']);
+/** ElevenLabs sample rates that have a documented `pcm_<rate>` format string. */
+const ELEVENLABS_PCM_RATES = new Set([16000, 22050, 24000, 44100]);
 
 /**
- * Provider class names that use the AssemblyAI-style flat `sampleRate` config.
+ * A mutable config bag. Each provider exposes a public `config` object;
+ * only the fields that exist on that provider are written.
  *
  * @internal
  */
-const ASSEMBLYAI_LIKE_NAMES = new Set(['AssemblyAISTT']);
-
-/**
- * A minimal structural type representing a provider with a Deepgram-style config.
- *
- * @remarks
- * Used after identity detection to safely access and mutate the nested
- * `options` object on the provider's config.
- *
- * @internal
- */
-interface DeepgramLikeSTT {
-  config: {
-    options?: {
-      encoding?: string;
-      sampleRate?: number;
-      channels?: number;
-    };
+interface MutableAudioConfig {
+  options?: {
+    encoding?: string;
+    sampleRate?: number;
+    channels?: number;
   };
+  sampleRate?: number;
+  numChannels?: number;
+  channels?: number;
+  bitsPerSample?: number;
+  bitDepth?: number;
+  audioFormat?: string;
+  encoding?: string;
+  inputAudioFormat?: string;
+  mediaEncoding?: string;
 }
 
 /**
- * A minimal structural type representing a provider with an AssemblyAI-style config.
+ * A provider whose public `config` can receive audio-format fields.
  *
  * @internal
  */
-interface AssemblyAILikeSTT {
-  config: {
-    sampleRate?: number;
-  };
+interface ConfigurableSTT {
+  config: MutableAudioConfig;
 }
 
 /**
@@ -121,11 +116,8 @@ interface AssemblyAILikeSTT {
  * **Rules:**
  * - Only sets fields that are currently `undefined` — never overwrites
  *   user-specified values.
- * - For DeepgramSTT / DeepgramFlux: fills `options.encoding`,
- *   `options.sampleRate`, and `options.channels`. Creates the `options`
- *   object if it does not exist.
- * - For AssemblyAISTT: fills `sampleRate` on the top-level config.
- * - For all other providers (NativeSTT, ElevenLabsSTT, etc.): no-op.
+ * - Fallback chains are unwrapped so every member is configured.
+ * - NativeSTT and unknown providers are no-ops.
  *
  * @param stt - The STT provider to auto-configure. Must have a public
  *   `config` property (all SDK STT providers expose this).
@@ -175,18 +167,70 @@ export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetad
   }
 
   const providerName = stt.constructor?.name ?? '';
+  const configurable = stt as unknown as ConfigurableSTT;
 
-  if (DEEPGRAM_LIKE_NAMES.has(providerName)) {
-    configureDeepgram(stt as unknown as DeepgramLikeSTT, metadata);
-    return;
+  switch (providerName) {
+    case 'DeepgramSTT':
+    case 'DeepgramFlux':
+      configureDeepgram(configurable, metadata);
+      return;
+    case 'AssemblyAISTT':
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      return;
+    case 'AzureSTT':
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      setIfUnset(configurable.config, 'numChannels', metadata.channels);
+      setIfUnset(configurable.config, 'bitsPerSample', metadata.bitDepth);
+      return;
+    case 'ElevenLabsSTT':
+      setIfUnset(configurable.config, 'audioFormat', mapElevenLabsAudioFormat(metadata));
+      return;
+    case 'GladiaSTT':
+      setIfUnset(configurable.config, 'encoding', mapGladiaEncoding(metadata.encoding));
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      setIfUnset(configurable.config, 'channels', metadata.channels);
+      setIfUnset(configurable.config, 'bitDepth', metadata.bitDepth);
+      return;
+    case 'SpeechmaticsSTT':
+      setIfUnset(configurable.config, 'audioFormat', mapSpeechmaticsAudioFormat(metadata.encoding));
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      return;
+    case 'SonioxSTT':
+      setIfUnset(configurable.config, 'audioFormat', mapSonioxAudioFormat(metadata.encoding));
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      setIfUnset(configurable.config, 'numChannels', metadata.channels);
+      return;
+    case 'OpenAIRealtimeSTT':
+      setIfUnset(configurable.config, 'inputAudioFormat', mapOpenAIAudioFormat(metadata.encoding));
+      return;
+    case 'TranscribeSTT':
+      setIfUnset(configurable.config, 'mediaEncoding', mapTranscribeEncoding(metadata.encoding));
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      return;
+    case 'RevAISTT':
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      setIfUnset(configurable.config, 'audioFormat', mapRevAIAudioFormat(metadata.encoding));
+      setIfUnset(configurable.config, 'numChannels', metadata.channels);
+      return;
+    default:
+      // No-op for NativeSTT and unknown providers.
+      return;
   }
+}
 
-  if (ASSEMBLYAI_LIKE_NAMES.has(providerName)) {
-    configureAssemblyAI(stt as unknown as AssemblyAILikeSTT, metadata);
-    return;
+/**
+ * Writes `value` onto `object[key]` when the field is unset and `value` is defined.
+ *
+ * @internal
+ */
+function setIfUnset<T extends object, K extends keyof T>(
+  object: T,
+  key: K,
+  value: T[K] | undefined
+): void {
+  if (value !== undefined && object[key] === undefined) {
+    object[key] = value;
   }
-
-  // No-op for NativeSTT, ElevenLabsSTT, and other providers.
 }
 
 /**
@@ -197,45 +241,95 @@ export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetad
  *
  * @internal
  */
-function configureDeepgram(stt: DeepgramLikeSTT, metadata: AudioMetadata): void {
-  // Ensure the options object exists
+function configureDeepgram(stt: ConfigurableSTT, metadata: AudioMetadata): void {
   if (stt.config.options === undefined) {
     stt.config.options = {};
   }
 
   const opts = stt.config.options;
+  setIfUnset(opts, 'encoding', ENCODING_TO_DEEPGRAM[metadata.encoding]);
+  setIfUnset(opts, 'sampleRate', metadata.sampleRate);
+  setIfUnset(opts, 'channels', metadata.channels);
+}
 
-  // encoding: map from AudioEncoding to Deepgram encoding string
-  if (opts.encoding === undefined) {
-    const deepgramEncoding = ENCODING_TO_DEEPGRAM[metadata.encoding];
-    if (deepgramEncoding !== undefined) {
-      opts.encoding = deepgramEncoding;
-    }
+/** Maps SDK encoding + sample rate to an ElevenLabs `audio_format` string. */
+function mapElevenLabsAudioFormat(metadata: AudioMetadata): string | undefined {
+  if (metadata.encoding === 'mulaw' && metadata.sampleRate === 8000) {
+    return 'mulaw_8000';
   }
-
-  // sampleRate
-  if (opts.sampleRate === undefined) {
-    opts.sampleRate = metadata.sampleRate;
+  if (metadata.encoding === 'linear16' && ELEVENLABS_PCM_RATES.has(metadata.sampleRate)) {
+    return `pcm_${metadata.sampleRate}`;
   }
+  return undefined;
+}
 
-  // channels
-  if (opts.channels === undefined) {
-    opts.channels = metadata.channels;
+/** Maps SDK encoding to Gladia's `wav/<codec>` identifiers. */
+function mapGladiaEncoding(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'wav/pcm';
+    case 'alaw':
+      return 'wav/alaw';
+    case 'mulaw':
+      return 'wav/ulaw';
+    default:
+      return undefined;
   }
 }
 
-/**
- * Fills AssemblyAI-style STT config from audio metadata.
- *
- * @param stt - An AssemblyAI-like STT provider
- * @param metadata - Input audio metadata
- *
- * @internal
- */
-function configureAssemblyAI(stt: AssemblyAILikeSTT, metadata: AudioMetadata): void {
-  // AssemblyAI only exposes sampleRate at the top-level config.
-  // encoding and channels are implicit in AssemblyAI's protocol.
-  if (stt.config.sampleRate === undefined) {
-    stt.config.sampleRate = metadata.sampleRate;
+/** Maps SDK encoding to Speechmatics raw-audio format identifiers. */
+function mapSpeechmaticsAudioFormat(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'pcm_s16le';
+    case 'mulaw':
+      return 'mulaw';
+    default:
+      return undefined;
   }
+}
+
+/** Maps SDK encoding to Soniox raw-audio format identifiers. */
+function mapSonioxAudioFormat(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'pcm_s16le';
+    case 'mulaw':
+      return 'mulaw';
+    case 'alaw':
+      return 'alaw';
+    default:
+      return undefined;
+  }
+}
+
+/** Maps SDK encoding to OpenAI Realtime `input_audio_format` values. */
+function mapOpenAIAudioFormat(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'audio/pcm';
+    case 'mulaw':
+      return 'audio/pcmu';
+    case 'alaw':
+      return 'audio/pcma';
+    default:
+      return undefined;
+  }
+}
+
+/** Maps SDK encoding to Amazon Transcribe `media-encoding` values. */
+function mapTranscribeEncoding(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'pcm';
+    case 'opus':
+      return 'ogg-opus';
+    default:
+      return undefined;
+  }
+}
+
+/** Maps SDK encoding to Rev AI GStreamer format strings. */
+function mapRevAIAudioFormat(encoding: AudioEncoding): string | undefined {
+  return encoding === 'linear16' ? 'S16LE' : undefined;
 }

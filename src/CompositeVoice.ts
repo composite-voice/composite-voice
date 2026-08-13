@@ -282,6 +282,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    */
   private unsubscribeFallback?: () => void;
 
+  /**
+   * Clears this agent's reconnect-header source on the shared fallback chain.
+   */
+  private unsubscribeHeaderSource?: () => void;
+
   // State machines
   private captureStateMachine: AudioCaptureStateMachine;
   private playbackStateMachine: AudioPlaybackStateMachine;
@@ -638,36 +643,6 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       });
     });
 
-    // Bridge provider fallback notifications (e.g. FallbackSTT) to the
-    // 'provider.fallback' SDK event. Wired here rather than in
-    // setupProviders() because init-time failovers fire before setup runs.
-    const fallbackCapable = this.stt as STTProvider & Partial<FallbackCapableProvider>;
-    if (typeof fallbackCapable.setReconnectHeaderSource === 'function') {
-      // Internal failover reconnects need the cached container header
-      // re-injected, just like the SDK's own reconnect paths.
-      fallbackCapable.setReconnectHeaderSource(() => this.headerCache.getHeader());
-    }
-    if (typeof fallbackCapable.onFallback === 'function') {
-      const unsubscribe = fallbackCapable.onFallback((info) => {
-        this.logger.warn(
-          `Provider fallback (${info.role}): ${info.from} -> ${info.to} [${info.reason}]`,
-          info.error
-        );
-        this.emitEvent({
-          type: 'provider.fallback',
-          role: info.role,
-          from: info.from,
-          to: info.to,
-          reason: info.reason,
-          error: info.error,
-          timestamp: Date.now(),
-        });
-      });
-      if (typeof unsubscribe === 'function') {
-        this.unsubscribeFallback = unsubscribe;
-      }
-    }
-
     // Wire queue overflow events to the event emitter
     this.inputQueue.onOverflow((droppedChunks, currentSize) => {
       this.emitEvent({
@@ -769,6 +744,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         this.pipeline.tts,
         this.pipeline.output,
       ]);
+
+      // Subscribe before provider initialize() so init-time failovers
+      // (FallbackSTT marking a member dead) still reach 'provider.fallback'.
+      this.attachFallbackBridge();
+
       await Promise.all([...uniqueProviders].map((p) => p.initialize()));
 
       this.setupProviders();
@@ -782,10 +762,65 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       this.logger.info('CompositeVoice SDK initialized');
     } catch (error) {
+      this.detachFallbackBridge();
       this.logger.error('Failed to initialize', error);
       this.emitAgentError(error as Error, 'initialize', false);
       throw error;
     }
+  }
+
+  /**
+   * Subscribe to a fallback chain's swap notifications and header source.
+   *
+   * @remarks
+   * Must run before providers initialize so init-time failovers reach
+   * `'provider.fallback'`. A shared chain outlives this agent, so
+   * {@link detachFallbackBridge} runs on initialize failure and dispose.
+   */
+  private attachFallbackBridge(): void {
+    this.detachFallbackBridge();
+
+    const fallbackCapable = this.stt as STTProvider & Partial<FallbackCapableProvider>;
+    if (typeof fallbackCapable.setReconnectHeaderSource === 'function') {
+      // Internal failover reconnects need the cached container header
+      // re-injected, just like the SDK's own reconnect paths.
+      const unsubscribe = fallbackCapable.setReconnectHeaderSource(() =>
+        this.headerCache.getHeader()
+      );
+      if (typeof unsubscribe === 'function') {
+        this.unsubscribeHeaderSource = unsubscribe;
+      }
+    }
+    if (typeof fallbackCapable.onFallback === 'function') {
+      const unsubscribe = fallbackCapable.onFallback((info) => {
+        this.logger.warn(
+          `Provider fallback (${info.role}): ${info.from} -> ${info.to} [${info.reason}]`,
+          info.error
+        );
+        this.emitEvent({
+          type: 'provider.fallback',
+          role: info.role,
+          from: info.from,
+          to: info.to,
+          reason: info.reason,
+          error: info.error,
+          timestamp: Date.now(),
+        });
+      });
+      if (typeof unsubscribe === 'function') {
+        this.unsubscribeFallback = unsubscribe;
+      }
+    }
+  }
+
+  /**
+   * Drop this agent's subscriptions on a fallback chain that may outlive it.
+   */
+  private detachFallbackBridge(): void {
+    this.unsubscribeFallback?.();
+    delete this.unsubscribeFallback;
+    this.unsubscribeHeaderSource?.();
+    delete this.unsubscribeHeaderSource;
   }
 
   /**
@@ -2973,8 +3008,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
 
       // Detach from the STT fallback chain, which may be reused by another
       // agent after this one is gone.
-      this.unsubscribeFallback?.();
-      delete this.unsubscribeFallback;
+      this.detachFallbackBridge();
 
       // Clear conversation history
       this.conversationHistory = [];

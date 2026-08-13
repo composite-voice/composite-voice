@@ -85,10 +85,8 @@ function getCaptureMethod(
   provider: STTProvider | TTSProvider
 ): 'mediadevices' | 'speechrecognition' | 'none' | undefined {
   const members = flattenProviderChain(provider);
-  if (members.length === 1) {
-    return PROVIDER_CAPTURE_METHOD[getProviderName(provider)];
-  }
   const methods = members.map((member) => PROVIDER_CAPTURE_METHOD[getProviderName(member)]);
+  if (methods.length === 1) return methods[0];
   if (methods.every((method) => method === 'mediadevices')) return 'mediadevices';
   if (methods.some((method) => method === 'speechrecognition')) return 'speechrecognition';
   return undefined;

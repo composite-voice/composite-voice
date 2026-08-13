@@ -374,8 +374,12 @@ export class ElevenLabsSTT extends LiveSTTProvider {
    * Disposes the provider, disconnecting and releasing resources.
    */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
-      await this.disconnect();
+    if (this.wsManager) {
+      try {
+        await this.disconnect();
+      } catch (error) {
+        this.logger.warn('Error disconnecting during dispose', error as Error);
+      }
     }
     this.wsManager = null;
     this.logger.info('ElevenLabs STT disposed');

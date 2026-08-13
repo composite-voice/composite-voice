@@ -400,7 +400,7 @@ export class GladiaSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the clients. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -514,9 +514,10 @@ export class GladiaSTT extends LiveSTTProvider {
    * @remarks
    * Performs the session-init POST (authenticated directly or through
    * the proxy), then connects a {@link WebSocketManager} to the
-   * Gladia-returned URL. The session token is embedded in that URL, so
-   * the WebSocket needs no further authentication and reconnection
-   * attempts resume the same session.
+   * Gladia-returned URL with reconnection disabled. The session token is
+   * embedded in that URL, so the WebSocket needs no further authentication.
+   * The SDK drives reconnection through {@link connect} (and FallbackSTT
+   * owns failover).
    *
    * @throws {@link ProviderConnectionError}
    * Thrown when the provider is not initialized, the session-init

@@ -732,5 +732,23 @@ describe('FallbackSTT', () => {
       expect(backup.receivedAudio[0]).toBe(header);
       expect(new Uint8Array(backup.receivedAudio[1] as ArrayBuffer)[0]).toBe(9);
     });
+
+    it('setReconnectHeaderSource returns an unsubscribe that clears the source', async () => {
+      const primary = new MockChainSTT();
+      const backup = new MockChainSTT({ connectDelayMs: 20 });
+      const stt = new FallbackSTT([primary, backup]);
+      const header = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]).buffer;
+      const unsubscribe = stt.setReconnectHeaderSource(() => header);
+      unsubscribe();
+      await stt.initialize();
+      await stt.connect();
+
+      primary.emit({ text: '', isFinal: false, metadata: { error: 'ws_closed' } });
+      stt.sendAudio(chunk(9));
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      expect(backup.receivedAudio[0]).not.toBe(header);
+      expect(new Uint8Array(backup.receivedAudio[0] as ArrayBuffer)[0]).toBe(9);
+    });
   });
 });

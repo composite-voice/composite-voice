@@ -234,8 +234,12 @@ export class AssemblyAISTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
-      await this.disconnect();
+    if (this.wsManager) {
+      try {
+        await this.disconnect();
+      } catch (error) {
+        this.logger.warn('Error disconnecting during dispose', error as Error);
+      }
     }
     this.wsManager = null;
     this.logger.info('AssemblyAI STT disposed');
@@ -275,10 +279,12 @@ export class AssemblyAISTT extends LiveSTTProvider {
    * Open a WebSocket connection to AssemblyAI for real-time transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, sets up
-   * message handlers, and waits for the connection to open. The connection
-   * timeout defaults to {@link AssemblyAISTTConfig.timeout | config.timeout}
-   * (10 000 ms).
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Sets up message handlers and waits for the connection
+   * to open. The connection timeout defaults to
+   * {@link AssemblyAISTTConfig.timeout | config.timeout} (10 000 ms).
    *
    * @throws {@link ProviderConnectionError}
    * Thrown when the provider is not initialized or the connection fails.

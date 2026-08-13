@@ -597,11 +597,12 @@ export class MockLiveSTTProvider implements LiveSTTProvider {
     return this.connected;
   }
 
-  emitTranscription(text: string, isFinal = true) {
+  emitTranscription(text: string, isFinal = true, metadata?: TranscriptionResult['metadata']) {
     this.transcriptionCallback?.({
       text,
       isFinal,
       confidence: 0.95,
+      ...(metadata ? { metadata } : {}),
     });
   }
 }

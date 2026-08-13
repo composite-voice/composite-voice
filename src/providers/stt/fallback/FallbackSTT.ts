@@ -292,9 +292,17 @@ export class FallbackSTT implements LiveSTTProvider, FallbackCapableProvider {
    *
    * @param source - Returns the cached header, or `null` when the stream is
    *   raw PCM / has no extractable header.
+   * @returns An unsubscribe function that clears this source if it is still
+   *   the registered one. CompositeVoice calls it on initialize failure and
+   *   dispose so a shared chain cannot retain a disposed agent's cache.
    */
-  setReconnectHeaderSource(source: () => ArrayBuffer | null): void {
+  setReconnectHeaderSource(source: () => ArrayBuffer | null): () => void {
     this.reconnectHeaderSource = source;
+    return () => {
+      if (this.reconnectHeaderSource === source) {
+        delete this.reconnectHeaderSource;
+      }
+    };
   }
 
   /**

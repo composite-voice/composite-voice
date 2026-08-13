@@ -365,7 +365,7 @@ export class TranscribeSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {

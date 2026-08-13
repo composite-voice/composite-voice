@@ -376,7 +376,7 @@ export class RevAISTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -456,10 +456,13 @@ export class RevAISTT extends LiveSTTProvider {
    * Open a WebSocket connection to Rev AI for streaming transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, waits
-   * for the socket to open, then waits for Rev AI's `connected` message --
-   * the API requires it before any audio is sent. The connection timeout
-   * defaults to {@link RevAISTTConfig.timeout | config.timeout} (10 000 ms)
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Waits for the socket to open, then waits for Rev AI's
+   * `connected` message -- the API requires it before any audio is sent.
+   * The connection timeout defaults to
+   * {@link RevAISTTConfig.timeout | config.timeout} (10 000 ms)
    * and applies to both waits independently.
    *
    * @throws {@link ProviderConnectionError}
@@ -777,6 +780,7 @@ export class RevAISTT extends LiveSTTProvider {
       // socket) may still exist — tear it down for real so nothing leaks.
       const manager = this.wsManager;
       this.wsManager = null;
+      this.jobId = null;
       await manager.disconnect();
       return;
     }

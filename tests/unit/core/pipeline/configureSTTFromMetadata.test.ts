@@ -88,14 +88,151 @@ class NativeSTT {
   }
 }
 
-/** Stub for ElevenLabsSTT — should be a no-op target. */
+/** Stub matching ElevenLabsSTT's constructor name and config shape. */
 class ElevenLabsSTT {
   readonly type = 'websocket' as const;
   readonly roles: readonly ProviderRole[] = ['stt'];
-  config: { model?: string };
+  config: { model?: string; audioFormat?: string };
 
   constructor(config: ElevenLabsSTT['config'] = {}) {
     this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching AzureSTT's constructor name and config shape. */
+class AzureSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { sampleRate?: number; numChannels?: number; bitsPerSample?: number };
+
+  constructor(config: AzureSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching GladiaSTT's constructor name and config shape. */
+class GladiaSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { encoding?: string; sampleRate?: number; channels?: number; bitDepth?: number };
+
+  constructor(config: GladiaSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching SpeechmaticsSTT's constructor name and config shape. */
+class SpeechmaticsSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { audioFormat?: string; sampleRate?: number };
+
+  constructor(config: SpeechmaticsSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching SonioxSTT's constructor name and config shape. */
+class SonioxSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { audioFormat?: string; sampleRate?: number; numChannels?: number };
+
+  constructor(config: SonioxSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching OpenAIRealtimeSTT's constructor name and config shape. */
+class OpenAIRealtimeSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { inputAudioFormat?: string };
+
+  constructor(config: OpenAIRealtimeSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching TranscribeSTT's constructor name and config shape. */
+class TranscribeSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { mediaEncoding?: string; sampleRate?: number };
+
+  constructor(config: TranscribeSTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Stub matching RevAISTT's constructor name and config shape. */
+class RevAISTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config: { sampleRate?: number; audioFormat?: string; numChannels?: number };
+
+  constructor(config: RevAISTT['config'] = {}) {
+    this.config = config;
+  }
+
+  async initialize() {}
+  async dispose() {}
+  isReady() {
+    return true;
+  }
+}
+
+/** Structural fallback-chain stub — detected via `providers`, not class name. */
+class FallbackSTT {
+  readonly type = 'websocket' as const;
+  readonly roles: readonly ProviderRole[] = ['stt'];
+  config = {};
+  readonly providers: object[];
+
+  constructor(providers: object[]) {
+    this.providers = providers;
   }
 
   async initialize() {}
@@ -259,6 +396,135 @@ describe('configureSTTFromMetadata', () => {
     });
   });
 
+  // ─── Remaining live STT providers ─────────────────────────────────────
+
+  describe('AzureSTT', () => {
+    it('fills sampleRate, numChannels, and bitsPerSample when unset', () => {
+      const stt = new AzureSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({ sampleRate: 16000, numChannels: 1, bitsPerSample: 16 });
+    });
+
+    it('does not overwrite user-set sampleRate', () => {
+      const stt = new AzureSTT({ sampleRate: 48000 });
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config.sampleRate).toBe(48000);
+      expect(stt.config.numChannels).toBe(1);
+    });
+  });
+
+  describe('ElevenLabsSTT', () => {
+    it('fills pcm_<rate> for linear16 at a documented sample rate', () => {
+      const stt = new ElevenLabsSTT({ model: 'scribe_v2_realtime' });
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config.audioFormat).toBe('pcm_16000');
+    });
+
+    it('fills mulaw_8000 for mulaw telephony audio', () => {
+      const stt = new ElevenLabsSTT();
+      configureSTTFromMetadata(stt, { sampleRate: 8000, encoding: 'mulaw', channels: 1 });
+
+      expect(stt.config.audioFormat).toBe('mulaw_8000');
+    });
+
+    it('does not overwrite user-set audioFormat', () => {
+      const stt = new ElevenLabsSTT({ audioFormat: 'pcm_24000' });
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config.audioFormat).toBe('pcm_24000');
+    });
+  });
+
+  describe('GladiaSTT', () => {
+    it('fills encoding, sampleRate, channels, and bitDepth', () => {
+      const stt = new GladiaSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({
+        encoding: 'wav/pcm',
+        sampleRate: 16000,
+        channels: 1,
+        bitDepth: 16,
+      });
+    });
+  });
+
+  describe('SpeechmaticsSTT', () => {
+    it('fills pcm_s16le and sampleRate for linear16', () => {
+      const stt = new SpeechmaticsSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({ audioFormat: 'pcm_s16le', sampleRate: 16000 });
+    });
+  });
+
+  describe('SonioxSTT', () => {
+    it('fills audioFormat, sampleRate, and numChannels', () => {
+      const stt = new SonioxSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({
+        audioFormat: 'pcm_s16le',
+        sampleRate: 16000,
+        numChannels: 1,
+      });
+    });
+  });
+
+  describe('OpenAIRealtimeSTT', () => {
+    it('fills inputAudioFormat for linear16', () => {
+      const stt = new OpenAIRealtimeSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config.inputAudioFormat).toBe('audio/pcm');
+    });
+
+    it('maps mulaw to audio/pcmu', () => {
+      const stt = new OpenAIRealtimeSTT();
+      configureSTTFromMetadata(stt, { sampleRate: 8000, encoding: 'mulaw', channels: 1 });
+
+      expect(stt.config.inputAudioFormat).toBe('audio/pcmu');
+    });
+  });
+
+  describe('TranscribeSTT', () => {
+    it('fills mediaEncoding and sampleRate', () => {
+      const stt = new TranscribeSTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({ mediaEncoding: 'pcm', sampleRate: 16000 });
+    });
+  });
+
+  describe('RevAISTT', () => {
+    it('fills sampleRate, audioFormat, and numChannels', () => {
+      const stt = new RevAISTT();
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(stt.config).toEqual({ sampleRate: 16000, audioFormat: 'S16LE', numChannels: 1 });
+    });
+  });
+
+  describe('fallback chains', () => {
+    it('configures every chain member', () => {
+      const deepgram = new DeepgramSTT();
+      const azure = new AzureSTT();
+      const chain = new FallbackSTT([deepgram, azure]);
+
+      configureSTTFromMetadata(chain, defaultMetadata);
+
+      expect(deepgram.config.options).toEqual({
+        encoding: 'linear16',
+        sampleRate: 16000,
+        channels: 1,
+      });
+      expect(azure.config).toEqual({ sampleRate: 16000, numChannels: 1, bitsPerSample: 16 });
+    });
+  });
+
   // ─── No-op providers ────────────────────────────────────────────────────
 
   describe('no-op for unsupported providers', () => {
@@ -267,13 +533,6 @@ describe('configureSTTFromMetadata', () => {
       configureSTTFromMetadata(stt, defaultMetadata);
 
       expect(stt.config).toEqual({ language: 'en-US' });
-    });
-
-    it('does not modify ElevenLabsSTT', () => {
-      const stt = new ElevenLabsSTT({ model: 'scribe_v2_realtime' });
-      configureSTTFromMetadata(stt, defaultMetadata);
-
-      expect(stt.config).toEqual({ model: 'scribe_v2_realtime' });
     });
   });
 });

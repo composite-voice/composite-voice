@@ -230,6 +230,18 @@ describe('AssemblyAISTT', () => {
       });
     });
 
+    it('should disconnect the manager on dispose after connection loss', async () => {
+      await provider.connect();
+      mockWsManager.disconnect.mockClear();
+
+      const handlers = mockWsManager.setHandlers.mock.calls.at(-1)![0];
+      handlers.onConnectionLost(new Error('Connection closed unexpectedly (code 1011)'));
+
+      await provider.dispose();
+
+      expect(mockWsManager.disconnect).toHaveBeenCalled();
+    });
+
     it('should mark an intentional close as expected before ending the stream', async () => {
       await provider.connect();
       mockWsManager.expectClose.mockClear();

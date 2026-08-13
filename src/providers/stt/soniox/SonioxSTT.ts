@@ -310,7 +310,7 @@ export class SonioxSTT extends LiveSTTProvider {
 
   /** Disconnect the WebSocket (if connected) and release the manager. */
   protected async onDispose(): Promise<void> {
-    if (this.isConnected) {
+    if (this.wsManager) {
       try {
         await this.disconnect();
       } catch (error) {
@@ -402,11 +402,13 @@ export class SonioxSTT extends LiveSTTProvider {
    * Open a WebSocket connection to Soniox for real-time transcription.
    *
    * @remarks
-   * Creates a {@link WebSocketManager} with reconnection enabled, waits
-   * for the connection to open, then sends the initial configuration
-   * message that starts the transcription session. The connection
-   * timeout defaults to {@link SonioxSTTConfig.timeout | config.timeout}
-   * (10 000 ms).
+   * Creates a {@link WebSocketManager} with reconnection disabled — a dead
+   * socket must surface immediately via onConnectionLost so the SDK (or a
+   * FallbackSTT chain) can recover. The SDK drives reconnection through
+   * {@link connect}. Waits for the connection to open, then sends the
+   * initial configuration message that starts the transcription session.
+   * The connection timeout defaults to
+   * {@link SonioxSTTConfig.timeout | config.timeout} (10 000 ms).
    *
    * @throws {@link ProviderConnectionError}
    * Thrown when the provider is not initialized or the connection fails.

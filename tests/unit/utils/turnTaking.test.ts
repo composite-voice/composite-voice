@@ -117,6 +117,11 @@ describe('shouldPauseCaptureOnPlayback', () => {
       expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(false);
     });
 
+    it('should NOT pause for a single-member MediaDevices chain', () => {
+      const chain = makeChain(['DeepgramSTT']);
+      expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(false);
+    });
+
     it('should pause when any chain member has an unknown capture method', () => {
       const chain = makeChain(['DeepgramSTT', 'UnknownSTT']);
       expect(shouldPauseCaptureOnPlayback(config, chain, makeTTS('DeepgramTTS'))).toBe(true);

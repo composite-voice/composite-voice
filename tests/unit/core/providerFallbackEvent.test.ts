@@ -15,6 +15,7 @@ import {
   MockTTSProvider,
   MockInputProvider,
   MockOutputProvider,
+  FailingProvider,
 } from '../../mocks/MockProviders';
 
 /** A live STT provider whose initialization always fails. */
@@ -88,5 +89,34 @@ describe('provider.fallback event bridge', () => {
     expect(events).toHaveLength(0);
 
     await agent.dispose();
+  });
+
+  it('does not emit provider.fallback on a shared chain after initialize fails', async () => {
+    const primary = new MockLiveSTTProvider();
+    const backup = new MockLiveSTTProvider();
+    const fallback = new FallbackSTT([primary, backup]);
+
+    const agent = new CompositeVoice({
+      providers: [
+        new MockInputProvider(),
+        fallback,
+        new FailingProvider(),
+        new MockTTSProvider(),
+        new MockOutputProvider(),
+      ],
+    });
+
+    const events: ProviderFallbackEvent[] = [];
+    agent.on('provider.fallback', (event) => {
+      events.push(event);
+    });
+
+    await expect(agent.initialize()).rejects.toThrow('Initialization failed');
+
+    await fallback.connect();
+    primary.emitTranscription('', true, { error: 'ws_closed' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(events).toHaveLength(0);
   });
 });
