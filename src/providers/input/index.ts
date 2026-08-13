@@ -17,6 +17,7 @@
 export { MicrophoneInput } from './MicrophoneInput';
 export type { MicrophoneInputConfig } from './MicrophoneInput';
 export { BufferInput } from './BufferInput';
+export type { BufferInputOptions } from './BufferInput';
 export { NullInput } from './NullInput';
 export { WebRTCInput } from './WebRTCInput';
 export type { WebRTCInputConfig } from './WebRTCInput';
