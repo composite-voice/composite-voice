@@ -83,12 +83,13 @@ export interface CompositeVoiceProxyConfig {
   openaiApiKey?: string;
 
   /**
-   * ElevenLabs API key -- used for WebSocket TTS and STT proxying.
+   * ElevenLabs API key -- used for WebSocket TTS, STT, and Conversational AI proxying.
    *
    * @remarks
    * When set, the proxy registers a WebSocket route at `{pathPrefix}/elevenlabs`
    * that forwards connections to `wss://api.elevenlabs.io`. This single route
-   * handles both TTS (`/v1/text-to-speech/...`) and STT (`/v1/speech-to-text/...`)
+   * handles TTS (`/v1/text-to-speech/...`), STT (`/v1/speech-to-text/...`), and
+   * Conversational AI (`/v1/convai/conversation`, used by `ElevenLabsAgent`)
    * traffic. The `xi-api-key` auth header is injected server-side.
    *
    * @defaultValue `undefined` (ElevenLabs proxying disabled)
@@ -129,11 +130,15 @@ export interface CompositeVoiceProxyConfig {
   mistralApiKey?: string;
 
   /**
-   * Gemini API key -- used for HTTP LLM proxying.
+   * Gemini API key -- used for HTTP LLM proxying and WebSocket Live API proxying.
    *
    * @remarks
    * When set, the proxy registers an HTTP route at `{pathPrefix}/gemini`
-   * that forwards requests to `https://generativelanguage.googleapis.com/v1beta/openai`.
+   * that forwards requests to `https://generativelanguage.googleapis.com/v1beta/openai`,
+   * and a WebSocket route at `{pathPrefix}/gemini-live` that forwards
+   * Gemini Live API connections (used by `GeminiLiveAgent`) to
+   * `wss://generativelanguage.googleapis.com`, appending the API key as the
+   * `key` query parameter server-side.
    *
    * @defaultValue `undefined` (Gemini proxying disabled)
    */

@@ -269,7 +269,10 @@ export function resolveProviders(providers: BaseProvider[]): ResolvedPipeline {
     slots.input = defaultInput;
     slots.stt = defaultInput;
   } else if (!slots.input && slots.stt) {
-    slots.input = new MicrophoneInput();
+    // Agent providers accept audio at one fixed rate and cannot detect a
+    // mismatch — capture at the rate they ask for rather than the default.
+    const preferred = (slots.stt as { preferredInputSampleRate?: number }).preferredInputSampleRate;
+    slots.input = new MicrophoneInput(preferred !== undefined ? { sampleRate: preferred } : {});
   }
 
   if (!slots.tts && !slots.output) {
