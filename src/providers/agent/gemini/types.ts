@@ -143,6 +143,15 @@ export interface GeminiLiveAgentConfig extends BaseProviderConfig {
  */
 export interface GeminiServerMessage {
   setupComplete?: Record<string, unknown>;
+  /**
+   * Google API error envelope. The Live API may deliver this as a JSON
+   * frame instead of (or before) a WebSocket close.
+   */
+  error?: {
+    code?: number | string;
+    message?: string;
+    status?: string;
+  };
   serverContent?: {
     modelTurn?: {
       parts?: Array<{

@@ -149,6 +149,31 @@ describe('GeminiLiveAgent', () => {
       await expect(connecting).rejects.toThrow(/timed out/);
     });
 
+    it('does not treat a non-setup frame as handshake completion', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key', timeout: 30 });
+      await agent.initialize();
+
+      const connecting = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      sock._message({ goAway: { timeLeft: '10s' } });
+      await flush();
+
+      await expect(connecting).rejects.toThrow(/timed out/);
+    });
+
+    it('rejects connect when the server errors before setupComplete', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+
+      const connecting = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      const rejected = expect(connecting).rejects.toThrow('model not found');
+      sock._message({ error: { code: 404, message: 'model not found', status: 'NOT_FOUND' } });
+      await rejected;
+    });
+
     it('resolves both callers when a second connect() piggybacks', async () => {
       const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
       await agent.initialize();
@@ -252,6 +277,25 @@ describe('GeminiLiveAgent', () => {
 
       expect(chunks).toHaveLength(1);
       expect(new Uint8Array(chunks[0]!.data)).toEqual(new Uint8Array([5, 6, 7]));
+    });
+
+    it('skips malformed base64 audio without throwing', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const chunks: AudioChunk[] = [];
+      agent.onAudio((c) => chunks.push(c));
+      const sock = await connectAgent(agent);
+
+      sock._message({
+        serverContent: {
+          modelTurn: {
+            parts: [{ inlineData: { mimeType: 'audio/pcm', data: '%%%not-base64%%%' } }],
+          },
+        },
+      });
+      await flush();
+
+      expect(chunks).toHaveLength(0);
     });
 
     it('parses JSON delivered as binary frames', async () => {
@@ -399,6 +443,23 @@ describe('GeminiLiveAgent', () => {
       await flush();
 
       expect(events).toEqual([{ type: 'go_away', timeLeft: '10s' }]);
+    });
+
+    it('emits error and rejects the pending LLM iterator on a server error', async () => {
+      const agent = new GeminiLiveAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const events: GeminiLiveAgentEvent[] = [];
+      agent.onAgentEvent((e) => events.push(e));
+      const sock = await connectAgent(agent);
+
+      const iterable = await agent.generateFromMessages([{ role: 'user', content: 'hi' }]);
+      const pending = iterable[Symbol.asyncIterator]().next();
+
+      const rejected = expect(pending).rejects.toThrow('invalid argument');
+      sock._message({ error: { code: 400, message: 'invalid argument', status: 'INVALID_ARGUMENT' } });
+      await rejected;
+
+      expect(events).toEqual([{ type: 'error', message: 'invalid argument' }]);
     });
   });
 

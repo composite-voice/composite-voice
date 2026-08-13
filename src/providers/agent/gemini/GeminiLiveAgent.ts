@@ -90,6 +90,12 @@ export class GeminiLiveAgent extends BaseAgentProvider {
   private connectResolve: (() => void) | null = null;
   private connectReject: ((err: Error) => void) | null = null;
 
+  /**
+   * Serializes async `handleMessage` work so Blob.text() results (and the
+   * audio chunks they emit) stay in WebSocket arrival order.
+   */
+  private messageQueue: Promise<void> = Promise.resolve();
+
   /** Accumulated user transcript fragments for the turn in progress. */
   private inputTranscript = '';
 
@@ -194,6 +200,7 @@ export class GeminiLiveAgent extends BaseAgentProvider {
     const url = await this.buildWebSocketUrl();
 
     await new Promise<void>((resolve, reject) => {
+      this.messageQueue = Promise.resolve();
       this.ws = new WebSocket(url);
       this.ws.binaryType = 'arraybuffer';
 
@@ -234,8 +241,18 @@ export class GeminiLiveAgent extends BaseAgentProvider {
       };
 
       this.ws.onmessage = (event) => {
-        if (!this.setupComplete) clearTimeout(timer);
-        void this.handleMessage(event);
+        this.messageQueue = this.messageQueue
+          .then(async () => {
+            await this.handleMessage(event);
+            // Only the handshake-complete (or handshake-error) path nulls
+            // connectReject. Pre-setup frames must not cancel the timeout.
+            if (!this.connectReject) clearTimeout(timer);
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(
+              `GeminiLiveAgent: failed to process WebSocket message: ${err instanceof Error ? err.message : String(err)}`
+            );
+          });
       };
     });
   }
@@ -367,6 +384,19 @@ export class GeminiLiveAgent extends BaseAgentProvider {
   }
 
   private handleServerMessage(msg: GeminiServerMessage): void {
+    if (msg.error) {
+      const message = msg.error.message ?? msg.error.status ?? 'unknown error';
+      this.logger.error(`GeminiLiveAgent: error [${msg.error.code ?? '-'}]: ${message}`);
+      this.emitEvent({ type: 'error', message });
+      this.rejectPendingLLM(new Error(`Gemini Live error: ${message}`));
+      if (!this.setupComplete) {
+        this.connectReject?.(new Error(`GeminiLiveAgent: ${message}`));
+        this.connectResolve = null;
+        this.connectReject = null;
+      }
+      return;
+    }
+
     if (msg.setupComplete) {
       this.setupComplete = true;
       this.emitOutputMetadata();
@@ -410,7 +440,12 @@ export class GeminiLiveAgent extends BaseAgentProvider {
       this.flushUserTurn();
       for (const part of content.modelTurn.parts) {
         if (part.inlineData?.data && (part.inlineData.mimeType ?? '').startsWith('audio/')) {
-          this.emitAudioChunk(base64ToArrayBuffer(part.inlineData.data));
+          const audio = base64ToArrayBuffer(part.inlineData.data);
+          if (!audio) {
+            this.logger.warn('GeminiLiveAgent: skipping malformed base64 audio');
+            continue;
+          }
+          this.emitAudioChunk(audio);
         }
         if (part.text) {
           this.outputTranscript += part.text;

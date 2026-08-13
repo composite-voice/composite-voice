@@ -35,10 +35,17 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
  * Decode a base64 string into an `ArrayBuffer`.
  *
  * @param base64 - The base64-encoded string.
- * @returns The decoded binary data.
+ * @returns The decoded binary data, or `undefined` if `base64` is not valid
+ *   base64. Callers should skip the chunk rather than treating a throw as
+ *   fatal to the WebSocket message handler.
  */
-export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
+export function base64ToArrayBuffer(base64: string): ArrayBuffer | undefined {
+  let binary: string;
+  try {
+    binary = atob(base64);
+  } catch {
+    return undefined;
+  }
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);

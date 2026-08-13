@@ -130,6 +130,18 @@ describe('OpenAIRealtimeAgent', () => {
       await expect(connecting).rejects.toThrow(/timed out/);
     });
 
+    it('does not treat session.created as handshake completion', async () => {
+      const agent = new OpenAIRealtimeAgent({ apiKey: 'test-key', timeout: 30 });
+      await agent.initialize();
+
+      const connecting = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      sock._message({ type: 'session.created' });
+
+      await expect(connecting).rejects.toThrow(/timed out/);
+    });
+
     it('resolves both callers when a second connect() piggybacks', async () => {
       const agent = new OpenAIRealtimeAgent({ apiKey: 'test-key' });
       await agent.initialize();
@@ -186,6 +198,23 @@ describe('OpenAIRealtimeAgent', () => {
 
       expect(chunks).toHaveLength(1);
       expect(new Uint8Array(chunks[0]!.data)).toEqual(new Uint8Array([9, 8, 7]));
+    });
+
+    it('skips malformed base64 audio without throwing', async () => {
+      const agent = new OpenAIRealtimeAgent({ apiKey: 'test-key' });
+      await agent.initialize();
+      const chunks: AudioChunk[] = [];
+      agent.onAudio((c) => chunks.push(c));
+      const sock = await connectAgent(agent);
+
+      expect(() => {
+        sock._message({ type: 'response.output_audio.delta', delta: '%%%not-base64%%%' });
+      }).not.toThrow();
+      expect(chunks).toHaveLength(0);
+
+      const audio = new Uint8Array([9, 8, 7]).buffer;
+      sock._message({ type: 'response.output_audio.delta', delta: arrayBufferToBase64(audio) });
+      expect(chunks).toHaveLength(1);
     });
 
     it('re-emits output metadata with every audio chunk so barge-in cannot mute the session', async () => {

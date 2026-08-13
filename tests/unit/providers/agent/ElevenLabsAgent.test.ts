@@ -165,7 +165,7 @@ describe('ElevenLabsAgent', () => {
       await connectAgent(agent, 'ulaw_8000');
 
       expect(metadata).toEqual([
-        { sampleRate: 8000, encoding: 'mulaw', channels: 1, bitDepth: 16 },
+        { sampleRate: 8000, encoding: 'mulaw', channels: 1, bitDepth: 8 },
       ]);
     });
 
@@ -175,6 +175,18 @@ describe('ElevenLabsAgent', () => {
 
       const connecting = agent.connect();
       (await waitForSocket())._open();
+
+      await expect(connecting).rejects.toThrow(/timed out/);
+    });
+
+    it('does not treat ping as handshake completion', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1', timeout: 30 });
+      await agent.initialize();
+
+      const connecting = agent.connect();
+      const sock = await waitForSocket();
+      sock._open();
+      sock._message({ type: 'ping', ping_event: { event_id: 1 } });
 
       await expect(connecting).rejects.toThrow(/timed out/);
     });
@@ -272,6 +284,22 @@ describe('ElevenLabsAgent', () => {
 
       expect(chunks).toHaveLength(1);
       expect(new Uint8Array(chunks[0]!.data)).toEqual(new Uint8Array([4, 5, 6]));
+    });
+
+    it('skips malformed base64 audio without throwing', async () => {
+      const agent = new ElevenLabsAgent({ agentId: 'agent_1' });
+      await agent.initialize();
+      const chunks: AudioChunk[] = [];
+      agent.onAudio((c) => chunks.push(c));
+      const sock = await connectAgent(agent);
+
+      expect(() => {
+        sock._message({
+          type: 'audio',
+          audio_event: { audio_base_64: '%%%not-base64%%%', event_id: 1 },
+        });
+      }).not.toThrow();
+      expect(chunks).toHaveLength(0);
     });
   });
 

@@ -237,8 +237,10 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       };
 
       this.ws.onmessage = (event) => {
-        if (!this.conversationStarted) clearTimeout(timer);
         this.handleMessage(event);
+        // Only the handshake-complete path nulls connectReject. Pre-handshake
+        // frames (ping, vad_score, etc.) must not cancel the timeout.
+        if (!this.connectReject) clearTimeout(timer);
       };
     });
   }
@@ -263,7 +265,7 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       sampleRate: this.outputFormat.sampleRate,
       encoding: this.outputFormat.encoding,
       channels: 1,
-      bitDepth: 16,
+      bitDepth: this.outputFormat.encoding === 'mulaw' ? 8 : 16,
     });
   }
 
@@ -418,9 +420,14 @@ export class ElevenLabsAgent extends BaseAgentProvider {
       }
 
       case 'audio': {
-        const audio = msg.audio_event?.audio_base_64;
-        if (audio) {
-          this.emitAudioChunk(base64ToArrayBuffer(audio));
+        const encoded = msg.audio_event?.audio_base_64;
+        if (encoded) {
+          const audio = base64ToArrayBuffer(encoded);
+          if (!audio) {
+            this.logger.warn('ElevenLabsAgent: skipping malformed base64 audio');
+            break;
+          }
+          this.emitAudioChunk(audio);
           this.resetAudioIdleTimer();
         }
         break;

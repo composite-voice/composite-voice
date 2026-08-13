@@ -236,8 +236,10 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
       };
 
       this.ws.onmessage = (event) => {
-        if (!this.sessionReady) clearTimeout(timer);
         this.handleMessage(event);
+        // Only the handshake-complete path nulls connectReject. Pre-handshake
+        // frames (session.created, etc.) must not cancel the timeout.
+        if (!this.connectReject) clearTimeout(timer);
       };
     });
   }
@@ -435,8 +437,13 @@ export class OpenAIRealtimeAgent extends BaseAgentProvider {
       case 'response.output_audio.delta':
       case 'response.audio.delta':
         if (msg.delta) {
+          const audio = base64ToArrayBuffer(msg.delta);
+          if (!audio) {
+            this.logger.warn('OpenAIRealtimeAgent: skipping malformed base64 audio');
+            break;
+          }
           this.responseHadAudio = true;
-          this.emitAudioChunk(base64ToArrayBuffer(msg.delta));
+          this.emitAudioChunk(audio);
         }
         break;
 
