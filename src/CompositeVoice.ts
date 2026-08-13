@@ -1060,7 +1060,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    * @remarks
    * This method implements the reconciliation logic for the eager LLM pipeline:
    *
-   * 1. If an eager generation is running **and** its text is sufficiently
+   * 1. If an eager generation exists **and** its text is sufficiently
    *    similar to the confirmed text (at or above `similarityThreshold`),
    *    the speculative result is accepted and no new request is made.
    * 2. If the similarity is below the threshold and `cancelOnTextChange` is
@@ -1070,6 +1070,11 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
    *    `false`, the speculative result is accepted anyway (lowest latency,
    *    small accuracy risk).
    * 4. If no eager generation is running, a normal LLM request is started.
+   *
+   * Accepting an eager generation ({@link CompositeVoice.adoptEagerTurn})
+   * opens the metrics turn immediately. If the speculative generation is
+   * still in flight, `processLLM` closes it; if it already finished, the
+   * turn is closed here so it is not left open until the next utterance.
    *
    * @param text - The confirmed final transcript text from the STT provider.
    *
@@ -1088,16 +1093,14 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       const similarity = eagerText ? textSimilarity(eagerText, text) : 0;
 
       if (similarity >= threshold) {
-        // Similar enough — eager generation is already running; let it complete.
+        // Similar enough — reuse the speculative generation.
         this.logger.debug('speech_final similar to preflight — using eager generation', {
           similarity,
           threshold,
           preflight: eagerText,
           final: text,
         });
-        this.turnMetrics.startTurn(text, { modality: 'voice', adoptEager: true });
-        this.eagerAbortController = null;
-        this.eagerText = null;
+        this.adoptEagerTurn(text);
         return;
       }
 
@@ -1118,14 +1121,42 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           'speech_final differs but cancelOnTextChange=false — accepting eager response',
           { similarity, threshold }
         );
-        this.turnMetrics.startTurn(text, { modality: 'voice', adoptEager: true });
-        this.eagerAbortController = null;
-        this.eagerText = null;
+        this.adoptEagerTurn(text);
       }
     } else {
       // No eager generation — normal path
       this.turnMetrics.startTurn(text, { modality: 'voice' });
       void this.processLLM(text);
+    }
+  }
+
+  /**
+   * Adopts a speculative generation as the confirmed turn.
+   *
+   * @remarks
+   * Opens the metrics turn with any buffered eager marks, then clears
+   * `eagerAbortController` / `eagerText`. If generation is still in
+   * flight (`processing`, `streaming`, or `complete` while TTS plays),
+   * `processLLM` will call `finishTurn()` when it lands. If it already
+   * finished, that `finishTurn()` was a no-op — close the new turn here
+   * so it is not left open until the next utterance.
+   *
+   * @param transcript - The confirmed `speech_final` text.
+   */
+  private adoptEagerTurn(transcript: string): void {
+    const stillInFlight =
+      this.processingStateMachine.isProcessing() || this.processingStateMachine.isComplete();
+
+    this.turnMetrics.startTurn(transcript, { modality: 'voice', adoptEager: true });
+    this.eagerAbortController = null;
+    this.eagerText = null;
+
+    if (!stillInFlight) {
+      if (this.processingStateMachine.getState() === 'error') {
+        this.turnMetrics.abortTurn();
+      } else {
+        this.turnMetrics.finishTurn();
+      }
     }
   }
 

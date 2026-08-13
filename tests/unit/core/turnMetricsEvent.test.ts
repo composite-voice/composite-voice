@@ -88,12 +88,17 @@ function buildAgent() {
   return { agent, stt, llm, tts, input, output };
 }
 
-function buildEagerAgent() {
+function buildEagerAgent(eagerLLM: { cancelOnTextChange?: boolean } = {}) {
   const stt = new PreflightSTT();
   const llm = new MockLLMProvider();
   const agent = new CompositeVoice({
     providers: [new MockInputProvider(), stt, llm, new MockTTSProvider(), new AutoPlayOutput()],
-    eagerLLM: { enabled: true, similarityThreshold: 0.8, cancelOnTextChange: true },
+    eagerLLM: {
+      enabled: true,
+      similarityThreshold: 0.8,
+      cancelOnTextChange: true,
+      ...eagerLLM,
+    },
   });
   return { agent, stt, llm };
 }
@@ -333,6 +338,71 @@ describe('turn.metrics event', () => {
     // Discarded generation plus the real one
     expect(llm.promptCount).toBe(2);
     expect(llm.lastPrompt).toContain('tell me a joke instead');
+
+    await agent.dispose();
+  });
+
+  it('closes the turn immediately when speech_final adopts an already-finished eager generation', async () => {
+    const { agent, stt, llm } = buildEagerAgent();
+    const metrics: TurnMetricsEvent[] = [];
+    let playbackEnded = false;
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+    agent.on('audio.playback.end', () => {
+      playbackEnded = true;
+    });
+
+    await agent.initialize();
+    await agent.startListening();
+
+    stt.emitPreflight('what time is it');
+    await waitFor(() => playbackEnded);
+    // processLLM has now setIdle + finishTurn()'d a turn that did not exist yet
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(metrics).toHaveLength(0);
+
+    stt.emitTranscription('what time is it');
+    // Adoption closes the turn synchronously — no later utterance required
+    expect(metrics).toHaveLength(1);
+
+    const m = metrics[0]!;
+    expect(m).toMatchObject({ turnId: 1, eagerUsed: true, interrupted: false });
+    expect(m.timestamps.llmComplete).toBeDefined();
+    expect(m.timestamps.playbackStart).toBeDefined();
+    expect(m.durations.sttFinalToFirstToken).toBeLessThan(0);
+    expect(llm.promptCount).toBe(1);
+
+    await agent.dispose();
+  });
+
+  it('closes an already-finished eager turn when cancelOnTextChange is false', async () => {
+    const { agent, stt, llm } = buildEagerAgent({ cancelOnTextChange: false });
+    const metrics: TurnMetricsEvent[] = [];
+    let playbackEnded = false;
+    agent.on('turn.metrics', (e) => {
+      metrics.push(e);
+    });
+    agent.on('audio.playback.end', () => {
+      playbackEnded = true;
+    });
+
+    await agent.initialize();
+    await agent.startListening();
+
+    stt.emitPreflight('what time is it');
+    await waitFor(() => playbackEnded);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    stt.emitTranscription('tell me a joke instead');
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0]).toMatchObject({
+      turnId: 1,
+      transcript: 'tell me a joke instead',
+      eagerUsed: true,
+      interrupted: false,
+    });
+    expect(llm.promptCount).toBe(1);
 
     await agent.dispose();
   });

@@ -88,6 +88,39 @@ describe('TurnMetricsCollector', () => {
     expect(s.durations.sttFinalToFirstToken).toBe(-100);
   });
 
+  it('adopts later eager marks so a finished speculative generation still reports a full summary', () => {
+    const { collector, clock, summaries } = makeCollector();
+
+    collector.markPreflight();
+    clock.advance(10);
+    collector.markLLMStart();
+    clock.advance(40);
+    collector.markLLMFirstToken();
+    clock.advance(80);
+    collector.markLLMComplete();
+    clock.advance(20);
+    collector.markTTSFirstAudio();
+    clock.advance(15);
+    collector.markPlaybackStart();
+    clock.advance(200);
+    collector.markPlaybackEnd();
+    clock.advance(30);
+    collector.startTurn('confirmed text', { modality: 'voice', adoptEager: true });
+    collector.finishTurn();
+
+    const s = summaries[0]!;
+    expect(s.eagerUsed).toBe(true);
+    expect(s.interrupted).toBe(false);
+    expect(s.timestamps.llmComplete).toBeDefined();
+    expect(s.timestamps.ttsFirstAudio).toBeDefined();
+    expect(s.timestamps.playbackStart).toBeDefined();
+    expect(s.timestamps.playbackEnd).toBeDefined();
+    // First token arrived 345ms before speech_final; playback started 230ms before
+    expect(s.durations.sttFinalToFirstToken).toBe(-345);
+    expect(s.durations.voiceToVoice).toBe(-230);
+    expect(s.durations.llmTotal).toBe(120);
+  });
+
   it('discards eager LLM marks when not adopted but keeps the preflight mark', () => {
     const { collector, clock, summaries } = makeCollector();
 
@@ -186,6 +219,7 @@ describe('TurnMetricsCollector', () => {
     collector.abortTurn();
     collector.markLLMStart();
     collector.markLLMFirstToken();
+    collector.markLLMComplete();
     collector.markTTSFirstAudio();
     collector.markPlaybackStart();
     collector.markPlaybackEnd();

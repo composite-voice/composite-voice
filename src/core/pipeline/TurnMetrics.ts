@@ -15,7 +15,9 @@
  * arrive before the confirmed `speech_final` (a preflight-triggered
  * generation) are held in a provisional buffer and either adopted into the
  * turn (eager accepted — `sttFinalToFirstToken` can then be negative) or
- * discarded (eager cancelled).
+ * discarded (eager cancelled). The buffer holds every stage, not just the
+ * first LLM marks, so a speculative generation that finishes before
+ * `speech_final` still reports a complete summary.
  *
  * All timestamps are epoch milliseconds from `Date.now()`, matching the
  * `timestamp` field on every SDK event — so summaries convert directly to
@@ -163,6 +165,10 @@ interface PendingEagerMarks {
   preflight: number;
   llmStart?: number;
   llmFirstToken?: number;
+  llmComplete?: number;
+  ttsFirstAudio?: number;
+  playbackStart?: number;
+  playbackEnd?: number;
 }
 
 /**
@@ -172,7 +178,7 @@ interface PendingEagerMarks {
  * @remarks
  * The collector is deliberately forgiving about call order:
  *
- * - LLM marks with no active turn are routed to the pending-eager buffer
+ * - Marks with no active turn are routed to the pending-eager buffer
  *   when a preflight was marked, and dropped otherwise (e.g. greeting
  *   audio from an agent provider).
  * - "First" marks (`llmStart`, `llmFirstToken`, `ttsFirstAudio`,
@@ -244,14 +250,15 @@ export class TurnMetricsCollector {
    *
    * @remarks
    * If a turn is already active it is finished as `interrupted` first.
-   * With `adoptEager: true`, the LLM marks buffered since the last
-   * {@link markPreflight} are copied into the new turn (this is how an
-   * accepted eager generation's `llmFirstToken` can precede `sttFinal`).
-   * The buffered `preflight` timestamp is carried over either way — the
-   * early end-of-turn signal describes this utterance whether or not a
-   * speculative generation ran on it, or was accepted. The pending-eager
-   * buffer is cleared either way — a new turn always invalidates old
-   * speculative marks.
+   * With `adoptEager: true`, every mark buffered since the last
+   * {@link markPreflight} is copied into the new turn (this is how an
+   * accepted eager generation's `llmFirstToken` can precede `sttFinal`,
+   * and how a generation that finished before confirmation still reports
+   * `llmComplete` / playback). The buffered `preflight` timestamp is
+   * carried over either way — the early end-of-turn signal describes this
+   * utterance whether or not a speculative generation ran on it, or was
+   * accepted. The pending-eager buffer is cleared either way — a new turn
+   * always invalidates old speculative marks.
    *
    * @param transcript - The user text that starts the turn.
    * @param options - Turn modality and whether to adopt buffered eager marks.
@@ -277,6 +284,10 @@ export class TurnMetricsCollector {
       ...(pending?.preflight !== undefined ? { preflight: pending.preflight } : {}),
       ...(eager?.llmStart !== undefined ? { llmStart: eager.llmStart } : {}),
       ...(eager?.llmFirstToken !== undefined ? { llmFirstToken: eager.llmFirstToken } : {}),
+      ...(eager?.llmComplete !== undefined ? { llmComplete: eager.llmComplete } : {}),
+      ...(eager?.ttsFirstAudio !== undefined ? { ttsFirstAudio: eager.ttsFirstAudio } : {}),
+      ...(eager?.playbackStart !== undefined ? { playbackStart: eager.playbackStart } : {}),
+      ...(eager?.playbackEnd !== undefined ? { playbackEnd: eager.playbackEnd } : {}),
     };
   }
 
@@ -298,22 +309,25 @@ export class TurnMetricsCollector {
 
   /** Record LLM generation completion (last-write-wins). */
   markLLMComplete(): void {
-    if (this.current) {
-      this.current.llmComplete = this.now();
+    const target = this.current ?? this.pendingEager;
+    if (target) {
+      target.llmComplete = this.now();
     }
   }
 
   /** Record first TTS audio chunk arrival (first-write-wins). */
   markTTSFirstAudio(): void {
-    if (this.current && this.current.ttsFirstAudio === undefined) {
-      this.current.ttsFirstAudio = this.now();
+    const target = this.current ?? this.pendingEager;
+    if (target && target.ttsFirstAudio === undefined) {
+      target.ttsFirstAudio = this.now();
     }
   }
 
   /** Record audible playback start (first-write-wins). */
   markPlaybackStart(): void {
-    if (this.current && this.current.playbackStart === undefined) {
-      this.current.playbackStart = this.now();
+    const target = this.current ?? this.pendingEager;
+    if (target && target.playbackStart === undefined) {
+      target.playbackStart = this.now();
     }
   }
 
@@ -326,8 +340,9 @@ export class TurnMetricsCollector {
    * the turn — {@link finishTurn} does, driven by the pipeline.
    */
   markPlaybackEnd(): void {
-    if (this.current) {
-      this.current.playbackEnd = this.now();
+    const target = this.current ?? this.pendingEager;
+    if (target) {
+      target.playbackEnd = this.now();
     }
   }
 
