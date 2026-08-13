@@ -55,6 +55,7 @@ CompositeVoice handles the plumbing. You declare the pipeline; the SDK runs it.
 - [Providers](#providers)
 - [Configuration](#configuration)
 - [Events](#events)
+- [Latency observability](#latency-observability)
 - [Agent states](#agent-states)
 - [Conversation history](#conversation-history)
 - [Eager LLM pipeline](#eager-llm-pipeline)
@@ -969,6 +970,70 @@ agent.on('queue.stats', (e) => {
   console.log(`Queue "${e.queueName}": ${e.size} buffered, ${e.totalEnqueued} total`);
 });
 ```
+
+### Turn events
+
+| Event          | Payload                                                                             | Description                                                       |
+| -------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `turn.metrics` | `{ turnId, transcript, modality, eagerUsed, interrupted, timestamps, durations }` | Per-turn latency breakdown — see [Latency observability](#latency-observability) |
+
+---
+
+## Latency observability
+
+Every conversation turn emits a `turn.metrics` event with the full timing breakdown of the pipeline — so you can measure what your users actually experience, tune the [eager pipeline](#eager-llm-pipeline), and compare provider choices on real traffic instead of vendor benchmarks:
+
+```
+preflight ──▶ sttFinal ──▶ llmFirstToken ──▶ ttsFirstAudio ──▶ playbackStart ──▶ playbackEnd
+ (eager)      (turn t0)                                        ▲
+                └──────────────── voiceToVoice ────────────────┘
+```
+
+```typescript
+agent.on('turn.metrics', ({ turnId, durations, eagerUsed, interrupted }) => {
+  if (interrupted) return; // barge-in / cancelled turns carry partial data
+  console.log(`turn ${turnId}: ${durations.voiceToVoice}ms voice-to-voice`);
+  console.log(`  STT final → first LLM token: ${durations.sttFinalToFirstToken}ms`);
+  console.log(`  first token → first audio:   ${durations.firstTokenToFirstAudio}ms`);
+  console.log(`  first audio → playback:      ${durations.firstAudioToPlayback}ms`);
+  if (eagerUsed) console.log('  (eager pipeline was used this turn)');
+});
+```
+
+What you get per turn:
+
+- **`timestamps`** — absolute epoch-ms marks for each captured stage: `preflight` (early end-of-turn signal, the closest observable proxy for "user stopped speaking"), `sttFinal` (the turn anchor), `llmStart`, `llmFirstToken`, `llmComplete`, `ttsFirstAudio`, `playbackStart`, `playbackEnd`, `turnEnd`.
+- **`durations`** — derived phase durations: `sttFinalToFirstToken`, `firstTokenToFirstAudio`, `firstAudioToPlayback`, `voiceToVoice` (the headline number: STT final → audible playback), `llmTotal`, `turnTotal`.
+- **`eagerUsed`** — whether a speculative (preflight-triggered) generation was adopted. When it was, `sttFinalToFirstToken` can be **negative** — that negative number is exactly the latency the eager pipeline saved. Compare the distribution with `eagerLLM` on and off to decide whether it's worth it for your STT provider.
+- **`interrupted`** — turns cut short by barge-in, `stopSpeaking()`, or a pipeline error still report whatever marks were captured.
+- Typed turns via `sendMessage()` are reported too, with `modality: 'text'`.
+
+Fields are present only when the topology captures them — e.g. multi-role outputs like `NativeTTS` synthesize and play in one step, with no audio crossing the pipeline, so `ttsFirstAudio` (and the `firstTokenToFirstAudio` / `firstAudioToPlayback` durations) are unavailable there. `playbackStart` still is: it comes from the output provider's own playback callback.
+
+> **Note:** to observe playback, the SDK registers the output provider's `onPlaybackStart` / `onPlaybackEnd` / `onPlaybackError` callbacks — which hold **one** callback each. Subscribe to the `audio.playback.*` events on the agent rather than registering on the provider directly; registering on the provider replaces the SDK's handler and stops both the events and the playback metrics.
+
+**Exporting to tracing systems:** timestamps are absolute epoch milliseconds (the same clock as every SDK event), so each phase converts directly to a span — no clock translation needed. An OpenTelemetry example:
+
+```typescript
+agent.on('turn.metrics', ({ turnId, timestamps: t, durations }) => {
+  const tracer = trace.getTracer('composite-voice');
+  const turn = tracer.startSpan('voice.turn', { startTime: t.sttFinal });
+  if (t.llmStart && t.llmComplete) {
+    tracer
+      .startSpan('voice.llm', { startTime: t.llmStart }, trace.setSpan(context.active(), turn))
+      .end(t.llmComplete);
+  }
+  if (t.ttsFirstAudio && t.playbackEnd) {
+    tracer
+      .startSpan('voice.tts', { startTime: t.ttsFirstAudio }, trace.setSpan(context.active(), turn))
+      .end(t.playbackEnd);
+  }
+  turn.setAttributes({ 'voice.turn_id': turnId, 'voice.voice_to_voice_ms': durations.voiceToVoice ?? -1 });
+  turn.end(t.turnEnd);
+});
+```
+
+Related observability hooks: `queue.stats` / `queue.overflow` for pipeline buffering health, and `audio.playback.start` / `audio.playback.end` for raw playback boundaries.
 
 ---
 

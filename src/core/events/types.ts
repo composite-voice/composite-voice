@@ -11,6 +11,7 @@
  * - **Agent events** (`agent.*`) - Agent lifecycle and state changes
  * - **Audio events** (`audio.*`) - Microphone capture and audio playback status
  * - **Queue events** (`queue.*`) - Audio buffer queue overflow and stats
+ * - **Turn events** (`turn.*`) - Per-turn latency metrics
  *
  * Subscribe to events using the `on()` method on a CompositeVoice instance.
  * All event listeners receive a typed event object extending {@link BaseEvent}.
@@ -38,6 +39,7 @@
  */
 
 import type { AudioChunk, AudioMetadata } from '../types/audio';
+import type { TurnMetricsSummary } from '../pipeline/TurnMetrics';
 
 /**
  * The possible states of the CompositeVoice agent.
@@ -952,6 +954,52 @@ export interface QueueStatsEvent extends BaseEvent {
 export type QueueEvent = QueueOverflowEvent | QueueStatsEvent;
 
 // ---------------------------------------------------------------------------
+// Turn events
+// ---------------------------------------------------------------------------
+
+/**
+ * Emitted once per conversation turn with the turn's latency breakdown.
+ *
+ * @remarks
+ * Captures the timing of every pipeline stage for one turn — STT final →
+ * LLM first token → TTS first audio → playback start — as both absolute
+ * timestamps and derived durations. Use it to tune the eager pipeline
+ * (`durations.sttFinalToFirstToken` goes negative when a speculative
+ * generation was adopted) and to compare provider choices on real traffic.
+ *
+ * Timestamps are epoch milliseconds, so each phase maps directly onto a
+ * tracing span (OpenTelemetry or otherwise) without clock translation.
+ *
+ * Interrupted turns (barge-in, `stopSpeaking()`, pipeline errors) are also
+ * reported, with `interrupted: true` and whatever marks were captured
+ * before the interruption.
+ *
+ * @example
+ * ```typescript
+ * agent.on('turn.metrics', (event) => {
+ *   const { voiceToVoice, sttFinalToFirstToken } = event.durations;
+ *   console.log(`turn ${event.turnId}: ${voiceToVoice}ms voice-to-voice`);
+ *   if (event.eagerUsed) {
+ *     console.log(`eager pipeline saved ${-sttFinalToFirstToken!}ms`);
+ *   }
+ * });
+ * ```
+ *
+ * @see {@link TurnMetricsSummary} for field documentation
+ */
+export interface TurnMetricsEvent extends BaseEvent, TurnMetricsSummary {
+  /** Discriminant for this event type. */
+  type: 'turn.metrics';
+}
+
+/**
+ * Union of all turn-level events.
+ *
+ * @see {@link TurnMetricsEvent}
+ */
+export type TurnEvent = TurnMetricsEvent;
+
+// ---------------------------------------------------------------------------
 // Composite types
 // ---------------------------------------------------------------------------
 
@@ -993,7 +1041,8 @@ export type CompositeVoiceEvent =
   | TTSEvent
   | AgentEvent
   | AudioEvent
-  | QueueEvent;
+  | QueueEvent
+  | TurnEvent;
 
 /**
  * String union of all possible event type identifiers.
@@ -1138,4 +1187,7 @@ export interface EventListenerMap {
 
   /** Listener for {@link QueueStatsEvent}. */
   'queue.stats': EventListener<QueueStatsEvent>;
+
+  /** Listener for {@link TurnMetricsEvent}. */
+  'turn.metrics': EventListener<TurnMetricsEvent>;
 }
