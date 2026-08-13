@@ -535,4 +535,27 @@ describe('configureSTTFromMetadata', () => {
       expect(stt.config).toEqual({ language: 'en-US' });
     });
   });
+
+  describe('self-configuring providers', () => {
+    it('passes metadata to configureInputFormat when present', () => {
+      const received: AudioMetadata[] = [];
+      const stt = {
+        type: 'websocket' as const,
+        roles: ['stt', 'llm', 'tts'] as const,
+        config: {},
+        configureInputFormat: (metadata: AudioMetadata) => {
+          received.push(metadata);
+        },
+        async initialize() {},
+        async dispose() {},
+        isReady() {
+          return true;
+        },
+      };
+
+      configureSTTFromMetadata(stt, defaultMetadata);
+
+      expect(received).toEqual([defaultMetadata]);
+    });
+  });
 });

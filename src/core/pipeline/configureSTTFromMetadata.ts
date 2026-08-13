@@ -11,6 +11,8 @@
  * explicitly set.
  *
  * Supported STT providers:
+ * - Anything exposing `configureInputFormat(metadata)` (all agent providers)
+ *   — the provider decides what to do with the format itself
  * - **DeepgramSTT** / **DeepgramFlux** — `config.options.encoding`,
  *   `config.options.sampleRate`, `config.options.channels`
  * - **AssemblyAISTT** — `config.sampleRate`
@@ -101,6 +103,20 @@ interface ConfigurableSTT {
 }
 
 /**
+ * A provider that accepts the input format directly instead of having its
+ * config fields filled in by class-name detection.
+ *
+ * @remarks
+ * {@link BaseAgentProvider} declares `configureInputFormat`, so every agent
+ * provider matches this shape.
+ *
+ * @internal
+ */
+interface SelfConfiguringSTT {
+  configureInputFormat?: (metadata: AudioMetadata) => void;
+}
+
+/**
  * Auto-configures an STT provider's audio format settings from input metadata.
  *
  * @remarks
@@ -117,6 +133,7 @@ interface ConfigurableSTT {
  * - Only sets fields that are currently `undefined` — never overwrites
  *   user-specified values.
  * - Fallback chains are unwrapped so every member is configured.
+ * - Providers exposing `configureInputFormat` receive the metadata verbatim.
  * - NativeSTT and unknown providers are no-ops.
  *
  * @param stt - The STT provider to auto-configure. Must have a public
@@ -168,6 +185,14 @@ export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetad
 
   const providerName = stt.constructor?.name ?? '';
   const configurable = stt as unknown as ConfigurableSTT;
+
+  // Providers that handle the format themselves (agent providers) get the
+  // metadata verbatim rather than having config fields poked from outside.
+  const selfConfiguring = stt as unknown as SelfConfiguringSTT;
+  if (typeof selfConfiguring.configureInputFormat === 'function') {
+    selfConfiguring.configureInputFormat(metadata);
+    return;
+  }
 
   switch (providerName) {
     case 'DeepgramSTT':

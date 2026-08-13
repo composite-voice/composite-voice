@@ -235,6 +235,20 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
         Authorization: `Bearer ${config.geminiApiKey}`,
       },
     });
+
+    // The Gemini Live API (used by GeminiLiveAgent) upgrades to a WebSocket
+    // on the base generativelanguage host and authenticates via the `key`
+    // query parameter — the upgrade request does not support auth headers
+    // from browsers, and Google accepts the key in the URL.
+    routes.push({
+      provider: 'gemini-live',
+      type: 'websocket',
+      targetBase: 'wss://generativelanguage.googleapis.com',
+      authHeaders: {},
+      authQuery: {
+        key: config.geminiApiKey,
+      },
+    });
   }
 
   // Deepgram Agent API uses a separate host (agent.deepgram.com)

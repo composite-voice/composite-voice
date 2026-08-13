@@ -321,6 +321,27 @@ export type {
   ThinkProvider,
   SpeakProvider,
 } from './providers/agent/index';
+export { OpenAIRealtimeAgent } from './providers/agent/index';
+export type {
+  OpenAIRealtimeAgentConfig,
+  OpenAIRealtimeAgentEvent,
+  RealtimeAgentTurnDetection,
+  RealtimeAgentTool,
+  RealtimeAgentFunctionCall,
+} from './providers/agent/index';
+export { GeminiLiveAgent } from './providers/agent/index';
+export type {
+  GeminiLiveAgentConfig,
+  GeminiLiveAgentEvent,
+  GeminiLiveFunctionDeclaration,
+  GeminiLiveFunctionCall,
+} from './providers/agent/index';
+export { ElevenLabsAgent } from './providers/agent/index';
+export type {
+  ElevenLabsAgentConfig,
+  ElevenLabsAgentEvent,
+  ElevenLabsClientToolCall,
+} from './providers/agent/index';
 
 // Built-in providers - Input
 export { MicrophoneInput } from './providers/input/index';

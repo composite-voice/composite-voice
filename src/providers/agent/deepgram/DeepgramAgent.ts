@@ -151,11 +151,19 @@ export class DeepgramAgent extends BaseAgentProvider {
     // Connection in progress — piggyback
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       if (!this.settingsApplied) {
+        // Chain onto the in-flight handshake: whichever way it settles, both
+        // this caller and the original one see the same outcome.
         await new Promise<void>((resolve, reject) => {
-          const prev = this.connectResolve;
-          this.connectReject = (err) => { prev?.(); reject(err); };
-          const prevR = this.connectReject;
-          this.connectResolve = () => { prevR?.(new Error('superseded')); resolve(); };
+          const prevResolve = this.connectResolve;
+          const prevReject = this.connectReject;
+          this.connectResolve = () => {
+            prevResolve?.();
+            resolve();
+          };
+          this.connectReject = (err) => {
+            prevReject?.(err);
+            reject(err);
+          };
         });
       }
       return;
@@ -453,6 +461,9 @@ export class DeepgramAgent extends BaseAgentProvider {
         break;
 
       case 'UserStartedSpeaking':
+        // A new utterance begins — drop any response text left unconsumed by
+        // the turn this speech is interrupting.
+        this.clearBufferedAssistantText();
         this.emitEvent({ type: 'user_started_speaking' });
         break;
 
