@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1](https://github.com/composite-voice/composite-voice/compare/composite-voice-v0.2.0...composite-voice-v0.2.1) (2026-08-14)
+
+
+### Features
+
+* **agent:** OpenAI Realtime, Gemini Live, and ElevenLabs agent providers ([#92](https://github.com/composite-voice/composite-voice/issues/92)) ([69411e4](https://github.com/composite-voice/composite-voice/commit/69411e4ec02e06524b776e670907e9781aff490b))
+* auto-detect audio format in BufferInput ([#95](https://github.com/composite-voice/composite-voice/issues/95)) ([9e92388](https://github.com/composite-voice/composite-voice/commit/9e923889de9d53159835ad28658e5c019114c9ac))
+* guardrails — pluggable async filters between LLM output and TTS ([#96](https://github.com/composite-voice/composite-voice/issues/96)) ([ce85abd](https://github.com/composite-voice/composite-voice/commit/ce85abde83e72443bbb539abd2530c6bf0230749))
+
 ## [0.2.0](https://github.com/composite-voice/composite-voice/compare/composite-voice-v0.1.2...composite-voice-v0.2.0) (2026-08-03)
 
 
