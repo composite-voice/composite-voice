@@ -1640,11 +1640,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         if (isRestTTS(tts)) {
           await this.processTTS(fullResponse, activeSignal);
         } else if (isLiveTTS(tts)) {
-          // Flush whatever the guardrail stream is still holding — the tail of
-          // the last sentence in streaming mode, the whole response in
-          // buffered mode — before asking the provider to finalize.
-          if (guardStream) await guardStream.flush();
-          await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullResponse);
+          await this.flushAndFinalizeLiveTTS(guardStream, fullResponse);
         }
       }
 
@@ -1962,6 +1958,41 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
       this.emitAgentError(error as Error, `TTS (${ttsName})`);
       this.turnMetrics.abortTurn();
     }
+  }
+
+  /**
+   * Flushes the guardrail stream, if any, then finalizes Live TTS with the
+   * text that actually reached the provider.
+   *
+   * @remarks
+   * The flush releases whatever the stream is still holding — the tail of the
+   * last sentence in streaming mode, the whole response in buffered mode.
+   * When a guardrail blocked the utterance and nothing reached the provider
+   * since the last finalize, there is no audio to wait for: finalizing would
+   * only emit a spurious empty `tts.start` and cycle playback state, so the
+   * call is skipped — the Live counterpart of the suppression in {@link
+   * CompositeVoice.processTTS | processTTS}.
+   *
+   * @param guardStream - The generation's guardrail stream, or `null` when
+   *   guardrails are not configured.
+   * @param fallbackText - Text for the `tts.start` payload when there is no
+   *   guardrail stream — the raw LLM response.
+   */
+  private async flushAndFinalizeLiveTTS(
+    guardStream: GuardrailStream | null,
+    fallbackText: string
+  ): Promise<void> {
+    if (!guardStream) {
+      await this.finalizeLiveTTS(fallbackText);
+      return;
+    }
+    await guardStream.flush();
+    const spoken = guardStream.takeSpokenText();
+    if (guardStream.isBlocked && !spoken) {
+      this.logger.debug('Live TTS suppressed by guardrails');
+      return;
+    }
+    await this.finalizeLiveTTS(spoken);
   }
 
   /**
@@ -2650,8 +2681,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
         if (isRestTTS(tts)) {
           await this.processTTS(fullResponse, llmController.signal);
         } else if (isLiveTTS(tts)) {
-          if (guardStream) await guardStream.flush();
-          await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullResponse);
+          await this.flushAndFinalizeLiveTTS(guardStream, fullResponse);
         }
       }
 
@@ -2766,8 +2796,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
           // Finalize TTS for any text emitted before the tool call
           if (fullText.trim() && !this._outputMuted) {
             if (isLiveTTS(tts)) {
-              if (guardStream) await guardStream.flush();
-              await this.finalizeLiveTTS(guardStream ? guardStream.takeSpokenText() : fullText);
+              await this.flushAndFinalizeLiveTTS(guardStream, fullText);
             } else if (isRestTTS(tts)) {
               await this.processTTS(fullText, signal);
             }
@@ -2838,10 +2867,7 @@ export class CompositeVoice<TProviders extends readonly BaseProvider[] = BasePro
                   // Finalize any intermediate text
                   if (fullText.trim() && !this._outputMuted) {
                     if (isLiveTTS(tts)) {
-                      if (guardStream) await guardStream.flush();
-                      await this.finalizeLiveTTS(
-                        guardStream ? guardStream.takeSpokenText() : fullText
-                      );
+                      await this.flushAndFinalizeLiveTTS(guardStream, fullText);
                     } else if (isRestTTS(tts)) {
                       await this.processTTS(fullText, signal);
                     }

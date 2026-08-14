@@ -26,8 +26,9 @@ export interface ModerationVerdict {
    * Sanitized text to speak instead of the original.
    *
    * @remarks
-   * When present on a flagged verdict, this is spoken and the utterance is not
-   * blocked — the escape hatch for classifiers that rewrite rather than reject.
+   * When present and non-empty on a flagged verdict, this is spoken and the
+   * utterance is not blocked — the escape hatch for classifiers that rewrite
+   * rather than reject. An empty string blocks the utterance instead.
    */
   text?: string;
 }
@@ -55,7 +56,7 @@ export interface ModerationOptions {
    * @remarks
    * When set, flagged text is replaced rather than blocked, so the agent says
    * something ("I can't help with that") instead of falling silent. Ignored
-   * when the verdict carries its own `text`.
+   * when the verdict carries its own non-empty `text`.
    */
   replacement?: string;
 
@@ -146,8 +147,10 @@ export function createModerationGuardrail(options: ModerationOptions): Guardrail
         ? `flagged: ${verdict.categories.join(', ')}`
         : 'flagged by moderation';
 
+      // An empty string is no substitute — speaking "" is indistinguishable
+      // from a block, so make it one and keep the reason attached.
       const substitute = verdict.text ?? options.replacement;
-      if (substitute !== undefined) {
+      if (substitute) {
         return { text: substitute, reason, metadata };
       }
 

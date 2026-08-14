@@ -392,6 +392,13 @@ describe('createModerationGuardrail', () => {
     expect(await filter(guardrail, 'bad')).toBe('cleaned up');
   });
 
+  it('blocks when the only substitute is an empty string', async () => {
+    const guardrail = createModerationGuardrail({
+      moderate: () => ({ flagged: true, text: '' }),
+    });
+    expect(await run(guardrail, 'bad')).toMatchObject({ block: true });
+  });
+
   it('awaits an async classifier', async () => {
     const guardrail = createModerationGuardrail({
       moderate: async () => {

@@ -245,6 +245,12 @@ export function createPatternRedactionGuardrail(options: PatternRedactionOptions
  * streaming boundaries — an email address arriving in three chunks is still
  * matched as one string.
  *
+ * Redaction changes only what is spoken. The `guardrail.applied` event still
+ * carries the pre-redaction text in its `original` field, and the raw model
+ * output stays on `llm.chunk` and `llm.complete` — so the PII survives in
+ * those payloads for auditing. Do not log them verbatim, and do not attach a
+ * catch-all listener that forwards every event to a log sink.
+ *
  * @example
  * ```typescript
  * const agent = new CompositeVoice({

@@ -1,3 +1,14 @@
+/**
+ * Guardrails example — pluggable async filters between LLM output and TTS.
+ *
+ * @remarks
+ * Demonstrates the four built-in guardrail factories (blocklist, PII
+ * redaction, pronunciation, moderation), the `streaming` vs `buffered`
+ * trade-off, and the `guardrail.*` events, rendered as a live activity log.
+ *
+ * @packageDocumentation
+ */
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   CompositeVoice,
@@ -17,7 +28,36 @@ import { ExampleShell } from '../../_shared/ExampleShell';
 import { VoiceAgent } from '../../_shared/VoiceAgent';
 import { Card, CardBody, CardTitle, Badge, Label, Alert, CodeBlock } from 'composite-voice-ui';
 
-/** One entry in the guardrail activity log. */
+/**
+ * One entry in the guardrail activity log.
+ *
+ * @remarks
+ * Each entry mirrors one `guardrail.*` event emitted while the agent speaks:
+ *
+ * ```text
+ * LLM chunks ──▶ [ guardrail chain ] ──▶ TTS
+ *                        │
+ *                        ├─ guardrail.applied ─▶ { kind: 'applied' }
+ *                        ├─ guardrail.blocked ─▶ { kind: 'blocked' }
+ *                        └─ guardrail.error   ─▶ { kind: 'error' }
+ * ```
+ *
+ * `detail` is display text derived from the event — never the pre-filter
+ * `original`, which for PII redaction still contains the PII.
+ *
+ * @example
+ * ```typescript
+ * const entry: LogEntry = {
+ *   kind: 'applied',
+ *   guardrail: 'pii-redaction',
+ *   stage: 'chunk',
+ *   detail: 'redacted email → "reach us at an email address"',
+ *   at: Date.now(),
+ * };
+ * ```
+ *
+ * @see {@link App} for the event handlers that append entries.
+ */
 interface LogEntry {
   kind: 'applied' | 'blocked' | 'error';
   guardrail: string;
@@ -121,7 +161,9 @@ export default function App() {
           kind: 'applied',
           guardrail: e.guardrail,
           stage: e.stage,
-          detail: `${e.original} → ${e.text}`,
+          // Deliberately not e.original — that is the text *before* the
+          // guardrail ran, so for PII redaction it still contains the PII.
+          detail: e.reason ? `${e.reason} → ${e.text}` : `rewrote to: ${e.text}`,
           at: e.timestamp,
         },
       ])
@@ -350,8 +392,9 @@ ${[
   },
 });
 
-// Guardrails change only what is spoken — llm.complete stays raw
-agent.on('guardrail.applied', (e) => console.log(e.guardrail, e.original, '→', e.text));
+// Guardrails change only what is spoken — llm.complete stays raw.
+// e.original holds the pre-filter text (PII included) — keep it out of logs.
+agent.on('guardrail.applied', (e) => console.log(e.guardrail, e.reason, '→', e.text));
 agent.on('guardrail.blocked', (e) => console.warn(e.guardrail, e.reason));`}
               />
             </div>
