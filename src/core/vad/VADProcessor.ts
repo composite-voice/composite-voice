@@ -142,7 +142,8 @@ export class VADProcessor {
   private speaking = false;
   private consecutiveSpeechFrames = 0;
   private consecutiveSilenceFrames = 0;
-  private speechStartedAt = 0;
+  /** Scored frames in the open speech segment, including the trailing silence window. */
+  private segmentFrames = 0;
   private thresholdOverride: number | null = null;
 
   private speechStartCallbacks: Array<(info: VADSpeechStartInfo) => void> = [];
@@ -294,7 +295,7 @@ export class VADProcessor {
     this.speaking = false;
     this.consecutiveSpeechFrames = 0;
     this.consecutiveSilenceFrames = 0;
-    this.speechStartedAt = 0;
+    this.segmentFrames = 0;
     this.engine.reset();
   }
 
@@ -409,7 +410,7 @@ export class VADProcessor {
         const speechMs = this.consecutiveSpeechFrames * frameMs;
         if (speechMs >= this.options.minSpeechDurationMs) {
           this.speaking = true;
-          this.speechStartedAt = Date.now() - speechMs;
+          this.segmentFrames = this.consecutiveSpeechFrames;
           this.consecutiveSilenceFrames = 0;
           for (const callback of this.speechStartCallbacks) {
             try {
@@ -425,17 +426,21 @@ export class VADProcessor {
       return;
     }
 
-    // Speaking — look for sustained silence below the exit threshold
+    // Speaking — count every scored frame so duration is audio time, not wall-clock.
+    this.segmentFrames++;
     if (probability < exitThreshold) {
       this.consecutiveSilenceFrames++;
       if (this.consecutiveSilenceFrames * frameMs >= this.options.silenceDurationMs) {
         // Discount the silence window we just waited out — the segment
         // stopped when the silence began, not when it was confirmed.
-        const silenceMs = this.consecutiveSilenceFrames * frameMs;
-        const durationMs = Math.max(0, Math.round(Date.now() - this.speechStartedAt - silenceMs));
+        const durationMs = Math.max(
+          0,
+          Math.round((this.segmentFrames - this.consecutiveSilenceFrames) * frameMs)
+        );
         this.speaking = false;
         this.consecutiveSpeechFrames = 0;
         this.consecutiveSilenceFrames = 0;
+        this.segmentFrames = 0;
         for (const callback of this.speechEndCallbacks) {
           try {
             callback({ durationMs });

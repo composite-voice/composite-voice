@@ -228,6 +228,25 @@ describe('SileroVAD', () => {
 
       expect(await vad.process(frameOf(0))).toBe(1);
     });
+
+    it('rejects a run that omits the output tensor', async () => {
+      const fake = makeFakeOrt('v5', [0.5]);
+      const brokenOrt: OrtLike = {
+        ...fake.ort,
+        InferenceSession: {
+          create: async () => ({
+            inputNames: ['input', 'state', 'sr'],
+            run: async () => ({
+              stateN: { data: new Float32Array(2 * 1 * 128) },
+            }),
+          }),
+        },
+      };
+      const vad = new SileroVAD({ ort: brokenOrt });
+      await vad.initialize();
+
+      await expect(vad.process(frameOf(0))).rejects.toThrow(/output tensor "output" is missing/);
+    });
   });
 
   it('discards recurrent state from an inference that reset() interrupted', async () => {

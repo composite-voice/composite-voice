@@ -253,35 +253,19 @@ describe('VADProcessor', () => {
     });
 
     it('reports speech duration without the trailing silence window', async () => {
-      // Advance the clock one frame (32 ms) per scored frame, so the reported
-      // duration can be checked against a known real-time timeline.
-      let clock = 0;
-      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => clock);
+      const engine = new FakeEngine();
+      // 2 speech frames (64 ms of speech), then 2 silence frames to confirm.
+      engine.probabilities = [0.9, 0.9, 0.1, 0.1];
+      const processor = makeProcessor(engine);
+      const ends: number[] = [];
+      processor.onSpeechEnd(({ durationMs }) => ends.push(durationMs));
 
-      try {
-        class ClockedEngine extends FakeEngine {
-          override async process(frame: Float32Array): Promise<number> {
-            clock += 32;
-            return super.process(frame);
-          }
-        }
+      for (let i = 0; i < 4; i++) processor.push(pcmChunk(512));
+      await processor.flush();
 
-        const engine = new ClockedEngine();
-        // 2 speech frames (64 ms of speech), then 2 silence frames to confirm.
-        engine.probabilities = [0.9, 0.9, 0.1, 0.1];
-        const processor = makeProcessor(engine);
-        const ends: number[] = [];
-        processor.onSpeechEnd(({ durationMs }) => ends.push(durationMs));
-
-        for (let i = 0; i < 4; i++) processor.push(pcmChunk(512));
-        await processor.flush();
-
-        // Speech ran 0–64 ms; the segment closed at 128 ms after the 64 ms
-        // silence window. Reporting 128 would count the silence as speech.
-        expect(ends).toEqual([64]);
-      } finally {
-        nowSpy.mockRestore();
-      }
+      // Four scored frames, minus the two-frame silence window that closed
+      // the segment: 2 × 32 ms. Reporting 128 would count the silence as speech.
+      expect(ends).toEqual([64]);
     });
 
     it('keeps the segment open through mid-sentence dips (hysteresis band)', async () => {

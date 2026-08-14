@@ -275,8 +275,11 @@ export class SileroVAD implements VADEngine {
       }
     }
 
-    const output = results.output ?? results[Object.keys(results)[0] ?? ''];
-    const probability = Number(output?.data[0] ?? 0);
+    const output = results.output;
+    if (!output) {
+      throw new Error('SileroVAD: model output tensor "output" is missing');
+    }
+    const probability = Number(output.data[0] ?? 0);
     return Math.min(1, Math.max(0, probability));
   }
 
