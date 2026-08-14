@@ -333,6 +333,139 @@ export interface EagerLLMConfig {
 }
 
 /**
+ * Configuration for local voice activity detection.
+ *
+ * @remarks
+ * When enabled, a local VAD model (Silero by default, running on ONNX
+ * Runtime) scores the microphone audio directly, independent of the STT
+ * provider. This gives the pipeline:
+ *
+ * - **Provider-independent barge-in** — playback is interrupted as soon as
+ *   sustained local speech is detected, without waiting for the STT
+ *   provider to return text.
+ * - **False-barge-in resistance** — a higher
+ *   {@link VADConfig.bargeInThreshold | bargeInThreshold} applies while
+ *   the agent is speaking, so TTS echo leaking into the microphone has to
+ *   clear a higher bar; {@link VADConfig.minSpeechDurationMs} debounces
+ *   transient noise.
+ * - **Configurable end-of-turn sensitivity** —
+ *   {@link VADConfig.silenceDurationMs} controls how much silence ends a
+ *   speech segment (`vad.speechEnd`).
+ *
+ * Requires the `onnxruntime-web` (browser) or `onnxruntime-node` (server)
+ * optional peer dependency unless a custom {@link VADConfig.engine} is
+ * supplied. Only available when the input provider is separate from the
+ * STT provider (multi-role inputs like NativeSTT manage their own
+ * microphone, so the SDK never sees the raw audio).
+ *
+ * @example
+ * ```typescript
+ * const agent = new CompositeVoice({
+ *   providers: [...],
+ *   vad: {
+ *     enabled: true,
+ *     modelUrl: '/models/silero_vad_v5.onnx',
+ *     bargeIn: true,
+ *     silenceDurationMs: 600,
+ *   },
+ * });
+ * agent.on('vad.speechStart', ({ probability }) => showSpeakingIndicator());
+ * agent.on('vad.speechEnd', ({ durationMs }) => hideSpeakingIndicator());
+ * ```
+ *
+ * @see {@link CompositeVoiceConfig.vad} for where this is used
+ * @see {@link TurnTakingConfig} for the complementary echo-avoidance system
+ */
+export interface VADConfig {
+  /**
+   * Whether local VAD is active.
+   *
+   * @defaultValue true (when a `vad` config object is provided)
+   */
+  enabled?: boolean;
+
+  /**
+   * A custom VAD engine implementation.
+   *
+   * @remarks
+   * Defaults to the built-in Silero engine. Supply your own
+   * {@link VADEngine} to use a different model or to stub detection in
+   * tests.
+   */
+  engine?: import('../vad/types').VADEngine;
+
+  /**
+   * Where to load the Silero model from (URL, or filesystem path in Node).
+   *
+   * @remarks
+   * Defaults to a pinned public CDN copy — self-host for production.
+   * Ignored when {@link VADConfig.engine} is supplied.
+   */
+  modelUrl?: string;
+
+  /**
+   * Which ONNX Runtime package the built-in engine loads.
+   *
+   * @defaultValue `'auto'` (browser → `onnxruntime-web`, otherwise `onnxruntime-node`)
+   */
+  runtime?: 'auto' | 'web' | 'node';
+
+  /**
+   * Speech-probability threshold in [0, 1] while the agent is not speaking.
+   *
+   * @defaultValue 0.5
+   */
+  threshold?: number;
+
+  /**
+   * Speech-probability threshold applied while the agent is speaking.
+   *
+   * @remarks
+   * The classic false-barge-in bug is the agent's own TTS audio echoing
+   * into the microphone and interrupting itself. Requiring a higher
+   * probability during playback filters that echo while still letting a
+   * real interjection through.
+   *
+   * @defaultValue 0.75
+   */
+  bargeInThreshold?: number;
+
+  /**
+   * Consecutive speech required before a segment starts, in ms.
+   *
+   * @remarks
+   * Debounces transient noise (door slams, keyboard clatter).
+   *
+   * @defaultValue 200
+   */
+  minSpeechDurationMs?: number;
+
+  /**
+   * Silence required before a segment ends, in ms.
+   *
+   * @remarks
+   * The end-of-turn sensitivity knob: lower values end turns faster
+   * (snappier, more likely to cut off slow speakers), higher values are
+   * more patient.
+   *
+   * @defaultValue 800
+   */
+  silenceDurationMs?: number;
+
+  /**
+   * Whether detected speech triggers barge-in while the agent is speaking
+   * or thinking.
+   *
+   * @remarks
+   * When `false`, VAD only emits `vad.speechStart` / `vad.speechEnd`
+   * events and leaves interruption to the STT provider's speech events.
+   *
+   * @defaultValue true
+   */
+  bargeIn?: boolean;
+}
+
+/**
  * Configuration for multi-turn conversation history.
  *
  * @remarks
@@ -592,6 +725,17 @@ export interface CompositeVoiceConfig<TProviders extends readonly BaseProvider[]
    * @see {@link EagerLLMConfig}
    */
   eagerLLM?: EagerLLMConfig;
+
+  /**
+   * Local voice-activity-detection configuration.
+   *
+   * @remarks
+   * When provided (and not explicitly disabled), a local VAD model scores
+   * the input audio for provider-independent barge-in and speech events.
+   *
+   * @see {@link VADConfig}
+   */
+  vad?: VADConfig;
 
   /**
    * Pipeline tuning options.
