@@ -573,6 +573,146 @@ export type TTSEvent =
   | TTSErrorEvent;
 
 // ---------------------------------------------------------------------------
+// Guardrail events
+// ---------------------------------------------------------------------------
+
+/**
+ * Emitted when a guardrail rewrites text on its way to the TTS provider.
+ *
+ * @remarks
+ * The `llm.chunk` and `llm.complete` events still carry the raw model output —
+ * guardrails only change what is spoken. Subscribe here when the UI should
+ * show the redacted text instead, or to audit what was rewritten.
+ *
+ * One event is emitted per guardrail that actually changed the text. A
+ * guardrail that passes text through unchanged is silent.
+ *
+ * @example
+ * ```typescript
+ * agent.on('guardrail.applied', (event) => {
+ *   console.log(`${event.guardrail} rewrote ${event.stage} text: ${event.reason}`);
+ * });
+ * ```
+ *
+ * @see {@link GuardrailBlockedEvent} for suppressed text
+ * @see {@link GuardrailEvent} for all guardrail event types
+ */
+export interface GuardrailAppliedEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'guardrail.applied';
+
+  /** Name of the guardrail that rewrote the text. */
+  guardrail: string;
+
+  /**
+   * Pipeline point at which it ran.
+   *
+   * @remarks
+   * `'chunk'` for text filtered while streaming to a Live TTS provider,
+   * `'final'` for a complete utterance.
+   */
+  stage: 'chunk' | 'final';
+
+  /** Text the guardrail received. */
+  original: string;
+
+  /** Text the guardrail produced, which is what gets synthesized. */
+  text: string;
+
+  /** Explanation supplied by the guardrail, if any. */
+  reason?: string;
+
+  /** Detail supplied by the guardrail (matched categories, counts, scores). */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Emitted when a guardrail suppresses text instead of speaking it.
+ *
+ * @remarks
+ * At the `'final'` stage nothing is synthesized for the utterance. At the
+ * `'chunk'` stage the current segment and every later segment of the same
+ * utterance are dropped — text already handed to the TTS provider cannot be
+ * recalled. Use `mode: 'buffered'` when a block must be absolute.
+ *
+ * @example
+ * ```typescript
+ * agent.on('guardrail.blocked', (event) => {
+ *   showNotice(`Response withheld by ${event.guardrail}: ${event.reason}`);
+ * });
+ * ```
+ *
+ * @see {@link GuardrailEvent} for all guardrail event types
+ */
+export interface GuardrailBlockedEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'guardrail.blocked';
+
+  /** Name of the guardrail that blocked the text. */
+  guardrail: string;
+
+  /** Pipeline point at which it ran. */
+  stage: 'chunk' | 'final';
+
+  /** Text that was suppressed. */
+  original: string;
+
+  /** Explanation supplied by the guardrail, if any. */
+  reason?: string;
+
+  /** Detail supplied by the guardrail (matched categories, counts, scores). */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Emitted when a guardrail throws or exceeds its timeout.
+ *
+ * @remarks
+ * The {@link GuardrailErrorEvent.policy | policy} field reports how the SDK
+ * handled it: `'passthrough'` kept the text and skipped the guardrail,
+ * `'block'` suppressed the text. Treat these events as an alert — a guardrail
+ * that fails silently is a guardrail that is not protecting anything.
+ *
+ * @example
+ * ```typescript
+ * agent.on('guardrail.error', (event) => {
+ *   metrics.increment('guardrail.failure', { guardrail: event.guardrail });
+ * });
+ * ```
+ *
+ * @see {@link GuardrailEvent} for all guardrail event types
+ */
+export interface GuardrailErrorEvent extends BaseEvent {
+  /** Discriminant for this event type. */
+  type: 'guardrail.error';
+
+  /** Name of the guardrail that failed. */
+  guardrail: string;
+
+  /** Pipeline point at which it ran. */
+  stage: 'chunk' | 'final';
+
+  /** The error thrown, or a timeout error synthesized by the SDK. */
+  error: Error;
+
+  /** How the failure was handled, per the configured error policy. */
+  policy: 'passthrough' | 'block';
+}
+
+/**
+ * Union of all guardrail-related events.
+ *
+ * @remarks
+ * Use this type to handle any guardrail event generically, or subscribe to
+ * specific event types via the {@link EventListenerMap}.
+ *
+ * @see {@link GuardrailAppliedEvent}
+ * @see {@link GuardrailBlockedEvent}
+ * @see {@link GuardrailErrorEvent}
+ */
+export type GuardrailEvent = GuardrailAppliedEvent | GuardrailBlockedEvent | GuardrailErrorEvent;
+
+// ---------------------------------------------------------------------------
 // Agent lifecycle events
 // ---------------------------------------------------------------------------
 
@@ -1174,6 +1314,7 @@ export type VADEvent = VADSpeechStartEvent | VADSpeechEndEvent | VADBargeInEvent
  * @see {@link TranscriptionEvent}
  * @see {@link LLMEvent}
  * @see {@link TTSEvent}
+ * @see {@link GuardrailEvent}
  * @see {@link AgentEvent}
  * @see {@link AudioEvent}
  * @see {@link QueueEvent}
@@ -1185,6 +1326,7 @@ export type CompositeVoiceEvent =
   | TranscriptionEvent
   | LLMEvent
   | TTSEvent
+  | GuardrailEvent
   | AgentEvent
   | AudioEvent
   | QueueEvent
@@ -1302,6 +1444,15 @@ export interface EventListenerMap {
 
   /** Listener for {@link TTSErrorEvent}. */
   'tts.error': EventListener<TTSErrorEvent>;
+
+  /** Listener for {@link GuardrailAppliedEvent}. */
+  'guardrail.applied': EventListener<GuardrailAppliedEvent>;
+
+  /** Listener for {@link GuardrailBlockedEvent}. */
+  'guardrail.blocked': EventListener<GuardrailBlockedEvent>;
+
+  /** Listener for {@link GuardrailErrorEvent}. */
+  'guardrail.error': EventListener<GuardrailErrorEvent>;
 
   /** Listener for {@link AgentReadyEvent}. */
   'agent.ready': EventListener<AgentReadyEvent>;

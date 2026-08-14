@@ -17,6 +17,7 @@
 
 import type { AudioInputConfig, AudioOutputConfig } from './audio';
 import type { BaseProvider } from './providers';
+import type { GuardrailsConfig } from './guardrails';
 
 /**
  * Configuration for an {@link AudioBufferQueue} instance.
@@ -757,6 +758,31 @@ export interface CompositeVoiceConfig<TProviders extends readonly BaseProvider[]
      */
     maxPendingChunks?: number;
   };
+
+  /**
+   * Guardrails applied to LLM output before it reaches the TTS provider.
+   *
+   * @remarks
+   * A chain of pluggable async filters — moderation, PII redaction,
+   * pronunciation fixes — that can rewrite or suppress text on its way to
+   * speech:
+   *
+   * ```
+   * [LLM] → [Guardrails] → [TTS] → OutputQueue → [OutputProvider]
+   * ```
+   *
+   * Guardrails change only what is spoken. `llm.chunk` and `llm.complete`
+   * still carry the raw model output, so chat transcripts are unaffected;
+   * subscribe to `guardrail.applied` / `guardrail.blocked` to reflect the
+   * filtered text in a UI.
+   *
+   * Omit this field (or supply an empty `filters` array) and the guardrail
+   * code path is skipped entirely.
+   *
+   * @see {@link GuardrailsConfig}
+   * @see {@link Guardrail}
+   */
+  guardrails?: GuardrailsConfig;
 
   /**
    * Whether to enable automatic error recovery.

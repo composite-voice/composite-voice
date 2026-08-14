@@ -81,6 +81,15 @@ When `input` and `stt` are separate providers, an `AudioBufferQueue` buffers aud
 
 `AudioHeaderCache` caches audio container headers (WAV, OGG, MP3, etc.) so they can be re-injected after a WebSocket reconnection.
 
+### Guardrails (LLM → TTS)
+
+`config.guardrails` inserts a chain of pluggable async filters between the LLM and the TTS provider. `GuardrailPipeline` runs the chain; `GuardrailStream` is the per-utterance streaming wrapper for Live TTS. Guardrails only change what is _spoken_ — `llm.chunk` / `llm.complete` still carry raw model output.
+
+- **Two stages** — `'chunk'` (streaming to Live TTS) and `'final'` (whole utterance, REST TTS or buffered mode). `Guardrail.stages` restricts a filter to one.
+- **Sentence segmentation** — streaming text accumulates to the _last_ sentence boundary before filtering, so regex patterns are not split across chunks.
+- **Blocking asymmetry** — a `'final'` block suppresses the utterance; a `'chunk'` block only suppresses text not yet handed to the provider. `mode: 'buffered'` makes blocking absolute.
+- **Failure policy** — a guardrail that throws or exceeds `timeoutMs` is handled by `onError` (`'passthrough'` fails open, `'block'` fails closed) and never propagates.
+
 ## Source Structure
 
 ```
@@ -92,10 +101,12 @@ src/
 │   │   ├── roles.ts           # ProviderRole, ALL_PROVIDER_ROLES
 │   │   ├── providers.ts       # All provider interfaces (Base, STT, LLM, TTS, Input, Output)
 │   │   ├── config.ts          # CompositeVoiceConfig, AudioBufferQueueConfig
+│   │   ├── guardrails.ts      # Guardrail, GuardrailsConfig, GuardrailContext/Result
 │   │   └── audio.ts           # AudioChunk, AudioMetadata, AudioFormat
 │   ├── pipeline/
 │   │   ├── AudioBufferQueue.ts       # Bounded FIFO queue between pipeline stages
 │   │   ├── AudioHeaderCache.ts       # Header caching for reconnection
+│   │   ├── GuardrailPipeline.ts      # LLM→TTS async filter chain + streaming wrapper
 │   │   ├── resolveProviders.ts       # Maps provider array → ResolvedPipeline
 │   │   └── configureSTTFromMetadata.ts  # Auto-configures STT from input metadata
 │   ├── events/                # EventEmitter, typed event definitions
@@ -110,6 +121,7 @@ src/
 │   ├── agent/                 # Agent providers (single connection covers stt+llm+tts)
 │   │   └── deepgram/          # DeepgramAgent (Deepgram Voice Agent API)
 │   └── output/                # BrowserAudioOutput, NullOutput
+├── guardrails/                # Built-in LLM→TTS filters (redaction, pronunciation, blocklist, moderation)
 ├── proxy/                     # Server-side proxy adapters (Express, Next.js, Node)
 └── utils/                     # Logger, errors, audio utilities, format detection, WebSocket manager
 ```
@@ -126,6 +138,7 @@ src/
 - **TSDoc everywhere:** Module files start with `@packageDocumentation`; interfaces use `@remarks`, `@example`, `@see`, ASCII diagrams
 - **Agent provider — persistent connection:** `BaseAgentProvider.disconnect()` is a no-op; the single WebSocket stays open between turns so there is no reconnect overhead
 - **Agent provider — single WebSocket for stt+llm+tts:** Agent providers declare `roles: ['stt', 'llm', 'tts']` and cover all three middle pipeline slots through one connection; the client only sends raw audio and receives raw audio back
+- **Guardrail sink discipline:** all Live TTS text goes through `sendTextToLiveTTS()`, so backpressure only counts text that was actually sent — not text a guardrail dropped
 - **Agent provider — async iterable bridge:** `generateFromMessages()` returns an `AsyncIterable<string>` that blocks until the server pushes text; subclasses call `emitAssistantText()` / `markAudioDone()` to resolve the pending iterator
 
 ## Quality Gates

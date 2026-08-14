@@ -12,17 +12,24 @@ export class LLMTextRouter {
 
   constructor(
     private onVisual: (visual: string, spoken: string, accumulated: string) => void,
-    private onSpoken: (text: string) => void
+    private onSpoken: (text: string) => void | Promise<void>
   ) {}
 
-  /** Feed a raw LLM text chunk. Produces zero or more visual/spoken events in order. */
-  push(raw: string): void {
+  /**
+   * Feed a raw LLM text chunk. Produces zero or more visual/spoken events in order.
+   *
+   * @remarks
+   * `onSpoken` may be async — guardrail filtering and TTS backpressure both
+   * need to complete before the next segment is handed over — so each call is
+   * awaited to keep spoken text in order.
+   */
+  async push(raw: string): Promise<void> {
     this.accumulated += raw;
     const acc = this.accumulated;
 
     for (const { visual, spoken } of this.splitter.process(raw)) {
       if (visual) this.onVisual(visual, spoken, acc);
-      if (spoken) this.onSpoken(spoken);
+      if (spoken) await this.onSpoken(spoken);
     }
   }
 
