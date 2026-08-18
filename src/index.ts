@@ -242,6 +242,8 @@ export type {
   TranscribeSTTConfig,
   TranscribePartialResultsStability,
 } from './providers/stt/transcribe/index';
+export { SpekoSTT } from './providers/stt/speko/index';
+export type { SpekoSTTConfig } from './providers/stt/speko/index';
 
 // Built-in providers - LLM (OpenAI-compatible base class for custom providers)
 export { OpenAICompatibleLLM } from './providers/llm/openai-compatible/index';
@@ -339,6 +341,13 @@ export { AzureTTS } from './providers/tts/azure/index';
 export type { AzureTTSConfig, AzureTTSOutputFormat } from './providers/tts/azure/index';
 export { PollyTTS } from './providers/tts/polly/index';
 export type { PollyTTSConfig, PollyEngine, PollyOutputFormat } from './providers/tts/polly/index';
+export { SpekoTTS } from './providers/tts/speko/index';
+export type {
+  SpekoTTSConfig,
+  SpekoRouting,
+  SpekoRoutingObjective,
+  SpekoAudioEncoding,
+} from './providers/tts/speko/index';
 
 // Built-in providers - Agent (single-WebSocket STT+LLM+TTS)
 export { DeepgramAgent } from './providers/agent/index';

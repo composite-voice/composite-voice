@@ -32,6 +32,10 @@
  * - **TranscribeSTT** -- Connects to Amazon Transcribe's streaming STT via a
  *   SigV4-presigned WebSocket. Supports partial-results stabilization, custom
  *   vocabularies, and speaker partitioning.
+ * - **SpekoSTT** -- Connects to the Speko Relay voice-model router's streaming
+ *   STT via WebSocket (proxy required). Routes each session to the best
+ *   upstream STT provider by latency, quality, cost, or a balanced objective,
+ *   with automatic failover across healthy providers.
  *
  * @example
  * ```typescript
@@ -55,6 +59,7 @@
  * @see {@link GoogleSTT} for Google Cloud batch (REST) STT
  * @see {@link AzureSTT} for Microsoft Azure streaming STT
  * @see {@link TranscribeSTT} for Amazon Transcribe streaming STT
+ * @see {@link SpekoSTT} for Speko Relay routed streaming STT
  */
 
 export * from './native/index';
@@ -69,6 +74,7 @@ export * from './revai/index';
 export * from './google/index';
 export * from './azure/index';
 export * from './transcribe/index';
+export * from './speko/index';
 
 // Note: Additional providers (OpenAI) are available when peer dependencies are installed
 // Import them directly:

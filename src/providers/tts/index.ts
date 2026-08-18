@@ -43,6 +43,10 @@
  * - **PollyTTS** -- Connects to the Amazon Polly `SynthesizeSpeech` API (REST,
  *   SigV4-signed). Supports the neural, generative, long-form, and standard
  *   engines and multiple output formats (mp3, ogg_vorbis, ogg_opus, pcm).
+ * - **SpekoTTS** -- Connects to the Speko Relay voice-model router (REST).
+ *   Routes each request to the best upstream TTS provider by latency,
+ *   quality, cost, or a balanced objective, with explicit provider/model
+ *   pinning available. Outputs raw pcm_s16le or opus audio.
  *
  * @example
  * ```typescript
@@ -70,6 +74,7 @@
  * @see {@link GoogleTTS} for Google Cloud REST-based TTS
  * @see {@link AzureTTS} for Microsoft Azure REST-based TTS
  * @see {@link PollyTTS} for Amazon Polly REST-based TTS
+ * @see {@link SpekoTTS} for Speko Relay routed REST-based TTS
  */
 
 export * from './native/index';
@@ -87,3 +92,4 @@ export * from './fishaudio/index';
 export * from './google/index';
 export * from './azure/index';
 export * from './polly/index';
+export * from './speko/index';

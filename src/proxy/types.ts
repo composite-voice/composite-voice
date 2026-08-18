@@ -354,6 +354,21 @@ export interface CompositeVoiceProxyConfig {
   azureSpeechRegion?: string;
 
   /**
+   * Speko API key -- used for HTTP TTS and WebSocket STT proxying.
+   *
+   * @remarks
+   * When set, the proxy registers an HTTP route and a WebSocket route at
+   * `{pathPrefix}/speko` that forward to `https://relay.speko.dev` and
+   * `wss://relay.speko.dev` respectively. The `Authorization: Bearer` auth
+   * header is injected server-side, and WebSocket upgrades additionally get
+   * a freshly generated `Idempotency-Key` header per connection (the Speko
+   * Relay rejects upgrades without one, and browsers cannot set it).
+   *
+   * @defaultValue `undefined` (Speko proxying disabled)
+   */
+  spekoApiKey?: string;
+
+  /**
    * AWS credentials and region -- used for Amazon Polly (HTTP) and Amazon
    * Transcribe streaming (WebSocket) proxying.
    *

@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export interface ExampleConfig {
   port: number;
@@ -19,6 +20,7 @@ export interface ExampleConfig {
     elevenlabs?: boolean;
     assemblyai?: boolean;
     cartesia?: boolean;
+    speko?: boolean;
   };
 }
 
@@ -26,6 +28,11 @@ interface ProxyTarget {
   target: string;
   ws?: boolean;
   headerFn: (env: Record<string, string>) => Record<string, string>;
+  /**
+   * Extra headers generated fresh for every WebSocket upgrade (e.g. Speko's
+   * per-connection Idempotency-Key, which browsers cannot set themselves).
+   */
+  wsConnectionHeaderFn?: () => Record<string, string>;
 }
 
 const PROXY_TARGETS: Record<string, ProxyTarget> = {
@@ -89,14 +96,32 @@ const PROXY_TARGETS: Record<string, ProxyTarget> = {
     ws: true,
     headerFn: (env) => ({ Authorization: `Token ${env.DEEPGRAM_API_KEY ?? ''}` }),
   },
+  // Speko Relay serves REST TTS and streaming STT from the same host, so one
+  // entry proxies both. The target must be https (not wss) so plain HTTP
+  // requests use TLS; with `ws: true`, upgrades ride the same TLS target.
+  // HTTP requests carry the client-generated Idempotency-Key through;
+  // WebSocket upgrades get a fresh one per connection below.
+  speko: {
+    target: 'https://relay.speko.dev',
+    ws: true,
+    headerFn: (env) => ({ Authorization: `Bearer ${env.SPEKO_API_KEY ?? ''}` }),
+    wsConnectionHeaderFn: () => ({ 'Idempotency-Key': randomUUID() }),
+  },
 };
 
 // Node-only optional peer deps. The SDK reaches these through importPeerDep, which uses
 // literal import specifiers, so Vite's dep scanner follows them even though no browser
 // example ever constructs the providers that need them. Left alone, prebundling
 // @discordjs/voice pulls in @snazzah/davey's browser entry and fails to resolve its
-// wasm32-wasi binding. Excluded here and externalised for builds.
-const NODE_ONLY_PEER_DEPS = ['@discordjs/voice', '@discordjs/opus', 'prism-media', 'ws'];
+// wasm32-wasi binding, and onnxruntime-node (SileroVAD's Node backend) requires
+// .node native bindings esbuild cannot load. Excluded here and externalised for builds.
+const NODE_ONLY_PEER_DEPS = [
+  '@discordjs/voice',
+  '@discordjs/opus',
+  'prism-media',
+  'ws',
+  'onnxruntime-node',
+];
 
 export function createExampleConfig(config: ExampleConfig): UserConfig {
   const rootDir = path.resolve(__dirname, '../../');
@@ -155,6 +180,15 @@ function buildProxy(config: ExampleConfig, rootDir: string): Record<string, any>
               proxyReq.removeHeader('sec-ch-ua-mobile');
               proxyReq.removeHeader('sec-ch-ua-platform');
             });
+            if (target.wsConnectionHeaderFn) {
+              proxy.on('proxyReqWs', (proxyReq: any) => {
+                proxyReq.removeHeader('origin');
+                proxyReq.removeHeader('referer');
+                for (const [key, value] of Object.entries(target.wsConnectionHeaderFn!())) {
+                  proxyReq.setHeader(key, value);
+                }
+              });
+            }
           },
         };
       }

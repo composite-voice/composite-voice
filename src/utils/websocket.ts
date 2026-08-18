@@ -44,6 +44,14 @@ import { WebSocketError, TimeoutError } from './errors';
 import type { ReconnectionConfig } from '../core/types/config';
 import { Logger } from './logger';
 
+// WHATWG WebSocket readyState values, inlined so the manager does not depend
+// on a global `WebSocket` class existing (Node < 22 has none, and sockets may
+// come from the `ws` package when upgrade headers are configured).
+/** @internal */
+const READY_STATE_OPEN = 1;
+/** @internal */
+const READY_STATE_CLOSED = 3;
+
 /**
  * Enumeration of WebSocket connection states.
  *
@@ -104,6 +112,29 @@ export interface WebSocketManagerOptions {
    * @defaultValue `undefined`
    */
   protocols?: string | string[] | undefined;
+
+  /**
+   * HTTP headers to send on the WebSocket upgrade request — **server-side
+   * (Node.js) only**.
+   *
+   * @remarks
+   * Browsers cannot set headers on a WebSocket handshake, so when this option
+   * is set the manager connects through the optional `ws` peer dependency
+   * (the same package the CompositeVoice proxy uses) instead of the global
+   * `WebSocket`. Providers whose upstream authenticates upgrades with
+   * headers (e.g. {@link SpekoSTT} in direct `apiKey` mode) use this to
+   * connect straight from a Node server without a proxy hop.
+   *
+   * Pass a function to have the headers re-evaluated on every socket
+   * creation — required when a header must be unique per connection (e.g.
+   * Speko's `Idempotency-Key`).
+   *
+   * In browsers, use a proxy that injects the headers instead; connecting
+   * with this option set throws a {@link WebSocketError}.
+   *
+   * @defaultValue `undefined` (global `WebSocket`, no custom headers)
+   */
+  headers?: Record<string, string> | (() => Record<string, string>) | undefined;
 
   /**
    * Configuration for automatic reconnection behavior.
@@ -250,6 +281,7 @@ export class WebSocketManager {
     this.options = {
       url: options.url,
       protocols: options.protocols,
+      headers: options.headers,
       reconnection: options.reconnection ?? {
         enabled: true,
         maxAttempts: 5,
@@ -282,7 +314,7 @@ export class WebSocketManager {
    * @returns `true` if connected and ready, `false` otherwise.
    */
   isConnected(): boolean {
-    return this.state === WebSocketState.CONNECTED && this.ws?.readyState === WebSocket.OPEN;
+    return this.state === WebSocketState.CONNECTED && this.ws?.readyState === READY_STATE_OPEN;
   }
 
   /**
@@ -338,17 +370,29 @@ export class WebSocketManager {
     this.shouldReconnect = true;
     this.logger?.info(`Connecting to ${this.options.url}`);
 
+    // Custom upgrade headers need the Node `ws` package (browsers cannot set
+    // them), which is loaded asynchronously — resolve the socket class first.
+    let createSocket: () => WebSocket;
+    if (this.options.headers) {
+      createSocket = await this.createNodeSocketFactory(this.options.headers);
+    } else {
+      createSocket = () => new WebSocket(this.options.url, this.options.protocols);
+    }
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.cleanup();
         reject(new TimeoutError('WebSocket connection', this.options.connectionTimeout));
       }, this.options.connectionTimeout);
 
+      let opened = false;
+
       try {
-        this.ws = new WebSocket(this.options.url, this.options.protocols);
+        this.ws = createSocket();
 
         this.ws.onopen = () => {
           clearTimeout(timeout);
+          opened = true;
           this.state = WebSocketState.CONNECTED;
           this.reconnectAttempts = 0;
           this.logger?.info('Connected');
@@ -370,6 +414,19 @@ export class WebSocketManager {
           clearTimeout(timeout);
           this.logger?.info(`Closed with code ${event.code}: ${event.reason}`);
           this.handleClose(event);
+          // A close before the socket ever opened (e.g. the server rejected
+          // the upgrade) must fail this connect() call — previously the
+          // cleared timeout left the promise pending forever. Rejecting a
+          // settled promise is a no-op, so post-open closes are unaffected.
+          if (!opened) {
+            reject(
+              new WebSocketError(
+                `Connection closed before opening (code ${event.code}${
+                  event.reason ? `: ${event.reason}` : ''
+                })`
+              )
+            );
+          }
         };
       } catch (error) {
         clearTimeout(timeout);
@@ -377,6 +434,50 @@ export class WebSocketManager {
         reject(new WebSocketError(`Failed to create WebSocket: ${(error as Error).message}`));
       }
     });
+  }
+
+  /**
+   * Build a socket factory that connects via the Node `ws` package with
+   * custom upgrade headers.
+   *
+   * @remarks
+   * Loaded dynamically so `ws` stays an optional peer dependency (matching
+   * the proxy's pattern). The returned sockets use `binaryType:
+   * 'arraybuffer'` so binary frames match the browser `WebSocket` shape;
+   * `ws`'s event-target wrapper already delivers text frames as strings.
+   * Function-form headers are re-evaluated per socket creation so
+   * per-connection values (e.g. a fresh `Idempotency-Key`) stay unique
+   * across reconnects.
+   *
+   * @param headers - Static headers or a per-connection header factory.
+   * @returns A factory producing browser-`WebSocket`-compatible sockets.
+   *
+   * @throws {@link WebSocketError} when the `ws` package is unavailable
+   * (browsers, or Node without the optional dependency installed).
+   */
+  private async createNodeSocketFactory(
+    headers: Record<string, string> | (() => Record<string, string>)
+  ): Promise<() => WebSocket> {
+    let NodeWebSocket: typeof import('ws').WebSocket;
+    try {
+      NodeWebSocket = (await import('ws')).WebSocket;
+    } catch {
+      this.state = WebSocketState.DISCONNECTED;
+      throw new WebSocketError(
+        'Custom WebSocket upgrade headers require the "ws" package (Node.js only). ' +
+          'Install it with: pnpm add ws — or, in browsers, connect through a proxy ' +
+          'that injects the headers server-side.'
+      );
+    }
+
+    return () => {
+      const resolved = typeof headers === 'function' ? headers() : headers;
+      const socket = new NodeWebSocket(this.options.url, this.options.protocols, {
+        headers: resolved,
+      });
+      socket.binaryType = 'arraybuffer';
+      return socket as unknown as WebSocket;
+    };
   }
 
   /**
@@ -544,7 +645,7 @@ export class WebSocketManager {
     this.logger?.info('Disconnecting');
 
     return new Promise((resolve) => {
-      if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+      if (!this.ws || this.ws.readyState === READY_STATE_CLOSED) {
         this.cleanup();
         resolve();
         return;
@@ -564,7 +665,7 @@ export class WebSocketManager {
         resolve();
       };
 
-      if (this.ws.readyState === WebSocket.OPEN) {
+      if (this.ws.readyState === READY_STATE_OPEN) {
         this.ws.close(code, reason);
       } else {
         clearTimeout(timeout);

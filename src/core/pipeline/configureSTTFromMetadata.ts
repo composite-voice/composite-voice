@@ -22,6 +22,7 @@
  *   `config.bitDepth`
  * - **SpeechmaticsSTT** — `config.audioFormat`, `config.sampleRate`
  * - **SonioxSTT** — `config.audioFormat`, `config.sampleRate`, `config.numChannels`
+ * - **SpekoSTT** — `config.audioFormat`, `config.sampleRate`, `config.numChannels`
  * - **OpenAIRealtimeSTT** — `config.inputAudioFormat`
  * - **TranscribeSTT** — `config.mediaEncoding`, `config.sampleRate`
  * - **RevAISTT** — `config.sampleRate`, `config.audioFormat`, `config.numChannels`
@@ -225,6 +226,11 @@ export function configureSTTFromMetadata(stt: BaseProvider, metadata: AudioMetad
       setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
       setIfUnset(configurable.config, 'numChannels', metadata.channels);
       return;
+    case 'SpekoSTT':
+      setIfUnset(configurable.config, 'audioFormat', mapSpekoAudioFormat(metadata.encoding));
+      setIfUnset(configurable.config, 'sampleRate', metadata.sampleRate);
+      setIfUnset(configurable.config, 'numChannels', metadata.channels);
+      return;
     case 'OpenAIRealtimeSTT':
       setIfUnset(configurable.config, 'inputAudioFormat', mapOpenAIAudioFormat(metadata.encoding));
       return;
@@ -323,6 +329,18 @@ function mapSonioxAudioFormat(encoding: AudioEncoding): string | undefined {
       return 'mulaw';
     case 'alaw':
       return 'alaw';
+    default:
+      return undefined;
+  }
+}
+
+/** Maps SDK encoding to Speko Relay audio encoding identifiers. */
+function mapSpekoAudioFormat(encoding: AudioEncoding): string | undefined {
+  switch (encoding) {
+    case 'linear16':
+      return 'pcm_s16le';
+    case 'opus':
+      return 'opus';
     default:
       return undefined;
   }
