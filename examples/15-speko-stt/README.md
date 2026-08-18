@@ -11,7 +11,7 @@ Real-time transcription through the Speko Relay voice-model router. Speko benchm
 ## What you'll learn
 
 - How to configure `SpekoSTT` with a `routing` object: auto mode with an `objective`, or explicit provider/model pinning
-- Why Speko's WebSocket API requires a proxy in browsers — the relay authenticates upgrades with `Authorization` and `Idempotency-Key` headers, which browsers cannot set on a WebSocket handshake
+- Why Speko's WebSocket API requires a proxy **in browsers** — the relay authenticates upgrades with `Authorization` and `Idempotency-Key` headers, which browsers cannot set on a WebSocket handshake (server-side Node pipelines skip the proxy and pass `apiKey` directly)
 - How the Vite dev proxy injects the API key and a fresh `Idempotency-Key` per connection (see `_shared/vite.config.factory.ts`)
 - How `transcript.delta` (interim) and `transcript.final` (utterance-complete) frames map to pipeline results
 
@@ -46,7 +46,7 @@ Open [http://localhost:3015](http://localhost:3015) in any modern browser.
 
 ## Browser Support
 
-SpekoSTT works in all modern browsers including Firefox and Safari — but only through a proxy, which this example's Vite dev server provides. In production, use the CompositeVoice server proxy with `spekoApiKey` configured.
+SpekoSTT works in all modern browsers including Firefox and Safari — but in browsers only through a proxy, which this example's Vite dev server provides. In production browser deployments, use the CompositeVoice server proxy with `spekoApiKey` configured. Server-side Node pipelines (phone agents, meeting bots) connect directly with `apiKey` instead — no proxy needed.
 
 ## What to try next
 

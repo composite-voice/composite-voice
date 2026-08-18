@@ -8,6 +8,7 @@
 import { LiveSTTProvider } from '../../base/LiveSTTProvider';
 import type { STTProviderConfig } from '../../../core/types/providers';
 import type { SpekoRouting, SpekoAudioEncoding } from '../../tts/speko/SpekoTTS';
+import { generateIdempotencyKey } from '../../tts/speko/SpekoTTS';
 import { Logger } from '../../../utils/logger';
 import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
@@ -20,20 +21,30 @@ import { ProviderInitializationError, ProviderConnectionError } from '../../../u
  *
  * The Speko Relay authenticates WebSocket upgrades with `Authorization` and
  * `Idempotency-Key` **headers**, which browsers cannot set on a WebSocket
- * handshake. `SpekoSTT` therefore always connects through a server-side
- * relay: set `proxyUrl` to a CompositeVoice proxy with `spekoApiKey`
- * configured (the proxy injects both headers, generating a fresh
- * idempotency key per connection), or set `endpoint` to your own backend
- * that terminates the Speko WebSocket. A bare `apiKey` is not sufficient
- * and is ignored for the WebSocket connection.
+ * handshake. How to connect depends on where the pipeline runs:
+ *
+ * - **Browsers**: set `proxyUrl` to a CompositeVoice proxy with
+ *   `spekoApiKey` configured — the proxy injects both headers, generating a
+ *   fresh idempotency key per connection. Alternatively set `endpoint` to
+ *   your own backend that terminates the Speko WebSocket.
+ * - **Node servers** (phone agents, meeting bots, ...): set `apiKey` to
+ *   connect directly to the relay — the provider sends the headers itself
+ *   via the optional `ws` peer dependency (the same package the proxy
+ *   uses). No proxy hop needed.
  *
  * @example
  * ```ts
- * // Via the CompositeVoice proxy (recommended)
+ * // Browser, via the CompositeVoice proxy
  * const config: SpekoSTTConfig = {
  *   proxyUrl: 'http://localhost:3001/api/proxy/speko',
  *   routing: { mode: 'auto', objective: 'latency' },
  *   sampleRate: 16000,
+ * };
+ *
+ * // Node server, direct connection (requires the optional `ws` package)
+ * const serverConfig: SpekoSTTConfig = {
+ *   apiKey: 'sk_speko_...',
+ *   routing: { mode: 'auto', objective: 'latency' },
  * };
  * ```
  *
@@ -80,6 +91,9 @@ export interface SpekoSTTConfig extends STTProviderConfig {
    */
   language?: string;
 }
+
+/** @internal Default Speko Relay streaming WebSocket base URL. */
+const SPEKO_WS_URL = 'wss://relay.speko.dev';
 
 /**
  * A message frame received from the Speko Relay streaming WebSocket.
@@ -134,15 +148,20 @@ interface SpekoServerMessage {
  * - Interim (`transcript.delta`) and final (`transcript.final`) results
  * - Objective-based routing (latency, quality, cost, balanced) or explicit
  *   provider/model pinning across Speko's STT provider pool
+ * - Direct server-side connections via {@link SpekoSTTConfig.apiKey} — on
+ *   Node the provider sends the relay's `Authorization` and per-connection
+ *   `Idempotency-Key` upgrade headers itself (through the optional `ws`
+ *   peer dependency)
  * - Proxy mode via {@link SpekoSTTConfig.proxyUrl} — **required** for
- *   browsers, because the relay authenticates WebSocket upgrades with
- *   headers that browsers cannot set (the CompositeVoice proxy injects
- *   `Authorization` and a fresh `Idempotency-Key` per connection)
+ *   browsers, because browsers cannot set WebSocket upgrade headers (the
+ *   CompositeVoice proxy injects `Authorization` and a fresh
+ *   `Idempotency-Key` per connection)
  *
  * **Transport:** WebSocket (via {@link WebSocketManager})
  *
  * **Browser support:** All modern browsers, through a proxy. No peer
- * dependencies required.
+ * dependencies required in proxy mode; direct `apiKey` mode is Node-only
+ * and needs the optional `ws` package.
  *
  * **Data flow:**
  *
@@ -198,8 +217,8 @@ export class SpekoSTT extends LiveSTTProvider {
   /**
    * Create a new SpekoSTT provider.
    *
-   * @param config - Speko STT configuration. Must include either
-   *   `proxyUrl` or `endpoint`.
+   * @param config - Speko STT configuration. Must include `proxyUrl`
+   *   (browsers), `apiKey` (Node servers), or `endpoint`.
    * @param logger - Optional parent logger; a child will be derived.
    *
    * @example
@@ -223,22 +242,23 @@ export class SpekoSTT extends LiveSTTProvider {
   }
 
   /**
-   * Validate that `proxyUrl` or `endpoint` is configured.
+   * Validate that `apiKey`, `proxyUrl`, or `endpoint` is configured.
    *
    * @throws {@link ProviderInitializationError}
-   * Thrown when neither `proxyUrl` nor `endpoint` is set. A bare `apiKey`
-   * cannot work: the Speko Relay authenticates WebSocket upgrades with
-   * `Authorization` and `Idempotency-Key` headers, which cannot be set on
-   * a browser WebSocket handshake.
+   * Thrown when none of `apiKey`, `proxyUrl`, or `endpoint` is set. Note
+   * that direct `apiKey` mode is server-side only: the Speko Relay
+   * authenticates WebSocket upgrades with headers, which cannot be set on
+   * a browser WebSocket handshake — browsers must use `proxyUrl`.
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.proxyUrl && !this.config.endpoint) {
+    if (!this.config.apiKey && !this.config.proxyUrl && !this.config.endpoint) {
       throw new ProviderInitializationError(
         'SpekoSTT',
         new Error(
-          'SpekoSTT requires "proxyUrl" (or "endpoint") to be configured. The Speko Relay ' +
-            'authenticates WebSocket upgrades with headers that cannot be set from a browser ' +
-            'WebSocket — connect through the CompositeVoice proxy (spekoApiKey) or your own backend.'
+          'SpekoSTT requires "proxyUrl" (browsers), "apiKey" (Node servers), or "endpoint" to ' +
+            'be configured. The Speko Relay authenticates WebSocket upgrades with headers that ' +
+            'browsers cannot set — in browsers, connect through the CompositeVoice proxy ' +
+            '(spekoApiKey) or your own backend.'
         )
       );
     }
@@ -248,6 +268,7 @@ export class SpekoSTT extends LiveSTTProvider {
       audioFormat: this.config.audioFormat,
       sampleRate: this.config.sampleRate,
       language: this.config.language,
+      mode: this.isProxyMode ? 'proxy' : this.config.apiKey ? 'direct' : 'endpoint',
     });
   }
 
@@ -270,21 +291,40 @@ export class SpekoSTT extends LiveSTTProvider {
    * @remarks
    * Proxy mode: `ws(s)://<proxyUrl>/v1/stt/stream`
    * Custom endpoint: `ws(s)://<endpoint>/v1/stt/stream`
+   * Direct mode: `wss://relay.speko.dev/v1/stt/stream`
    *
-   * Authentication happens via headers injected by the proxy (or backend)
-   * on the upstream upgrade, not the URL.
+   * Authentication happens via headers on the upgrade request — injected
+   * by the proxy (or backend) in proxy/endpoint mode, or sent directly in
+   * server-side `apiKey` mode — never via the URL.
    *
    * @returns The fully-qualified WebSocket URL string.
    */
   private buildWebSocketUrl(): string {
-    // resolveBaseUrl prefers proxyUrl over endpoint and rewrites http(s)
-    // to ws(s) for websocket-type providers. There is no default URL: a
-    // direct browser-to-relay connection cannot authenticate.
-    const base = this.resolveBaseUrl();
+    // resolveBaseUrl prefers proxyUrl over endpoint over the default relay
+    // URL, and rewrites http(s) to ws(s) for websocket-type providers.
+    const base = this.resolveBaseUrl(SPEKO_WS_URL);
     if (!base) {
       throw new Error('Speko STT WebSocket URL could not be resolved');
     }
     return `${base}/v1/stt/stream`;
+  }
+
+  /**
+   * Build the per-connection upgrade-header factory for direct mode.
+   *
+   * @remarks
+   * Resolves the API key once (it may be an async factory), then returns a
+   * function the {@link WebSocketManager} re-evaluates on every socket
+   * creation so each connection carries a fresh `Idempotency-Key` — the
+   * relay treats reuse across concurrent sessions as an idempotency
+   * conflict.
+   */
+  private async buildDirectHeaders(): Promise<() => Record<string, string>> {
+    const apiKey = await this.resolveApiKey();
+    return () => ({
+      Authorization: `Bearer ${apiKey}`,
+      'Idempotency-Key': generateIdempotencyKey(),
+    });
   }
 
   /**
@@ -344,6 +384,15 @@ export class SpekoSTT extends LiveSTTProvider {
       const wsOptions: WebSocketManagerOptions = {
         url: wsUrl,
         connectionTimeout: this.config.timeout ?? 10000,
+        // Direct server-side mode: send the relay's upgrade headers
+        // ourselves (Node-only, via the optional `ws` package). Evaluated
+        // per connection so every session gets a fresh Idempotency-Key.
+        // In proxy/endpoint mode the server in front injects them instead.
+        ...(!this.isProxyMode && this.config.apiKey
+          ? {
+              headers: await this.buildDirectHeaders(),
+            }
+          : {}),
         // Auto-reconnect is disabled: a reconnected socket would be a new
         // relay session (new Idempotency-Key, replayed session.configure),
         // not a resumed one. Unexpected closes surface immediately via

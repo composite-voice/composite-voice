@@ -88,14 +88,16 @@ describe('SpekoSTT', () => {
       expect(provider.isReady()).toBe(true);
     });
 
-    it('should throw when neither proxyUrl nor endpoint is configured', async () => {
-      const provider = new SpekoSTT({}, logger);
+    it('should initialize with an apiKey (direct server-side mode)', async () => {
+      const provider = new SpekoSTT({ apiKey: 'sk_speko_test' }, logger);
 
-      await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
+      await provider.initialize();
+
+      expect(provider.isReady()).toBe(true);
     });
 
-    it('should throw with only an apiKey (headers cannot be set on browser WebSockets)', async () => {
-      const provider = new SpekoSTT({ apiKey: 'sk_speko_test' }, logger);
+    it('should throw when apiKey, proxyUrl, and endpoint are all missing', async () => {
+      const provider = new SpekoSTT({}, logger);
 
       await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
     });
@@ -133,6 +135,41 @@ describe('SpekoSTT', () => {
         audio: { encoding: 'pcm_s16le', sample_rate_hz: 16000, channels: 1 },
         language: 'en',
       });
+    });
+
+    it('should not pass upgrade headers in proxy mode', async () => {
+      const provider = new SpekoSTT(PROXY_CONFIG, logger);
+      await provider.initialize();
+
+      await provider.connect();
+
+      expect(MockWebSocketManager.mock.calls[0]![0].headers).toBeUndefined();
+    });
+
+    it('should connect directly to the relay with auth headers in apiKey mode', async () => {
+      const provider = new SpekoSTT({ apiKey: 'sk_speko_test' }, logger);
+      await provider.initialize();
+
+      await provider.connect();
+
+      const options = MockWebSocketManager.mock.calls[0]![0];
+      expect(options.url).toBe('wss://relay.speko.dev/v1/stt/stream');
+      expect(typeof options.headers).toBe('function');
+
+      const headers = options.headers();
+      expect(headers.Authorization).toBe('Bearer sk_speko_test');
+      expect(typeof headers['Idempotency-Key']).toBe('string');
+      expect(headers['Idempotency-Key'].length).toBeGreaterThan(0);
+    });
+
+    it('should generate a fresh Idempotency-Key per header evaluation in direct mode', async () => {
+      const provider = new SpekoSTT({ apiKey: 'sk_speko_test' }, logger);
+      await provider.initialize();
+
+      await provider.connect();
+
+      const headersFn = MockWebSocketManager.mock.calls[0]![0].headers;
+      expect(headersFn()['Idempotency-Key']).not.toBe(headersFn()['Idempotency-Key']);
     });
 
     it('should omit routing from session.configure when not set', async () => {

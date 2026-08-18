@@ -588,14 +588,14 @@ These providers handle the `input` and `output` roles in the 5-role pipeline. Th
 | **Class** | [`SpekoSTT`](/guides/stt/speko-stt) | [`SpekoTTS`](/guides/tts/speko-tts) |
 | **Transport** | WebSocket | REST |
 | **Streaming** | Yes | No (complete Blob) |
-| **Peer dependency** | None | None |
-| **Proxy support** | Yes (required for browsers) | Yes |
+| **Peer dependency** | None (proxy mode) / `ws` (direct Node mode) | None |
+| **Proxy support** | Yes (required for browsers; optional on Node servers) | Yes |
 | **Browser support** | All modern browsers, via proxy | All modern browsers |
 | **Default model** | Routed (`auto`/`balanced`) | Routed (`auto`/`balanced`) |
 
 Speko is a voice-model router: the relay benchmarks upstream STT and TTS providers in real time and routes each request to the best one for the configured objective (`balanced`, `quality`, `latency`, or `cost`), with automatic failover across healthy providers in auto mode and explicit provider/model pinning when you need deterministic output.
 
-**STT features:** Interim results via `transcript.delta` frames, finalized utterances with segments, objective-based routing with automatic provider failover, manual `finalize()` (`input.commit`), binary audio frames. Requires a proxy — the relay authenticates WebSocket upgrades with headers browsers cannot set.
+**STT features:** Interim results via `transcript.delta` frames, finalized utterances with segments, objective-based routing with automatic provider failover, manual `finalize()` (`input.commit`), binary audio frames. The relay authenticates WebSocket upgrades with headers, so browsers require a proxy; Node servers connect directly with `apiKey` (via the optional `ws` package), sending a fresh `Idempotency-Key` per connection.
 
 **TTS features:** Objective-based routing or explicit provider/model pinning, `pcm_s16le` output (WAV-wrapped for browser playback) or raw `opus` at 8-192 kHz, per-request idempotency keys (generated automatically), routed provider/model and character usage reported via `Speko-*` response headers. Currently English-only.
 

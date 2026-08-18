@@ -8,10 +8,22 @@ Use SpekoSTT when you want one streaming integration that routes across many STT
 
 ## Prerequisites
 
-- A [Speko API key](https://platform.speko.ai) (`sk_speko_...`) configured on a CompositeVoice proxy server (`spekoApiKey`)
-- No additional dependencies required. SpekoSTT uses a raw WebSocket managed by the SDK.
+- A [Speko API key](https://platform.speko.ai) (`sk_speko_...`)
+- In browsers: a CompositeVoice proxy server with `spekoApiKey` configured
+- On Node servers with direct `apiKey` mode: the optional [`ws`](https://www.npmjs.com/package/ws) package (the same optional peer dependency the proxy uses)
 
-**A proxy is required, not just recommended.** The Speko Relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers, which browsers cannot set on a WebSocket handshake. The CompositeVoice proxy injects both server-side, generating a fresh idempotency key for every connection. (Alternatively, point `endpoint` at your own backend that terminates the Speko WebSocket.)
+**How you authenticate depends on where the pipeline runs.** The Speko Relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers:
+
+- **Browsers** cannot set headers on a WebSocket handshake, so a proxy is required — the CompositeVoice proxy injects both server-side, generating a fresh idempotency key for every connection. (Alternatively, point `endpoint` at your own backend that terminates the Speko WebSocket.)
+- **Node servers** (phone agents, meeting bots, headless pipelines) can pass `apiKey` and connect directly to `wss://relay.speko.dev` — the provider sends both headers itself, with a fresh `Idempotency-Key` per connection. No proxy hop needed.
+
+```typescript
+// Server-side (Node): direct connection, no proxy
+const stt = new SpekoSTT({
+  apiKey: process.env.SPEKO_API_KEY,
+  routing: { mode: 'auto', objective: 'latency' },
+});
+```
 
 ## Basic setup
 
@@ -47,7 +59,8 @@ await voice.startListening();
 
 | Option           | Type      | Default       | Description                                               |
 | ---------------- | --------- | ------------- | --------------------------------------------------------- |
-| `proxyUrl`       | `string`  | --            | Proxy server URL (**required**, unless `endpoint` is set) |
+| `proxyUrl`       | `string`  | --            | Proxy server URL (**required in browsers**)               |
+| `apiKey`         | `string`  | --            | Direct relay connection — **Node servers only**, needs the optional `ws` package |
 | `endpoint`       | `string`  | --            | Custom backend/gateway URL that terminates the Speko WS   |
 | `routing`        | `object`  | relay default | Routing object -- same shape as [SpekoTTS](/guides/tts/speko-tts#routing) |
 | `audioFormat`    | `string`  | `'pcm_s16le'` | Input encoding: `pcm_s16le` or `opus`                     |
@@ -70,6 +83,7 @@ When a separate input provider is used (e.g. `MicrophoneInput`), `audioFormat`, 
 - Audio is streamed as binary WebSocket frames in the configured format; the relay caps frames at 1 MiB.
 - Pin a provider with `routing: { mode: 'explicit', provider: 'deepgram', model: '...' }` when you need deterministic behavior; auto mode gets you failover.
 - The same `spekoApiKey` proxy route also serves [SpekoTTS](/guides/tts/speko-tts) over HTTP.
+- Running the pipeline server-side (e.g. with `TwilioMediaStream` or `ZoomRtmsInput`)? Skip the proxy and use `apiKey` directly — one less hop, and the key never leaves your server either way.
 
 ## Further reading
 

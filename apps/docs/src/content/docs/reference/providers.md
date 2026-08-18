@@ -443,7 +443,8 @@ Real-time speech recognition through the Speko Relay voice-model router — each
 import { SpekoSTT } from 'composite-voice';
 
 const stt = new SpekoSTT({
-  proxyUrl: '/api/proxy/speko',        // required — see below
+  proxyUrl: '/api/proxy/speko',        // browsers — see below
+  // OR: apiKey: 'sk_speko_...',       // Node servers: direct, no proxy needed
   routing: { mode: 'auto', objective: 'latency' },
   audioFormat: 'pcm_s16le',
   sampleRate: 16000,
@@ -453,7 +454,7 @@ const stt = new SpekoSTT({
 - Objective-based routing (`balanced`, `quality`, `latency`, `cost`) or explicit provider/model pinning
 - Interim results via `transcript.delta`; finalized utterances via `transcript.final`
 - Manual `finalize()` sends `input.commit` for on-demand turn-taking
-- Proxy required: the relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers that browsers cannot set — set `spekoApiKey` in your proxy config
+- The relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers. Browsers cannot set these, so browser pipelines need a proxy (`spekoApiKey`). Server-side Node pipelines pass `apiKey` and connect directly — the provider sends the headers itself via the optional `ws` package
 
 [API reference](/api/classes/spekostt)
 

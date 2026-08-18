@@ -9,6 +9,35 @@
 import { WebSocketManager, WebSocketState } from '../../../src/utils/websocket';
 import { WebSocketError } from '../../../src/utils/errors';
 
+/** Sockets created through the mocked `ws` package, newest last. */
+const mockNodeWsSockets: any[] = [];
+
+// The manager dynamically imports `ws` when upgrade headers are configured
+// (browsers cannot set them). Mock it with a constructor that captures the
+// url/protocols/options it was created with.
+jest.mock('ws', () => ({
+  WebSocket: class {
+    url: string;
+    protocols: unknown;
+    options: { headers?: Record<string, string> };
+    binaryType = 'nodebuffer';
+    readyState = 0;
+    onopen: (() => void) | null = null;
+    onmessage: unknown = null;
+    onerror: unknown = null;
+    onclose: unknown = null;
+    close = jest.fn();
+    send = jest.fn();
+
+    constructor(url: string, protocols: unknown, options: { headers?: Record<string, string> }) {
+      this.url = url;
+      this.protocols = protocols;
+      this.options = options;
+      mockNodeWsSockets.push(this);
+    }
+  },
+}));
+
 describe('WebSocketManager', () => {
   let manager: WebSocketManager;
 
@@ -386,6 +415,56 @@ describe('WebSocketManager', () => {
       expect(sockets.length).toBeGreaterThan(2);
       expect(onConnectionLost).toHaveBeenCalledTimes(1);
       expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
+    });
+  });
+
+  // ─── Upgrade headers (server-side `ws` package) ───────────────────────
+
+  describe('upgrade headers', () => {
+    beforeEach(() => {
+      mockNodeWsSockets.length = 0;
+      (global as any).WebSocket = jest.fn();
+    });
+
+    /** Connect a manager with headers, opening the mocked ws socket. */
+    async function connectWithHeaders(
+      headers: Record<string, string> | (() => Record<string, string>)
+    ): Promise<{ mgr: WebSocketManager; socket: any }> {
+      const mgr = new WebSocketManager({
+        url: 'wss://relay.example.com/stream',
+        headers,
+        reconnection: { enabled: false },
+      });
+      const pending = mgr.connect();
+      // Let the dynamic import('ws') settle so the socket gets created
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const socket = mockNodeWsSockets[mockNodeWsSockets.length - 1];
+      socket.readyState = 1;
+      socket.onopen?.();
+      await pending;
+      return { mgr, socket };
+    }
+
+    it('connects through the ws package with the configured headers', async () => {
+      const { mgr, socket } = await connectWithHeaders({ Authorization: 'Bearer key' });
+
+      expect(socket.url).toBe('wss://relay.example.com/stream');
+      expect(socket.options).toEqual({ headers: { Authorization: 'Bearer key' } });
+      // Browser-compatible binary frames, and the global WebSocket untouched
+      expect(socket.binaryType).toBe('arraybuffer');
+      expect((global as any).WebSocket).not.toHaveBeenCalled();
+      expect(mgr.isConnected()).toBe(true);
+    });
+
+    it('re-evaluates function-form headers per socket creation', async () => {
+      let counter = 0;
+      const headers = (): Record<string, string> => ({ 'Idempotency-Key': `key-${++counter}` });
+
+      const first = await connectWithHeaders(headers);
+      const second = await connectWithHeaders(headers);
+
+      expect(first.socket.options.headers['Idempotency-Key']).toBe('key-1');
+      expect(second.socket.options.headers['Idempotency-Key']).toBe('key-2');
     });
   });
 });

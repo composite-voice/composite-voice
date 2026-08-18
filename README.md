@@ -310,7 +310,7 @@ const agent = new CompositeVoice({
 | `GoogleSTT`     | HTTP (REST, batch) | All modern browsers | None            |
 | `AzureSTT`      | WebSocket      | All modern browsers | None            |
 | `TranscribeSTT` | WebSocket      | All modern browsers | None            |
-| `SpekoSTT`      | WebSocket      | All modern browsers (proxy required) | None |
+| `SpekoSTT`      | WebSocket      | All modern browsers (proxy required; Node servers connect direct) | None (proxy) / `ws` (direct) |
 
 All STT providers emit an `utteranceComplete: true` flag on transcription results to signal when an utterance is ready for LLM processing. This flag is the canonical trigger for LLM generation. The `speechFinal` event is retained for display purposes but is deprecated as the LLM trigger — use `utteranceComplete` instead.
 
@@ -492,7 +492,8 @@ new TranscribeSTT({
 
 ```typescript
 new SpekoSTT({
-  proxyUrl: '/api/proxy/speko', // required — the relay authenticates WS upgrades with headers browsers cannot set
+  proxyUrl: '/api/proxy/speko', // browsers — the relay authenticates WS upgrades with headers browsers cannot set
+  // OR: apiKey: 'sk_speko_...', // Node servers: direct connection, no proxy (needs the optional `ws` package)
   routing: { mode: 'auto', objective: 'latency' }, // or { mode: 'explicit', provider, model }
   audioFormat: 'pcm_s16le', // 'pcm_s16le' | 'opus'
   sampleRate: 16000, // 8000–192000 Hz
@@ -2240,7 +2241,7 @@ pnpm example:110-mistral-pipeline:dev            # http://localhost:3110
 | Firefox       | Not supported | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full          | Full      | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     | Full     | Full     |
 | Safari        | Limited       | Full        | Full         | Full          | Full          | Full      | Full      | Full            | Full     | Full      | Full     | Full          | Full      | Full      | Full        | Full      | Full          | Full        | Full         | Full    | Full    | Full        | Full    | Full       | Full         | Full      | Full     | Full     | Full     |
 
-`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, OpenAI Realtime, Azure, Amazon Transcribe, ElevenLabs, Cartesia, Speko) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, Speko) work across all modern browsers. `SpekoSTT` requires the proxy in every browser — the Speko Relay authenticates WebSocket upgrades with headers browsers cannot set.
+`NativeSTT` depends on the [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API), which is only fully supported in Chromium-based browsers. `NativeSTT` is unreliable in Safari. All WebSocket-based providers (Deepgram, AssemblyAI, Soniox, Gladia, Speechmatics, Rev AI, OpenAI Realtime, Azure, Amazon Transcribe, ElevenLabs, Cartesia, Speko) and REST-based providers (OpenAI, Speechify, Murf, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud, Speko) work across all modern browsers. `SpekoSTT` requires the proxy in every browser — the Speko Relay authenticates WebSocket upgrades with headers browsers cannot set; on Node servers it connects directly with `apiKey` via the optional `ws` package.
 
 For cross-browser production deployments, use `DeepgramSTT`, `AssemblyAISTT`, `SonioxSTT`, `GladiaSTT`, `SpeechmaticsSTT`, `RevAISTT`, `OpenAIRealtimeSTT`, `AzureSTT`, `SpekoSTT`, or `ElevenLabsSTT` for STT, and any cloud TTS provider.
 

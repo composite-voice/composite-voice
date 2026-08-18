@@ -198,14 +198,16 @@ const SPEKO_DEFAULT_URL = 'https://relay.speko.dev';
  * Generate a unique `Idempotency-Key` value for a Speko Relay request.
  *
  * @remarks
- * The relay rejects any POST without an `Idempotency-Key` header. The key is
- * opaque to Speko (any non-blank string up to 256 bytes); a UUID per logical
- * request is the recommended form. Falls back to a random token when
- * `crypto.randomUUID` is unavailable (e.g. non-secure contexts).
+ * The relay rejects any POST or WebSocket upgrade without an
+ * `Idempotency-Key` header. The key is opaque to Speko (any non-blank string
+ * up to 256 bytes); a UUID per logical request is the recommended form.
+ * Falls back to a random token when `crypto.randomUUID` is unavailable
+ * (e.g. non-secure contexts). Shared with {@link SpekoSTT} for direct
+ * server-side WebSocket connections.
  *
  * @internal
  */
-function generateIdempotencyKey(): string {
+export function generateIdempotencyKey(): string {
   const webCrypto = globalThis.crypto as Crypto | undefined;
   if (webCrypto?.randomUUID) {
     return webCrypto.randomUUID();
