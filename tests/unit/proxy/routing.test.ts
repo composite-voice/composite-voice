@@ -290,6 +290,51 @@ describe('proxy routing', () => {
       });
     });
 
+    it('includes Speko HTTP and WebSocket routes when spekoApiKey is provided', () => {
+      const config: CompositeVoiceProxyConfig = {
+        spekoApiKey: 'sk_speko_test',
+      };
+
+      const routes = buildRoutes(config);
+
+      expect(routes).toHaveLength(2);
+      expect(routes[0]).toEqual({
+        provider: 'speko',
+        type: 'http',
+        targetBase: 'https://relay.speko.dev',
+        authHeaders: {
+          Authorization: 'Bearer sk_speko_test',
+        },
+      });
+      expect(routes[1]).toMatchObject({
+        provider: 'speko',
+        type: 'websocket',
+        targetBase: 'wss://relay.speko.dev',
+        authHeaders: {
+          Authorization: 'Bearer sk_speko_test',
+        },
+      });
+    });
+
+    it('generates a fresh Idempotency-Key per Speko WebSocket connection', () => {
+      const routes = buildRoutes({ spekoApiKey: 'sk_speko_test' });
+      const wsRoute = routes.find((r) => r.type === 'websocket');
+
+      expect(wsRoute?.connectionHeaders).toBeDefined();
+      const first = wsRoute!.connectionHeaders!();
+      const second = wsRoute!.connectionHeaders!();
+
+      expect(typeof first['Idempotency-Key']).toBe('string');
+      expect(first['Idempotency-Key']!.length).toBeGreaterThan(0);
+      expect(first['Idempotency-Key']).not.toBe(second['Idempotency-Key']);
+    });
+
+    it('does not include Speko routes when spekoApiKey is not provided', () => {
+      const routes = buildRoutes({ deepgramApiKey: 'dg-key' });
+
+      expect(routes.every((r) => r.provider !== 'speko')).toBe(true);
+    });
+
     it('does not include Soniox route when sonioxApiKey is not provided', () => {
       const config: CompositeVoiceProxyConfig = {
         deepgramApiKey: 'dg-key',
@@ -408,7 +453,7 @@ describe('proxy routing', () => {
       expect(providers).toContain('speechify');
     });
 
-it('includes Murf HTTP route when murfApiKey is provided', () => {
+    it('includes Murf HTTP route when murfApiKey is provided', () => {
       const config: CompositeVoiceProxyConfig = {
         murfApiKey: 'test-murf-key',
       };

@@ -89,6 +89,7 @@ pc.ontrack = (event) => {
 | [GoogleSTT](/guides/stt/google-stt) | HTTP (REST, batch) | latest_short, latest_long, telephony, ... | No | No |
 | [AzureSTT](/guides/stt/azure-stt) | WebSocket | Azure Speech service | Yes | No |
 | [TranscribeSTT](/guides/stt/transcribe-stt) | WebSocket | Amazon Transcribe streaming | Yes | No |
+| [SpekoSTT](/guides/stt/speko-stt) | WebSocket | Routed (Speko Relay) | Yes | No |
 
 ### NativeSTT
 
@@ -434,6 +435,28 @@ const stt = new TranscribeSTT({
 
 [API reference](/api/classes/transcribestt)
 
+### SpekoSTT
+
+Real-time speech recognition through the Speko Relay voice-model router — each WebSocket session is routed to the best upstream STT provider for your objective, with automatic failover.
+
+```typescript
+import { SpekoSTT } from 'composite-voice';
+
+const stt = new SpekoSTT({
+  proxyUrl: '/api/proxy/speko',        // required — see below
+  routing: { mode: 'auto', objective: 'latency' },
+  audioFormat: 'pcm_s16le',
+  sampleRate: 16000,
+});
+```
+
+- Objective-based routing (`balanced`, `quality`, `latency`, `cost`) or explicit provider/model pinning
+- Interim results via `transcript.delta`; finalized utterances via `transcript.final`
+- Manual `finalize()` sends `input.commit` for on-demand turn-taking
+- Proxy required: the relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers that browsers cannot set — set `spekoApiKey` in your proxy config
+
+[API reference](/api/classes/spekostt)
+
 ---
 
 ## Large Language Models (LLM)
@@ -591,6 +614,7 @@ const llm = new OpenAICompatibleLLM({
 | [GoogleTTS](/guides/tts/google-tts) | REST | Chirp 3: HD, Neural2, Studio, WaveNet, ... | No | MP3, OGG_OPUS, LINEAR16, MULAW, ALAW |
 | [AzureTTS](/guides/tts/azure-tts) | REST | Neural voices (140+ locales) | No | mp3, wav, ogg, webm, raw pcm |
 | [PollyTTS](/guides/tts/polly-tts) | REST | Polly voices (Joanna, Matthew, ...) | No | mp3, ogg_vorbis, ogg_opus, pcm |
+| [SpekoTTS](/guides/tts/speko-tts) | REST | Routed (Speko Relay) | No | pcm_s16le, opus |
 
 ### NativeTTS
 
@@ -941,6 +965,29 @@ const tts = new PollyTTS({
 - Temporary-credentials support via async `credentials` factories (STS/Cognito)
 
 [API reference](/api/classes/pollytts)
+
+### SpekoTTS
+
+Text-to-speech through the Speko Relay voice-model router — each request is routed to the best upstream TTS provider for your objective. Returns complete audio in one request.
+
+```typescript
+import { SpekoTTS } from 'composite-voice';
+
+const tts = new SpekoTTS({
+  proxyUrl: '/api/proxy/speko',
+  // OR: apiKey: 'sk_speko_...',       // direct API key (dev only)
+  routing: { mode: 'auto', objective: 'latency' },
+  encoding: 'pcm_s16le',               // pcm_s16le, opus
+  sampleRate: 24000,
+});
+```
+
+- Objective-based routing (`balanced`, `quality`, `latency`, `cost`) or explicit provider/model pinning (`{ mode: 'explicit', provider, model }`)
+- Automatic per-request `Idempotency-Key` generation (required by the relay)
+- Routed provider/model and character usage reported via `Speko-*` response headers
+- Currently English-only
+
+[API reference](/api/classes/spekotts)
 
 ---
 

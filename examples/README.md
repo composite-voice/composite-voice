@@ -62,6 +62,7 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | 12 | [`12-assemblyai-stt`](./12-assemblyai-stt/) | AssemblyAISTT configuration explorer — AssemblyAI + Anthropic Claude + NativeTTS |
 | 13 | [`13-elevenlabs-stt`](./13-elevenlabs-stt/) | ElevenLabsSTT configuration explorer — ElevenLabs Scribe + Anthropic Claude + NativeTTS |
 | 14 | [`14-deepgram-flux`](./14-deepgram-flux/) | DeepgramFlux (V2 STT) demo — currently disabled, shows eager pipeline concept |
+| 15 | [`15-speko-stt`](./15-speko-stt/) | SpekoSTT configuration explorer — Speko Relay routed STT (objective-based routing or explicit pinning) + Anthropic Claude + NativeTTS |
 
 ### Language Models (20-29)
 
@@ -84,6 +85,7 @@ Each row is a directory under `examples/`. Server-side examples (40-42 proxies, 
 | 32 | [`32-openai-tts`](./32-openai-tts/) | OpenAI TTS provider — NativeSTT + Anthropic Claude + OpenAI TTS with model, voice, format, and speed options |
 | 33 | [`33-elevenlabs-tts`](./33-elevenlabs-tts/) | ElevenLabs TTS provider — NativeSTT + Anthropic Claude + ElevenLabs TTS with voiceId, modelId, stability, and similarityBoost |
 | 34 | [`34-cartesia-tts`](./34-cartesia-tts/) | Cartesia TTS provider — NativeSTT + Anthropic Claude + Cartesia TTS with voiceId, modelId, emotions, speed, and language |
+| 35 | [`35-speko-tts`](./35-speko-tts/) | SpekoTTS configuration explorer — NativeSTT + Anthropic Claude + Speko Relay routed TTS (objective-based routing or explicit pinning) |
 
 ### Server proxies (40-49)
 

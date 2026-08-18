@@ -214,7 +214,13 @@ export function createNodeProxy(config: CompositeVoiceProxyConfig): NodeProxyHan
           const targetPath = url.slice(prefix.length + 1 + route.provider.length);
           const targetUrl = `${route.targetBase}${targetPath}`;
 
-          return proxyWebSocket(req, socket, head, targetUrl, route.authHeaders, {
+          // Per-connection headers (e.g. Speko's Idempotency-Key) are
+          // generated fresh for every upgrade and merged over authHeaders.
+          const upgradeHeaders = route.connectionHeaders
+            ? { ...route.authHeaders, ...route.connectionHeaders() }
+            : route.authHeaders;
+
+          return proxyWebSocket(req, socket, head, targetUrl, upgradeHeaders, {
             ...(security?.maxWsMessageSize !== undefined && {
               maxWsMessageSize: security.maxWsMessageSize,
             }),
