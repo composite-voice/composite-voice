@@ -42,3 +42,6 @@ export type { BlocklistAction, BlocklistOptions } from './blocklist';
 
 export { createModerationGuardrail } from './moderation';
 export type { ModerationFn, ModerationOptions, ModerationVerdict } from './moderation';
+
+export { createJevGuardrail } from './jev';
+export type { JevGuardrailOptions } from './jev';
