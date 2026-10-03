@@ -510,6 +510,25 @@ export type {
   GuardrailStreamOptions,
 } from './core/pipeline/index';
 
+// Structured decision clients
+export { JevClient, JevAPIError } from './decisions/index';
+export type {
+  JevClientOptions,
+  JevState,
+  JevDescription,
+  JevNoulQuestion,
+  JevChoiceQuestion,
+  JevScoreQuestion,
+  JevQuestion,
+  JevQuestions,
+  JevNoulAnswer,
+  JevChoiceAnswer,
+  JevScoreAnswer,
+  JevAnswer,
+  JevRequest,
+  JevResponse,
+} from './decisions/index';
+
 // Built-in guardrails (LLM → TTS filters)
 export {
   createPatternRedactionGuardrail,
@@ -517,6 +536,7 @@ export {
   createPronunciationGuardrail,
   createBlocklistGuardrail,
   createModerationGuardrail,
+  createJevGuardrail,
 } from './guardrails/index';
 export type {
   PIIType,
@@ -529,6 +549,7 @@ export type {
   ModerationFn,
   ModerationOptions,
   ModerationVerdict,
+  JevGuardrailOptions,
 } from './guardrails/index';
 
 // Collaborator classes (extracted from CompositeVoice for modularity)

@@ -144,9 +144,10 @@ describe('GeminiLiveAgent', () => {
       await agent.initialize();
 
       const connecting = agent.connect();
+      const rejected = expect(connecting).rejects.toThrow(/timed out/);
       (await waitForSocket())._open();
 
-      await expect(connecting).rejects.toThrow(/timed out/);
+      await rejected;
     });
 
     it('does not treat a non-setup frame as handshake completion', async () => {
@@ -154,12 +155,13 @@ describe('GeminiLiveAgent', () => {
       await agent.initialize();
 
       const connecting = agent.connect();
+      const rejected = expect(connecting).rejects.toThrow(/timed out/);
       const sock = await waitForSocket();
       sock._open();
       sock._message({ goAway: { timeLeft: '10s' } });
       await flush();
 
-      await expect(connecting).rejects.toThrow(/timed out/);
+      await rejected;
     });
 
     it('rejects connect when the server errors before setupComplete', async () => {
