@@ -15,7 +15,9 @@
  * receiving the previous one's output, and the chain stops at the first block.
  * A guardrail that throws or exceeds `timeoutMs` is handled according to the
  * configured {@link GuardrailErrorPolicy} rather than propagating — a broken
- * filter must not take down the turn.
+ * filter must not take down the turn. A guardrail that rejects after
+ * {@link GuardrailContext.signal} aborts is treated as cancelled instead: no
+ * `onError`/`onBlocked` callbacks fire, and the text is suppressed silently.
  *
  * @packageDocumentation
  */
@@ -55,7 +57,10 @@ export interface GuardrailApplication {
 export interface GuardrailOutcome {
   /** Text that survived the chain. Empty when {@link GuardrailOutcome.blocked} is true. */
   text: string;
-  /** Whether a guardrail suppressed the text. */
+  /**
+   * Whether the text must not be spoken: a guardrail suppressed it, or the
+   * turn was cancelled while a guardrail was running.
+   */
   blocked: boolean;
   /** Guardrails that rewrote or blocked the text, in the order they ran. */
   applications: GuardrailApplication[];
@@ -185,6 +190,14 @@ export class GuardrailPipeline {
         result = await this.invoke(guardrail, current, context);
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
+
+        // A cancelled turn (barge-in, abort) is not a guardrail failure: skip
+        // the error policy and its events, and speak nothing for this turn.
+        if (context.signal?.aborted) {
+          this.logger?.debug(`Guardrail "${guardrail.name}" cancelled with the turn`, err);
+          return { text: '', blocked: true, applications };
+        }
+
         const policy = this.settings.onError;
         this.logger?.warn(`Guardrail "${guardrail.name}" failed (${policy})`, err);
         this.observer?.onError?.({

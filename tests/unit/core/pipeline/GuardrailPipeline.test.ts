@@ -201,6 +201,34 @@ describe('GuardrailPipeline', () => {
       const pipeline = new GuardrailPipeline({ filters: [rejecter], onError: 'block' });
       expect((await pipeline.run('hi', finalContext('hi'))).blocked).toBe(true);
     });
+
+    it.each(['block', 'passthrough'] as const)(
+      'treats a failure after the turn is cancelled as cancellation, not an error (onError=%s)',
+      async (onError) => {
+        const controller = new AbortController();
+        const cancellable: Guardrail = {
+          name: 'cancellable',
+          check: (_text, ctx) =>
+            new Promise<never>((_resolve, reject) => {
+              ctx.signal?.addEventListener('abort', () => reject(ctx.signal?.reason));
+            }),
+        };
+        const observer = { onError: jest.fn(), onBlocked: jest.fn(), onApplied: jest.fn() };
+        const pipeline = new GuardrailPipeline(
+          { filters: [cancellable, upper], onError },
+          { observer }
+        );
+
+        const pending = pipeline.run('hi', { ...finalContext('hi'), signal: controller.signal });
+        controller.abort(new Error('barge-in'));
+        const outcome = await pending;
+
+        expect(outcome).toEqual({ text: '', blocked: true, applications: [] });
+        expect(observer.onError).not.toHaveBeenCalled();
+        expect(observer.onBlocked).not.toHaveBeenCalled();
+        expect(observer.onApplied).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('timeout', () => {
