@@ -116,3 +116,24 @@ describe('createNextJsProxy — upstream URL construction', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 });
+
+describe('createNextJsProxy — CORS preflight', () => {
+  it('allows the Idempotency-Key request header (SpekoTTS)', async () => {
+    const { OPTIONS } = createNextJsProxy({
+      spekoApiKey: 'speko-key',
+      pathPrefix: '/api/proxy',
+      cors: { origins: ['https://app.example.com'] },
+    });
+
+    const res = await OPTIONS(
+      mockNextRequest('http://localhost:3000/api/proxy/speko/v1/synthesize', 'OPTIONS'),
+      { params: { path: ['speko', 'v1', 'synthesize'] } }
+    );
+
+    expect(res.status).toBe(204);
+    const allowed = (res.headers.get('Access-Control-Allow-Headers') ?? '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase());
+    expect(allowed).toEqual(expect.arrayContaining(['content-type', 'idempotency-key']));
+  });
+});
