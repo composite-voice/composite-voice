@@ -1,7 +1,7 @@
 ---
 title: Decision Models
 description: Use TypeSafe Jev for typed decisions and speech guardrails.
-order: 9
+order: 10
 ---
 
 ### Jev
@@ -67,15 +67,25 @@ const voice = new CompositeVoice({
     timeoutMs: 2000,
     filters: [
       createJevGuardrail({
-        client: new JevClient({ proxyUrl: '/api/jev', timeoutMs: 1500 }),
+        client: new JevClient({ proxyUrl: '/api/jev' }),
         policy: 'Do not disclose customer account numbers or access credentials.',
         threshold: 0.5,
         replacement: 'I cannot share that information.',
+        timeoutMs: 1800, // Keep just under guardrails.timeoutMs.
       }),
     ],
   },
 });
 ```
+
+Each check is cancelled when the turn is cancelled or after the guardrail's
+`timeoutMs`, which defaults to 900 ms, just under the pipeline's 1000 ms default
+`guardrails.timeoutMs`. The pipeline stops waiting at its own timeout but cannot
+cancel a request, so when you raise `guardrails.timeoutMs`, raise the guardrail's
+`timeoutMs` too and keep it slightly lower. Otherwise the request is abandoned
+but still billed. `0` disables the guardrail's timeout. The `JevClient` timeout
+also applies; the shorter one wins. A check cancelled by barge-in suppresses
+speech for that turn without emitting `guardrail.error` or `guardrail.blocked`.
 
 The guardrail defaults to `stages: ['final']`. For Live TTS, set `mode: 'buffered'`
 to evaluate the entire utterance before synthesis. To evaluate streamed segments,
@@ -88,6 +98,8 @@ generated inside an all-in-one agent provider.
 For custom decisions, call `jev.evaluate()` from your own `Guardrail.check` and
 pass `{ signal: context.signal }` as its second argument. That lets you use
 multiple questions, choice probabilities, or conversation state when needed.
+Give that client a `timeoutMs` below `guardrails.timeoutMs`, because the
+pipeline does not abort `context.signal` when its timeout expires.
 
 ### Transport and failure handling
 
@@ -97,9 +109,9 @@ multiple questions, choice probabilities, or conversation state when needed.
   generic voice proxy does not currently supply a Jev route. A proxy client never
   sends `apiKey`, even if one is configured.
 - `fetch` can be overridden to add your application's authentication or use a
-  custom transport. `timeoutMs` defaults to 10 seconds; `0` disables it. Set a
-  shorter client timeout than the guardrail pipeline timeout to abort stalled
-  network requests before the pipeline moves on.
+  custom transport. The client's `timeoutMs` defaults to 10 seconds; `0`
+  disables it. `createJevGuardrail` applies its own 900 ms limit on top, so
+  guardrail checks do not need a shorter client timeout.
 - `evaluate(request, { signal })` supports cancellation. The client aborts fetch
   on timeout or cancellation, validates answers against the questions sent, and
   throws on HTTP errors or malformed responses. It does not automatically retry.

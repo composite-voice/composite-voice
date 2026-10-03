@@ -92,6 +92,86 @@ describe('createJevGuardrail', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  /** A fetch that never answers, rejecting only when its signal aborts. */
+  function stall() {
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          const signal = init!.signal!;
+          signal.addEventListener('abort', () => reject(signal.reason));
+        })
+    );
+  }
+
+  it('aborts a slow request before the default pipeline timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      stall();
+      const onError = jest.fn();
+      // All defaults: pipeline 1000 ms, guardrail 900 ms, client 10000 ms.
+      const pipeline = new GuardrailPipeline(
+        { filters: [createJevGuardrail({ client, policy })] },
+        { observer: { onError } }
+      );
+      const pending = pipeline.run('Hello', context);
+      await jest.advanceTimersByTimeAsync(899);
+      const signal = fetchMock.mock.calls[0]![1]!.signal!;
+      expect(signal.aborted).toBe(false);
+      await jest.advanceTimersByTimeAsync(1);
+      expect(signal.aborted).toBe(true);
+      await expect(pending).resolves.toEqual({ text: 'Hello', blocked: false, applications: [] });
+      expect(onError.mock.calls[0][0].error.message).toMatch(/timed out after 900ms/);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('applies a custom timeout shorter than a slow client response', async () => {
+    stall();
+    const slowClient = new JevClient({ proxyUrl: '/api/jev', fetch: fetchMock, timeoutMs: 0 });
+    const pipeline = new GuardrailPipeline({
+      filters: [createJevGuardrail({ client: slowClient, policy, timeoutMs: 20 })],
+      timeoutMs: 5000,
+      onError: 'block',
+    });
+    const result = await pipeline.run('Hello', context);
+    expect(result.blocked).toBe(true);
+    expect(result.applications[0]!.reason).toMatch(/timed out after 20ms/);
+    expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+  });
+
+  it('can disable its own timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      await createJevGuardrail({ client, policy, timeoutMs: 0 }).check('Hello', context);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([-1, NaN, Infinity, 2147483648])('rejects invalid timeoutMs %s', (timeoutMs) => {
+    expect(() => createJevGuardrail({ client, policy, timeoutMs })).toThrow('timeoutMs');
+  });
+
+  it('cancels the request on barge-in without reporting a guardrail error', async () => {
+    stall();
+    const controller = new AbortController();
+    const observer = { onError: jest.fn(), onBlocked: jest.fn() };
+    const pipeline = new GuardrailPipeline(
+      { filters: [createJevGuardrail({ client, policy })], onError: 'block' },
+      { observer }
+    );
+    const pending = pipeline.run('Hello', { ...context, signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    controller.abort(new Error('barge-in'));
+    await expect(pending).resolves.toEqual({ text: '', blocked: true, applications: [] });
+    expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+    expect(observer.onError).not.toHaveBeenCalled();
+    expect(observer.onBlocked).not.toHaveBeenCalled();
+  });
+
   it.each(['block', 'passthrough'] as const)(
     'honors pipeline onError=%s for malformed API responses',
     async (onError) => {
