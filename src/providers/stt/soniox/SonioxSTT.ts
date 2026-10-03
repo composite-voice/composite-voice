@@ -273,11 +273,11 @@ export class SonioxSTT extends LiveSTTProvider {
    * ```
    */
   constructor(config: SonioxSTTConfig, logger?: Logger) {
+    // audioFormat / sampleRate / numChannels are deliberately left unset so
+    // configureSTTFromMetadata can fill them from the input provider; their
+    // defaults are applied when the start message is built.
     const finalConfig: SonioxSTTConfig = {
       model: 'stt-rt-v5',
-      audioFormat: 'pcm_s16le',
-      sampleRate: 16000,
-      numChannels: 1,
       interimResults: true,
       enableEndpointDetection: true,
       ...config,

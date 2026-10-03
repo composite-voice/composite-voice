@@ -6,6 +6,7 @@ import { configureSTTFromMetadata } from '../../../../src/core/pipeline/configur
 import type { AudioMetadata } from '../../../../src/core/types/audio';
 import type { ProviderRole } from '../../../../src/core/types/roles';
 import { SpekoSTT as RealSpekoSTT } from '../../../../src/providers/stt/speko/SpekoSTT';
+import { SonioxSTT as RealSonioxSTT } from '../../../../src/providers/stt/soniox/SonioxSTT';
 
 // ─── Stub classes ───────────────────────────────────────────────────────────
 //
@@ -492,6 +493,19 @@ describe('configureSTTFromMetadata', () => {
       configureSTTFromMetadata(stt, { ...defaultMetadata, sampleRate: 48000 });
 
       expect(stt.config.sampleRate).toBe(24000);
+    });
+  });
+
+  describe('SonioxSTT (real provider)', () => {
+    it('fills audio settings on a real SonioxSTT left at its defaults', () => {
+      const stt = new RealSonioxSTT({ apiKey: 'test-key' });
+      configureSTTFromMetadata(stt, { ...defaultMetadata, encoding: 'mulaw', sampleRate: 8000 });
+
+      expect(stt.config).toMatchObject({
+        audioFormat: 'mulaw',
+        sampleRate: 8000,
+        numChannels: 1,
+      });
     });
   });
 
