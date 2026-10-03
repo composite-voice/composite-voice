@@ -41,13 +41,16 @@ global.MediaStream = jest.fn().mockImplementation(() => ({
   ]),
 })) as unknown as typeof MediaStream;
 
-// Mock getUserMedia
-Object.defineProperty(global.navigator, 'mediaDevices', {
-  writable: true,
-  value: {
-    getUserMedia: jest.fn().mockResolvedValue(new MediaStream()),
-  },
-});
+// Mock getUserMedia. Suites using `@jest-environment node` have no
+// `navigator` on Node < 21, so only patch it where it exists.
+if (typeof global.navigator !== 'undefined') {
+  Object.defineProperty(global.navigator, 'mediaDevices', {
+    writable: true,
+    value: {
+      getUserMedia: jest.fn().mockResolvedValue(new MediaStream()),
+    },
+  });
+}
 
 // Mock Web Speech API
 const MockSpeechRecognition = jest.fn().mockImplementation(() => ({
