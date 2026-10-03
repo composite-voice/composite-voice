@@ -14,7 +14,7 @@ Use SpekoSTT when you want one streaming integration that routes across many STT
 
 **How you authenticate depends on where the pipeline runs.** The Speko Relay authenticates WebSocket upgrades with `Authorization` and `Idempotency-Key` headers:
 
-- **Browsers** cannot set headers on a WebSocket handshake, so a proxy is required — the CompositeVoice proxy injects both server-side, generating a fresh idempotency key for every connection. (Alternatively, point `endpoint` at your own backend that terminates the Speko WebSocket.)
+- **Browsers** cannot set headers on a WebSocket handshake, so a proxy is required — the CompositeVoice proxy injects both server-side, generating a fresh idempotency key for every connection. (Alternatively, point `proxyUrl` at your own backend that injects the headers or terminates the Speko WebSocket.) Using `apiKey` in a browser fails at `initialize()` with an error pointing you to `proxyUrl`.
 - **Node servers** (phone agents, meeting bots, headless pipelines) can pass `apiKey` and connect directly to `wss://relay.speko.dev` — the provider sends both headers itself, with a fresh `Idempotency-Key` per connection. No proxy hop needed.
 
 ```typescript
@@ -61,7 +61,7 @@ await voice.startListening();
 | ---------------- | --------- | ------------- | --------------------------------------------------------- |
 | `proxyUrl`       | `string`  | --            | Proxy server URL (**required in browsers**)               |
 | `apiKey`         | `string`  | --            | Direct relay connection — **Node servers only**, needs the optional `ws` package |
-| `endpoint`       | `string`  | --            | Custom backend/gateway URL that terminates the Speko WS   |
+| `endpoint`       | `string`  | --            | Relay URL override for direct `apiKey` mode (not an auth mode on its own) |
 | `routing`        | `object`  | relay default | Routing object -- same shape as [SpekoTTS](/guides/tts/speko-tts#routing) |
 | `audioFormat`    | `string`  | `'pcm_s16le'` | Input encoding: `pcm_s16le` or `opus`                     |
 | `sampleRate`     | `number`  | `16000`       | Input sample rate in Hz (8000-192000)                     |

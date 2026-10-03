@@ -91,6 +91,27 @@ describe('SpekoTTS', () => {
       await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
     });
 
+    it('should reject an endpoint-only config (endpoint is a URL override, not an auth mode)', async () => {
+      const provider = new SpekoTTS({ endpoint: 'https://speko-gateway.internal' }, logger);
+
+      await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
+    });
+
+    it('should use endpoint as the relay URL override in apiKey mode', async () => {
+      mockFetch.mockResolvedValueOnce(createAudioResponse());
+      const provider = new SpekoTTS(
+        { apiKey: 'sk_speko_test', endpoint: 'https://speko-gateway.internal' },
+        logger
+      );
+      await provider.initialize();
+
+      await provider.synthesize('Hello');
+
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://speko-gateway.internal/v1/tts/speech');
+      expect(new Headers(init.headers).get('Authorization')).toBe('Bearer sk_speko_test');
+    });
+
     it('should not be ready after dispose', async () => {
       const provider = new SpekoTTS({ apiKey: 'sk_speko_test' }, logger);
       await provider.initialize();

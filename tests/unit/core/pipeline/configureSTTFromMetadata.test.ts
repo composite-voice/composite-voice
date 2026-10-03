@@ -5,6 +5,7 @@
 import { configureSTTFromMetadata } from '../../../../src/core/pipeline/configureSTTFromMetadata';
 import type { AudioMetadata } from '../../../../src/core/types/audio';
 import type { ProviderRole } from '../../../../src/core/types/roles';
+import { SpekoSTT as RealSpekoSTT } from '../../../../src/providers/stt/speko/SpekoSTT';
 
 // ─── Stub classes ───────────────────────────────────────────────────────────
 //
@@ -471,6 +472,26 @@ describe('configureSTTFromMetadata', () => {
         sampleRate: 16000,
         numChannels: 1,
       });
+    });
+  });
+
+  describe('SpekoSTT', () => {
+    it('fills audio settings on a real SpekoSTT left at its defaults', () => {
+      const stt = new RealSpekoSTT({ proxyUrl: '/api/proxy/speko' });
+      configureSTTFromMetadata(stt, { ...defaultMetadata, sampleRate: 48000, channels: 2 });
+
+      expect(stt.config).toMatchObject({
+        audioFormat: 'pcm_s16le',
+        sampleRate: 48000,
+        numChannels: 2,
+      });
+    });
+
+    it('does not override explicitly configured audio settings', () => {
+      const stt = new RealSpekoSTT({ proxyUrl: '/api/proxy/speko', sampleRate: 24000 });
+      configureSTTFromMetadata(stt, { ...defaultMetadata, sampleRate: 48000 });
+
+      expect(stt.config.sampleRate).toBe(24000);
     });
   });
 

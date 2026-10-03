@@ -10,7 +10,11 @@ import type { STTProviderConfig } from '../../../core/types/providers';
 import type { SpekoRouting, SpekoAudioEncoding } from '../../tts/speko/SpekoTTS';
 import { generateIdempotencyKey } from '../../tts/speko/SpekoTTS';
 import { Logger } from '../../../utils/logger';
-import { WebSocketManager, type WebSocketManagerOptions } from '../../../utils/websocket';
+import {
+  WebSocketManager,
+  supportsUpgradeHeaders,
+  type WebSocketManagerOptions,
+} from '../../../utils/websocket';
 import { ProviderInitializationError, ProviderConnectionError } from '../../../utils/errors';
 
 /**
@@ -25,8 +29,9 @@ import { ProviderInitializationError, ProviderConnectionError } from '../../../u
  *
  * - **Browsers**: set `proxyUrl` to a CompositeVoice proxy with
  *   `spekoApiKey` configured — the proxy injects both headers, generating a
- *   fresh idempotency key per connection. Alternatively set `endpoint` to
- *   your own backend that terminates the Speko WebSocket.
+ *   fresh idempotency key per connection. Your own backend that injects the
+ *   headers (or terminates the Speko WebSocket) works the same way: point
+ *   `proxyUrl` at it.
  * - **Node servers** (phone agents, meeting bots, ...): set `apiKey` to
  *   connect directly to the relay — the provider sends the headers itself
  *   via the optional `ws` peer dependency (the same package the proxy
@@ -63,6 +68,11 @@ export interface SpekoSTTConfig extends STTProviderConfig {
   /**
    * Audio encoding of the streamed audio.
    *
+   * @remarks
+   * When unset, the pipeline fills it from the input provider's audio
+   * metadata (see `configureSTTFromMetadata`), falling back to the default
+   * at connect time.
+   *
    * @defaultValue `'pcm_s16le'`
    */
   audioFormat?: SpekoAudioEncoding;
@@ -70,12 +80,20 @@ export interface SpekoSTTConfig extends STTProviderConfig {
   /**
    * Audio sample rate in Hz. Accepted range is 8000 to 192000.
    *
+   * @remarks
+   * When unset, filled from the input provider's audio metadata, falling
+   * back to the default at connect time.
+   *
    * @defaultValue `16000`
    */
   sampleRate?: number;
 
   /**
    * Number of audio channels. Accepted range is 1 to 8.
+   *
+   * @remarks
+   * When unset, filled from the input provider's audio metadata, falling
+   * back to the default at connect time.
    *
    * @defaultValue `1`
    */
@@ -218,7 +236,7 @@ export class SpekoSTT extends LiveSTTProvider {
    * Create a new SpekoSTT provider.
    *
    * @param config - Speko STT configuration. Must include `proxyUrl`
-   *   (browsers), `apiKey` (Node servers), or `endpoint`.
+   *   (browsers) or `apiKey` (Node servers).
    * @param logger - Optional parent logger; a child will be derived.
    *
    * @example
@@ -230,10 +248,10 @@ export class SpekoSTT extends LiveSTTProvider {
    * ```
    */
   constructor(config: SpekoSTTConfig, logger?: Logger) {
+    // audioFormat / sampleRate / numChannels are deliberately left unset so
+    // configureSTTFromMetadata can fill them from the input provider; their
+    // defaults are applied when the session.configure message is built.
     const finalConfig: SpekoSTTConfig = {
-      audioFormat: 'pcm_s16le',
-      sampleRate: 16000,
-      numChannels: 1,
       language: 'en',
       interimResults: true,
       ...config,
@@ -242,33 +260,49 @@ export class SpekoSTT extends LiveSTTProvider {
   }
 
   /**
-   * Validate that `apiKey`, `proxyUrl`, or `endpoint` is configured.
+   * Validate that `apiKey` or `proxyUrl` is configured, and that direct
+   * `apiKey` mode is only used where upgrade headers can be sent.
+   *
+   * @remarks
+   * Follows the SDK-wide convention (see `assertAuth`): `proxyUrl` or
+   * `apiKey` selects the auth mode, while `endpoint` only overrides the
+   * relay URL used in direct mode.
    *
    * @throws {@link ProviderInitializationError}
-   * Thrown when none of `apiKey`, `proxyUrl`, or `endpoint` is set. Note
-   * that direct `apiKey` mode is server-side only: the Speko Relay
-   * authenticates WebSocket upgrades with headers, which cannot be set on
-   * a browser WebSocket handshake — browsers must use `proxyUrl`.
+   * Thrown when neither `apiKey` nor `proxyUrl` is set, or when direct
+   * `apiKey` mode is used in a browser — the Speko Relay authenticates
+   * WebSocket upgrades with headers, which cannot be set on a browser
+   * WebSocket handshake, so browsers must use `proxyUrl`.
    */
   protected async onInitialize(): Promise<void> {
-    if (!this.config.apiKey && !this.config.proxyUrl && !this.config.endpoint) {
+    if (!this.config.apiKey && !this.config.proxyUrl) {
       throw new ProviderInitializationError(
         'SpekoSTT',
         new Error(
-          'SpekoSTT requires "proxyUrl" (browsers), "apiKey" (Node servers), or "endpoint" to ' +
-            'be configured. The Speko Relay authenticates WebSocket upgrades with headers that ' +
-            'browsers cannot set — in browsers, connect through the CompositeVoice proxy ' +
-            '(spekoApiKey) or your own backend.'
+          'SpekoSTT requires "proxyUrl" (browsers) or "apiKey" (Node servers) to be configured. ' +
+            'The Speko Relay authenticates WebSocket upgrades with headers that browsers cannot ' +
+            'set — in browsers, connect through the CompositeVoice proxy (spekoApiKey) or your ' +
+            'own backend via proxyUrl.'
+        )
+      );
+    }
+
+    if (!this.isProxyMode && !supportsUpgradeHeaders()) {
+      throw new ProviderInitializationError(
+        'SpekoSTT',
+        new Error(
+          'SpekoSTT direct "apiKey" mode is server-side (Node.js) only: the Speko Relay ' +
+            'authenticates WebSocket upgrades with Authorization and Idempotency-Key headers, ' +
+            'which browsers cannot set. In browsers, set "proxyUrl" to a CompositeVoice proxy ' +
+            '(spekoApiKey) or your own backend that injects the headers.'
         )
       );
     }
 
     this.logger.info('Speko STT initialized', {
       routing: this.config.routing,
-      audioFormat: this.config.audioFormat,
-      sampleRate: this.config.sampleRate,
       language: this.config.language,
-      mode: this.isProxyMode ? 'proxy' : this.config.apiKey ? 'direct' : 'endpoint',
+      mode: this.isProxyMode ? 'proxy' : 'direct',
     });
   }
 
@@ -290,11 +324,11 @@ export class SpekoSTT extends LiveSTTProvider {
    *
    * @remarks
    * Proxy mode: `ws(s)://<proxyUrl>/v1/stt/stream`
-   * Custom endpoint: `ws(s)://<endpoint>/v1/stt/stream`
-   * Direct mode: `wss://relay.speko.dev/v1/stt/stream`
+   * Direct mode: `wss://relay.speko.dev/v1/stt/stream`, or
+   * `<endpoint>/v1/stt/stream` when `endpoint` overrides the relay URL
    *
    * Authentication happens via headers on the upgrade request — injected
-   * by the proxy (or backend) in proxy/endpoint mode, or sent directly in
+   * by the proxy (or backend) in proxy mode, or sent directly in
    * server-side `apiKey` mode — never via the URL.
    *
    * @returns The fully-qualified WebSocket URL string.
@@ -387,8 +421,8 @@ export class SpekoSTT extends LiveSTTProvider {
         // Direct server-side mode: send the relay's upgrade headers
         // ourselves (Node-only, via the optional `ws` package). Evaluated
         // per connection so every session gets a fresh Idempotency-Key.
-        // In proxy/endpoint mode the server in front injects them instead.
-        ...(!this.isProxyMode && this.config.apiKey
+        // In proxy mode the server in front injects them instead.
+        ...(!this.isProxyMode
           ? {
               headers: await this.buildDirectHeaders(),
             }
@@ -424,16 +458,18 @@ export class SpekoSTT extends LiveSTTProvider {
       // Connect and wait for open
       await this.wsManager.connect();
 
-      // Start the session — the relay expects session.configure first
-      this.wsManager.send(JSON.stringify(this.buildConfigureMessage()));
+      // Start the session — the relay expects session.configure first.
+      // Audio defaults are resolved here (not in the constructor) so values
+      // filled from input metadata take effect.
+      const configureMessage = this.buildConfigureMessage();
+      this.wsManager.send(JSON.stringify(configureMessage));
 
       this.isConnected = true;
       this.interimText = '';
 
       this.logger.info('Connected to Speko STT WebSocket', {
         routing: this.config.routing,
-        audioFormat: this.config.audioFormat,
-        sampleRate: this.config.sampleRate,
+        audio: configureMessage.audio,
       });
     } catch (error) {
       // Close any half-open socket before dropping the manager reference.

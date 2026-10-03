@@ -21,12 +21,16 @@ const mockWsManager = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MockWebSocketManager = jest.fn((_options?: any) => mockWsManager);
 
+/** Runtime check for upgrade-header support (true = Node, false = browser). */
+const mockSupportsUpgradeHeaders = jest.fn(() => true);
+
 jest.mock('../../../../src/utils/websocket', () => {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     WebSocketManager: function (this: unknown, options: any) {
       return MockWebSocketManager(options);
     },
+    supportsUpgradeHeaders: () => mockSupportsUpgradeHeaders(),
     WebSocketState: {
       DISCONNECTED: 'disconnected',
       CONNECTING: 'connecting',
@@ -73,19 +77,61 @@ describe('SpekoSTT', () => {
 
       expect(provider.isReady()).toBe(true);
       expect(provider.type).toBe('websocket');
-      expect(provider.config.audioFormat).toBe('pcm_s16le');
-      expect(provider.config.sampleRate).toBe(16000);
-      expect(provider.config.numChannels).toBe(1);
+      // Audio settings stay unset so input metadata can fill them; the
+      // defaults are applied in session.configure (see Connection tests).
+      expect(provider.config.audioFormat).toBeUndefined();
+      expect(provider.config.sampleRate).toBeUndefined();
+      expect(provider.config.numChannels).toBeUndefined();
       expect(provider.config.language).toBe('en');
       expect(provider.config.interimResults).toBe(true);
     });
 
-    it('should initialize with a custom endpoint', async () => {
+    it('should reject an endpoint-only config (endpoint is a URL override, not an auth mode)', async () => {
       const provider = new SpekoSTT({ endpoint: 'wss://speko-gateway.internal' }, logger);
 
+      await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
+    });
+
+    it('should accept endpoint as a relay URL override in apiKey mode', async () => {
+      const provider = new SpekoSTT(
+        { apiKey: 'sk_speko_test', endpoint: 'wss://speko-gateway.internal' },
+        logger
+      );
       await provider.initialize();
 
-      expect(provider.isReady()).toBe(true);
+      await provider.connect();
+
+      const options = MockWebSocketManager.mock.calls[0]![0];
+      expect(options.url).toBe('wss://speko-gateway.internal/v1/stt/stream');
+      expect(typeof options.headers).toBe('function');
+    });
+
+    it('should fail early in a browser when apiKey (direct header) mode is used', async () => {
+      mockSupportsUpgradeHeaders.mockReturnValueOnce(false);
+      const provider = new SpekoSTT({ apiKey: 'sk_speko_test' }, logger);
+
+      const error = await provider.initialize().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ProviderInitializationError);
+      // Walk the cause chain to the underlying, user-facing explanation.
+      const messages: string[] = [];
+      for (let e = error as { message?: string; context?: { cause?: unknown } } | undefined; e; ) {
+        messages.push(e.message ?? '');
+        e = e.context?.cause as typeof e;
+      }
+      expect(messages.join('\n')).toMatch(/server-side \(Node\.js\) only[\s\S]*proxyUrl/);
+      expect(MockWebSocketManager).not.toHaveBeenCalled();
+    });
+
+    it('should allow proxy mode in a browser', async () => {
+      mockSupportsUpgradeHeaders.mockReturnValue(false);
+      try {
+        const provider = new SpekoSTT(PROXY_CONFIG, logger);
+        await provider.initialize();
+        expect(provider.isReady()).toBe(true);
+      } finally {
+        mockSupportsUpgradeHeaders.mockReturnValue(true);
+      }
     });
 
     it('should initialize with an apiKey (direct server-side mode)', async () => {
@@ -96,7 +142,7 @@ describe('SpekoSTT', () => {
       expect(provider.isReady()).toBe(true);
     });
 
-    it('should throw when apiKey, proxyUrl, and endpoint are all missing', async () => {
+    it('should throw when apiKey and proxyUrl are both missing', async () => {
       const provider = new SpekoSTT({}, logger);
 
       await expect(provider.initialize()).rejects.toThrow(ProviderInitializationError);
@@ -134,6 +180,21 @@ describe('SpekoSTT', () => {
         routing: { mode: 'auto', objective: 'latency' },
         audio: { encoding: 'pcm_s16le', sample_rate_hz: 16000, channels: 1 },
         language: 'en',
+      });
+    });
+
+    it('should send audio settings filled in after construction (input metadata)', async () => {
+      const provider = new SpekoSTT(PROXY_CONFIG, logger);
+      provider.config.sampleRate = 48000;
+      provider.config.numChannels = 2;
+      await provider.initialize();
+
+      await provider.connect();
+
+      expect(JSON.parse(mockWsManager.send.mock.calls[0][0]).audio).toEqual({
+        encoding: 'pcm_s16le',
+        sample_rate_hz: 48000,
+        channels: 2,
       });
     });
 
