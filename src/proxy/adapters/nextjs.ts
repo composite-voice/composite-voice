@@ -165,8 +165,10 @@ export function createNextJsProxy(config: CompositeVoiceProxyConfig): {
         const origin = corsOrigins.includes('*') ? '*' : corsOrigins.join(', ');
         headers['Access-Control-Allow-Origin'] = origin;
         headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+        // Idempotency-Key: SpekoTTS sends a client-generated key on every
+        // REST request, which makes cross-origin requests preflighted.
         headers['Access-Control-Allow-Headers'] =
-          'Content-Type, Authorization, x-api-key, anthropic-version, anthropic-beta';
+          'Content-Type, Authorization, x-api-key, anthropic-version, anthropic-beta, Idempotency-Key';
       }
       return new Response(null, { status: 204, headers });
     }

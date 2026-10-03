@@ -66,9 +66,11 @@ describe('SonioxSTT', () => {
       expect(provider.isReady()).toBe(true);
       expect(provider.type).toBe('websocket');
       expect(provider.config.model).toBe('stt-rt-v5');
-      expect(provider.config.audioFormat).toBe('pcm_s16le');
-      expect(provider.config.sampleRate).toBe(16000);
-      expect(provider.config.numChannels).toBe(1);
+      // Audio settings stay unset so input metadata can fill them; the
+      // defaults are applied in the start message.
+      expect(provider.config.audioFormat).toBeUndefined();
+      expect(provider.config.sampleRate).toBeUndefined();
+      expect(provider.config.numChannels).toBeUndefined();
       expect(provider.config.enableEndpointDetection).toBe(true);
     });
 

@@ -16,6 +16,7 @@
  */
 
 import type { ServerResponse } from 'http';
+import { randomUUID } from 'crypto';
 import type { CompositeVoiceProxyConfig } from '../types';
 import type { AwsCredentials } from '../../utils/aws/sigv4';
 
@@ -23,8 +24,8 @@ import type { AwsCredentials } from '../../utils/aws/sigv4';
  * The transport type for a proxy route.
  *
  * @remarks
- * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT, Azure TTS).
- * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime, Azure STT).
+ * - `'http'` routes proxy REST/SSE requests (Anthropic, OpenAI, Groq, Mistral, Gemini, Speechify, Murf, Gladia, LMNT, Smallest.ai, Rime, MiniMax, Fish Audio, Google Cloud TTS/STT, Azure TTS, Speko TTS).
+ * - `'websocket'` routes proxy bidirectional WebSocket connections (Deepgram, ElevenLabs TTS/STT, AssemblyAI, Cartesia, Soniox, Speechmatics, Rev AI, OpenAI Realtime, Azure STT, Speko STT).
  */
 export type RouteType = 'http' | 'websocket';
 
@@ -76,6 +77,21 @@ export interface ProxyRoute {
    * client-supplied value. Currently applied to `'websocket'` routes only.
    */
   authQuery?: Record<string, string>;
+
+  /**
+   * Factory for per-connection headers injected into upstream WebSocket
+   * upgrade requests.
+   *
+   * @remarks
+   * Evaluated once per upgrade and merged **over** {@link ProxyRoute.authHeaders},
+   * for providers that require a unique header value on every connection.
+   * Speko uses this to send a fresh `Idempotency-Key` per WebSocket session
+   * (the relay rejects upgrades without one, and reusing a key across
+   * concurrent sessions is an idempotency conflict). Currently applied to
+   * `'websocket'` routes only — HTTP requests carry the client-generated
+   * key through the header passthrough instead.
+   */
+  connectionHeaders?: () => Record<string, string>;
 
   /**
    * SigV4 signing descriptor for AWS routes.
@@ -437,6 +453,32 @@ export function buildRoutes(config: CompositeVoiceProxyConfig): ProxyRoute[] {
       authHeaders: {
         'Ocp-Apim-Subscription-Key': config.azureSpeechApiKey,
       },
+    });
+  }
+
+  // Speko Relay: REST TTS and WebSocket STT/TTS live on the same host, so
+  // one provider name carries both an HTTP and a WebSocket route. The relay
+  // requires a unique Idempotency-Key on every request: HTTP requests carry
+  // the client-generated key through header passthrough, but browsers cannot
+  // set headers on WebSocket upgrades, so the proxy generates one per
+  // connection via connectionHeaders.
+  if (config.spekoApiKey) {
+    routes.push({
+      provider: 'speko',
+      type: 'http',
+      targetBase: 'https://relay.speko.dev',
+      authHeaders: {
+        Authorization: `Bearer ${config.spekoApiKey}`,
+      },
+    });
+    routes.push({
+      provider: 'speko',
+      type: 'websocket',
+      targetBase: 'wss://relay.speko.dev',
+      authHeaders: {
+        Authorization: `Bearer ${config.spekoApiKey}`,
+      },
+      connectionHeaders: () => ({ 'Idempotency-Key': randomUUID() }),
     });
   }
 

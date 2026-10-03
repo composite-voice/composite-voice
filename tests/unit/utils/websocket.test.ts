@@ -9,6 +9,35 @@
 import { WebSocketManager, WebSocketState } from '../../../src/utils/websocket';
 import { WebSocketError } from '../../../src/utils/errors';
 
+/** Sockets created through the mocked `ws` package, newest last. */
+const mockNodeWsSockets: any[] = [];
+
+// The manager dynamically imports `ws` when upgrade headers are configured
+// (browsers cannot set them). Mock it with a constructor that captures the
+// url/protocols/options it was created with.
+jest.mock('ws', () => ({
+  WebSocket: class {
+    url: string;
+    protocols: unknown;
+    options: { headers?: Record<string, string> };
+    binaryType = 'nodebuffer';
+    readyState = 0;
+    onopen: (() => void) | null = null;
+    onmessage: unknown = null;
+    onerror: unknown = null;
+    onclose: unknown = null;
+    close = jest.fn();
+    send = jest.fn();
+
+    constructor(url: string, protocols: unknown, options: { headers?: Record<string, string> }) {
+      this.url = url;
+      this.protocols = protocols;
+      this.options = options;
+      mockNodeWsSockets.push(this);
+    }
+  },
+}));
+
 describe('WebSocketManager', () => {
   let manager: WebSocketManager;
 
@@ -386,6 +415,142 @@ describe('WebSocketManager', () => {
       expect(sockets.length).toBeGreaterThan(2);
       expect(onConnectionLost).toHaveBeenCalledTimes(1);
       expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
+    });
+
+    // ─── Reconnect scheduling ─────────────────────────────────────────
+
+    it('rejects an initial connect() whose socket closes before opening', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 3,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      manager.setHandlers({ onConnectionLost });
+
+      const connecting = manager.connect();
+      sockets[0]!.serverClose(1008, 'unauthorized');
+
+      await expect(connecting).rejects.toThrow(/closed before opening \(code 1008: unauthorized\)/);
+      // The rejection is the failure signal — no background retries.
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(sockets).toHaveLength(1);
+      expect(manager.getState()).toBe(WebSocketState.DISCONNECTED);
+    });
+
+    it('opens no further sockets after disconnect() following a failed reconnect', async () => {
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 5,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      const socket = await connected(manager);
+
+      // Drop, then the first reconnect attempt is refused before opening.
+      socket.serverClose(1006, 'abnormal');
+      await jest.advanceTimersByTimeAsync(100);
+      expect(sockets).toHaveLength(2);
+      sockets[1]!.serverClose(1013, 'try again later');
+      await jest.advanceTimersByTimeAsync(0);
+
+      await manager.disconnect();
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      expect(sockets).toHaveLength(2);
+      expect(manager.getState()).toBe(WebSocketState.DISCONNECTED);
+    });
+
+    it('consumes exactly one attempt per failed reconnect', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 3,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      socket.serverClose(1006, 'abnormal');
+
+      // Every reconnect attempt is refused before opening.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await jest.advanceTimersByTimeAsync(100);
+        // One new socket per backoff period — never two.
+        expect(sockets).toHaveLength(1 + attempt);
+        sockets[attempt]!.serverClose(1013, 'try again later');
+        await jest.advanceTimersByTimeAsync(0);
+      }
+
+      // All three attempts used once each, then the terminal signal.
+      expect(onConnectionLost).toHaveBeenCalledTimes(1);
+      expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(sockets).toHaveLength(4);
+    });
+  });
+
+  // ─── Upgrade headers (server-side `ws` package) ───────────────────────
+
+  describe('upgrade headers', () => {
+    beforeEach(() => {
+      mockNodeWsSockets.length = 0;
+      (global as any).WebSocket = jest.fn();
+    });
+
+    /** Connect a manager with headers, opening the mocked ws socket. */
+    async function connectWithHeaders(
+      headers: Record<string, string> | (() => Record<string, string>)
+    ): Promise<{ mgr: WebSocketManager; socket: any }> {
+      const mgr = new WebSocketManager({
+        url: 'wss://relay.example.com/stream',
+        headers,
+        reconnection: { enabled: false },
+      });
+      const pending = mgr.connect();
+      // Let the dynamic import('ws') settle so the socket gets created
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const socket = mockNodeWsSockets[mockNodeWsSockets.length - 1];
+      socket.readyState = 1;
+      socket.onopen?.();
+      await pending;
+      return { mgr, socket };
+    }
+
+    it('connects through the ws package with the configured headers', async () => {
+      const { mgr, socket } = await connectWithHeaders({ Authorization: 'Bearer key' });
+
+      expect(socket.url).toBe('wss://relay.example.com/stream');
+      expect(socket.options).toEqual({ headers: { Authorization: 'Bearer key' } });
+      // Browser-compatible binary frames, and the global WebSocket untouched
+      expect(socket.binaryType).toBe('arraybuffer');
+      expect((global as any).WebSocket).not.toHaveBeenCalled();
+      expect(mgr.isConnected()).toBe(true);
+    });
+
+    it('re-evaluates function-form headers per socket creation', async () => {
+      let counter = 0;
+      const headers = (): Record<string, string> => ({ 'Idempotency-Key': `key-${++counter}` });
+
+      const first = await connectWithHeaders(headers);
+      const second = await connectWithHeaders(headers);
+
+      expect(first.socket.options.headers['Idempotency-Key']).toBe('key-1');
+      expect(second.socket.options.headers['Idempotency-Key']).toBe('key-2');
     });
   });
 });
