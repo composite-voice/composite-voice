@@ -416,6 +416,92 @@ describe('WebSocketManager', () => {
       expect(onConnectionLost).toHaveBeenCalledTimes(1);
       expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
     });
+
+    // ─── Reconnect scheduling ─────────────────────────────────────────
+
+    it('rejects an initial connect() whose socket closes before opening', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 3,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      manager.setHandlers({ onConnectionLost });
+
+      const connecting = manager.connect();
+      sockets[0]!.serverClose(1008, 'unauthorized');
+
+      await expect(connecting).rejects.toThrow(/closed before opening \(code 1008: unauthorized\)/);
+      // The rejection is the failure signal — no background retries.
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(sockets).toHaveLength(1);
+      expect(manager.getState()).toBe(WebSocketState.DISCONNECTED);
+    });
+
+    it('opens no further sockets after disconnect() following a failed reconnect', async () => {
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 5,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      const socket = await connected(manager);
+
+      // Drop, then the first reconnect attempt is refused before opening.
+      socket.serverClose(1006, 'abnormal');
+      await jest.advanceTimersByTimeAsync(100);
+      expect(sockets).toHaveLength(2);
+      sockets[1]!.serverClose(1013, 'try again later');
+      await jest.advanceTimersByTimeAsync(0);
+
+      await manager.disconnect();
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      expect(sockets).toHaveLength(2);
+      expect(manager.getState()).toBe(WebSocketState.DISCONNECTED);
+    });
+
+    it('consumes exactly one attempt per failed reconnect', async () => {
+      const onConnectionLost = jest.fn();
+      manager = new WebSocketManager({
+        url: 'wss://test.example.com',
+        reconnection: {
+          enabled: true,
+          maxAttempts: 3,
+          initialDelay: 100,
+          maxDelay: 100,
+          backoffMultiplier: 1,
+        },
+      });
+      manager.setHandlers({ onConnectionLost });
+      const socket = await connected(manager);
+
+      socket.serverClose(1006, 'abnormal');
+
+      // Every reconnect attempt is refused before opening.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await jest.advanceTimersByTimeAsync(100);
+        // One new socket per backoff period — never two.
+        expect(sockets).toHaveLength(1 + attempt);
+        sockets[attempt]!.serverClose(1013, 'try again later');
+        await jest.advanceTimersByTimeAsync(0);
+      }
+
+      // All three attempts used once each, then the terminal signal.
+      expect(onConnectionLost).toHaveBeenCalledTimes(1);
+      expect(onConnectionLost.mock.calls[0][0].message).toContain('Max reconnection attempts');
+      await jest.advanceTimersByTimeAsync(10_000);
+      expect(sockets).toHaveLength(4);
+    });
   });
 
   // ─── Upgrade headers (server-side `ws` package) ───────────────────────

@@ -375,6 +375,12 @@ export class WebSocketManager {
     let createSocket: () => WebSocket;
     if (this.options.headers) {
       createSocket = await this.createNodeSocketFactory(this.options.headers);
+      // disconnect()/expectClose() may have run while `ws` was loading;
+      // don't open a socket the caller has already abandoned.
+      if (!this.shouldReconnect) {
+        this.state = WebSocketState.DISCONNECTED;
+        throw new WebSocketError('Connection aborted by disconnect()');
+      }
     } else {
       createSocket = () => new WebSocket(this.options.url, this.options.protocols);
     }
@@ -413,20 +419,31 @@ export class WebSocketManager {
         this.ws.onclose = (event: CloseEvent) => {
           clearTimeout(timeout);
           this.logger?.info(`Closed with code ${event.code}: ${event.reason}`);
-          this.handleClose(event);
-          // A close before the socket ever opened (e.g. the server rejected
-          // the upgrade) must fail this connect() call — previously the
-          // cleared timeout left the promise pending forever. Rejecting a
-          // settled promise is a no-op, so post-open closes are unaffected.
-          if (!opened) {
-            reject(
-              new WebSocketError(
-                `Connection closed before opening (code ${event.code}${
-                  event.reason ? `: ${event.reason}` : ''
-                })`
-              )
-            );
+
+          if (opened) {
+            this.handleClose(event);
+            return;
           }
+
+          // A close before the socket ever opened (e.g. the server rejected
+          // the upgrade) fails this connect() call instead of leaving it
+          // pending. The rejection is the ONLY failure signal: no retry is
+          // scheduled here. A reconnect attempt's rejection is handled by
+          // attemptReconnect()'s catch — the single place retries are
+          // scheduled — and an initial connect() rejects to its caller, the
+          // same as a connection timeout.
+          this.ws = null;
+          if (this.state !== WebSocketState.CLOSING) {
+            this.state = WebSocketState.DISCONNECTED;
+          }
+          this.handlers.onClose?.(event);
+          reject(
+            new WebSocketError(
+              `Connection closed before opening (code ${event.code}${
+                event.reason ? `: ${event.reason}` : ''
+              })`
+            )
+          );
         };
       } catch (error) {
         clearTimeout(timeout);
@@ -530,6 +547,15 @@ export class WebSocketManager {
    * an error via the `onError` handler and stops attempting.
    */
   private attemptReconnect(): void {
+    // Never stack timers: a stray second scheduling would orphan the first
+    // timer (disconnect() could no longer cancel it) and burn two attempts
+    // per failure.
+    this.clearReconnectTimer();
+
+    if (!this.shouldReconnect) {
+      return;
+    }
+
     const { maxAttempts, initialDelay, maxDelay, backoffMultiplier } = this.options.reconnection;
 
     if (maxAttempts && this.reconnectAttempts >= maxAttempts) {
@@ -552,6 +578,10 @@ export class WebSocketManager {
     this.logger?.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.shouldReconnect) {
+        return;
+      }
       this.connect().catch((error) => {
         this.logger?.error('Reconnection failed', error);
         // A rejected attempt (e.g. connection timeout) emits no close event
@@ -580,6 +610,11 @@ export class WebSocketManager {
    */
   expectClose(): void {
     this.shouldReconnect = false;
+    this.clearReconnectTimer();
+  }
+
+  /** Cancel the pending reconnection timer, if any. */
+  private clearReconnectTimer(): void {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -630,13 +665,14 @@ export class WebSocketManager {
    */
   async disconnect(code = 1000, reason = 'Normal closure'): Promise<void> {
     this.shouldReconnect = false;
-
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
+    this.clearReconnectTimer();
 
     if (!this.ws || this.state === WebSocketState.CLOSED) {
+      // No live socket — but a cancelled reconnect cycle may have left the
+      // state at RECONNECTING; settle it so callers see the manager idle.
+      if (this.state === WebSocketState.RECONNECTING) {
+        this.state = WebSocketState.DISCONNECTED;
+      }
       this.logger?.debug('Already disconnected');
       return;
     }
