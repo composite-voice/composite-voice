@@ -43,6 +43,7 @@
 import { WebSocketError, TimeoutError } from './errors';
 import type { ReconnectionConfig } from '../core/types/config';
 import { Logger } from './logger';
+import { importPeerDep } from './importPeerDep';
 
 // WHATWG WebSocket readyState values, inlined so the manager does not depend
 // on a global `WebSocket` class existing (Node < 22 has none, and sockets may
@@ -51,6 +52,43 @@ import { Logger } from './logger';
 const READY_STATE_OPEN = 1;
 /** @internal */
 const READY_STATE_CLOSED = 3;
+
+/**
+ * Module specifier of the optional `ws` peer dependency.
+ *
+ * @remarks
+ * Deliberately held in a variable rather than written as a literal
+ * `import('ws')`: `ws` is Node-only, and a literal specifier would let
+ * consumer bundlers (Vite, Rollup, webpack) statically resolve and bundle it
+ * into browser builds of the main entry. Combined with the
+ * `webpackIgnore` / `@vite-ignore` hints at the import site, the specifier
+ * is resolved by Node at runtime only. This intentionally departs from
+ * {@link importPeerDep}'s literal-specifier rule, which exists for peers
+ * that must also load in browsers.
+ *
+ * @internal
+ */
+const WS_PEER_DEP = 'ws';
+
+/**
+ * Whether the current runtime can send custom WebSocket upgrade headers.
+ *
+ * @remarks
+ * Browsers cannot set headers on a WebSocket handshake; Node (and other
+ * runtimes exposing `process.versions.node`, e.g. Electron's main process,
+ * Bun, Deno's Node compat) can, through the optional `ws` peer dependency.
+ * Used by {@link WebSocketManager} and by providers whose direct mode needs
+ * upgrade headers, so they can fail early with a clear error in browsers.
+ *
+ * @returns `true` when running under a Node-compatible runtime.
+ */
+export function supportsUpgradeHeaders(): boolean {
+  return (
+    typeof process !== 'undefined' &&
+    typeof process.versions === 'object' &&
+    !!process.versions?.node
+  );
+}
 
 /**
  * Enumeration of WebSocket connection states.
@@ -475,16 +513,40 @@ export class WebSocketManager {
   private async createNodeSocketFactory(
     headers: Record<string, string> | (() => Record<string, string>)
   ): Promise<() => WebSocket> {
+    const unavailable = (detail: string): WebSocketError => {
+      this.state = WebSocketState.DISCONNECTED;
+      return new WebSocketError(
+        `Custom WebSocket upgrade headers require the "ws" package (Node.js only): ${detail} ` +
+          '— in browsers, connect through a proxy that injects the headers server-side.'
+      );
+    };
+
+    if (!supportsUpgradeHeaders()) {
+      throw unavailable('browsers cannot set WebSocket upgrade headers');
+    }
+
     let NodeWebSocket: typeof import('ws').WebSocket;
     try {
-      NodeWebSocket = (await import('ws')).WebSocket;
-    } catch {
-      this.state = WebSocketState.DISCONNECTED;
-      throw new WebSocketError(
-        'Custom WebSocket upgrade headers require the "ws" package (Node.js only). ' +
-          'Install it with: pnpm add ws — or, in browsers, connect through a proxy ' +
-          'that injects the headers server-side.'
+      // Non-literal specifier + bundler-ignore hints keep `ws` out of browser
+      // bundles — see WS_PEER_DEP.
+      const wsModule = await importPeerDep<
+        typeof import('ws') | (typeof import('ws').WebSocket & { WebSocket?: unknown })
+      >(
+        () => import(/* webpackIgnore: true */ /* @vite-ignore */ WS_PEER_DEP),
+        WS_PEER_DEP,
+        'WebSocketManager'
       );
+      // importPeerDep returns the module's default export when present: the
+      // WebSocket class itself under native ESM, which only carries a
+      // `.WebSocket` self-reference when loaded through the CJS entry.
+      // Prefer the named export, falling back to the default class.
+      NodeWebSocket =
+        (wsModule as typeof import('ws')).WebSocket ??
+        (wsModule as unknown as typeof import('ws').WebSocket);
+    } catch (error) {
+      // importPeerDep wraps the underlying failure in context.cause.
+      const cause = (error as { context?: { cause?: Error } }).context?.cause ?? (error as Error);
+      throw unavailable(cause.message);
     }
 
     return () => {
